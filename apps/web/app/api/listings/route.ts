@@ -1,3 +1,4 @@
+import { getAttributesSchema } from "@jetmarket/verticals";
 import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
@@ -59,6 +60,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Attributes present in the payload are validated against the vertical's
+  // zod schema for this listing type (e.g. seats >= 1); missing keys are
+  // tolerated, unknown keys stripped.
+  const attrs = getAttributesSchema(config, data!.type)
+    .partial()
+    .safeParse(data!.attributes ?? {});
+  if (!attrs.success) {
+    return err("invalid attributes", 422, attrs.error.issues);
+  }
+
   if (
     operator.plan === "free" &&
     await repo.countOperatorListings(operator.id) >= FREE_LISTING_LIMIT
@@ -75,7 +86,7 @@ export async function POST(req: Request) {
     vertical: verticalSlug(),
     type: data!.type,
     title: data!.title,
-    attributes: data!.attributes ?? {},
+    attributes: attrs.data,
     price: data!.price,
     currency: data!.currency ?? "USD",
     photos: data!.photos ?? [],
