@@ -9,6 +9,15 @@ interface ListingTypeOpt {
   slug: string;
   labelKey: string;
 }
+interface AttributeView {
+  key: string;
+  labelKey: string;
+  appliesTo: string[];
+  unitKey?: string;
+  input: "select" | "number" | "text" | "date";
+  required: boolean;
+  options?: string[];
+}
 const FALLBACK_TYPES: ListingTypeOpt[] = [
   { slug: "charter", labelKey: "listingTypes.charter" },
   { slug: "empty_leg", labelKey: "listingTypes.empty_leg" },
@@ -20,6 +29,7 @@ export default function NewListingPage() {
   const tv = useTranslations();
   const router = useRouter();
   const [types, setTypes] = useState<ListingTypeOpt[]>(FALLBACK_TYPES);
+  const [attrs, setAttrs] = useState<AttributeView[]>([]);
   const [type, setType] = useState<string>("charter");
   const [vertical, setVertical] = useState<string>("jets");
   const [error, setError] = useState<string | null>(null);
@@ -29,17 +39,24 @@ export default function NewListingPage() {
   useEffect(() => {
     fetch("/api/vertical")
       .then((r) => r.json())
-      .then((c: { slug?: string; listingTypes?: ListingTypeOpt[] }) => {
-        if (c.slug) setVertical(c.slug);
-        if (c.listingTypes?.length) {
-          setTypes(c.listingTypes);
-          setType((cur) =>
-            c.listingTypes!.some((t) => t.slug === cur)
-              ? cur
-              : c.listingTypes![0]!.slug,
-          );
-        }
-      })
+      .then(
+        (c: {
+          slug?: string;
+          listingTypes?: ListingTypeOpt[];
+          attributes?: AttributeView[];
+        }) => {
+          if (c.slug) setVertical(c.slug);
+          if (c.listingTypes?.length) {
+            setTypes(c.listingTypes);
+            setType((cur) =>
+              c.listingTypes!.some((t) => t.slug === cur)
+                ? cur
+                : c.listingTypes![0]!.slug,
+            );
+          }
+          if (c.attributes) setAttrs(c.attributes);
+        },
+      )
       .catch(() => {});
   }, []);
 
@@ -50,17 +67,12 @@ export default function NewListingPage() {
     setError(null);
     setLimitHit(false);
     const f = new FormData(e.currentTarget);
-    const attributes: Record<string, unknown> = {
-      aircraftCategory: f.get("aircraftCategory"),
-      model: f.get("model"),
-    };
-    if (f.get("seats")) attributes.seats = Number(f.get("seats"));
-    if (f.get("rangeNm")) attributes.rangeNm = Number(f.get("rangeNm"));
-    if (f.get("year")) attributes.year = Number(f.get("year"));
-    if (type === "empty_leg") {
-      attributes.from = f.get("from");
-      attributes.to = f.get("to");
-      attributes.date = f.get("date");
+    const attributes: Record<string, unknown> = {};
+    for (const a of attrs) {
+      if (!a.appliesTo.includes(type)) continue;
+      const v = f.get(`attr_${a.key}`);
+      if (v === null || v === "") continue;
+      attributes[a.key] = a.input === "number" ? Number(v) : v;
     }
     try {
       const files = f
@@ -104,6 +116,7 @@ export default function NewListingPage() {
 
   const input =
     "w-full min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const visible = attrs.filter((a) => a.appliesTo.includes(type));
 
   return (
     <main className="mx-auto max-w-xl px-6 py-10">
@@ -128,27 +141,58 @@ export default function NewListingPage() {
           data-testid="listing-title"
           className={input}
         />
-        <div className="grid grid-cols-2 gap-3">
-          <select name="aircraftCategory" data-testid="listing-category" className={input}>
-            <option value="light">{t("catLight")}</option>
-            <option value="mid">{t("catMid")}</option>
-            <option value="super_mid">{t("catSuperMid")}</option>
-            <option value="heavy">{t("catHeavy")}</option>
-            <option value="ultra_long">{t("catUltra")}</option>
-          </select>
-          <input name="model" required placeholder={t("modelPh")} data-testid="listing-model" className={input} />
-          <input name="year" type="number" placeholder={t("yearPh")} className={input} />
-          <input name="seats" type="number" required placeholder={t("seatsPh")} data-testid="listing-seats" className={input} />
-          <input name="rangeNm" type="number" placeholder={t("rangePh")} className={input} />
-          <input name="price" type="number" required min={0} placeholder={t("pricePh")} data-testid="listing-price" className={input} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {visible.map((a) => {
+            const label = tv(`vertical.${vertical}.${a.labelKey}`);
+            const unit = a.unitKey
+              ? ` (${tv(`vertical.${vertical}.${a.unitKey}`)})`
+              : "";
+            if (a.input === "select") {
+              return (
+                <select
+                  key={a.key}
+                  name={`attr_${a.key}`}
+                  required={a.required}
+                  defaultValue=""
+                  data-testid={`listing-${a.key}`}
+                  className={input}
+                >
+                  <option value="" disabled>
+                    {label}
+                  </option>
+                  {(a.options ?? []).map((v) => (
+                    <option key={v} value={v}>
+                      {tv(`vertical.${vertical}.categories.${v}`)}
+                    </option>
+                  ))}
+                </select>
+              );
+            }
+            return (
+              <input
+                key={a.key}
+                name={`attr_${a.key}`}
+                type={
+                  a.input === "number" ? "number" : a.input === "date" ? "date" : "text"
+                }
+                min={a.input === "number" ? 0 : undefined}
+                required={a.required}
+                placeholder={`${label}${unit}`}
+                data-testid={`listing-${a.key}`}
+                className={input}
+              />
+            );
+          })}
         </div>
-        {type === "empty_leg" ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <input name="from" required placeholder={t("fromPh")} data-testid="listing-from" className={input} />
-            <input name="to" required placeholder={t("toPh")} data-testid="listing-to" className={input} />
-            <input name="date" type="date" required data-testid="listing-date" className={input} />
-          </div>
-        ) : null}
+        <input
+          name="price"
+          type="number"
+          required
+          min={0}
+          placeholder={t("pricePh")}
+          data-testid="listing-price"
+          className={input}
+        />
         <label className="block text-sm text-muted">
           {t("photosLabel")}
           <input
@@ -172,7 +216,11 @@ export default function NewListingPage() {
           <div className="rounded-md border border-border bg-surface p-3 text-sm">
             <p className="text-[color:var(--color-danger)]">{error}</p>
             {limitHit ? (
-              <Link href="/app/billing" className="mt-1 inline-block font-medium text-primary underline" data-testid="upgrade-cta">
+              <Link
+                href="/app/billing"
+                className="mt-1 inline-block font-medium text-primary underline"
+                data-testid="upgrade-cta"
+              >
                 {t("upgradeCta")}
               </Link>
             ) : null}
