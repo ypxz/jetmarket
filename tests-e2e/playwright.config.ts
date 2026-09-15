@@ -68,7 +68,10 @@ export default defineConfig({
         globalSetup: path.join(__dirname, 'global-setup.ts'),
         webServer: {
           command: `pnpm --dir ${repoRoot} dev -p ${port}`,
-          url: baseURL,
+          // Probe /api/health, not /: the landing page queries the DB, which
+          // global-setup may still be provisioning (jetmarket_test) when the
+          // dev server first accepts connections — a 500 there timed out CI.
+          url: `${baseURL}/api/health`,
           reuseExistingServer: !process.env.CI,
           timeout: 180_000,
           stdout: 'pipe' as const,
