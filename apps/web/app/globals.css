@@ -1,40 +1,8 @@
 @import "tailwindcss";
+@import "@jetmarket/ui/tokens.css";
 
-/* Design tokens — single source of truth for restyling (template-compatible).
-   App code must never use color/spacing literals; consume these via utilities. */
-:root {
-  --color-bg: #ffffff;
-  --color-fg: #0f172a;
-  --color-muted: #64748b;
-  --color-surface: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-primary: #0e7490;
-  --color-primary-fg: #ffffff;
-  --color-accent: #b45309;
-  --color-danger: #b91c1c;
-  --color-success: #15803d;
-  --radius-md: 0.5rem;
-}
-
-.dark {
-  --color-bg: #0b1220;
-  --color-fg: #e2e8f0;
-  --color-muted: #94a3b8;
-  --color-surface: #0f172a;
-  --color-border: #1e293b;
-  --color-primary: #22d3ee;
-  --color-primary-fg: #082f49;
-}
-
-@theme inline {
-  --color-background: var(--color-bg);
-  --color-foreground: var(--color-fg);
-  --color-muted: var(--color-muted);
-  --color-surface: var(--color-surface);
-  --color-border: var(--color-border);
-  --color-primary: var(--color-primary);
-  --color-primary-foreground: var(--color-primary-fg);
-}
+/* Classes used inside workspace packages must be scanned too. */
+@source "../../../packages/ui";
 
 body {
   background: var(--color-bg);

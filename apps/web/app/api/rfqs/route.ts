@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
@@ -26,11 +27,15 @@ export async function POST(req: Request) {
   const listing = repo.getListing(listingId);
   if (!listing || listing.status !== "active") return err("listing not found", 404);
 
+  // RFQ payload shape comes from the active vertical's rfqFields config.
+  const parsed = buildRfqSchema(getVertical()).safeParse(fields);
+  if (!parsed.success) return err("invalid fields", 422, parsed.error.issues);
+
   const rfq = repo.createRfq({
     vertical: listing.vertical,
     listingId,
     buyerEmail,
-    fields: fields ?? {},
+    fields: parsed.data,
   });
 
   const operator = repo.getOperator(listing.operatorId);
