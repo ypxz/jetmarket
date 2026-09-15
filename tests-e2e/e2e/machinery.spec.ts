@@ -38,6 +38,12 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
       type: 'for_sale', // first placeholder listing type (verticals/machinery)
       title: LISTING_TITLE,
       price: '15000',
+      fields: {
+        machineryCategory: 'lathe',
+        make: 'DMG MORI',
+        yearOfManufacture: '2019',
+        locationCountry: 'DE',
+      },
     });
   });
 
