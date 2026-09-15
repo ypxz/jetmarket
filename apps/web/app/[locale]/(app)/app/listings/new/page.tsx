@@ -10,23 +10,26 @@ interface ListingTypeOpt {
   labelKey: string;
 }
 const FALLBACK_TYPES: ListingTypeOpt[] = [
-  { slug: "charter", labelKey: "charter" },
-  { slug: "empty_leg", labelKey: "empty_leg" },
-  { slug: "aircraft_sale", labelKey: "aircraft_sale" },
+  { slug: "charter", labelKey: "listingTypes.charter" },
+  { slug: "empty_leg", labelKey: "listingTypes.empty_leg" },
+  { slug: "aircraft_sale", labelKey: "listingTypes.aircraft_sale" },
 ];
 
 export default function NewListingPage() {
   const t = useTranslations("app.newListing");
+  const tv = useTranslations();
   const router = useRouter();
   const [types, setTypes] = useState<ListingTypeOpt[]>(FALLBACK_TYPES);
   const [type, setType] = useState<string>("charter");
+  const [vertical, setVertical] = useState<string>("jets");
   const [error, setError] = useState<string | null>(null);
   const [limitHit, setLimitHit] = useState(false);
 
   useEffect(() => {
     fetch("/api/vertical")
       .then((r) => r.json())
-      .then((c: { listingTypes?: ListingTypeOpt[] }) => {
+      .then((c: { slug?: string; listingTypes?: ListingTypeOpt[] }) => {
+        if (c.slug) setVertical(c.slug);
         if (c.listingTypes?.length) {
           setTypes(c.listingTypes);
           setType((cur) =>
@@ -47,9 +50,9 @@ export default function NewListingPage() {
     const attributes: Record<string, unknown> = {
       aircraftCategory: f.get("aircraftCategory"),
       model: f.get("model"),
-      seats: Number(f.get("seats") || 0),
-      rangeNm: Number(f.get("rangeNm") || 0),
     };
+    if (f.get("seats")) attributes.seats = Number(f.get("seats"));
+    if (f.get("rangeNm")) attributes.rangeNm = Number(f.get("rangeNm"));
     if (f.get("year")) attributes.year = Number(f.get("year"));
     if (type === "empty_leg") {
       attributes.from = f.get("from");
@@ -91,9 +94,9 @@ export default function NewListingPage() {
           data-testid="listing-type"
           className={input}
         >
-          {types.map((t) => (
-            <option key={t.slug} value={t.slug}>
-              {t.labelKey.replace(/[._]/g, " ")}
+          {types.map((opt) => (
+            <option key={opt.slug} value={opt.slug}>
+              {tv(`vertical.${vertical}.${opt.labelKey}`)}
             </option>
           ))}
         </select>
