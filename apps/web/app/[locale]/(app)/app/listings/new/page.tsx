@@ -2,19 +2,40 @@
 
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const TYPES = [
-  { value: "charter", label: "Charter (on-demand)" },
-  { value: "empty_leg", label: "Empty leg (repositioning)" },
-  { value: "aircraft_sale", label: "Aircraft for sale" },
-] as const;
+interface ListingTypeOpt {
+  slug: string;
+  labelKey: string;
+}
+const FALLBACK_TYPES: ListingTypeOpt[] = [
+  { slug: "charter", labelKey: "charter" },
+  { slug: "empty_leg", labelKey: "empty_leg" },
+  { slug: "aircraft_sale", labelKey: "aircraft_sale" },
+];
 
 export default function NewListingPage() {
   const router = useRouter();
+  const [types, setTypes] = useState<ListingTypeOpt[]>(FALLBACK_TYPES);
   const [type, setType] = useState<string>("charter");
   const [error, setError] = useState<string | null>(null);
   const [limitHit, setLimitHit] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/vertical")
+      .then((r) => r.json())
+      .then((c: { listingTypes?: ListingTypeOpt[] }) => {
+        if (c.listingTypes?.length) {
+          setTypes(c.listingTypes);
+          setType((cur) =>
+            c.listingTypes!.some((t) => t.slug === cur)
+              ? cur
+              : c.listingTypes![0]!.slug,
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,9 +89,9 @@ export default function NewListingPage() {
           data-testid="listing-type"
           className={input}
         >
-          {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {types.map((t) => (
+            <option key={t.slug} value={t.slug}>
+              {t.labelKey.replace(/[._]/g, " ")}
             </option>
           ))}
         </select>

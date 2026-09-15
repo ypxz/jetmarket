@@ -1,7 +1,9 @@
 // Repository contract for the marketplace core. Mirrors spec §Data model so the
 // in-memory implementation can be swapped for @jetmarket/db without touching routes.
 
-export type ListingType = "charter" | "empty_leg" | "aircraft_sale";
+// Listing type is a slug from the active VerticalConfig.listingTypes —
+// jets: charter|empty_leg|aircraft_sale, machinery: for_sale|for_rent|auction.
+export type ListingType = string;
 export type ListingStatus = "draft" | "active" | "paused" | "archived";
 export type UserRole = "buyer" | "operator" | "admin";
 export type Plan = "free" | "pro";

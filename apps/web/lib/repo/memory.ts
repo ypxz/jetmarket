@@ -187,6 +187,12 @@ class MemoryRepo implements Repo {
 }
 
 export function seedMemoryRepo(repo: MemoryRepo) {
+  const vertical = process.env.VERTICAL ?? "jets";
+  seedJets(repo);
+  if (vertical === "machinery") seedMachinery(repo);
+}
+
+function seedJets(repo: MemoryRepo) {
   const ops = [
     { email: "ops@alpine-air.example", name: "Alpine Air Charter", base: "ZRH", fleet: "Phenom 300, CJ4", verified: true, plan: "pro" as Plan },
     { email: "ops@lake-jet.example", name: "Lake Jet Geneva", base: "GVA", fleet: "Challenger 350", verified: true, plan: "free" as Plan },
@@ -258,12 +264,52 @@ export function seedMemoryRepo(repo: MemoryRepo) {
   });
 }
 
+// Placeholder machinery inventory — proves the same repo/flow works for the
+// second vertical (spec: machinery content is scaffold-only tonight).
+function seedMachinery(repo: MemoryRepo) {
+  const u = repo.createUser("ops@alpine-machinery.example", "operator");
+  const op = repo.upsertOperator({
+    userId: u.id,
+    name: "Alpine Industrial Machines",
+    baseAirport: "ZRH",
+    fleetSummary: "Decommissioned CNC + presses",
+    verified: true,
+    plan: "free",
+  });
+  const mk = (type: string, title: string, price: number, attributes: Record<string, unknown>) =>
+    repo.createListing({
+      operatorId: op.id,
+      vertical: "machinery",
+      type,
+      title,
+      attributes,
+      price,
+      currency: "EUR",
+      photos: [],
+    });
+  mk("for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
+    machineryCategory: "cnc_milling", make: "DMG Mori", yearOfManufacture: 2016,
+    hoursUsed: 8200, condition: "used",
+  });
+  mk("for_rent", "Kaeser industrial compressor · monthly", 1200, {
+    machineryCategory: "generator", make: "Kaeser", yearOfManufacture: 2020,
+    hoursUsed: 3100, condition: "used",
+  });
+  mk("auction", "Hydraulic press 400t — liquidation lot", 28000, {
+    machineryCategory: "press", make: "Schuler", yearOfManufacture: 2008,
+    hoursUsed: 31000, condition: "decommissioned",
+  });
+}
+
+export function createMemoryRepo(): MemoryRepo {
+  const repo = new MemoryRepo();
+  seedMemoryRepo(repo);
+  return repo;
+}
+
 // module singleton survives Next dev HMR via globalThis
 const g = globalThis as unknown as { __jmRepo?: MemoryRepo };
 export function getMemoryRepo(): MemoryRepo {
-  if (!g.__jmRepo) {
-    g.__jmRepo = new MemoryRepo();
-    seedMemoryRepo(g.__jmRepo);
-  }
+  if (!g.__jmRepo) g.__jmRepo = createMemoryRepo();
   return g.__jmRepo;
 }

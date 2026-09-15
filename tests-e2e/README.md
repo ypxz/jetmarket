@@ -6,7 +6,6 @@ tests-e2e/
   pending/           specs written ahead of the app (see TESTIDS.md — promote by git mv)
   contract/          vitest contract harness vs docker services (stripe-mock, Mailpit)
   helpers/           actor-level e2e helpers (magic-link login, listing creation, outbox)
-  scripts/smoke.mjs  deploy smoke: /api/health + home render, no browser needed
   TESTIDS.md         the data-testid contract app workers must satisfy
 ```
 
@@ -18,7 +17,7 @@ tests-e2e/
 | `pnpm test:contract` | vitest contract specs (skip cleanly when docker services are down) |
 | `pnpm test:pending` | run `pending/` specs (e.g. while W3's public pages land) |
 | `VERTICAL=machinery pnpm test:pending` | machinery-vertical loop |
-| `pnpm smoke --url=https://…` | smoke any deploy |
+| `pnpm smoke --url=https://…` | smoke any deploy (root `scripts/smoke.ts`) |
 | `pnpm test:all` | services → lint → typecheck → unit → integration → contract → e2e |
 
 ## Notes

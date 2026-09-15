@@ -1,0 +1,100 @@
+/*
+ * Design tokens — the ONE file a design agent edits to restyle the product.
+ * Semantic colors in oklch; consumed by Tailwind v4 via @theme inline in
+ * apps/web globals.css and directly by primitives. Never put literals in apps.
+ */
+:root {
+  /* color scales */
+  --scale-0: oklch(1 0 0);
+  --scale-50: oklch(0.985 0.002 250);
+  --scale-100: oklch(0.968 0.003 250);
+  --scale-200: oklch(0.929 0.005 250);
+  --scale-300: oklch(0.872 0.008 250);
+  --scale-400: oklch(0.704 0.015 250);
+  --scale-500: oklch(0.551 0.021 252);
+  --scale-600: oklch(0.446 0.03 256);
+  --scale-700: oklch(0.372 0.034 259);
+  --scale-800: oklch(0.278 0.033 256);
+  --scale-900: oklch(0.21 0.034 264);
+  --scale-950: oklch(0.13 0.028 261);
+
+  --brand-50: oklch(0.97 0.02 250);
+  --brand-100: oklch(0.93 0.045 250);
+  --brand-200: oklch(0.86 0.09 250);
+  --brand-300: oklch(0.76 0.13 250);
+  --brand-400: oklch(0.66 0.17 250);
+  --brand-500: oklch(0.56 0.2 250);
+  --brand-600: oklch(0.5 0.21 252);
+  --brand-700: oklch(0.43 0.19 255);
+  --brand-800: oklch(0.37 0.15 258);
+  --brand-900: oklch(0.31 0.1 260);
+
+  /* semantic — light */
+  --background: var(--scale-0);
+  --foreground: var(--scale-950);
+  --card: var(--scale-0);
+  --card-foreground: var(--scale-950);
+  --popover: var(--scale-0);
+  --popover-foreground: var(--scale-950);
+  --primary: var(--brand-600);
+  --primary-foreground: var(--scale-0);
+  --secondary: var(--scale-100);
+  --secondary-foreground: var(--scale-900);
+  --muted: var(--scale-100);
+  --muted-foreground: var(--scale-500);
+  --accent: var(--scale-100);
+  --accent-foreground: var(--scale-900);
+  --destructive: oklch(0.577 0.215 27);
+  --destructive-foreground: var(--scale-0);
+  --border: var(--scale-200);
+  --input: var(--scale-200);
+  --ring: var(--brand-500);
+
+  /* radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* type */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* shadows */
+  --shadow-sm: 0 1px 2px oklch(0.13 0.028 261 / 0.06);
+  --shadow-md: 0 4px 12px oklch(0.13 0.028 261 / 0.08);
+  --shadow-lg: 0 12px 32px oklch(0.13 0.028 261 / 0.12);
+}
+
+.dark {
+  --background: var(--scale-950);
+  --foreground: var(--scale-50);
+  --card: var(--scale-900);
+  --card-foreground: var(--scale-50);
+  --popover: var(--scale-900);
+  --popover-foreground: var(--scale-50);
+  --primary: var(--brand-400);
+  --primary-foreground: var(--scale-950);
+  --secondary: var(--scale-800);
+  --secondary-foreground: var(--scale-50);
+  --muted: var(--scale-800);
+  --muted-foreground: var(--scale-400);
+  --accent: var(--scale-800);
+  --accent-foreground: var(--scale-50);
+  --destructive: oklch(0.637 0.21 25);
+  --destructive-foreground: var(--scale-50);
+  --border: var(--scale-800);
+  --input: var(--scale-700);
+  --ring: var(--brand-400);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.5);
+  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.6);
+}
+
+/* JetMarket additions */
+:root {
+  --success: oklch(0.55 0.16 155);
+}
+.dark {
+  --success: oklch(0.65 0.17 155);
+}

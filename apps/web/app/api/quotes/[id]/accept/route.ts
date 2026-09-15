@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
-import { SUCCESS_FEE_PCT } from "@/lib/fees";
+import { successFeePctFor } from "@/lib/fees";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
 
@@ -29,7 +29,7 @@ export async function POST(
   }
 
   const listing = repo.getListing(rfq.listingId);
-  const feePct = listing ? SUCCESS_FEE_PCT[listing.type] : 0.03;
+  const feePct = listing ? successFeePctFor(listing.type) : 0.03;
   const deal = repo.createDeal({
     quoteId: quote.id,
     operatorId: quote.operatorId,

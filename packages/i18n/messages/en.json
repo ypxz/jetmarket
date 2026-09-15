@@ -1,4 +1,125 @@
 {
+  "meta": {
+    "title": "JetMarket — private aviation marketplace",
+    "description": "Charter, empty legs and aircraft for sale from vetted operators. Request once, get quotes, pay a fee only when it closes."
+  },
+  "nav": {
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "login": "Sign in",
+    "app": "Open app",
+    "design": "Design"
+  },
+  "landing": {
+    "hero": {
+      "title": "Ship your SaaS this week, not this quarter",
+      "subtitle": "Auth, billing, i18n, a token-driven design system, and every external service behind a mockable provider — wired and tested.",
+      "cta": "Start building"
+    },
+    "cta": {
+      "title": "Ready to launch?",
+      "subtitle": "Fill in .env and go live. Everything already works with mocks."
+    }
+  },
+  "features": {
+    "0": {
+      "title": "Provider adapters",
+      "body": "Payments, LLM, email, auth, storage and analytics behind one interface — mock locally, real by env var."
+    },
+    "1": {
+      "title": "Billing built in",
+      "body": "Plans, quotas, checkout, portal and webhooks into a subscriptions table — tested end-to-end with stripe-mock."
+    },
+    "2": {
+      "title": "i18n from day one",
+      "body": "Every string in message catalogs, locale routing scaffolded, prices formatted per locale."
+    },
+    "3": {
+      "title": "Token design system",
+      "body": "Restyle the whole product from one tokens.css. Colors, radii and typography cascade through every primitive and block."
+    }
+  },
+  "pricing": {
+    "title": "Pricing",
+    "subtitle": "Start free, upgrade when you outgrow it.",
+    "monthly": "/month",
+    "currentPlan": "Current plan",
+    "upgrade": "Upgrade to Pro",
+    "selectFree": "Start free",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "For trying things out"
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "For production workloads"
+      }
+    },
+    "features": {
+      "core": "Core features",
+      "community-support": "Community support",
+      "unlimited-renders": "Unlimited renders",
+      "priority-support": "Priority support"
+    }
+  },
+  "faq": {
+    "0": {
+      "q": "Do I need any API keys to run this?",
+      "a": "No. Every provider ships a mock implementation — the app runs and is fully demoable offline."
+    },
+    "1": {
+      "q": "How do I go live?",
+      "a": "Fill the real keys into your env file and switch the *_PROVIDER variables from mock. See GO_LIVE.template.md."
+    },
+    "2": {
+      "q": "Can I change the design?",
+      "a": "Yes — edit packages/ui/tokens.css. Colors, radii and typography cascade through every primitive and block."
+    }
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginSubtitle": "Enter your email to receive a magic link.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "submit": "Send magic link",
+    "mockHint": "Mock mode: sign-in is instant, no email is sent.",
+    "logout": "Sign out",
+    "checkEmail": "Check your email for a magic link."
+  },
+  "app": {
+    "dashboard": "Dashboard",
+    "welcome": "Welcome back",
+    "plan": "Plan",
+    "usage": "Usage this month",
+    "proGateTitle": "Pro feature",
+    "proGateBody": "This area needs the Pro plan. Upgrade to unlock it.",
+    "upgradeNow": "Upgrade now",
+    "proUnlockedTitle": "Pro unlocked",
+    "proUnlockedBody": "You are on Pro — the gated content renders here."
+  },
+  "checkout": {
+    "success": "Payment successful — welcome to Pro.",
+    "canceled": "Checkout canceled.",
+    "mockPay": "Pay (mock)"
+  },
+  "legal": {
+    "tos": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "imprint": "Imprint",
+    "placeholder": "Placeholder text — replace before launch."
+  },
+  "footer": {
+    "legal": "Legal"
+  },
+  "design": {
+    "title": "Design system",
+    "subtitle": "Every primitive and block, rendered from tokens.css"
+  },
+  "errors": {
+    "notFound": "Page not found",
+    "generic": "Something went wrong"
+  },
   "home": {
     "eyebrow": "JetMarket",
     "title": "Charter, empty legs and aircraft for sale from vetted operators",

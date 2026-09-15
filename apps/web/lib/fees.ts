@@ -1,12 +1,21 @@
-import type { ListingType } from "./repo/types";
+import { verticalConfig } from "./vertical";
 
-// Success-fee schedule (jets) — mirrors packages/verticals/jets fees and the
-// spec: 3% on closed charters / empty legs, 1.5% on aircraft sales.
-export const SUCCESS_FEE_PCT: Record<ListingType, number> = {
-  charter: 0.03,
-  empty_leg: 0.03,
-  aircraft_sale: 0.015,
-};
+// Fees come from the active VerticalConfig — core code must never hardcode
+// vertical-specific values (config.fees.successFeePct is in percent units).
 
-export const PRO_PLAN_PRICE_USD = 199;
-export const FREE_LISTING_LIMIT = 3;
+export function successFeePctFor(listingType: string): number {
+  const pct = verticalConfig().fees.successFeePct[listingType];
+  return (pct ?? 3) / 100;
+}
+
+export function planConfig() {
+  const plans = verticalConfig().fees.subscriptionPlans;
+  const free = plans.find((p) => p.slug === "free") ?? plans[0];
+  const pro = plans.find((p) => p.slug === "pro") ?? plans[plans.length - 1];
+  return { free, pro };
+}
+
+export const FREE_LISTING_LIMIT =
+  planConfig().free?.maxListings ?? 3;
+export const PRO_PLAN_PRICE_USD =
+  planConfig().pro?.monthlyPriceUsd ?? 199;

@@ -2,7 +2,7 @@
   "name": "jetmarket",
   "version": "0.1.0",
   "private": true,
-  "description": "JetMarket — modular high-ticket marketplace, jets first (charter / empty legs / aircraft sale)",
+  "description": "JetMarket \u2014 modular high-ticket marketplace, jets first (charter / empty legs / aircraft sale)",
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20"
@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @jetmarket/web dev",
     "build": "pnpm -r --if-present build",
-    "lint": "pnpm -r --if-present lint && node scripts/check-design-literals.mjs",
+    "lint": "pnpm -r --if-present lint && pnpm check:design",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "test:integration": "pnpm -r --if-present test:integration",
@@ -22,6 +22,11 @@
     "db:down": "docker compose down",
     "db:migrate": "pnpm -r --if-present migrate",
     "db:seed": "pnpm -r --if-present seed",
-    "smoke": "pnpm -r --if-present smoke"
-  }
+    "smoke": "tsx scripts/smoke.ts",
+    "check:design": "tsx scripts/check-design-literals.ts"
+  },
+  "devDependencies": {
+    "tsx": "4.20.5"
+  },
+  "type": "module"
 }
