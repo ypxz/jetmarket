@@ -34,7 +34,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T18 | [x] W1 | Ops: health endpoint, structured logging, Dockerfile web+worker, deploy notes | `apps/*`, `Dockerfile*`, `docs/deploy.md` | `docker build` green; `/api/health` 200 |
 | T19 | [x] W1 | Marketing kit: positioning vs Avinode/XO/Stratajet, operator outreach email, 10 SEO titles, LinkedIn post, first-20-operators list | `marketing/**` | per spec §"Marketing kit" |
 | T20 | [~] W4 (from H+2:30) | QA/dogfood loop worker (from H+2:30): fresh-user runs, files findings here, verifies fixes | reports only; files tickets | ≥1 cycle/90 min; cycle count + bugs logged to STATUS |
-| T21 | [] W2 | Billing checkout via payments provider: checkout + webhook→subscription; mock keeps e2e contract | `apps/web/app/api/billing/**` | Pro upgrade e2e still green through provider path |
+| T21 | [x] W2 | Billing checkout via payments provider: checkout + webhook→subscription; mock keeps e2e contract | `apps/web/app/api/billing/**` | Pro upgrade e2e still green through provider path |
 | T22 | [] W2 | Email provider swap: sendMail → `emailProvider().send` everywhere | `apps/web/lib/outbox.ts`, api routes | outbox files still readable by e2e/contract |
 | T23 | [] W3 | Listing photos via storage provider (mock writes local/serve path) + render on public listing card/detail | `packages/providers/storage`, `apps/web` listing forms/cards | photo upload+render works offline in mock |
 | T24 | [] W1 | Analytics events wired (rfq_created/quote_sent/deal_closed/page_view) via `analyticsProvider()` | `apps/web` api routes, `packages/providers/analytics` | events land in mock sink; unit-covered |
