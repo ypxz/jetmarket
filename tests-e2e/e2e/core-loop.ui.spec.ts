@@ -16,9 +16,12 @@ const OPERATOR_EMAIL = `e2e-ui-operator-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-ui-buyer-${run}@jetmarket.local`;
 const ADMIN_EMAIL = 'admin@jetmarket.local';
 const LISTING_TITLE = `E2E UI Charter ${run}`;
-const QUOTE_AMOUNT = '41000';
-// 3% success fee on charters → 1,230 rendered in the ledger
-const EXPECTED_FEE = '1,230';
+// Unique per run — the shared dev repo accumulates deals across runs, so a
+// fixed amount would collide with leftover ledger rows.
+const QUOTE_AMOUNT = String(40000 + (run % 50000));
+const QUOTE_AMOUNT_FMT = Number(QUOTE_AMOUNT).toLocaleString('en-US');
+// 3% success fee on charters; the ledger renders whole dollars (formatMoney).
+const EXPECTED_FEE = Math.round(Number(QUOTE_AMOUNT) * 0.03).toLocaleString('en-US');
 
 test('core loop UI: signup → listings → search → RFQ → quote → accept → admin → upgrade', async ({
   browser,
@@ -101,8 +104,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     const emailInput = buyer.getByTestId('buyer-email');
     if (!(await emailInput.inputValue())) await emailInput.fill(BUYER_EMAIL);
     await buyer.getByTestId('buyer-load').click();
-    // amount renders as "USD 41,000"
-    const quote = buyer.locator(tidPrefix('quote-')).filter({ hasText: '41,000' });
+    // amount renders grouped, e.g. "USD 41,000"
+    const quote = buyer
+      .locator(tidPrefix('quote-'))
+      .filter({ hasText: QUOTE_AMOUNT_FMT });
     await expect(quote).toBeVisible();
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);

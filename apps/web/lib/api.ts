@@ -31,7 +31,9 @@ export async function parseBody<T>(
 }
 
 // Simple in-memory rate limiter (per key). Real impl -> Redis/Upstash adapter.
-const buckets = new Map<string, number[]>();
+// globalThis so `next dev` recompiles/hot-reloads don't reset the buckets.
+const g = globalThis as unknown as { __jmRateBuckets?: Map<string, number[]> };
+const buckets = (g.__jmRateBuckets ??= new Map());
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
   const nowTs = Date.now();
   const arr = (buckets.get(key) ?? []).filter((t) => nowTs - t < windowMs);
