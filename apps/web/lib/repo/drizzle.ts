@@ -347,6 +347,18 @@ export class DrizzleRepo implements Repo {
     return rows.map(toRfq);
   }
 
+  async setRfqStatus(id: string, status: RfqStatus): Promise<void> {
+    // db enum: new|matched|quoted|closed|spam — interface "open" writes "new";
+    // interface-only statuses (expired) have no db spelling yet.
+    const dbStatus = (
+      status === "open" ? "new" : status
+    ) as (typeof rfqs.status.enumValues)[number];
+    await this.db
+      .update(rfqs)
+      .set({ status: dbStatus })
+      .where(eq(rfqs.id, id));
+  }
+
   async createQuote(
     q: Omit<Quote, "id" | "createdAt" | "status">,
   ): Promise<Quote> {

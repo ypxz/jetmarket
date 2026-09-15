@@ -77,7 +77,12 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   expect(l2.status()).toBe(201);
 
   // --- buyer: search with facets → RFQ ------------------------------------
-  const publicCtx = await request.newContext({ baseURL });
+  // Unique source IP per run — the RFQ rate limiter buckets on
+  // x-forwarded-for and persists for the life of a reused dev server.
+  const publicCtx = await request.newContext({
+    baseURL,
+    extraHTTPHeaders: { 'x-forwarded-for': `192.0.2.${(run % 200) + 1}` },
+  });
   const search = await publicCtx.get(
     `/api/listings?q=${encodeURIComponent(LISTING_TITLE)}&type=charter`,
   );
@@ -141,6 +146,13 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   };
   expect(deal.feeAmount).toBe(EXPECTED_FEE);
   expect(deal.invoiceStatus).toBe('pending');
+
+  // QA-1: accepting a quote closes the RFQ (dashboard stops counting it open)
+  const afterAccept = await publicCtx.get(
+    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+  );
+  const rfqsAfter = (await afterAccept.json()) as { id: string; status: string }[];
+  expect(rfqsAfter.find((r) => r.id === rfqId)?.status).toBe('closed');
 
   // --- admin: fee ledger shows deal + invoice ------------------------------
   const admin = await login(ADMIN_EMAIL);

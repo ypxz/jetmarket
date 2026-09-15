@@ -120,6 +120,7 @@ export interface Repo {
     buyerEmail?: string;
     operatorId?: string;
   }): Promise<Rfq[]>;
+  setRfqStatus(id: string, status: RfqStatus): Promise<void>;
 
   createQuote(
     q: Omit<Quote, "id" | "createdAt" | "status">,

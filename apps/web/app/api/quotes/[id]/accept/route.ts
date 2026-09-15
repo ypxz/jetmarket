@@ -27,6 +27,7 @@ export async function POST(
   for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
     if (q.id !== id && q.status === "sent") await repo.setQuoteStatus(q.id, "declined");
   }
+  await repo.setRfqStatus(rfq.id, "closed");
 
   const listing = await repo.getListing(rfq.listingId);
   const feePct = listing ? successFeePctFor(listing.type) : 0.03;

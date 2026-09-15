@@ -143,6 +143,11 @@ class MemoryRepo implements Repo {
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  async setRfqStatus(id: string, status: Rfq["status"]) {
+    const rfq = this.rfqs.get(id);
+    if (rfq) this.rfqs.set(id, { ...rfq, status });
+  }
+
   async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {
     const quote: Quote = { ...q, id: uid("quo"), status: "sent", createdAt: now() };
     this.quotes.set(quote.id, quote);
