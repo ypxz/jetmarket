@@ -3,7 +3,7 @@ import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
-import type { ListingType } from "@/lib/repo/types";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -13,9 +13,9 @@ export async function GET(req: Request) {
   }
   const listings = getRepo().listListings({
     status: "active",
-    vertical: process.env.VERTICAL ?? "jets",
+    vertical: verticalSlug(),
     ...(url.searchParams.get("type")
-      ? { type: url.searchParams.get("type") as ListingType }
+      ? { type: url.searchParams.get("type")! }
       : {}),
     ...(url.searchParams.get("q") ? { query: url.searchParams.get("q")! } : {}),
     ...(Object.keys(facets).length ? { facets } : {}),
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 }
 
 const CreateListing = z.object({
-  type: z.enum(["charter", "empty_leg", "aircraft_sale"]),
+  type: z.string().min(1),
   title: z.string().min(4).max(160),
   attributes: z.record(z.string(), z.unknown()).default({}),
   price: z.number().nonnegative(),
@@ -48,6 +48,15 @@ export async function POST(req: Request) {
   const { data, error } = await parseBody(req, CreateListing);
   if (error) return error;
 
+  const config = verticalConfig();
+  if (!config.listingTypes.some((t) => t.slug === data!.type)) {
+    return err(
+      `unknown listing type "${data!.type}" for vertical ${config.slug}`,
+      422,
+      { allowed: config.listingTypes.map((t) => t.slug) },
+    );
+  }
+
   if (
     operator.plan === "free" &&
     repo.countOperatorListings(operator.id) >= FREE_LISTING_LIMIT
@@ -61,7 +70,7 @@ export async function POST(req: Request) {
 
   const listing = repo.createListing({
     operatorId: operator.id,
-    vertical: process.env.VERTICAL ?? "jets",
+    vertical: verticalSlug(),
     type: data!.type,
     title: data!.title,
     attributes: data!.attributes ?? {},
