@@ -1,21 +1,94 @@
 {
   "common": {
-    "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator."
+    "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator.",
+    "verified": "Verified operator",
+    "unverified": "Unverified operator",
+    "onRequest": "On request",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "backToSearch": "← Back to search",
+    "currencyPerMonth": "/mo",
+    "from": "From {price}"
   },
   "nav": {
+    "search": "Search",
+    "myQuotes": "My quotes",
+    "operator": "Operator",
+    "admin": "Admin",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "design": "Design",
     "pricing": "Pricing",
     "faq": "FAQ",
     "login": "Sign in",
-    "app": "Open app",
-    "design": "Design"
+    "app": "Open app"
   },
   "footer": {
-    "legal": "Legal"
+    "legal": "Legal",
+    "tos": "Terms of service",
+    "privacy": "Privacy",
+    "imprint": "Imprint",
+    "contact": "Contact",
+    "copyright": "© {year} {name}. All rights reserved."
   },
   "home": {
     "eyebrow": "JetMarket",
     "title": "Charter, empty legs and aircraft for sale from vetted operators",
-    "subtitle": "Request once, get quotes, pay a fee only when it closes."
+    "subtitle": "Request once, get quotes, pay a fee only when it closes.",
+    "ctaSearch": "Browse aircraft",
+    "ctaOperator": "List your aircraft",
+    "searchPlaceholder": "Where to? Try “Nice” or “G650”",
+    "howItWorks": {
+      "title": "How it works",
+      "steps": [
+        {
+          "title": "Tell us the trip",
+          "body": "Route, dates, passengers and budget — one request reaches every matching operator."
+        },
+        {
+          "title": "Compare quotes",
+          "body": "Vetted operators send firm quotes. Verified badge, fleet and price in one place."
+        },
+        {
+          "title": "Fly, then we bill",
+          "body": "You contract with the operator directly. JetMarket charges operators a success fee only when a deal closes."
+        }
+      ]
+    },
+    "featured": {
+      "title": "Latest listings",
+      "viewAll": "View all listings"
+    },
+    "pricing": {
+      "title": "Operator pricing",
+      "subtitle": "Start free. Upgrade when the requests flow."
+    },
+    "faq": {
+      "title": "Questions",
+      "items": [
+        {
+          "q": "Who do I contract with?",
+          "a": "Always with the operator. JetMarket is a marketplace, not a broker — we match requests to operators and take a success fee from them when a deal closes."
+        },
+        {
+          "q": "What does it cost me as a buyer?",
+          "a": "Nothing. Requesting quotes is free; operators pay the platform."
+        },
+        {
+          "q": "What is an empty leg?",
+          "a": "A repositioning flight an aircraft flies anyway — sold at a deep discount when it matches your route."
+        },
+        {
+          "q": "Are operators vetted?",
+          "a": "Operators self-declare their fleet and credentials; our team verifies documentation manually. Unverified operators are marked and receive RFQs with a delay."
+        },
+        {
+          "q": "Can I buy an aircraft here?",
+          "a": "Yes — aircraft_sale listings accept RFQs like any other; success fee on closed sales is 1.5%."
+        }
+      ]
+    }
   },
   "search": {
     "title": "Search listings",
@@ -73,7 +146,10 @@
   },
   "design": {
     "title": "Design system",
-    "subtitle": "Every primitive and block, rendered from tokens.css"
+    "subtitle": "Every primitive and block, rendered from tokens.css",
+    "primitives": "Primitives",
+    "layoutSection": "Layout",
+    "blocksSection": "Blocks"
   },
   "legal": {
     "tos": "Terms of Service",
@@ -82,6 +158,9 @@
     "placeholder": "Placeholder text — replace before launch."
   },
   "errors": {
+    "notFoundTitle": "Not found",
+    "notFoundBody": "This page does not exist.",
+    "genericTitle": "Something went wrong",
     "notFound": "Page not found",
     "generic": "Something went wrong"
   },
