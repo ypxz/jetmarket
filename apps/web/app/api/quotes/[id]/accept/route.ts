@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
+import { logWarn } from "@/lib/log";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
+import { paymentsProvider } from "@jetmarket/providers";
 
 const Body = z.object({ buyerEmail: z.string().email() });
 
@@ -38,6 +40,27 @@ export async function POST(
     feeAmount: Math.round(quote.amount * feePct * 100) / 100,
     invoiceStatus: "pending",
   });
+
+  // Success-fee invoice via the payments adapter. A provider hiccup never
+  // blocks the accept — the deal stays invoiceStatus "pending" for retry.
+  try {
+    const invoice = await paymentsProvider().createInvoice({
+      customerId: quote.operatorId,
+      amountMinor: Math.round(deal.feeAmount * 100),
+      currency: quote.currency,
+      description: `JetMarket success fee — deal ${deal.id}`,
+      idempotencyKey: deal.id,
+      metadata: { dealId: deal.id, quoteId: quote.id },
+    });
+    await repo.setDealInvoice(deal.id, "invoiced", invoice.id);
+    deal.invoiceStatus = "invoiced";
+    deal.invoiceRef = invoice.id;
+  } catch (e) {
+    logWarn("invoice.create_failed", {
+      dealId: deal.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 
   const operator = await repo.getOperator(quote.operatorId);
   const owner = operator ? await repo.getUser(operator.userId) : undefined;

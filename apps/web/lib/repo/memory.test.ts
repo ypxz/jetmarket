@@ -54,6 +54,33 @@ describe("memory repo (seeded)", async () => {
     expect(await repo.countOperatorListings(op.id)).toBeGreaterThan(0);
     expect(typeof FREE_LISTING_LIMIT).toBe("number");
   });
+
+  it("records a success-fee invoice on a deal", async () => {
+    const quote = (await repo.listQuotes()).find((q) => q.status === "sent");
+    const q =
+      quote ??
+      (await repo.createQuote({
+        rfqId: (await repo.listRfqs())[0]!.id,
+        operatorId: (await repo.listOperators())[0]!.id,
+        amount: 6000,
+        currency: "USD",
+        message: "q",
+      }));
+    const deal = await repo.createDeal({
+      quoteId: q.id,
+      operatorId: q.operatorId,
+      amount: q.amount,
+      feePct: 0.03,
+      feeAmount: Math.round(q.amount * 3) / 100,
+      invoiceStatus: "pending",
+    });
+    expect(deal.invoiceStatus).toBe("pending");
+
+    await repo.setDealInvoice(deal.id, "invoiced", "inv_test1");
+    const stored = (await repo.listDeals()).find((d) => d.id === deal.id)!;
+    expect(stored.invoiceStatus).toBe("invoiced");
+    expect(stored.invoiceRef).toBe("inv_test1");
+  });
 });
 
 describe("fees", () => {

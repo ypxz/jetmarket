@@ -90,7 +90,14 @@ export default async function AdminPage() {
                 <td className="py-2 pr-4">{formatMoney(d.amount, "USD")}</td>
                 <td className="py-2 pr-4">{(d.feePct * 100).toFixed(1)}%</td>
                 <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, "USD")}</td>
-                <td className="py-2 pr-4">{d.invoiceStatus}</td>
+                <td className="py-2 pr-4" data-testid={`deal-invoice-${d.id}`}>
+                  {d.invoiceStatus}
+                  {d.invoiceRef ? (
+                    <span className="ml-1 font-mono text-xs text-muted">
+                      {d.invoiceRef}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="py-2 text-muted">{new Date(d.closedAt).toLocaleDateString("en-US")}</td>
               </tr>
             ))}

@@ -111,6 +111,7 @@ function toDeal(d: DealRow, q: QuoteRow): Deal {
     feePct: d.feePct,
     feeAmount: d.feeAmountMinor / 100,
     invoiceStatus: d.invoiceStatus as Deal["invoiceStatus"],
+    invoiceRef: d.invoiceRef ?? undefined,
     closedAt: iso(d.closedAt),
   };
 }
@@ -403,6 +404,16 @@ export class DrizzleRepo implements Repo {
       .where(eq(quotes.id, d.quoteId))
       .limit(1);
     return toDeal(row!, q!);
+  }
+  async setDealInvoice(
+    id: string,
+    status: Deal["invoiceStatus"],
+    ref?: string,
+  ): Promise<void> {
+    await this.db
+      .update(deals)
+      .set({ invoiceStatus: status, invoiceRef: ref ?? null })
+      .where(eq(deals.id, id));
   }
   async listDeals(filter?: { operatorId?: string }): Promise<Deal[]> {
     const rows = await this.db
