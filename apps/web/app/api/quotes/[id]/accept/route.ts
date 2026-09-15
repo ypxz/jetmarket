@@ -1,0 +1,52 @@
+import { z } from "zod";
+import { err, ok, parseBody } from "@/lib/api";
+import { SUCCESS_FEE_PCT } from "@/lib/fees";
+import { sendMail } from "@/lib/outbox";
+import { getRepo } from "@/lib/repo";
+
+const Body = z.object({ buyerEmail: z.string().email() });
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const { data, error } = await parseBody(req, Body);
+  if (error) return error;
+
+  const repo = getRepo();
+  const quote = repo.getQuote(id);
+  if (!quote) return err("quote not found", 404);
+  const rfq = repo.getRfq(quote.rfqId);
+  if (!rfq || rfq.buyerEmail !== data!.buyerEmail) {
+    return err("not your quote", 403);
+  }
+  if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
+
+  repo.setQuoteStatus(id, "accepted");
+  for (const q of repo.listQuotes({ rfqId: rfq.id })) {
+    if (q.id !== id && q.status === "sent") repo.setQuoteStatus(q.id, "declined");
+  }
+
+  const listing = repo.getListing(rfq.listingId);
+  const feePct = listing ? SUCCESS_FEE_PCT[listing.type] : 0.03;
+  const deal = repo.createDeal({
+    quoteId: quote.id,
+    operatorId: quote.operatorId,
+    amount: quote.amount,
+    feePct,
+    feeAmount: Math.round(quote.amount * feePct * 100) / 100,
+    invoiceStatus: "pending",
+  });
+
+  const operator = repo.getOperator(quote.operatorId);
+  const owner = operator ? repo.getUser(operator.userId) : undefined;
+  if (owner) {
+    await sendMail(
+      owner.email,
+      `Deal closed on “${listing?.title ?? "listing"}”`,
+      `Buyer accepted your quote of ${quote.currency} ${quote.amount}. Success fee (${(feePct * 100).toFixed(1)}%): ${quote.currency} ${deal.feeAmount}. Invoice pending.`,
+    );
+  }
+  return ok({ quote: repo.getQuote(id), deal });
+}
