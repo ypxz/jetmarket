@@ -50,3 +50,6 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 - LLM adapter skipped (spec doesn't need it); stub noted in `.env.example`.
 - DB driver: `postgres` (postgres.js, Unlicense) — flagged in THIRD_PARTY.md;
   swap to MIT `pg` is a one-line change if policy tightens.
+- Repo contract made fully async; `REPO` env selects memory|postgres
+  (defaults: DATABASE_URL set -> postgres). DrizzleRepo verified: full
+  core-loop e2e green against seeded Postgres (60 listings).
