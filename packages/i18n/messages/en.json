@@ -463,7 +463,7 @@
       "base": "Base {icao} · {fleet}",
       "fleetTbd": "fleet TBD",
       "verified": "verified",
-      "unverifiedDelay": "unverified — RFQs arrive with a delay",
+      "unverifiedDelay": "unverified — profile under review",
       "proPlan": "Pro plan",
       "freePlan": "Free plan",
       "upgrade": "Upgrade — ${price}/mo",
@@ -527,7 +527,7 @@
     "billing": {
       "title": "Plan & billing",
       "free": "Free",
-      "freeLine": "{limit} listings · RFQs arrive delayed",
+      "freeLine": "{limit} listings · standard RFQ delivery",
       "pro": "Pro",
       "proLine": "Unlimited listings · instant RFQ inbox · analytics",
       "perMonth": "/mo",
