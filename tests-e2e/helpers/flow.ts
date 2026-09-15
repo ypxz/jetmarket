@@ -1,0 +1,104 @@
+// Actor-level helpers for the UI specs. Locators follow the data-testid
+// contract in tests-e2e/TESTIDS.md — keep the two in sync.
+import { expect, test, type Page } from '@playwright/test';
+import { waitForEmailLink } from './outbox';
+
+export const tid = (name: string) => `[data-testid="${name}"]`;
+/** Prefix matcher for id-suffixed testids like rfq-<id>, quote-<id>. */
+export const tidPrefix = (name: string) => `[data-testid^="${name}"]`;
+
+/**
+ * Sign in via the mock magic link. In mock mode POST /api/auth/magic-link
+ * returns `devLink` (also rendered on /sign-in as data-testid="signin-devlink")
+ * and emails the link via the mock outbox — this helper prefers the on-page
+ * devlink and falls back to the emailed link.
+ */
+export async function signUpAndLogin(
+  page: Page,
+  email: string,
+  role: 'buyer' | 'operator' | 'admin' = 'buyer',
+) {
+  await page.goto('/sign-in');
+  await page.getByTestId('signin-email').fill(email);
+  if (role !== 'buyer') {
+    // role radios currently have no testid — see TESTIDS.md (signin-role-*)
+    await page.getByRole('radio', { name: new RegExp(role, 'i') }).check();
+  }
+  await page.getByTestId('signin-submit').click();
+  const devLink = page.getByTestId('signin-devlink');
+  if (await devLink.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await devLink.click();
+  } else {
+    await page.goto(await waitForEmailLink(email));
+  }
+}
+
+export async function createOperatorProfile(
+  page: Page,
+  { name, baseAirport }: { name: string; baseAirport: string },
+) {
+  await page.goto('/app');
+  await page.getByTestId('onboarding-cta').click();
+  await page.getByTestId('operator-name-input').fill(name);
+  await page.getByTestId('operator-base-input').fill(baseAirport);
+  await page.getByTestId('operator-save').click();
+  await expect(page.getByTestId('operator-name')).toBeVisible();
+}
+
+export interface ListingInput {
+  type: string; // listing type slug from the vertical config
+  title: string;
+  price: string;
+  /** attribute key -> value; filled into inputs named/data-testid'd per TESTIDS.md */
+  fields?: Record<string, string>;
+}
+
+export async function createListing(page: Page, input: ListingInput) {
+  await page.goto('/app/listings/new');
+  const typeSelect = page.getByTestId('listing-type');
+  if (await typeSelect.count()) {
+    await typeSelect
+      .selectOption(input.type)
+      .catch(() => typeSelect.selectOption({ index: 1 }).catch(() => {}));
+  }
+  await page.getByTestId('listing-title').fill(input.title);
+  await fillDynamicFields(page, input.fields ?? {});
+  await page.getByTestId('listing-price').fill(input.price);
+  await page.getByTestId('listing-save').click();
+}
+
+/**
+ * Fill dynamic attribute inputs inside the listing/RFQ form. Knows the merged
+ * jets fields (listing-category/model/seats/from/to/date) and falls back to
+ * filling remaining visible required inputs — placeholder-taxonomy safe for
+ * machinery where field keys differ.
+ */
+export async function fillDynamicFields(page: Page, values: Record<string, string>) {
+  for (const [key, value] of Object.entries(values)) {
+    const el = page.getByTestId(`listing-${key}`).or(page.getByTestId(`field-${key}`));
+    if ((await el.count()) === 0) continue;
+    const tag = await el.evaluate((n) => n.tagName.toLowerCase());
+    if (tag === 'select') {
+      await el.selectOption({ label: value }).catch(() => el.selectOption(value).catch(() => el.selectOption({ index: 1 })));
+    } else {
+      await el.fill(value);
+    }
+  }
+  // Fallback: fill any still-empty required inputs in the form.
+  const required = page.locator('form [required]');
+  for (const el of await required.all()) {
+    const type = await el.getAttribute('type');
+    const tag = await el.evaluate((n) => n.tagName.toLowerCase());
+    if (tag === 'select') {
+      if (!(await el.inputValue())) await el.selectOption({ index: 1 }).catch(() => {});
+      continue;
+    }
+    if (await el.inputValue()) continue;
+    if (type === 'number') await el.fill('4');
+    else if (type === 'date') await el.fill('2026-10-01');
+    else if (type === 'email') await el.fill('e2e@jetmarket.local');
+    else await el.fill('e2e');
+  }
+}
+
+export const step = (name: string, fn: () => Promise<void>) => test.step(name, fn);
