@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
+import { logInfo } from "@/lib/log";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
 
@@ -49,5 +50,10 @@ export async function POST(req: Request) {
       );
     }
   }
+  logInfo("rfq.created", {
+    rfqId: rfq.id,
+    listingId,
+    vertical: listing.vertical,
+  });
   return ok({ received: true, rfqId: rfq.id }, 201);
 }
