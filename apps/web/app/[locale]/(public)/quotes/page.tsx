@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
@@ -33,7 +34,7 @@ function QuotesInner() {
   async function load(e?: React.FormEvent) {
     e?.preventDefault();
     const res = await fetch(`/api/buyer/quotes?email=${encodeURIComponent(email)}`);
-    setRfqs(await res.json());
+    setRfqs(await readJson<Rfq[]>(res));
   }
 
   async function accept(quoteId: string) {
@@ -42,7 +43,7 @@ function QuotesInner() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ buyerEmail: email }),
     });
-    const data = await res.json();
+    const data = await readJson<{ error?: string; deal: { id: string } }>(res);
     if (!res.ok) {
       setMsg(data.error ?? tc("error"));
       return;

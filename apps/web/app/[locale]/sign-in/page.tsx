@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/fetch-json";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -17,7 +18,7 @@ export default function SignInPage() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email, role }),
     });
-    const data = (await res.json()) as { devLink?: string };
+    const data = await readJson<{ devLink?: string }>(res);
     setDevLink(data.devLink ?? null);
     setSent(true);
   }
