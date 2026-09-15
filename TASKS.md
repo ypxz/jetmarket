@@ -37,8 +37,6 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T21 | [x] W2 | Billing checkout via payments provider: checkout + webhook→subscription; mock keeps e2e contract | `apps/web/app/api/billing/**` | Pro upgrade e2e still green through provider path |
 | T22 | [x] W2 | Email provider swap: sendMail → `emailProvider().send` everywhere | `apps/web/lib/outbox.ts`, api routes | outbox files still readable by e2e/contract |
 ||||||| d862565
-| T21 | [x] W2 | Billing checkout via payments provider: checkout + webhook→subscription; mock keeps e2e contract | `apps/web/app/api/billing/**` | Pro upgrade e2e still green through provider path |
-| T22 | [x] W2 | Email provider swap: sendMail → `emailProvider().send` everywhere | `apps/web/lib/outbox.ts`, api routes | outbox files still readable by e2e/contract |
 | T23 | [x] W3 | Listing photos via storage provider (mock writes local/serve path) + render on public listing card/detail | `packages/providers/storage`, `apps/web` listing forms/cards | photo upload+render works offline in mock |
 | T24 | [x] W1 | Analytics events wired (rfq_created/quote_sent/deal_closed/page_view) via `analyticsProvider()` | `apps/web` api routes, `packages/providers/analytics` | events land in mock sink; unit-covered |
 | T25 | [] W1 | Listing + SEO pages: OG/Twitter meta + JSON-LD (Product/Vehicle offers) | `apps/web` listing/[id], (seo)/[slug] | view-source shows canonical+og+jsonld; no literals |
