@@ -22,7 +22,8 @@
     "pricing": "Pricing",
     "faq": "FAQ",
     "login": "Sign in",
-    "app": "Open app"
+    "app": "Open app",
+    "theme": "Toggle dark mode"
   },
   "footer": {
     "legal": "Legal",

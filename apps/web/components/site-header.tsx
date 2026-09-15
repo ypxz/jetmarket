@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { site } from "@jetmarket/config";
+import { ThemeToggle } from "./theme-toggle";
 
 export async function SiteHeader() {
   const user = await currentUser();
@@ -45,6 +46,7 @@ export async function SiteHeader() {
           >
             {t("myQuotes")}
           </Link>
+          <ThemeToggle label={t("theme")} />
           {user ? (
             <>
               <span className="hidden truncate text-muted md:inline">
