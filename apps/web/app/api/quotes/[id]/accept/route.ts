@@ -4,7 +4,7 @@ import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
-import { paymentsProvider } from "@jetmarket/providers";
+import { analyticsProvider, paymentsProvider } from "@jetmarket/providers";
 
 const Body = z.object({ buyerEmail: z.string().email() });
 
@@ -41,6 +41,20 @@ export async function POST(
     invoiceStatus: "pending",
   });
   await repo.setRfqStatus(rfq.id, "closed");
+
+  analyticsProvider().track({
+    name: "quote_accepted",
+    props: { quoteId: quote.id, rfqId: rfq.id, amount: quote.amount },
+  });
+  analyticsProvider().track({
+    name: "deal_closed",
+    props: {
+      dealId: deal.id,
+      quoteId: quote.id,
+      feeAmount: deal.feeAmount,
+      feePct: deal.feePct,
+    },
+  });
 
   // Success-fee invoice via the payments adapter. A provider hiccup never
   // blocks the accept — the deal stays invoiceStatus "pending" for retry.

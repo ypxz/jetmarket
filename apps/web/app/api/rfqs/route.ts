@@ -1,4 +1,4 @@
-import { captchaProvider } from "@jetmarket/providers";
+import { analyticsProvider, captchaProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
@@ -73,6 +73,10 @@ export async function POST(req: Request) {
     rfqId: rfq.id,
     listingId,
     vertical: listing.vertical,
+  });
+  analyticsProvider().track({
+    name: "rfq_created",
+    props: { rfqId: rfq.id, listingId, vertical: listing.vertical },
   });
   return ok({ received: true, rfqId: rfq.id }, 201);
 }

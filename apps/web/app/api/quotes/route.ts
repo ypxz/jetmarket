@@ -3,6 +3,7 @@ import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
+import { analyticsProvider } from "@jetmarket/providers";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1),
@@ -34,6 +35,16 @@ export async function POST(req: Request) {
     amount: data!.amount,
     currency: listing.currency,
     message: data!.message ?? "",
+  });
+
+  analyticsProvider().track({
+    name: "quote_sent",
+    props: {
+      quoteId: quote.id,
+      rfqId: rfq.id,
+      amount: quote.amount,
+      currency: quote.currency,
+    },
   });
 
   await sendMail(
