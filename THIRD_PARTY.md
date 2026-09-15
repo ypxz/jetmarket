@@ -22,5 +22,9 @@ GPL/AGPL/SSPL/fair-code projects are read for ideas only.
 | Mailpit | latest | MIT (Docker image) | dev SMTP | |
 | (template base) | — | — | apps/web + packages/ui scaffold | record starter + license once `buildApps/template` lands |
 
-Ideas-only (NOT reused — license or weight): `sharetribe/*` (source-available),
-`medusajs` (MIT but too heavy; read for data-model ideas), `n8n` (fair-code).
+Ideas-only (NOT reused — license or weight): `sharetribe/*` (Sharetribe Community
+Public Licence 1.0 — source-available, verified 2026-09-15), `medusajs` (MIT core,
+except `ENTERPRISE-LICENSE.md` dirs; too heavy), `n8n` (fair-code),
+`shadcn-ui/taxonomy` (MIT, unmaintained), `vercel/nextjs-subscription-payments`
+(MIT, archived — billing-flow patterns only; `vercel/saas-starter` 404s, removed),
+`vercel/commerce` (MIT — storefront patterns only). Detail: `RESEARCH.md` §1.
