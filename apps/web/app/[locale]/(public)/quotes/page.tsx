@@ -40,8 +40,7 @@ function QuotesInner() {
   // Auto-load when arriving with ?email= (magic-link/thank-you redirect).
   useEffect(() => {
     if (email) void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // mount-only: refresh via the search form
 
   async function accept(quoteId: string) {
     const res = await fetch(`/api/quotes/${quoteId}/accept`, {
