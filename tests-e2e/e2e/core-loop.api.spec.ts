@@ -89,7 +89,16 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
     data: {
       listingId,
       buyerEmail: BUYER_EMAIL,
-      fields: { route: 'ZRH-NCE', pax: 4, budget: 45000 },
+      fields: {
+        departure: 'ZRH',
+        arrival: 'NCE',
+        dateFrom: '2026-10-01',
+        dateTo: '2026-10-03',
+        passengers: 4,
+        budgetUsd: 45000,
+        name: 'Buyer Test',
+        email: BUYER_EMAIL,
+      },
     },
   });
   expect(rfq.status()).toBe(201);
