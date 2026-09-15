@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm i --frozen-lockfile || pnpm i
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: jetmarket
+          POSTGRES_PASSWORD: jetmarket
+          POSTGRES_DB: jetmarket
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jetmarket"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://jetmarket:jetmarket@localhost:5432/jetmarket
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm i --frozen-lockfile || pnpm i
+      - run: pnpm db:migrate
+      - run: pnpm test:integration
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: jetmarket
+          POSTGRES_PASSWORD: jetmarket
+          POSTGRES_DB: jetmarket
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jetmarket"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://jetmarket:jetmarket@localhost:5432/jetmarket
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm i --frozen-lockfile || pnpm i
+      - run: pnpm --filter @jetmarket/web build || pnpm -r build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: tests-e2e/playwright-report/
+          retention-days: 7

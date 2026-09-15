@@ -1,0 +1,25 @@
+{
+  "name": "jetmarket",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JetMarket — modular high-ticket marketplace, jets first (charter / empty legs / aircraft sale)",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @jetmarket/web dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:integration": "pnpm --filter @jetmarket/db test:integration; pnpm --filter @jetmarket/web test:integration",
+    "test:e2e": "pnpm --filter @jetmarket/tests-e2e test",
+    "test:all": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e",
+    "db:up": "docker compose up -d postgres stripe-mock mailpit",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @jetmarket/db migrate",
+    "db:seed": "pnpm --filter @jetmarket/db seed",
+    "smoke": "pnpm --filter @jetmarket/tests-e2e smoke"
+  }
+}
