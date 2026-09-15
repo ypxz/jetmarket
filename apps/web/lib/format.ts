@@ -19,7 +19,9 @@ export function formatMoney(
 export function formatAttribute(value: unknown, unit?: string): string {
   if (value === undefined || value === null || value === "") return "—";
   if (typeof value === "number") {
-    const n = value.toLocaleString("en-US");
+    // Group only when a unit is shown — bare numbers like `year` must read
+    // "2020", not "2,020".
+    const n = unit ? value.toLocaleString("en-US") : String(value);
     return unit ? `${n} ${unit}` : n;
   }
   return unit ? `${String(value)} ${unit}` : String(value);

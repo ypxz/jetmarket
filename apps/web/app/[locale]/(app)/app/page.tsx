@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { getVertical } from "@jetmarket/verticals";
 import { currentUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
 import { formatMoney } from "@/lib/format";
@@ -7,6 +8,11 @@ import { getRepo } from "@/lib/repo";
 
 export default async function OperatorDashboard() {
   const t = await getTranslations("app.dashboard");
+  const vertical = getVertical();
+  const vt = await getTranslations(vertical.copy.namespace);
+  const listingTypeNames = vertical.listingTypes
+    .map((lt) => vt(lt.labelKey))
+    .join(", ");
   const user = await currentUser();
   const repo = await getRepo();
   const operator = user ? await repo.getOperatorByUserId(user.id) : undefined;
@@ -82,7 +88,7 @@ export default async function OperatorDashboard() {
         </div>
         {listings.length === 0 ? (
           <p className="mt-4 rounded-md border border-dashed border-border p-6 text-sm text-muted">
-            {t("noListings")}
+            {t("noListings", { types: listingTypeNames })}
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-border rounded-md border border-border">
