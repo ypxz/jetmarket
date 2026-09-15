@@ -115,6 +115,12 @@ function toDeal(d: DealRow, q: QuoteRow): Deal {
   };
 }
 
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Non-uuid ids can only come from non-db impls/tests — miss, don't 22P02. */
+const isUuid = (v: string) => UUID_RE.test(v);
+
 export class DrizzleRepo implements Repo {
   constructor(private db: Db) {}
 
@@ -136,6 +142,7 @@ export class DrizzleRepo implements Repo {
     return r ? toUser(r) : undefined;
   }
   async getUser(id: string): Promise<User | undefined> {
+    if (!isUuid(id)) return undefined;
     const [r] = await this.db
       .select()
       .from(users)
@@ -177,6 +184,7 @@ export class DrizzleRepo implements Repo {
     return toOperator(r!);
   }
   async getOperator(id: string): Promise<Operator | undefined> {
+    if (!isUuid(id)) return undefined;
     const [r] = await this.db
       .select()
       .from(operators)
@@ -185,6 +193,7 @@ export class DrizzleRepo implements Repo {
     return r ? toOperator(r) : undefined;
   }
   async getOperatorByUserId(userId: string): Promise<Operator | undefined> {
+    if (!isUuid(userId)) return undefined;
     const [r] = await this.db
       .select()
       .from(operators)
@@ -228,6 +237,7 @@ export class DrizzleRepo implements Repo {
     return toListing(r!);
   }
   async getListing(id: string): Promise<Listing | undefined> {
+    if (!isUuid(id)) return undefined;
     const [r] = await this.db
       .select()
       .from(listings)
@@ -306,6 +316,7 @@ export class DrizzleRepo implements Repo {
     return toRfq(row!);
   }
   async getRfq(id: string): Promise<Rfq | undefined> {
+    if (!isUuid(id)) return undefined;
     const [r] = await this.db
       .select()
       .from(rfqs)
@@ -357,6 +368,7 @@ export class DrizzleRepo implements Repo {
     return toQuote(row!);
   }
   async getQuote(id: string): Promise<Quote | undefined> {
+    if (!isUuid(id)) return undefined;
     const [r] = await this.db
       .select()
       .from(quotes)
@@ -436,6 +448,7 @@ export class DrizzleRepo implements Repo {
   async getSubscription(
     operatorId: string,
   ): Promise<Subscription | undefined> {
+    if (!isUuid(operatorId)) return undefined;
     const [r] = await this.db
       .select()
       .from(subscriptions)
