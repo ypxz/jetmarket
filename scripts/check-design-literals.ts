@@ -12,10 +12,13 @@ const EXT = new Set([".ts", ".tsx", ".css"]);
 
 // Tailwind scale utilities (p-4, gap-6, mt-1) ARE the token system — allowed.
 // What's banned: raw hex/rgb colors, arbitrary-value escapes, palette colors.
-const patterns: { re: RegExp; label: string }[] = [
+const patterns: { re: RegExp; label: string; tsOnly?: boolean }[] = [
   { re: /#[0-9a-fA-F]{3,8}\b/, label: "hex color" },
   { re: /\[(?:#[0-9a-fA-F]{3,8}|rgb|hsl|oklch|[0-9.]+(?:px|rem|em|vh|vw))/, label: "arbitrary tw value" },
   { re: /\b(?:bg|text|border|ring|from|to|via|fill|stroke)-(?:red|orange|amber|yellow|green|teal|cyan|blue|indigo|violet|purple|pink|rose|slate|gray|zinc|neutral|stone|emerald|lime|fuchsia|sky)-\d{2,3}\b/, label: "palette literal" },
+  // .ts/.tsx only: style props like { color: "rgb(1,2,3)" } — .css files
+  // legitimately define tokens in oklch, so the fn syntax can't be banned there.
+  { re: /\b(?:rgb|rgba|hsl|hsla|oklch|oklab|hwb|lab|lch)\s*\(/, label: "css color fn", tsOnly: true },
 ];
 
 function* walk(dir: string): Generator<string> {
@@ -39,10 +42,12 @@ for (const dir of SCAN_DIRS) {
     continue;
   }
   for (const file of files) {
+    const isTs = file.endsWith(".ts") || file.endsWith(".tsx");
     const lines = readFileSync(file, "utf8").split("\n");
     lines.forEach((line, i) => {
-      for (const { re, label } of patterns) {
-        if (re.test(line) && !line.includes("check-design-literals") && !line.includes("// design-ok")) {
+      for (const { re, label, tsOnly } of patterns) {
+        if (tsOnly && !isTs) continue;
+        if (re.test(line) && !line.includes("check-design-literals") && !line.includes("design-ok")) {
           console.error(`${file}:${i + 1}  ${label}  ${line.trim().slice(0, 100)}`);
           violations++;
         }

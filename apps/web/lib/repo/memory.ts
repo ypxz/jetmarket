@@ -209,7 +209,7 @@ export async function seedMemoryRepo(repo: MemoryRepo) {
 // Tiny deterministic placeholder photo, stored via the storage provider so
 // seeded listings exercise the same render path as uploaded ones.
 async function seedPhoto(key: string, label: string, hue: number): Promise<string> {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="hsl(${hue},45%,18%)"/><text x="400" y="240" font-family="system-ui" font-size="28" fill="hsl(${hue},30%,85%)" text-anchor="middle">${label}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="hsl(${hue},45%,18%)"/><text x="400" y="240" font-family="system-ui" font-size="28" fill="hsl(${hue},30%,85%)" text-anchor="middle">${label}</text></svg>`; // design-ok — SVG image content, not app styling
   await storageProvider().put(key, svg, { contentType: "image/svg+xml" });
   return key;
 }

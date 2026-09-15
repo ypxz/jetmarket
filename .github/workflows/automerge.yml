@@ -35,9 +35,12 @@ jobs:
                 owner: context.repo.owner, repo: context.repo.repo, ref: pr.head.sha,
               });
               if (!checks.check_runs.length) continue;
-              const pending = checks.check_runs.some(c => c.status !== 'completed');
+              // CANCELLED/STALE = ci's concurrency group superseded the run —
+              // wait for the replacement instead of reading it as a failure.
+              const pending = checks.check_runs.some(c =>
+                c.status !== 'completed' || ['cancelled', 'stale'].includes(c.conclusion));
               const failing = checks.check_runs.some(c =>
-                ['failure', 'cancelled', 'timed_out', 'action_required'].includes(c.conclusion));
+                ['failure', 'timed_out', 'action_required'].includes(c.conclusion));
               if (pending || failing) continue;
               const { data: full } = await github.rest.pulls.get({
                 owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number,
