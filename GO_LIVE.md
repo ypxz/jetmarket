@@ -15,6 +15,16 @@
 | (optional) Meilisearch Cloud | if Postgres FTS is outgrown | meilisearch.com | $0–30 |
 | (optional) S3/R2 | listing photos at scale | aws / cloudflare | $0–10 |
 
+### Key obtainability (research, T1 — full matrix in RESEARCH.md §3)
+
+- **Email-only signups an agent could self-obtain** (PLAN.md §5 allows): Supabase
+  hosted, Resend, Cloudflare Turnstile, Meilisearch Cloud, Vercel hobby — all
+  free tiers, no card/phone. Use only with session env, never commit.
+- **Human-only** (card/KYC/phone): Stripe live, AWS S3/R2, OpenAI, production
+  Vercel/org decisions.
+- **Official local mocks already wired**: stripe-mock, Mailpit, Postgres via
+  `pnpm db:up`; `supabase start` remains the local-auth option.
+
 ## Env vars
 
 Every var is documented in `.env.example`. Flip `*_PROVIDER` from `mock` to the
