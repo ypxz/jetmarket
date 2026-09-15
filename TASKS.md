@@ -26,9 +26,9 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 |---|--------|--------|------|------------|
 | T11 | [] | Seed data: 15 operators, 60 listings incl. empty legs ZRH/GVA/NCE/LTN; realistic synthetic | `packages/db/seed/**` | `db:seed` idempotent; photos via storage mock |
 | T12 | [x] W3 | SEO route pages from `vertical.seo.landingPages` (e.g. "empty legs Zurich–Nice") | `apps/web/app/(seo)`, `packages/verticals/*/seo.ts` | ≥10 route pages per vertical, sitemap.xml |
-| T13 | [] | RFQ fan-out matching: RFQ → N operators by fleet fit + notify via email adapter | `packages/domain/matching*`, `apps/worker/**` | unverified operators get delay; unit-tested |
+| T13 | [x] W2 | RFQ fan-out matching: RFQ → N operators by fleet fit + notify via email adapter | `packages/domain/matching*`, `apps/worker/**` | unverified operators get delay; unit-tested |
 | T14 | [x] W2 | Success-fee invoices: deal→invoice record→payments adapter (mock + stripe-mock) | `packages/domain/fees*`, `apps/web/app/api/invoices`, admin ledger UI | 3% charter/1.5% sale; invoice appears in admin |
-| T15 | [] | Rate limit + honeypot + captcha adapter on RFQ/public forms | `apps/web`, `packages/providers/captcha` | >RFQ_RATE_LIMIT/hour → 429; e2e covers |
+| T15 | [x] W1 | Rate limit + honeypot + captcha adapter on RFQ/public forms | `apps/web`, `packages/providers/captcha` | >RFQ_RATE_LIMIT/hour → 429; e2e covers |
 | T16 | [] | Machinery vertical proof: `VERTICAL=machinery` boots, placeholder taxonomy, same flow e2e | `packages/verticals/machinery`, e2e spec | second acceptance e2e passes |
 | T17 | [x] W1 | i18n/completeness + currency formatting; a11y pass; empty/loading/error states | `apps/web`, `packages/i18n` | grep: no string literals in apps; a11y e2e on core loop |
 | T18 | [x] W1 | Ops: health endpoint, structured logging, Dockerfile web+worker, deploy notes | `apps/*`, `Dockerfile*`, `docs/deploy.md` | `docker build` green; `/api/health` 200 |

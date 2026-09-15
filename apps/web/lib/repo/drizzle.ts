@@ -479,8 +479,17 @@ export class DrizzleRepo implements Repo {
 }
 
 // process-wide singleton (one pg pool per dev server)
-const g = globalThis as unknown as { __jmDb?: Db };
+const g = globalThis as unknown as {
+  __jmDb?: ReturnType<typeof createDb>;
+};
+function dbPair() {
+  if (!g.__jmDb) g.__jmDb = createDb();
+  return g.__jmDb;
+}
 export function getDrizzleRepo(): DrizzleRepo {
-  if (!g.__jmDb) g.__jmDb = createDb().db;
-  return new DrizzleRepo(g.__jmDb);
+  return new DrizzleRepo(dbPair().db);
+}
+/** Raw postgres.js handle — for jobs-table helpers (e.g. rfq fan-out enqueue). */
+export function getDbSql() {
+  return dbPair().sql;
 }
