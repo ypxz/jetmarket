@@ -1,16 +1,19 @@
 import { z } from "zod";
 import type { VerticalConfig } from "../types";
 
-const ICAO = z
-  .string()
-  .regex(/^[A-Z]{3,4}$/, "expected 3–4 letter airport code")
-  .transform((s) => s.toUpperCase());
+// Airport code as stored in listings.attributes (IATA or ICAO); normalizes to uppercase.
+const AIRPORT = z.preprocess(
+  (s) => (typeof s === "string" ? s.trim().toUpperCase() : s),
+  z.string().regex(/^[A-Z]{3,4}$/, "expected 3–4 letter airport code"),
+);
 
 const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected ISO date");
 
 /**
  * Jets vertical: charter, empty legs and aircraft for sale.
- * Everything jet-specific lives here — apps/web renders this config generically.
+ * Attribute keys match the listings.attributes jsonb shape seeded in
+ * apps/web/lib/repo (and later @jetmarket/db) — keep them in sync.
+ * Price lives on the top-level `Listing.price` field, not in attributes.
  */
 export const jetsVertical: VerticalConfig = {
   slug: "jets",
@@ -28,17 +31,17 @@ export const jetsVertical: VerticalConfig = {
       key: "aircraftCategory",
       labelKey: "attributes.aircraftCategory",
       appliesTo: ["charter", "empty_leg", "aircraft_sale"],
-      schema: z.enum(["light", "midsize", "heavy", "ultra_long_range"]),
+      schema: z.enum(["light", "mid", "super_mid", "heavy", "ultra_long"]),
     },
     {
-      key: "aircraftModel",
-      labelKey: "attributes.aircraftModel",
+      key: "model",
+      labelKey: "attributes.model",
       appliesTo: ["charter", "empty_leg", "aircraft_sale"],
       schema: z.string().min(1).max(80),
     },
     {
-      key: "yearOfManufacture",
-      labelKey: "attributes.yearOfManufacture",
+      key: "year",
+      labelKey: "attributes.year",
       appliesTo: ["charter", "empty_leg", "aircraft_sale"],
       schema: z.number().int().min(1950).max(2035),
     },
@@ -52,53 +55,47 @@ export const jetsVertical: VerticalConfig = {
     {
       key: "rangeNm",
       labelKey: "attributes.rangeNm",
-      appliesTo: ["charter", "aircraft_sale"],
+      appliesTo: ["charter", "empty_leg", "aircraft_sale"],
       schema: z.number().int().positive().max(15000),
       unitKey: "units.nm",
     },
     {
-      key: "baseIcao",
-      labelKey: "attributes.baseIcao",
+      key: "baseAirport",
+      labelKey: "attributes.baseAirport",
       appliesTo: ["charter"],
-      schema: ICAO,
+      schema: AIRPORT,
     },
     {
-      key: "departureIcao",
-      labelKey: "attributes.departureIcao",
+      key: "from",
+      labelKey: "attributes.from",
       appliesTo: ["empty_leg"],
-      schema: ICAO,
+      schema: AIRPORT,
     },
     {
-      key: "arrivalIcao",
-      labelKey: "attributes.arrivalIcao",
+      key: "to",
+      labelKey: "attributes.to",
       appliesTo: ["empty_leg"],
-      schema: ICAO,
+      schema: AIRPORT,
     },
     {
-      key: "departureDate",
-      labelKey: "attributes.departureDate",
+      key: "date",
+      labelKey: "attributes.date",
       appliesTo: ["empty_leg"],
       schema: ISO_DATE,
     },
     {
-      key: "totalTimeHours",
-      labelKey: "attributes.totalTimeHours",
+      key: "hoursTotal",
+      labelKey: "attributes.hoursTotal",
       appliesTo: ["aircraft_sale"],
       schema: z.number().nonnegative(),
       unitKey: "units.hours",
-    },
-    {
-      key: "priceUsd",
-      labelKey: "attributes.priceUsd",
-      appliesTo: ["empty_leg", "aircraft_sale"],
-      schema: z.number().positive(),
     },
   ],
 
   facets: [
     {
-      key: "listingType",
-      labelKey: "facets.listingType",
+      key: "type",
+      labelKey: "facets.type",
       type: "enum",
       options: [
         { value: "charter", labelKey: "listingTypes.charter" },
@@ -113,22 +110,23 @@ export const jetsVertical: VerticalConfig = {
       attributeKey: "aircraftCategory",
       options: [
         { value: "light", labelKey: "categories.light" },
-        { value: "midsize", labelKey: "categories.midsize" },
+        { value: "mid", labelKey: "categories.mid" },
+        { value: "super_mid", labelKey: "categories.super_mid" },
         { value: "heavy", labelKey: "categories.heavy" },
-        { value: "ultra_long_range", labelKey: "categories.ultra_long_range" },
+        { value: "ultra_long", labelKey: "categories.ultra_long" },
       ],
     },
     {
-      key: "departureIcao",
-      labelKey: "facets.departureIcao",
+      key: "from",
+      labelKey: "facets.from",
       type: "text",
-      attributeKey: "departureIcao",
+      attributeKey: "from",
     },
     {
-      key: "arrivalIcao",
-      labelKey: "facets.arrivalIcao",
+      key: "to",
+      labelKey: "facets.to",
       type: "text",
-      attributeKey: "arrivalIcao",
+      attributeKey: "to",
     },
     {
       key: "seats",
@@ -137,10 +135,9 @@ export const jetsVertical: VerticalConfig = {
       attributeKey: "seats",
     },
     {
-      key: "priceUsd",
-      labelKey: "facets.priceUsd",
+      key: "price",
+      labelKey: "facets.price",
       type: "number-range",
-      attributeKey: "priceUsd",
     },
   ],
 
@@ -255,61 +252,61 @@ export const jetsVertical: VerticalConfig = {
         slug: "empty-legs-zurich-nice",
         titleKey: "seo.pages.empty-legs-zurich-nice.title",
         introKey: "seo.pages.empty-legs-zurich-nice.intro",
-        filters: { listingType: "empty_leg", departureIcao: "ZRH", arrivalIcao: "NCE" },
+        filters: { type: "empty_leg", from: "ZRH", to: "NCE" },
       },
       {
         slug: "empty-legs-geneva-nice",
         titleKey: "seo.pages.empty-legs-geneva-nice.title",
         introKey: "seo.pages.empty-legs-geneva-nice.intro",
-        filters: { listingType: "empty_leg", departureIcao: "GVA", arrivalIcao: "NCE" },
+        filters: { type: "empty_leg", from: "GVA", to: "NCE" },
       },
       {
         slug: "empty-legs-london-nice",
         titleKey: "seo.pages.empty-legs-london-nice.title",
         introKey: "seo.pages.empty-legs-london-nice.intro",
-        filters: { listingType: "empty_leg", departureIcao: "LTN", arrivalIcao: "NCE" },
+        filters: { type: "empty_leg", from: "LTN", to: "NCE" },
       },
       {
         slug: "empty-legs-nice-london",
         titleKey: "seo.pages.empty-legs-nice-london.title",
         introKey: "seo.pages.empty-legs-nice-london.intro",
-        filters: { listingType: "empty_leg", departureIcao: "NCE", arrivalIcao: "LTN" },
+        filters: { type: "empty_leg", from: "NCE", to: "LTN" },
       },
       {
         slug: "empty-legs-london-zurich",
         titleKey: "seo.pages.empty-legs-london-zurich.title",
         introKey: "seo.pages.empty-legs-london-zurich.intro",
-        filters: { listingType: "empty_leg", departureIcao: "LTN", arrivalIcao: "ZRH" },
+        filters: { type: "empty_leg", from: "LTN", to: "ZRH" },
       },
       {
         slug: "empty-legs-zurich-geneva",
         titleKey: "seo.pages.empty-legs-zurich-geneva.title",
         introKey: "seo.pages.empty-legs-zurich-geneva.intro",
-        filters: { listingType: "empty_leg", departureIcao: "ZRH", arrivalIcao: "GVA" },
+        filters: { type: "empty_leg", from: "ZRH", to: "GVA" },
       },
       {
         slug: "empty-legs-paris-nice",
         titleKey: "seo.pages.empty-legs-paris-nice.title",
         introKey: "seo.pages.empty-legs-paris-nice.intro",
-        filters: { listingType: "empty_leg", departureIcao: "LBG", arrivalIcao: "NCE" },
+        filters: { type: "empty_leg", from: "LBG", to: "NCE" },
       },
       {
         slug: "empty-legs-zurich-malaga",
         titleKey: "seo.pages.empty-legs-zurich-malaga.title",
         introKey: "seo.pages.empty-legs-zurich-malaga.intro",
-        filters: { listingType: "empty_leg", departureIcao: "ZRH", arrivalIcao: "AGP" },
+        filters: { type: "empty_leg", from: "ZRH", to: "AGP" },
       },
       {
         slug: "empty-legs-geneva-palma",
         titleKey: "seo.pages.empty-legs-geneva-palma.title",
         introKey: "seo.pages.empty-legs-geneva-palma.intro",
-        filters: { listingType: "empty_leg", departureIcao: "GVA", arrivalIcao: "PMI" },
+        filters: { type: "empty_leg", from: "GVA", to: "PMI" },
       },
       {
         slug: "empty-legs-zurich-ibiza",
         titleKey: "seo.pages.empty-legs-zurich-ibiza.title",
         introKey: "seo.pages.empty-legs-zurich-ibiza.intro",
-        filters: { listingType: "empty_leg", departureIcao: "ZRH", arrivalIcao: "IBZ" },
+        filters: { type: "empty_leg", from: "ZRH", to: "IBZ" },
       },
     ],
   },
