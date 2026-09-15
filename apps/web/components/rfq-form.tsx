@@ -2,7 +2,7 @@
 
 import { Button, Field, Input, Textarea } from "@jetmarket/ui";
 import { useRouter } from "@/i18n/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface RfqFieldView {
   key: string;
@@ -24,6 +24,8 @@ interface RfqFormProps {
   rateLimitedLabel: string;
   honeypotHint: string;
   emailFieldKey: string;
+  /** Turnstile site key — renders the widget; empty = captcha provider mock/dev. */
+  turnstileSiteKey?: string;
 }
 
 /**
@@ -40,8 +42,21 @@ export function RfqForm({
   rateLimitedLabel,
   honeypotHint,
   emailFieldKey,
+  turnstileSiteKey,
 }: RfqFormProps) {
   const router = useRouter();
+
+  // Load the Turnstile script only when a site key is configured; the widget
+  // injects a hidden `cf-turnstile-response` input into the form on its own.
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    if (document.querySelector("script[data-turnstile]")) return;
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true;
+    s.dataset.turnstile = "1";
+    document.head.appendChild(s);
+  }, [turnstileSiteKey]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +78,9 @@ export function RfqForm({
         buyerEmail: String(fieldsObj[emailFieldKey] ?? ""),
         fields: fieldsObj,
         website: String(fd.get("website") ?? ""),
+        captchaToken: String(
+          fd.get("cf-turnstile-response") ?? fd.get("captchaToken") ?? "",
+        ),
       }),
     });
     const data = (await res.json().catch(() => ({}))) as {
@@ -138,8 +156,12 @@ export function RfqForm({
         className="hidden"
         data-testid="rfq-honeypot"
       />
-      {/* Captcha hook — token wired when packages/providers/captcha lands (T5/T15). */}
+      {/* Captcha — hidden token input for mock mode; Turnstile widget renders
+          its own cf-turnstile-response input when a site key is configured. */}
       <input type="hidden" name="captchaToken" value="" />
+      {turnstileSiteKey ? (
+        <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-sm text-danger" data-testid="rfq-error">

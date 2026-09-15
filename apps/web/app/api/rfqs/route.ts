@@ -1,7 +1,8 @@
+import { captchaProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
-import { logInfo } from "@/lib/log";
+import { logInfo, logWarn } from "@/lib/log";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
 
@@ -11,18 +12,28 @@ const CreateRfq = z.object({
   fields: z.record(z.string(), z.unknown()).default({}),
   // honeypot — must stay empty; bots filling it are silently dropped.
   website: z.string().optional(),
+  // captcha token from the widget (cf-turnstile-response) — mock provider
+  // always passes; turnstile verifies server-side.
+  captchaToken: z.string().optional(),
 });
 
 export async function POST(req: Request) {
+  const ip = clientIp(req);
   const limit = Number(process.env.RFQ_RATE_LIMIT_PER_HOUR ?? 5);
-  if (!rateLimit(`rfq:${clientIp(req)}`, limit, 60 * 60 * 1000)) {
+  if (!rateLimit(`rfq:${ip}`, limit, 60 * 60 * 1000)) {
     return err("rate limit exceeded — try again later", 429);
   }
 
   const { data, error } = await parseBody(req, CreateRfq);
   if (error) return error;
-  const { listingId, buyerEmail, fields, website } = data!;
+  const { listingId, buyerEmail, fields, website, captchaToken } = data!;
   if (website) return ok({ received: true }, 201); // honeypot hit: fake success
+
+  const captcha = await captchaProvider().verify(captchaToken, ip);
+  if (!captcha.success) {
+    logWarn("rfq.captcha_failed", { ip, reason: captcha.reason });
+    return err("verification failed — please retry", 403);
+  }
 
   const repo = await getRepo();
   const listing = await repo.getListing(listingId);
