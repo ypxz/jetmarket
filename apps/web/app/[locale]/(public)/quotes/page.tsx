@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -34,7 +35,7 @@ function QuotesInner() {
   async function load(e?: React.FormEvent) {
     e?.preventDefault();
     const res = await fetch(`/api/buyer/quotes?email=${encodeURIComponent(email)}`);
-    setRfqs(await res.json());
+    setRfqs(await readJson<Rfq[]>(res));
   }
 
   // Auto-load when arriving with ?email= (magic-link/thank-you redirect).
@@ -48,7 +49,7 @@ function QuotesInner() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ buyerEmail: email }),
     });
-    const data = await res.json();
+    const data = await readJson<{ error?: string; deal: { id: string } }>(res);
     if (!res.ok) {
       setMsg(data.error ?? tc("error"));
       return;

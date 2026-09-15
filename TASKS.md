@@ -58,12 +58,12 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | QA-9 | blocker | `/tos` and `/privacy` 500 "Something went wrong" — `legal.*` message keys missing; `sections.map is not a function` | fixed (PR#29) | `apps/web` legal pages, `packages/i18n` |
 | QA-10 | bug | `/imprint` renders raw `legal.imprint.*` keys; entity/address/registration/contact all placeholders | fixed (PR#29) | `apps/web`, `packages/i18n` |
 | QA-11 | bug | Year renders as "2,020" in public listing cards/detail (locale number grouping applied to year) | fixed (PR#29) | `apps/web` listing display |
-| QA-12 | polish | Warning/unverified badge text nearly white-on-white, incl. `/design` Warning badge | filed | `packages/ui` badge tokens |
-| QA-13 | bug | Mobile 390px: `/admin` deal/operator tables need page-wide horizontal scroll — Verify + invoice columns unreachable without it | filed | `apps/web` admin tables |
-| QA-14 | polish | Empty search results suggest sending an "open RFQ" but provide no such action/link | filed | `apps/web` search empty state |
-| QA-15 | bug | `/app/listings/new` is jets-hardcoded (seats/model/from/to/date): under `VERTICAL=machinery` required attrs (machineryCategory/make/yearOfManufacture) have no inputs → UI listing creation impossible; e2e creates via API | filed | `apps/web` listing form per-vertical |
+| QA-12 | polish | Warning/unverified badge text nearly white-on-white, incl. `/design` Warning badge | fixed (PR#28) | `packages/ui` badge tokens |
+| QA-13 | bug | Mobile 390px: `/admin` deal/operator tables need page-wide horizontal scroll — Verify + invoice columns unreachable without it | fixed (PR#28) | `apps/web` admin tables |
+| QA-14 | polish | Empty search results suggest sending an "open RFQ" but provide no such action/link | fixed (PR#28) | `apps/web` search empty state |
+| QA-15 | bug | `/app/listings/new` is jets-hardcoded (seats/model/from/to/date): under `VERTICAL=machinery` required attrs (machineryCategory/make/yearOfManufacture) have no inputs → UI listing creation impossible; e2e creates via API | fixed (PR#27) | `apps/web` listing form per-vertical |
 | QA-16 | polish | Machinery operator dashboard still shows jets copy ("Create your first charter, empty leg or aircraft sale") | fixed (PR#29) | `apps/web` dashboard i18n per-vertical |
-| QA-17 | bug | Intermittent `SyntaxError: Unexpected end of JSON input` → 500 on `/app` in dev (e2e server logs); triggers Fast Refresh full-reloads that clear in-progress form state mid-session | filed | `apps/web` — likely a client `JSON.parse`/`fetch` on `/api/vertical` or dashboard data |
+| QA-17 | bug | Intermittent `SyntaxError: Unexpected end of JSON input` → 500 on `/app` in dev (e2e server logs); triggers Fast Refresh full-reloads that clear in-progress form state mid-session | fixed (PR#31) | `apps/web` — likely a client `JSON.parse`/`fetch` on `/api/vertical` or dashboard data |
 
 ## Improvement-loop log (append per cycle)
 
