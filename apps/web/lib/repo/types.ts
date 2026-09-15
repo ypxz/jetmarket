@@ -74,6 +74,8 @@ export interface Deal {
   feePct: number;
   feeAmount: number;
   invoiceStatus: "pending" | "invoiced" | "paid";
+  /** Provider-side invoice id (stripe-mock `in_…` or mock `inv_…`). */
+  invoiceRef?: string;
   closedAt: string;
 }
 
@@ -131,6 +133,11 @@ export interface Repo {
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
   listDeals(filter?: { operatorId?: string }): Promise<Deal[]>;
+  setDealInvoice(
+    id: string,
+    status: Deal["invoiceStatus"],
+    ref?: string,
+  ): Promise<void>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;
