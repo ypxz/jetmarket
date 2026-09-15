@@ -17,4 +17,4 @@ test-results/
 *.log
 .vercel
 .turbo/
-storage/
+/storage/
