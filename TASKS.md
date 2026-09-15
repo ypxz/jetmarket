@@ -41,11 +41,11 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 |---|----------|---------|--------|------|
 | QA-1 | bug | Accepting a quote creates the deal/fee ledger entry but the RFQ stays `quoted` and the operator dashboard still counts it open (repro: $6,000 + $7,000 quotes; accept persists, Accept button correctly disappears) | filed | `apps/web/app/api/quotes/[id]/accept`, repo status transition |
 | QA-2 | bug | Negative `seats` accepted on listing publish (−2 → listing goes active) | fixed (PR#14: zod attr validation → 422) | `apps/web` listing form/API validation, `packages/verticals` schema |
-| QA-3 | bug | Mobile 390px viewport: operator header overflows — document width 554px; email + nav clip. Empty-leg date/model placeholders clip too | filed | `apps/web` app shell/header |
-| QA-4 | bug | Publish button has no busy state: double-click creates duplicate listings (repro: two identical "Fourth Charter" rows) | filed | `apps/web` listing form |
+| QA-3 | bug | Mobile 390px viewport: operator header overflows — document width 554px; email + nav clip. Empty-leg date/model placeholders clip too | fixed (PR#15) | `apps/web` app shell/header |
+| QA-4 | bug | Publish button has no busy state: double-click creates duplicate listings (repro: two identical "Fourth Charter" rows) | fixed (PR#15: pending state) | `apps/web` listing form |
 | QA-5 | polish | Listing-type selector shows raw i18n keys (`listingTypes charter`, `listingTypes empty leg`, `listingTypes aircraft sale`) post-template | fixed (PR#14: vertical-namespace labels) | `packages/i18n`/`apps/web` type select |
 | QA-6 | polish | Dashboard/billing copy promises delayed RFQs for free/unverified operators, but RFQs arrive immediately | filed | copy vs T13 matching behavior — align |
-| QA-7 | polish | No sign-out / account-switch control (must navigate to `/sign-in` manually) | filed | `apps/web` app shell |
+| QA-7 | polish | No sign-out / account-switch control (must navigate to `/sign-in` manually) | fixed (PR#15) | `apps/web` app shell |
 | QA-8 | idea | No dark mode / theme toggle reachable | filed | `packages/ui`, `apps/web` |
 
 ## Improvement-loop log (append per cycle)
