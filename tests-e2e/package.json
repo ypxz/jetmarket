@@ -1,5 +1,24 @@
 {
   "name": "@jetmarket/tests-e2e",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test --project=chromium --pass-with-no-tests",
+    "test:pending": "E2E_SERVER=1 playwright test --project=pending --pass-with-no-tests",
+    "test:contract": "vitest run",
+    "smoke": "node scripts/smoke.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.5.0",
+    "postgres": "^3.4.9",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  },
+  "exports": {
+    "./contract/*": "./contract/*.ts",
+    "./helpers/*": "./helpers/*.ts"
+  }
 }
