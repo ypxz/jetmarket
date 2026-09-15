@@ -1,5 +1,27 @@
 {
   "name": "@jetmarket/domain",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "5.0.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
 }
