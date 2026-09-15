@@ -456,5 +456,92 @@
     "success": "Payment successful — welcome to Pro.",
     "canceled": "Checkout canceled.",
     "mockPay": "Pay (mock)"
+  },
+  "seo": {
+    "genericIntro": "Live listings from operators on JetMarket. Send one request and matching operators will quote you.",
+    "emptyState": "No live listings on this page yet — send an RFQ and matching operators will quote you.",
+    "browseAll": "Browse all listings",
+    "pages": {
+      "empty-legs-zurich-nice": {
+        "title": "Empty Legs Zurich–Nice — Private Jet Deals up to 50% Off",
+        "intro": "Live empty-leg flights Zurich to Nice from listed operators. One request reaches every operator whose fleet fits the route."
+      },
+      "empty-legs-geneva-nice": {
+        "title": "Empty Legs Geneva–Nice — Repositioning Flights to the Riviera",
+        "intro": "Same aircraft, a fraction of the charter price. Browse Geneva–Nice empty legs and send one RFQ to matching operators."
+      },
+      "empty-legs-london-nice": {
+        "title": "London–Nice Empty Legs — UK to Côte d'Azur by Private Jet",
+        "intro": "Discounted one-way positioning flights from London-area airports to Nice. Free to browse and request."
+      },
+      "empty-legs-nice-london": {
+        "title": "Nice–London Empty Legs — South of France to the UK",
+        "intro": "Return positioning legs from the Riviera to London Luton/Farnborough at empty-leg pricing."
+      },
+      "empty-legs-london-zurich": {
+        "title": "London–Zurich Empty Legs — Business Corridor, Discounted",
+        "intro": "Frequently repositioned aircraft on the London–Zurich corridor. Compare live listings and send one request."
+      },
+      "empty-legs-zurich-geneva": {
+        "title": "Zurich–Geneva Empty Legs — Short-Hop Private Flights",
+        "intro": "Quick repositioning hops inside Switzerland. Listed by operators when aircraft need to move anyway."
+      },
+      "empty-legs-paris-nice": {
+        "title": "Paris–Nice Empty Legs — Le Bourget to the Riviera",
+        "intro": "Empty positioning flights from Paris Le Bourget to Nice Côte d'Azur, direct from operators."
+      },
+      "empty-legs-zurich-malaga": {
+        "title": "Zurich–Malaga Empty Legs — Swiss Alps to Costa del Sol",
+        "intro": "Seasonal repositioning flights to Malaga at empty-leg rates. One RFQ reaches every matching operator."
+      },
+      "empty-legs-geneva-palma": {
+        "title": "Geneva–Palma Empty Legs — Summer Island Repositioning",
+        "intro": "Palma de Mallorca empty-leg deals from Geneva-based fleets, mostly summer season."
+      },
+      "empty-legs-zurich-ibiza": {
+        "title": "Zurich–Ibiza Empty Legs — Party Island by Private Jet",
+        "intro": "Peak-season empty legs Zurich to Ibiza. Operators list them as aircraft reposition — typically 30–50% below charter."
+      },
+      "used-cnc-milling-machines": {
+        "title": "Used CNC Milling Machines for Sale — Vetted Dealers",
+        "intro": "Pre-owned CNC machining centres and milling machines from listed dealers. Send one RFQ to all matching sellers."
+      },
+      "used-forklifts-for-sale": {
+        "title": "Used Forklifts for Sale — Industrial Trucks from Dealers",
+        "intro": "Diesel, gas and electric forklifts listed by equipment dealers with condition details and pricing."
+      },
+      "industrial-generators-for-rent": {
+        "title": "Industrial Generators for Rent — Site Power, Fast Quotes",
+        "intro": "Rental generators from kVA to megawatt class. One request reaches every rental company with matching stock."
+      },
+      "used-lathes-for-sale": {
+        "title": "Used Lathes for Sale — Turning Machines from Dealers",
+        "intro": "Conventional and CNC lathes listed by machinery dealers. Compare offers from multiple sellers with one RFQ."
+      },
+      "press-brakes-for-sale": {
+        "title": "Press Brakes for Sale — Used Bending Machines",
+        "intro": "Hydraulic and CNC press brakes in stock at equipment dealers across Europe."
+      },
+      "conveyor-systems-for-sale": {
+        "title": "Conveyor Systems for Sale — Used Handling Equipment",
+        "intro": "Belt, roller and chain conveyor systems from decommissioned plants and dealer stock."
+      },
+      "forklifts-for-rent": {
+        "title": "Forklifts for Rent — Short and Long-Term Hire",
+        "intro": "Rental forklifts with delivery to your site. Send one RFQ to all rental fleets matching your specs."
+      },
+      "cnc-milling-machines-for-rent": {
+        "title": "CNC Milling Machines for Rent — Capacity on Demand",
+        "intro": "Rent machining capacity for bridge projects and seasonal peaks. Quotes from multiple operators."
+      },
+      "decommissioned-equipment-for-sale": {
+        "title": "Decommissioned Industrial Equipment for Sale",
+        "intro": "Complete machines and lines from plant closures — priced to move."
+      },
+      "industrial-machinery-auctions": {
+        "title": "Industrial Machinery Auctions — Upcoming Sales",
+        "intro": "Auction listings for industrial equipment from liquidations and dealer clearances."
+      }
+    }
   }
 }
