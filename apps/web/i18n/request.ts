@@ -1,4 +1,5 @@
 import { getRequestConfig } from "next-intl/server";
+import { getMessages } from "@jetmarket/i18n";
 import { routing } from "./routing";
 
 export default getRequestConfig(async ({ requestLocale }) => {
@@ -8,6 +9,6 @@ export default getRequestConfig(async ({ requestLocale }) => {
   }
   return {
     locale,
-    messages: (await import(`@jetmarket/i18n/messages/${locale}.json`)).default,
+    messages: await getMessages(locale),
   };
 });
