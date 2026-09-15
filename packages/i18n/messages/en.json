@@ -103,9 +103,77 @@
     "blocksSection": "Blocks"
   },
   "legal": {
-    "tos": "Terms of Service",
-    "privacy": "Privacy Policy",
-    "imprint": "Imprint",
+    "tos": {
+      "title": "Terms of Service",
+      "updated": "Last updated: {date}",
+      "sections": [
+        {
+          "h": "1. The service",
+          "body": "{entity} operates an online marketplace that connects buyers with independent sellers and operators. {entity} is a marketplace, not a broker, dealer, or carrier: it does not own, operate, inspect, or sell the listed items and is never a party to a transaction between users."
+        },
+        {
+          "h": "2. Accounts",
+          "body": "You sign in with an email magic link — no password is stored. You are responsible for activity under your account and for keeping your contact details accurate. Operator accounts may be verified manually before their listings receive RFQs without delay."
+        },
+        {
+          "h": "3. Listings and requests for quotation",
+          "body": "Operators list items and buyers send requests for quotation (RFQs). {entity} forwards RFQs to matching operators, who reply with quotes. Listings and quotes are statements by the operator only; {entity} does not verify their accuracy, legality, or availability."
+        },
+        {
+          "h": "4. Contracts and fees",
+          "body": "A contract forms solely between buyer and operator when a quote is accepted. Sellers pay {entity} a success fee on closed deals as published in the fee schedule; buyers pay nothing to {entity}. Success fees are invoiced to the operator after deal confirmation."
+        },
+        {
+          "h": "5. Acceptable use",
+          "body": "You must not post unlawful, misleading, or fraudulent listings, submit spam or automated RFQs, scrape the service, or misrepresent your identity or inventory. {entity} may suspend accounts and remove content that violates these terms."
+        },
+        {
+          "h": "6. Liability",
+          "body": "The service is provided \"as is\". {entity} is not liable for operator performance, item condition, transaction outcomes, or indirect damages. Nothing in these terms limits liability that cannot be limited by law."
+        },
+        {
+          "h": "7. Changes",
+          "body": "{entity} may update these terms with notice on this page. Continued use after an update constitutes acceptance."
+        }
+      ]
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "updated": "Last updated: {date}",
+      "sections": [
+        {
+          "h": "1. What we collect",
+          "body": "Account email and role; operator profile details (company name, base, fleet summary); listing content including photos; RFQ field values and the buyer email attached to each request; quotes and deal records."
+        },
+        {
+          "h": "2. How we use it",
+          "body": "To run the marketplace: authenticating sign-ins, routing RFQs to matching operators, delivering quotes, invoicing success fees, and preventing abuse (rate limits, honeypots, captcha checks)."
+        },
+        {
+          "h": "3. Sharing",
+          "body": "RFQ details go to the operators we match them to; quotes and contact details go to the requesting buyer. We do not sell personal data. Service providers (email, payments, storage) process data only to provide their function."
+        },
+        {
+          "h": "4. Retention",
+          "body": "Listings, RFQs, quotes, and deals are retained while your account is active and as required for invoicing and legal obligations."
+        },
+        {
+          "h": "5. Your rights",
+          "body": "You may request access, correction, export, or deletion of your personal data by writing to {email}. Deleting your account removes your listings and profile; transaction records are kept where legally required."
+        },
+        {
+          "h": "6. Contact",
+          "body": "Privacy questions: {email}. {entity} is the data controller for this service."
+        }
+      ]
+    },
+    "imprint": {
+      "title": "Imprint",
+      "entityLabel": "Operating entity",
+      "addressLabel": "Registered address",
+      "registrationLabel": "Commercial register",
+      "contactLabel": "Contact"
+    },
     "placeholder": "Placeholder text — replace before launch."
   },
   "errors": {
@@ -551,7 +619,7 @@
       "upgrade": "Upgrade — ${price}/mo",
       "listings": "Listings ({count}/{limit})",
       "newListing": "New listing",
-      "noListings": "No listings yet. Create your first charter, empty leg or aircraft sale.",
+      "noListings": "No listings yet. Create your first {types}.",
       "rfqInbox": "RFQ inbox ({count} open)",
       "openInbox": "Open inbox →",
       "subActive": "Subscription active until {date}"
