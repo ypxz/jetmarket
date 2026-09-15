@@ -21,23 +21,12 @@
 | buyer quotes (`/quotes`) | `buyer-email`, `buyer-load`, `buyer-rfq-<id>`, `quote-<id>`, `accept-<id>`, `accept-msg` |
 | admin (`/admin`) | `fee-ledger`, `deal-<id>`, `admin-op-<id>`, `admin-verified-<id>`, `verify-<operatorId>` |
 | billing | `checkout-pro`, `pro-active`, `upgrade-cta` |
-
-## 🔲 Needed from W3 public pages (`/search`, `/listing/[id]`, `/rfq`)
-
-| testid | Where | Notes |
-|---|---|---|
-| `search-input`, `search-submit` | `/search` | text search over listings |
-| `search-results` | `/search` | results container |
-| `search-result-item` | `/search` | one per result, clickable → listing page |
-| `facets` | `/search` | facet sidebar container |
-| `facet-<key>` | `/search` | facet group per `vertical.facets[].key` (e.g. `facet-type`) |
-| `facet-<key>-option-<value>` | `/search` | option control per facet value (e.g. `facet-type-option-charter`) |
-| `listing-detail` | `/listing/[id]` | detail page root |
-| `rfq-open-button` | `/listing/[id]` | opens/scrolls to RFQ form |
-| `rfq-form` | RFQ form | form element |
-| `rfq-field-<key>` | RFQ form | one control per `vertical.rfqFields[].key`; buyer email field is `rfq-field-email` |
-| `rfq-submit` | RFQ form | submit button |
-| `rfq-success` | RFQ form | success state after submit |
+| landing (`/`) | `hero-search` (GET form → `/search?q=`) |
+| search (`/search`) | `facet-sidebar`, `facet-q` (query input), `facet-<key>` (enum select) / `facet-<key>-min` + `facet-<key>-max` (number-range), `facet-apply` (submit), `search-results`, `search-result` (per card), `search-results-count` |
+| listing (`/listing/[id]`) | `listing-title`, `listing-price`, `attribute-table`, `listing-card`, `listing-rfq-cta` (→ `/rfq/[id]`) |
+| RFQ (`/rfq/[listingId]`) | `rfq-form`, `rfq-field-<key>` per `vertical.rfqFields[].key` (buyer email is `rfq-field-email`), `rfq-honeypot`, `rfq-submit`, `rfq-error` |
+| RFQ thanks (`/rfq/thanks`) | `rfq-confirmation`, `rfq-reference` (rfqId), `rfq-view-quotes` |
+| misc | `design-gallery` (`/design`), `legal-imprint`, `legal-privacy`, `legal-tos` |
 
 ## 🔲 Small additions to merged pages
 
@@ -63,9 +52,12 @@
 ## Promoting pending specs
 
 `pending/` holds specs written before their pages exist (excluded from
-`playwright test` and CI). When the testids above land:
+`playwright test` and CI). When the dependencies land, move the file to `e2e/`:
 
 ```bash
-git mv tests-e2e/pending/core-loop.spec.ts tests-e2e/e2e/
-pnpm test:e2e
+git mv tests-e2e/pending/machinery.spec.ts tests-e2e/e2e/
+VERTICAL=machinery pnpm test:e2e
 ```
+
+Status: `core-loop.ui.spec.ts` promoted after W3's public slice merged.
+`machinery.spec.ts` stays pending until `VERTICAL=machinery` boots end-to-end.

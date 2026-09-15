@@ -73,7 +73,7 @@ async function readMailpit(email: string): Promise<string | null> {
 
 export async function waitForEmailLink(
   email: string,
-  { timeoutMs = 15_000, intervalMs = 500 }: { timeoutMs?: number; intervalMs?: number } = {},
+  { timeoutMs = 45_000, intervalMs = 500 }: { timeoutMs?: number; intervalMs?: number } = {},
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

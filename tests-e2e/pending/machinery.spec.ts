@@ -7,6 +7,7 @@ import { expect, test } from '@playwright/test';
 import {
   createListing,
   createOperatorProfile,
+  fillRfqForm,
   signUpAndLogin,
   step,
   tid,
@@ -42,15 +43,19 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
 
   await step('buyer finds it and sends an RFQ', async () => {
     await buyer.goto('/search');
-    await buyer.getByTestId('search-input').fill(LISTING_TITLE);
-    await buyer.getByTestId('search-submit').click();
-    await buyer.getByTestId('search-result-item').filter({ hasText: LISTING_TITLE }).click();
-    await expect(buyer.getByTestId('listing-detail')).toBeVisible();
-    await buyer.getByTestId('rfq-open-button').click();
-    // rfq fields come from the vertical config — generic contract rfq-field-<key>
-    await buyer.getByTestId('rfq-field-email').fill(BUYER_EMAIL);
+    await buyer.getByTestId('facet-q').fill(LISTING_TITLE);
+    await buyer.getByTestId('facet-apply').click();
+    await buyer
+      .getByTestId('search-result')
+      .filter({ hasText: LISTING_TITLE })
+      .first()
+      .click();
+    await expect(buyer).toHaveURL(/\/listing\//);
+    await buyer.getByTestId('listing-rfq-cta').click();
+    // rfq fields come from the vertical config — fill them generically
+    await fillRfqForm(buyer, BUYER_EMAIL);
     await buyer.getByTestId('rfq-submit').click();
-    await expect(buyer.getByTestId('rfq-success')).toBeVisible();
+    await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible();
   });
 
   await step('operator quotes and buyer accepts', async () => {

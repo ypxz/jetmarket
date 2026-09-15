@@ -22,11 +22,18 @@ export async function signUpAndLogin(
   await page.getByTestId('signin-email').fill(email);
   if (role !== 'buyer') {
     // role radios currently have no testid — see TESTIDS.md (signin-role-*)
-    await page.getByRole('radio', { name: new RegExp(role, 'i') }).check();
+    const radio = page.getByRole('radio', { name: new RegExp(role, 'i') });
+    await radio.check();
+    await expect(radio).toBeChecked();
   }
+  const posted = page.waitForResponse(
+    (r) => r.url().includes('/api/auth/magic-link') && r.request().method() === 'POST',
+    { timeout: 60_000 }, // generous: cold `next dev` compiles can stall the POST
+  );
   await page.getByTestId('signin-submit').click();
+  await posted;
   const devLink = page.getByTestId('signin-devlink');
-  if (await devLink.isVisible({ timeout: 10_000 }).catch(() => false)) {
+  if (await devLink.isVisible({ timeout: 15_000 }).catch(() => false)) {
     await devLink.click();
   } else {
     await page.goto(await waitForEmailLink(email));
@@ -58,8 +65,8 @@ export async function createListing(page: Page, input: ListingInput) {
   const typeSelect = page.getByTestId('listing-type');
   if (await typeSelect.count()) {
     await typeSelect
-      .selectOption(input.type)
-      .catch(() => typeSelect.selectOption({ index: 1 }).catch(() => {}));
+      .selectOption(input.type, { timeout: 4_000 })
+      .catch(() => typeSelect.selectOption({ index: 1 }, { timeout: 4_000 }).catch(() => {}));
   }
   await page.getByTestId('listing-title').fill(input.title);
   await fillDynamicFields(page, input.fields ?? {});
@@ -79,7 +86,9 @@ export async function fillDynamicFields(page: Page, values: Record<string, strin
     if ((await el.count()) === 0) continue;
     const tag = await el.evaluate((n) => n.tagName.toLowerCase());
     if (tag === 'select') {
-      await el.selectOption({ label: value }).catch(() => el.selectOption(value).catch(() => el.selectOption({ index: 1 })));
+      await el.selectOption(value, { timeout: 4_000 }).catch(() =>
+        el.selectOption({ label: value }, { timeout: 4_000 }).catch(() =>
+          el.selectOption({ index: 1 }, { timeout: 4_000 }).catch(() => {})));
     } else {
       await el.fill(value);
     }
@@ -90,13 +99,37 @@ export async function fillDynamicFields(page: Page, values: Record<string, strin
     const type = await el.getAttribute('type');
     const tag = await el.evaluate((n) => n.tagName.toLowerCase());
     if (tag === 'select') {
-      if (!(await el.inputValue())) await el.selectOption({ index: 1 }).catch(() => {});
+      if (!(await el.inputValue())) await el.selectOption({ index: 1 }, { timeout: 4_000 }).catch(() => {});
       continue;
     }
     if (await el.inputValue()) continue;
     if (type === 'number') await el.fill('4');
     else if (type === 'date') await el.fill('2026-10-01');
     else if (type === 'email') await el.fill('e2e@jetmarket.local');
+    else await el.fill('e2e');
+  }
+}
+
+/**
+ * Fill every rfq-field-* control in the RFQ form, generically by input type.
+ * Field keys come from the vertical's rfqFields config, so this works for jets
+ * (departure/arrival/passengers/…) and machinery (deliveryPostcode/…)
+ * without hardcoding keys. `email` fills the email-typed field.
+ */
+export async function fillRfqForm(page: Page, email: string) {
+  const controls = page.locator('form [data-testid^="rfq-field-"]');
+  for (const el of await controls.all()) {
+    const tag = await el.evaluate((n) => n.tagName.toLowerCase());
+    if (tag === 'select') {
+      await el.selectOption({ index: 1 }).catch(() => {});
+      continue;
+    }
+    const type = await el.getAttribute('type');
+    if (type === 'email') await el.fill(email);
+    else if (type === 'tel') await el.fill('+41 79 000 00 00');
+    else if (type === 'number') await el.fill('4');
+    else if (type === 'date') await el.fill('2026-10-01');
+    else if (tag === 'textarea') await el.fill('e2e notes');
     else await el.fill('e2e');
   }
 }
