@@ -67,7 +67,7 @@ export default defineConfig({
     ? {
         globalSetup: path.join(__dirname, 'global-setup.ts'),
         webServer: {
-          command: `pnpm --dir ${repoRoot} dev`,
+          command: `pnpm --dir ${repoRoot} dev -p ${port}`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 180_000,
@@ -75,6 +75,7 @@ export default defineConfig({
           stderr: 'pipe' as const,
           env: {
             ...process.env,
+            PORT: String(port),
             DATABASE_URL: testDatabaseUrl,
             VERTICAL: process.env.VERTICAL ?? 'jets',
             APP_URL: baseURL,

@@ -27,7 +27,8 @@
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
     "typescript": "5.9.2",
-    "@types/node": "20.19.13"
+    "@types/node": "20.19.13",
+    "vitest": "^3.2.0"
   },
   "peerDependencies": {
     "react": ">=19",
