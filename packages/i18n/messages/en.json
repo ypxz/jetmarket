@@ -589,6 +589,7 @@
       "fromPh": "From (ZRH)",
       "toPh": "To (NCE)",
       "publish": "Publish listing",
+      "photosLabel": "Photos (optional — JPG/PNG/SVG, up to 5 MB each)",
       "upgradeCta": "Upgrade to Pro — unlimited listings →",
       "failed": "failed",
       "publishing": "Publishing…"
