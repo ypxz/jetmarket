@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
-import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
+import { emailProvider } from "@jetmarket/providers";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1),
@@ -36,10 +36,10 @@ export async function POST(req: Request) {
     message: data!.message ?? "",
   });
 
-  await sendMail(
-    rfq.buyerEmail,
-    `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
-    `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? ""}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}`,
-  );
+  await emailProvider().send({
+    to: rfq.buyerEmail,
+    subject: `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
+    text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? ""}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}`,
+  });
   return ok(quote, 201);
 }

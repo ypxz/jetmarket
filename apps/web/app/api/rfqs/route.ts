@@ -1,9 +1,8 @@
-import { captchaProvider } from "@jetmarket/providers";
+import { captchaProvider, emailProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { logInfo, logWarn } from "@/lib/log";
-import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
 import { getDbSql } from "@/lib/repo/drizzle";
 import { enqueueJob } from "@jetmarket/db";
@@ -61,11 +60,11 @@ export async function POST(req: Request) {
     if (operator) {
       const owner = await repo.getUser(operator.userId);
       if (owner) {
-        await sendMail(
-          owner.email,
-          `New RFQ on “${listing.title}”`,
-          `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
-        );
+        await emailProvider().send({
+          to: owner.email,
+          subject: `New RFQ on “${listing.title}”`,
+          text: `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
+        });
       }
     }
   }

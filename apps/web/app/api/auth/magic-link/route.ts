@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
-import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
+import { emailProvider } from "@jetmarket/providers";
 import { signSession } from "@/lib/auth";
 
 const Body = z.object({
@@ -23,7 +23,11 @@ export async function POST(req: Request) {
 
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signSession(user.id))}`;
-  await sendMail(email, "Your JetMarket sign-in link", `Sign in: ${link}`);
+  await emailProvider().send({
+    to: email,
+    subject: "Your JetMarket sign-in link",
+    text: `Sign in: ${link}`,
+  });
 
   // Mock mode: also return the link so the flow is demoable without outbox access.
   if ((process.env.AUTH_PROVIDER ?? "mock") !== "mock") {
