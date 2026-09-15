@@ -356,13 +356,44 @@
       "seo": {
         "pages": {
           "used-cnc-milling-machines": {
-            "title": "Used CNC milling machines"
+            "title": "Used CNC milling machines",
+            "intro": "Used CNC machining centres from verified dealers — spindle hours, control and condition up front, one RFQ to all sellers."
           },
           "used-forklifts-for-sale": {
-            "title": "Used forklifts for sale"
+            "title": "Used forklifts for sale",
+            "intro": "Used forklifts from dealer fleets — capacity, mast and service history on every listing."
           },
           "industrial-generators-for-rent": {
-            "title": "Industrial generators for rent"
+            "title": "Industrial generators for rent",
+            "intro": "Industrial generators for temporary power — kVA ratings and delivery included, quotes within a day."
+          },
+          "used-lathes-for-sale": {
+            "title": "Used lathes for sale",
+            "intro": "CNC and manual lathes from verified dealers — compare machines, hours and tooling, then request a quote."
+          },
+          "press-brakes-for-sale": {
+            "title": "Press brakes for sale",
+            "intro": "Hydraulic and CNC press brakes listed by fabricators — tonnage, bed length and condition up front."
+          },
+          "conveyor-systems-for-sale": {
+            "title": "Conveyor systems for sale",
+            "intro": "Belt, roller and chain conveyor lines from plant decommissions — spec the line, send one RFQ."
+          },
+          "forklifts-for-rent": {
+            "title": "Forklifts for rent",
+            "intro": "Counterbalance and warehouse forklifts for short or long-term hire — vetted lessors, one request."
+          },
+          "cnc-milling-machines-for-rent": {
+            "title": "CNC milling machines for rent",
+            "intro": "Rent 3- and 5-axis machining capacity by the month — ideal for overflow orders and trials."
+          },
+          "decommissioned-equipment-for-sale": {
+            "title": "Decommissioned industrial equipment",
+            "intro": "Plant-closure machinery sold as-is by owners — presses, conveyors and auxiliaries at clearance prices."
+          },
+          "industrial-machinery-auctions": {
+            "title": "Industrial machinery auctions",
+            "intro": "Timed auctions on used plant equipment — registered bidders only, inspection notes on every lot."
           }
         }
       }
