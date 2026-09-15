@@ -30,6 +30,12 @@ export interface AttributeSchema {
   schema: z.ZodTypeAny;
   /** Optional unit label key for display (e.g. "units.seats", "units.nm"). */
   unitKey?: string;
+  /**
+   * UI hint: must the create-listing form require a value? Defaults to
+   * `!schema.isOptional()`. Set false for enrichments the server tolerates
+   * missing (attributes validate `.partial()` server-side anyway).
+   */
+  required?: boolean;
 }
 
 export interface FacetOption {

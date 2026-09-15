@@ -44,6 +44,7 @@ export const jetsVertical: VerticalConfig = {
       labelKey: "attributes.year",
       appliesTo: ["charter", "empty_leg", "aircraft_sale"],
       schema: z.number().int().min(1950).max(2035),
+      required: false,
     },
     {
       key: "seats",
@@ -58,12 +59,14 @@ export const jetsVertical: VerticalConfig = {
       appliesTo: ["charter", "empty_leg", "aircraft_sale"],
       schema: z.number().int().positive().max(15000),
       unitKey: "units.nm",
+      required: false,
     },
     {
       key: "baseAirport",
       labelKey: "attributes.baseAirport",
       appliesTo: ["charter"],
       schema: AIRPORT,
+      required: false,
     },
     {
       key: "from",
@@ -89,6 +92,7 @@ export const jetsVertical: VerticalConfig = {
       appliesTo: ["aircraft_sale"],
       schema: z.number().nonnegative(),
       unitKey: "units.hours",
+      required: false,
     },
   ],
 

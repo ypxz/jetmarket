@@ -1,7 +1,9 @@
 "use client";
 
+import { readJson } from "@/lib/fetch-json";
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
+import type { ClientAttribute } from "@/lib/vertical-input";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -15,6 +17,84 @@ const FALLBACK_TYPES: ListingTypeOpt[] = [
   { slug: "aircraft_sale", labelKey: "listingTypes.aircraft_sale" },
 ];
 
+// Jets fields mirrored so the form stays usable if /api/vertical never
+// answers (dev recompile window) — same required-ness as before QA-15.
+const FALLBACK_ATTRIBUTES: ClientAttribute[] = [
+  {
+    key: "aircraftCategory",
+    labelKey: "attributes.aircraftCategory",
+    appliesTo: ["charter", "empty_leg", "aircraft_sale"],
+    input: {
+      kind: "select",
+      options: ["light", "mid", "super_mid", "heavy", "ultra_long"],
+      required: true,
+    },
+  },
+  {
+    key: "model",
+    labelKey: "attributes.model",
+    appliesTo: ["charter", "empty_leg", "aircraft_sale"],
+    input: { kind: "text", required: true },
+  },
+  {
+    key: "year",
+    labelKey: "attributes.year",
+    appliesTo: ["charter", "empty_leg", "aircraft_sale"],
+    input: { kind: "number", required: false },
+  },
+  {
+    key: "seats",
+    labelKey: "attributes.seats",
+    appliesTo: ["charter", "empty_leg", "aircraft_sale"],
+    unitKey: "units.seats",
+    input: { kind: "number", required: true },
+  },
+  {
+    key: "rangeNm",
+    labelKey: "attributes.rangeNm",
+    appliesTo: ["charter", "empty_leg", "aircraft_sale"],
+    unitKey: "units.nm",
+    input: { kind: "number", required: false },
+  },
+  {
+    key: "baseAirport",
+    labelKey: "attributes.baseAirport",
+    appliesTo: ["charter"],
+    input: { kind: "text", required: false },
+  },
+  {
+    key: "from",
+    labelKey: "attributes.from",
+    appliesTo: ["empty_leg"],
+    input: { kind: "text", required: true },
+  },
+  {
+    key: "to",
+    labelKey: "attributes.to",
+    appliesTo: ["empty_leg"],
+    input: { kind: "text", required: true },
+  },
+  {
+    key: "date",
+    labelKey: "attributes.date",
+    appliesTo: ["empty_leg"],
+    input: { kind: "date", required: true },
+  },
+  {
+    key: "hoursTotal",
+    labelKey: "attributes.hoursTotal",
+    appliesTo: ["aircraft_sale"],
+    unitKey: "units.hours",
+    input: { kind: "number", required: false },
+  },
+];
+
+interface VerticalPayload {
+  slug?: string;
+  listingTypes?: ListingTypeOpt[];
+  attributes?: ClientAttribute[];
+}
+
 export default function NewListingPage() {
   const t = useTranslations("app.newListing");
   const tv = useTranslations();
@@ -22,14 +102,19 @@ export default function NewListingPage() {
   const [types, setTypes] = useState<ListingTypeOpt[]>(FALLBACK_TYPES);
   const [type, setType] = useState<string>("charter");
   const [vertical, setVertical] = useState<string>("jets");
+  const [attrs, setAttrs] = useState<ClientAttribute[]>(FALLBACK_ATTRIBUTES);
   const [error, setError] = useState<string | null>(null);
   const [limitHit, setLimitHit] = useState(false);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    fetch("/api/vertical")
-      .then((r) => r.json())
-      .then((c: { slug?: string; listingTypes?: ListingTypeOpt[] }) => {
+    // Retry once — in dev a route recompile can briefly answer 404/empty,
+    // which used to fall through to the jets fallback types.
+    const load = () =>
+      fetch("/api/vertical").then((r) => readJson<VerticalPayload>(r));
+    load()
+      .catch(() => new Promise((r) => setTimeout(r, 400)).then(load))
+      .then((c) => {
         if (c.slug) setVertical(c.slug);
         if (c.listingTypes?.length) {
           setTypes(c.listingTypes);
@@ -39,9 +124,12 @@ export default function NewListingPage() {
               : c.listingTypes![0]!.slug,
           );
         }
+        if (c.attributes?.length) setAttrs(c.attributes);
       })
       .catch(() => {});
   }, []);
+
+  const visibleAttrs = attrs.filter((a) => a.appliesTo.includes(type));
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,17 +138,11 @@ export default function NewListingPage() {
     setError(null);
     setLimitHit(false);
     const f = new FormData(e.currentTarget);
-    const attributes: Record<string, unknown> = {
-      aircraftCategory: f.get("aircraftCategory"),
-      model: f.get("model"),
-    };
-    if (f.get("seats")) attributes.seats = Number(f.get("seats"));
-    if (f.get("rangeNm")) attributes.rangeNm = Number(f.get("rangeNm"));
-    if (f.get("year")) attributes.year = Number(f.get("year"));
-    if (type === "empty_leg") {
-      attributes.from = f.get("from");
-      attributes.to = f.get("to");
-      attributes.date = f.get("date");
+    const attributes: Record<string, unknown> = {};
+    for (const a of visibleAttrs) {
+      const v = f.get(a.key);
+      if (v === null || v === "") continue;
+      attributes[a.key] = a.input.kind === "number" ? Number(v) : v;
     }
     try {
       const files = f
@@ -71,7 +153,7 @@ export default function NewListingPage() {
         const body = new FormData();
         body.append("file", file);
         const up = await fetch("/api/uploads", { method: "POST", body });
-        const upData = await up.json();
+        const upData = await readJson<{ key: string; error?: string }>(up);
         if (!up.ok) throw new Error(upData.error ?? t("failed"));
         photos.push(upData.key);
       }
@@ -87,7 +169,7 @@ export default function NewListingPage() {
           photos,
         }),
       });
-      const data = await res.json();
+      const data = await readJson<{ error?: string; id?: string }>(res);
       if (!res.ok) {
         setPending(false);
         setError(data.error ?? t("failed"));
@@ -129,26 +211,55 @@ export default function NewListingPage() {
           className={input}
         />
         <div className="grid grid-cols-2 gap-3">
-          <select name="aircraftCategory" data-testid="listing-category" className={input}>
-            <option value="light">{t("catLight")}</option>
-            <option value="mid">{t("catMid")}</option>
-            <option value="super_mid">{t("catSuperMid")}</option>
-            <option value="heavy">{t("catHeavy")}</option>
-            <option value="ultra_long">{t("catUltra")}</option>
-          </select>
-          <input name="model" required placeholder={t("modelPh")} data-testid="listing-model" className={input} />
-          <input name="year" type="number" placeholder={t("yearPh")} className={input} />
-          <input name="seats" type="number" required placeholder={t("seatsPh")} data-testid="listing-seats" className={input} />
-          <input name="rangeNm" type="number" placeholder={t("rangePh")} className={input} />
-          <input name="price" type="number" required min={0} placeholder={t("pricePh")} data-testid="listing-price" className={input} />
+          {visibleAttrs.map((a) => {
+            const label = tv(`vertical.${vertical}.${a.labelKey}`);
+            const unit = a.unitKey
+              ? tv(`vertical.${vertical}.${a.unitKey}`)
+              : null;
+            const placeholder = unit ? `${label} (${unit})` : label;
+            if (a.input.kind === "select") {
+              return (
+                <select
+                  key={a.key}
+                  name={a.key}
+                  required={a.input.required}
+                  defaultValue=""
+                  data-testid={`listing-${a.key}`}
+                  className={input}
+                >
+                  <option value="" disabled>
+                    {label}
+                  </option>
+                  {a.input.options!.map((o) => (
+                    <option key={o} value={o}>
+                      {tv(`vertical.${vertical}.categories.${o}`)}
+                    </option>
+                  ))}
+                </select>
+              );
+            }
+            return (
+              <input
+                key={a.key}
+                name={a.key}
+                type={a.input.kind}
+                required={a.input.required}
+                placeholder={placeholder}
+                data-testid={`listing-${a.key}`}
+                className={input}
+              />
+            );
+          })}
+          <input
+            name="price"
+            type="number"
+            required
+            min={0}
+            placeholder={t("pricePh")}
+            data-testid="listing-price"
+            className={input}
+          />
         </div>
-        {type === "empty_leg" ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <input name="from" required placeholder={t("fromPh")} data-testid="listing-from" className={input} />
-            <input name="to" required placeholder={t("toPh")} data-testid="listing-to" className={input} />
-            <input name="date" type="date" required data-testid="listing-date" className={input} />
-          </div>
-        ) : null}
         <label className="block text-sm text-muted">
           {t("photosLabel")}
           <input

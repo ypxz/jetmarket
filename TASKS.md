@@ -61,7 +61,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | QA-12 | polish | Warning/unverified badge text nearly white-on-white, incl. `/design` Warning badge | filed | `packages/ui` badge tokens |
 | QA-13 | bug | Mobile 390px: `/admin` deal/operator tables need page-wide horizontal scroll — Verify + invoice columns unreachable without it | filed | `apps/web` admin tables |
 | QA-14 | polish | Empty search results suggest sending an "open RFQ" but provide no such action/link | filed | `apps/web` search empty state |
-| QA-15 | bug | `/app/listings/new` is jets-hardcoded (seats/model/from/to/date): under `VERTICAL=machinery` required attrs (machineryCategory/make/yearOfManufacture) have no inputs → UI listing creation impossible; e2e creates via API | filed | `apps/web` listing form per-vertical |
+| QA-15 | bug | `/app/listings/new` is jets-hardcoded (seats/model/from/to/date): under `VERTICAL=machinery` required attrs (machineryCategory/make/yearOfManufacture) have no inputs → UI listing creation impossible; e2e creates via API | fixed (PR pending) | `apps/web` listing form per-vertical |
 | QA-16 | polish | Machinery operator dashboard still shows jets copy ("Create your first charter, empty leg or aircraft sale") | filed | `apps/web` dashboard i18n per-vertical |
 | QA-17 | bug | Intermittent `SyntaxError: Unexpected end of JSON input` → 500 on `/app` in dev (e2e server logs); triggers Fast Refresh full-reloads that clear in-progress form state mid-session | filed | `apps/web` — likely a client `JSON.parse`/`fetch` on `/api/vertical` or dashboard data |
 

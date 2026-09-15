@@ -16,7 +16,7 @@
 | sign-in | `signin-email`, `signin-submit`, `signin-devlink` |
 | operator dashboard | `onboarding-cta`, `operator-name`, `plan-badge`, `new-listing-cta` |
 | onboarding form | `operator-name-input`, `operator-base-input`, `operator-fleet-input`, `operator-save` |
-| listing form | `listing-type`, `listing-title`, `listing-category`, `listing-model`, `listing-seats`, `listing-price`, `listing-from`, `listing-to`, `listing-date`, `listing-save`, `upgrade-cta` (402 surface) |
+| listing form | `listing-type`, `listing-title`, `listing-price`, `listing-save`, `upgrade-cta` (402 surface); attribute inputs `listing-<key>` per config key (e.g. `listing-aircraftCategory`, `listing-model`, `listing-seats`, `listing-from`, `listing-to`, `listing-date`) |
 | RFQ inbox (`/app/rfqs`) | `rfq-<id>` per row, `quote-amount-<rfqId>`, `quote-send-<rfqId>`, `rfq-empty` |
 | buyer quotes (`/quotes`) | `buyer-email`, `buyer-load`, `buyer-rfq-<id>`, `quote-<id>`, `accept-<id>`, `accept-msg` |
 | admin (`/admin`) | `fee-ledger`, `deal-<id>`, `admin-op-<id>`, `admin-verified-<id>`, `verify-<operatorId>` |

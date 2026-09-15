@@ -1,4 +1,5 @@
 import { ok } from "@/lib/api";
+import { attributeInput } from "@/lib/vertical-input";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 function stripSchema<T extends { schema: unknown }>(f: T): Omit<T, "schema"> {
@@ -18,7 +19,10 @@ export async function GET() {
     listingTypes: c.listingTypes,
     facets: c.facets,
     rfqFields: c.rfqFields.map((f) => stripSchema(f)),
-    attributes: c.attributes.map((a) => stripSchema(a)),
+    attributes: c.attributes.map((a) => ({
+      ...stripSchema(a),
+      input: attributeInput(a),
+    })),
     fees: c.fees,
     seo: { landingPages: c.seo.landingPages },
   });
