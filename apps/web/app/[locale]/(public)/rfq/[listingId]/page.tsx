@@ -56,6 +56,7 @@ export default async function RfqPage({
           rateLimitedLabel={t("rateLimited")}
           honeypotHint={t("honeypotHint")}
           emailFieldKey="email"
+          turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined}
         />
       </div>
     </main>
