@@ -44,14 +44,14 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'charter',
       title: LISTING_TITLE,
       price: '38000',
-      fields: { category: 'light', model: 'Phenom 300', seats: '7' },
+      fields: { aircraftCategory: 'light', model: 'Phenom 300', seats: '7' },
     });
     await expect(operator).toHaveURL(/\/app/);
     await createListing(operator, {
       type: 'empty_leg',
       title: `E2E UI Empty Leg ${run}`,
       price: '9500',
-      fields: { category: 'mid', model: 'Citation XLS', seats: '8', from: 'ZRH', to: 'NCE', date: '2026-10-01' },
+      fields: { aircraftCategory: 'mid', model: 'Citation XLS', seats: '8', from: 'ZRH', to: 'NCE', date: '2026-10-01' },
     });
     await expect(operator).toHaveURL(/\/app/);
   });
@@ -127,14 +127,14 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'charter',
       title: `E2E UI Third ${run}`,
       price: '30000',
-      fields: { category: 'mid', model: 'G280', seats: '9' },
+      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9' },
     });
     // fourth is rejected: 402 surfaces the upgrade CTA on the form
     await createListing(operator, {
       type: 'charter',
       title: `E2E UI Fourth ${run}`,
       price: '31000',
-      fields: { category: 'mid', model: 'G280', seats: '9' },
+      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9' },
     });
     await expect(operator.getByTestId('upgrade-cta')).toBeVisible();
 
@@ -146,7 +146,7 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'charter',
       title: `E2E UI Post-Upgrade ${run}`,
       price: '31000',
-      fields: { category: 'mid', model: 'G280', seats: '9' },
+      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9' },
     });
     await expect(operator).toHaveURL(/\/app/);
   });

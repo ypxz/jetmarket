@@ -30,6 +30,12 @@ export interface AttributeSchema {
   schema: z.ZodTypeAny;
   /** Optional unit label key for display (e.g. "units.seats", "units.nm"). */
   unitKey?: string;
+  /**
+   * UI control hint when the schema is a string with a specialized input
+   * (e.g. "date" for an ISO-date field). Number/enum inputs are derived from
+   * the schema itself.
+   */
+  inputType?: "date";
 }
 
 export interface FacetOption {

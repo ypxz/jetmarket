@@ -82,6 +82,7 @@ export const jetsVertical: VerticalConfig = {
       labelKey: "attributes.date",
       appliesTo: ["empty_leg"],
       schema: ISO_DATE,
+      inputType: "date",
     },
     {
       key: "hoursTotal",
