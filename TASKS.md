@@ -35,10 +35,24 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T19 | [x] W1 | Marketing kit: positioning vs Avinode/XO/Stratajet, operator outreach email, 10 SEO titles, LinkedIn post, first-20-operators list | `marketing/**` | per spec §"Marketing kit" |
 | T20 | [~] W4 (from H+2:30) | QA/dogfood loop worker (from H+2:30): fresh-user runs, files findings here, verifies fixes | reports only; files tickets | ≥1 cycle/90 min; cycle count + bugs logged to STATUS |
 
+## QA findings (T20 dogfood)
+
+| # | Severity | Finding | Status | Owns |
+|---|----------|---------|--------|------|
+| QA-1 | bug | Accepting a quote creates the deal/fee ledger entry but the RFQ stays `quoted` and the operator dashboard still counts it open (repro: $6,000 + $7,000 quotes; accept persists, Accept button correctly disappears) | filed | `apps/web/app/api/quotes/[id]/accept`, repo status transition |
+| QA-2 | bug | Negative `seats` accepted on listing publish (−2 → listing goes active) | filed | `apps/web` listing form/API validation, `packages/verticals` schema |
+| QA-3 | bug | Mobile 390px viewport: operator header overflows — document width 554px; email + nav clip. Empty-leg date/model placeholders clip too | filed | `apps/web` app shell/header |
+| QA-4 | bug | Publish button has no busy state: double-click creates duplicate listings (repro: two identical "Fourth Charter" rows) | filed | `apps/web` listing form |
+| QA-5 | polish | Listing-type selector shows raw i18n keys (`listingTypes charter`, `listingTypes empty leg`, `listingTypes aircraft sale`) post-template | filed | `packages/i18n`/`apps/web` type select |
+| QA-6 | polish | Dashboard/billing copy promises delayed RFQs for free/unverified operators, but RFQs arrive immediately | filed | copy vs T13 matching behavior — align |
+| QA-7 | polish | No sign-out / account-switch control (must navigate to `/sign-in` manually) | filed | `apps/web` app shell |
+| QA-8 | idea | No dark mode / theme toggle reachable | filed | `packages/ui`, `apps/web` |
+
 ## Improvement-loop log (append per cycle)
 
 | Cycle | Time | Findings filed | Fixed | Notes |
 |---|---|---|---|---|
+| 1 | H+3:00 | QA-1..QA-8 (4 bug, 3 polish, 1 idea) | — | Fresh-user run, mock mode, desktop+mobile(390px). Interrupted mid-run by concurrent merge/next-dev — mobile admin/landing + clean rerun deferred to cycle 2. Screens: docs/screens/cycle1-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
 
