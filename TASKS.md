@@ -15,9 +15,9 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T4 | [~] W2 | DB: Drizzle schema + migrations + typed client + jets seed | `packages/db/**` | `db:migrate`+`db:seed` run on compose pg; integration test green |
 | T5 | [~] W2 | Providers: auth, email, storage, payments, captcha, search, analytics | `packages/providers/**` | each `mock` deterministic; `real` = typed skeleton or stripe vs stripe-mock; contract tests where possible |
 | T6 | [~] W3 | Web slice: browse/search+facets, listing page, RFQ form | `apps/web/**` (public routes) + `packages/ui/**`, `packages/i18n/**`, `packages/config/**` | buyer: search → listing → RFQ saved; mock email quote page; responsive |
-| T7 | [] | Operator + admin slice: auth, operator profile, listings CRUD, RFQ inbox, quote, won/lost, admin verify + fee ledger | `apps/web/**` (`/app`, `/admin`, `/api`) | operator→listing→RFQ→quote→accept path works end-to-end in mock mode |
+| T7 | [x] lead | Operator + admin slice: auth, operator profile, listings CRUD, RFQ inbox, quote, won/lost, admin verify + fee ledger | `apps/web/**` (`/app`, `/admin`, `/api`) | operator→listing→RFQ→quote→accept path works end-to-end in mock mode |
 | T8 | [~] W4 | Tests/CI wiring: vitest setup, playwright config, e2e core-loop spec, smoke test | `tests-e2e/**`, root configs, `.github/workflows/ci.yml` | `pnpm test:all` green locally + CI green on main |
-| T9 | [] | Billing: plans, mock checkout, webhook→subscriptions, plan-limit middleware, upgrade e2e | `apps/web/app/(billing)`, `packages/domain/plans.ts`, providers payments | free=3 listings enforced server-side; mock checkout upgrades to Pro |
+| T9 | [x] lead | Billing: plans, mock checkout, webhook→subscriptions, plan-limit middleware, upgrade e2e | `apps/web/app/(billing)`, `packages/domain/plans.ts`, providers payments | free=3 listings enforced server-side; mock checkout upgrades to Pro |
 | T10 | [] | Landing + marketing pages on design system; legal pages | `apps/web/app/(marketing)`, `packages/ui/blocks`, `content/*.ts`, `messages/en.json` | hero/pricing/FAQ/footer/legal render from config; `/design` gallery |
 
 ## Wave 2 — depth (start after slice, parallel where possible)
