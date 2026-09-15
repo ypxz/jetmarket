@@ -23,24 +23,24 @@ export async function POST(req: Request) {
   const { listingId, buyerEmail, fields, website } = data!;
   if (website) return ok({ received: true }, 201); // honeypot hit: fake success
 
-  const repo = getRepo();
-  const listing = repo.getListing(listingId);
+  const repo = await getRepo();
+  const listing = await repo.getListing(listingId);
   if (!listing || listing.status !== "active") return err("listing not found", 404);
 
   // RFQ payload shape comes from the active vertical's rfqFields config.
   const parsed = buildRfqSchema(getVertical()).safeParse(fields);
   if (!parsed.success) return err("invalid fields", 422, parsed.error.issues);
 
-  const rfq = repo.createRfq({
+  const rfq = await repo.createRfq({
     vertical: listing.vertical,
     listingId,
     buyerEmail,
     fields: parsed.data,
   });
 
-  const operator = repo.getOperator(listing.operatorId);
+  const operator = await repo.getOperator(listing.operatorId);
   if (operator) {
-    const owner = repo.getUser(operator.userId);
+    const owner = await repo.getUser(operator.userId);
     if (owner) {
       await sendMail(
         owner.email,

@@ -13,16 +13,16 @@ export async function POST(req: Request) {
   const { error } = await parseBody(req, Body);
   if (error) return error;
 
-  const repo = getRepo();
-  const operator = repo.getOperatorByUserId(user.id);
+  const repo = await getRepo();
+  const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
 
-  repo.upsertSubscription({
+  await repo.upsertSubscription({
     operatorId: operator.id,
     plan: "pro",
     status: "active",
     currentPeriodEnd: new Date(Date.now() + 30 * 86400e3).toISOString(),
   });
-  repo.setOperatorPlan(operator.id, "pro");
+  await repo.setOperatorPlan(operator.id, "pro");
   return ok({ subscribed: true, plan: "pro" });
 }

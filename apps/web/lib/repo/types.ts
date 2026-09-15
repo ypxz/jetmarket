@@ -1,5 +1,6 @@
-// Repository contract for the marketplace core. Mirrors spec §Data model so the
-// in-memory implementation can be swapped for @jetmarket/db without touching routes.
+// Repository contract for the marketplace core. Mirrors spec §Data model so
+// implementations (in-memory, Drizzle/Postgres) stay swappable per process.
+// All methods are async — sync impls resolve immediately.
 
 // Listing type is a slug from the active VerticalConfig.listingTypes —
 // jets: charter|empty_leg|aircraft_sale, machinery: for_sale|for_rent|auction.
@@ -85,21 +86,23 @@ export interface Subscription {
 }
 
 export interface Repo {
-  createUser(email: string, role?: UserRole): User;
-  findUserByEmail(email: string): User | undefined;
-  getUser(id: string): User | undefined;
+  createUser(email: string, role?: UserRole): Promise<User>;
+  findUserByEmail(email: string): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
 
-  upsertOperator(o: Omit<Operator, "id" | "createdAt"> & { id?: string }): Operator;
-  getOperator(id: string): Operator | undefined;
-  getOperatorByUserId(userId: string): Operator | undefined;
-  listOperators(): Operator[];
-  setOperatorVerified(id: string, verified: boolean): void;
-  setOperatorPlan(id: string, plan: Plan): void;
+  upsertOperator(
+    o: Omit<Operator, "id" | "createdAt"> & { id?: string },
+  ): Promise<Operator>;
+  getOperator(id: string): Promise<Operator | undefined>;
+  getOperatorByUserId(userId: string): Promise<Operator | undefined>;
+  listOperators(): Promise<Operator[]>;
+  setOperatorVerified(id: string, verified: boolean): Promise<void>;
+  setOperatorPlan(id: string, plan: Plan): Promise<void>;
 
   createListing(
     l: Omit<Listing, "id" | "createdAt" | "status"> & { status?: ListingStatus },
-  ): Listing;
-  getListing(id: string): Listing | undefined;
+  ): Promise<Listing>;
+  getListing(id: string): Promise<Listing | undefined>;
   listListings(filter?: {
     operatorId?: string;
     status?: ListingStatus;
@@ -107,22 +110,27 @@ export interface Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
-  }): Listing[];
-  updateListingStatus(id: string, status: ListingStatus): void;
-  countOperatorListings(operatorId: string): number;
+  }): Promise<Listing[]>;
+  updateListingStatus(id: string, status: ListingStatus): Promise<void>;
+  countOperatorListings(operatorId: string): Promise<number>;
 
-  createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Rfq;
-  getRfq(id: string): Rfq | undefined;
-  listRfqs(filter?: { buyerEmail?: string; operatorId?: string }): Rfq[];
+  createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Promise<Rfq>;
+  getRfq(id: string): Promise<Rfq | undefined>;
+  listRfqs(filter?: {
+    buyerEmail?: string;
+    operatorId?: string;
+  }): Promise<Rfq[]>;
 
-  createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Quote;
-  getQuote(id: string): Quote | undefined;
-  listQuotes(filter?: { rfqId?: string; operatorId?: string }): Quote[];
-  setQuoteStatus(id: string, status: QuoteStatus): void;
+  createQuote(
+    q: Omit<Quote, "id" | "createdAt" | "status">,
+  ): Promise<Quote>;
+  getQuote(id: string): Promise<Quote | undefined>;
+  listQuotes(filter?: { rfqId?: string; operatorId?: string }): Promise<Quote[]>;
+  setQuoteStatus(id: string, status: QuoteStatus): Promise<void>;
 
-  createDeal(d: Omit<Deal, "id" | "closedAt">): Deal;
-  listDeals(filter?: { operatorId?: string }): Deal[];
+  createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
+  listDeals(filter?: { operatorId?: string }): Promise<Deal[]>;
 
-  upsertSubscription(s: Omit<Subscription, "id">): Subscription;
-  getSubscription(operatorId: string): Subscription | undefined;
+  upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
+  getSubscription(operatorId: string): Promise<Subscription | undefined>;
 }

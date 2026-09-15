@@ -14,23 +14,23 @@ export async function POST(
   const { data, error } = await parseBody(req, Body);
   if (error) return error;
 
-  const repo = getRepo();
-  const quote = repo.getQuote(id);
+  const repo = await getRepo();
+  const quote = await repo.getQuote(id);
   if (!quote) return err("quote not found", 404);
-  const rfq = repo.getRfq(quote.rfqId);
+  const rfq = await repo.getRfq(quote.rfqId);
   if (!rfq || rfq.buyerEmail !== data!.buyerEmail) {
     return err("not your quote", 403);
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
-  repo.setQuoteStatus(id, "accepted");
-  for (const q of repo.listQuotes({ rfqId: rfq.id })) {
-    if (q.id !== id && q.status === "sent") repo.setQuoteStatus(q.id, "declined");
+  await repo.setQuoteStatus(id, "accepted");
+  for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
+    if (q.id !== id && q.status === "sent") await repo.setQuoteStatus(q.id, "declined");
   }
 
-  const listing = repo.getListing(rfq.listingId);
+  const listing = await repo.getListing(rfq.listingId);
   const feePct = listing ? successFeePctFor(listing.type) : 0.03;
-  const deal = repo.createDeal({
+  const deal = await repo.createDeal({
     quoteId: quote.id,
     operatorId: quote.operatorId,
     amount: quote.amount,
@@ -39,8 +39,8 @@ export async function POST(
     invoiceStatus: "pending",
   });
 
-  const operator = repo.getOperator(quote.operatorId);
-  const owner = operator ? repo.getUser(operator.userId) : undefined;
+  const operator = await repo.getOperator(quote.operatorId);
+  const owner = operator ? await repo.getUser(operator.userId) : undefined;
   if (owner) {
     await sendMail(
       owner.email,
@@ -48,5 +48,5 @@ export async function POST(
       `Buyer accepted your quote of ${quote.currency} ${quote.amount}. Success fee (${(feePct * 100).toFixed(1)}%): ${quote.currency} ${deal.feeAmount}. Invoice pending.`,
     );
   }
-  return ok({ quote: repo.getQuote(id), deal });
+  return ok({ quote: await repo.getQuote(id), deal });
 }

@@ -23,52 +23,52 @@ class MemoryRepo implements Repo {
   deals = new Map<string, Deal>();
   subscriptions = new Map<string, Subscription>();
 
-  createUser(email: string, role: UserRole = "buyer"): User {
-    const existing = this.findUserByEmail(email);
+  async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
+    const existing = await this.findUserByEmail(email);
     if (existing) return existing;
     const u: User = { id: uid("usr"), email, role, createdAt: now() };
     this.users.set(u.id, u);
     return u;
   }
-  findUserByEmail(email: string) {
+  async findUserByEmail(email: string) {
     return [...this.users.values()].find((u) => u.email === email);
   }
-  getUser(id: string) {
+  async getUser(id: string) {
     return this.users.get(id);
   }
 
-  upsertOperator(
+  async upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },
-  ): Operator {
+  ): Promise<Operator> {
     const id = o.id ?? uid("op");
     const prev = this.operators.get(id);
     const op: Operator = { ...o, id, createdAt: prev?.createdAt ?? now() };
     this.operators.set(id, op);
     return op;
   }
-  getOperator(id: string) {
+  async getOperator(id: string) {
     return this.operators.get(id);
   }
-  getOperatorByUserId(userId: string) {
+  async getOperatorByUserId(userId: string) {
     return [...this.operators.values()].find((o) => o.userId === userId);
   }
-  listOperators() {
+  async listOperators() {
     return [...this.operators.values()];
   }
-  setOperatorVerified(id: string, verified: boolean) {
+  async setOperatorVerified(id: string, verified: boolean) {
     const op = this.operators.get(id);
     if (op) this.operators.set(id, { ...op, verified });
   }
-  setOperatorPlan(id: string, plan: Plan) {
+  async setOperatorPlan(id: string, plan: Plan) {
     const op = this.operators.get(id);
     if (op) this.operators.set(id, { ...op, plan });
   }
 
-  createListing(
+  async createListing(
     l: Omit<Listing, "id" | "createdAt" | "status"> & {
       status?: Listing["status"];
     },
-  ): Listing {
+  ): Promise<Listing> {
     const listing: Listing = {
       ...l,
       id: uid("lst"),
@@ -78,17 +78,17 @@ class MemoryRepo implements Repo {
     this.listings.set(listing.id, listing);
     return listing;
   }
-  getListing(id: string) {
+  async getListing(id: string) {
     return this.listings.get(id);
   }
-  listListings(filter?: {
+  async listListings(filter?: {
     operatorId?: string;
     status?: Listing["status"];
     type?: Listing["type"];
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
-  }): Listing[] {
+  }): Promise<Listing[]> {
     let out = [...this.listings.values()];
     if (filter?.operatorId) out = out.filter((l) => l.operatorId === filter.operatorId);
     if (filter?.status) out = out.filter((l) => l.status === filter.status);
@@ -111,25 +111,25 @@ class MemoryRepo implements Repo {
     }
     return out;
   }
-  updateListingStatus(id: string, status: Listing["status"]) {
+  async updateListingStatus(id: string, status: Listing["status"]) {
     const l = this.listings.get(id);
     if (l) this.listings.set(id, { ...l, status });
   }
-  countOperatorListings(operatorId: string) {
+  async countOperatorListings(operatorId: string) {
     return [...this.listings.values()].filter(
       (l) => l.operatorId === operatorId && l.status !== "archived",
     ).length;
   }
 
-  createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Rfq {
+  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Promise<Rfq> {
     const rfq: Rfq = { ...r, id: uid("rfq"), status: "open", createdAt: now() };
     this.rfqs.set(rfq.id, rfq);
     return rfq;
   }
-  getRfq(id: string) {
+  async getRfq(id: string) {
     return this.rfqs.get(id);
   }
-  listRfqs(filter?: { buyerEmail?: string; operatorId?: string }): Rfq[] {
+  async listRfqs(filter?: { buyerEmail?: string; operatorId?: string }): Promise<Rfq[]> {
     let out = [...this.rfqs.values()];
     if (filter?.buyerEmail) out = out.filter((r) => r.buyerEmail === filter.buyerEmail);
     if (filter?.operatorId) {
@@ -143,56 +143,56 @@ class MemoryRepo implements Repo {
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Quote {
+  async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {
     const quote: Quote = { ...q, id: uid("quo"), status: "sent", createdAt: now() };
     this.quotes.set(quote.id, quote);
     const rfq = this.rfqs.get(quote.rfqId);
     if (rfq) this.rfqs.set(rfq.id, { ...rfq, status: "quoted" });
     return quote;
   }
-  getQuote(id: string) {
+  async getQuote(id: string) {
     return this.quotes.get(id);
   }
-  listQuotes(filter?: { rfqId?: string; operatorId?: string }): Quote[] {
+  async listQuotes(filter?: { rfqId?: string; operatorId?: string }): Promise<Quote[]> {
     let out = [...this.quotes.values()];
     if (filter?.rfqId) out = out.filter((q) => q.rfqId === filter.rfqId);
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  setQuoteStatus(id: string, status: Quote["status"]) {
+  async setQuoteStatus(id: string, status: Quote["status"]) {
     const q = this.quotes.get(id);
     if (q) this.quotes.set(id, { ...q, status });
   }
 
-  createDeal(d: Omit<Deal, "id" | "closedAt">): Deal {
+  async createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal> {
     const deal: Deal = { ...d, id: uid("deal"), closedAt: now() };
     this.deals.set(deal.id, deal);
     return deal;
   }
-  listDeals(filter?: { operatorId?: string }): Deal[] {
+  async listDeals(filter?: { operatorId?: string }): Promise<Deal[]> {
     let out = [...this.deals.values()];
     if (filter?.operatorId) out = out.filter((d) => d.operatorId === filter.operatorId);
     return out.sort((a, b) => b.closedAt.localeCompare(a.closedAt));
   }
 
-  upsertSubscription(s: Omit<Subscription, "id">): Subscription {
-    const prev = this.getSubscription(s.operatorId);
+  async upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription> {
+    const prev = await this.getSubscription(s.operatorId);
     const sub: Subscription = { ...s, id: prev?.id ?? uid("sub") };
     this.subscriptions.set(s.operatorId, sub);
     return sub;
   }
-  getSubscription(operatorId: string) {
+  async getSubscription(operatorId: string) {
     return this.subscriptions.get(operatorId);
   }
 }
 
-export function seedMemoryRepo(repo: MemoryRepo) {
+export async function seedMemoryRepo(repo: MemoryRepo) {
   const vertical = process.env.VERTICAL ?? "jets";
-  seedJets(repo);
-  if (vertical === "machinery") seedMachinery(repo);
+  await seedJets(repo);
+  if (vertical === "machinery") await seedMachinery(repo);
 }
 
-function seedJets(repo: MemoryRepo) {
+async function seedJets(repo: MemoryRepo) {
   const ops = [
     { email: "ops@alpine-air.example", name: "Alpine Air Charter", base: "ZRH", fleet: "Phenom 300, CJ4", verified: true, plan: "pro" as Plan },
     { email: "ops@lake-jet.example", name: "Lake Jet Geneva", base: "GVA", fleet: "Challenger 350", verified: true, plan: "free" as Plan },
@@ -201,8 +201,8 @@ function seedJets(repo: MemoryRepo) {
   ];
   const opIds: string[] = [];
   for (const o of ops) {
-    const u = repo.createUser(o.email, "operator");
-    const op = repo.upsertOperator({
+    const u = await repo.createUser(o.email, "operator");
+    const op = await repo.upsertOperator({
       userId: u.id,
       name: o.name,
       baseAirport: o.base,
@@ -212,14 +212,14 @@ function seedJets(repo: MemoryRepo) {
     });
     opIds.push(op.id);
   }
-  const mk = (
+  const mk = async (
     operatorId: string,
     type: Listing["type"],
     title: string,
     price: number,
     attributes: Record<string, unknown>,
   ) =>
-    repo.createListing({
+    await repo.createListing({
       operatorId,
       vertical: "jets",
       type,
@@ -230,35 +230,35 @@ function seedJets(repo: MemoryRepo) {
       photos: [],
     });
 
-  mk(opIds[0]!, "empty_leg", "Empty leg Zurich → Nice · Phenom 300", 4200, {
+  await mk(opIds[0]!, "empty_leg", "Empty leg Zurich → Nice · Phenom 300", 4200, {
     aircraftCategory: "light", model: "Phenom 300", year: 2021, seats: 7,
     rangeNm: 2000, from: "ZRH", to: "NCE", date: "2026-09-22",
   });
-  mk(opIds[0]!, "empty_leg", "Empty leg Geneva → London · CJ4", 6800, {
+  await mk(opIds[0]!, "empty_leg", "Empty leg Geneva → London · CJ4", 6800, {
     aircraftCategory: "light", model: "Citation CJ4", year: 2019, seats: 8,
     rangeNm: 2165, from: "GVA", to: "LTN", date: "2026-09-24",
   });
-  mk(opIds[1]!, "charter", "Challenger 350 on-demand charter · Geneva", 8500, {
+  await mk(opIds[1]!, "charter", "Challenger 350 on-demand charter · Geneva", 8500, {
     aircraftCategory: "super_mid", model: "Challenger 350", year: 2020,
     seats: 9, rangeNm: 3200, baseAirport: "GVA",
   });
-  mk(opIds[1]!, "empty_leg", "Empty leg Nice → Zurich · Challenger 350", 7400, {
+  await mk(opIds[1]!, "empty_leg", "Empty leg Nice → Zurich · Challenger 350", 7400, {
     aircraftCategory: "super_mid", model: "Challenger 350", year: 2020,
     seats: 9, rangeNm: 3200, from: "NCE", to: "ZRH", date: "2026-09-25",
   });
-  mk(opIds[2]!, "aircraft_sale", "Gulfstream G650 (2018) for sale", 38500000, {
+  await mk(opIds[2]!, "aircraft_sale", "Gulfstream G650 (2018) for sale", 38500000, {
     aircraftCategory: "ultra_long", model: "G650", year: 2018, seats: 14,
     rangeNm: 7000, hoursTotal: 1450,
   });
-  mk(opIds[2]!, "charter", "Falcon 2000LXS charter · Nice base", 7200, {
+  await mk(opIds[2]!, "charter", "Falcon 2000LXS charter · Nice base", 7200, {
     aircraftCategory: "heavy", model: "Falcon 2000LXS", year: 2017, seats: 10,
     rangeNm: 4000, baseAirport: "NCE",
   });
-  mk(opIds[3]!, "empty_leg", "Empty leg London → Geneva · Praetor 600", 5900, {
+  await mk(opIds[3]!, "empty_leg", "Empty leg London → Geneva · Praetor 600", 5900, {
     aircraftCategory: "mid", model: "Praetor 600", year: 2022, seats: 8,
     rangeNm: 4018, from: "LTN", to: "GVA", date: "2026-09-23",
   });
-  mk(opIds[3]!, "charter", "Praetor 600 charter · London Luton", 6300, {
+  await mk(opIds[3]!, "charter", "Praetor 600 charter · London Luton", 6300, {
     aircraftCategory: "mid", model: "Praetor 600", year: 2022, seats: 8,
     rangeNm: 4018, baseAirport: "LTN",
   });
@@ -266,9 +266,9 @@ function seedJets(repo: MemoryRepo) {
 
 // Placeholder machinery inventory — proves the same repo/flow works for the
 // second vertical (spec: machinery content is scaffold-only tonight).
-function seedMachinery(repo: MemoryRepo) {
-  const u = repo.createUser("ops@alpine-machinery.example", "operator");
-  const op = repo.upsertOperator({
+async function seedMachinery(repo: MemoryRepo) {
+  const u = await repo.createUser("ops@alpine-machinery.example", "operator");
+  const op = await repo.upsertOperator({
     userId: u.id,
     name: "Alpine Industrial Machines",
     baseAirport: "ZRH",
@@ -276,8 +276,8 @@ function seedMachinery(repo: MemoryRepo) {
     verified: true,
     plan: "free",
   });
-  const mk = (type: string, title: string, price: number, attributes: Record<string, unknown>) =>
-    repo.createListing({
+  const mk = async (type: string, title: string, price: number, attributes: Record<string, unknown>) =>
+    await repo.createListing({
       operatorId: op.id,
       vertical: "machinery",
       type,
@@ -287,29 +287,29 @@ function seedMachinery(repo: MemoryRepo) {
       currency: "EUR",
       photos: [],
     });
-  mk("for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
+  await mk("for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
     machineryCategory: "cnc_milling", make: "DMG Mori", yearOfManufacture: 2016,
     hoursUsed: 8200, condition: "used",
   });
-  mk("for_rent", "Kaeser industrial compressor · monthly", 1200, {
+  await mk("for_rent", "Kaeser industrial compressor · monthly", 1200, {
     machineryCategory: "generator", make: "Kaeser", yearOfManufacture: 2020,
     hoursUsed: 3100, condition: "used",
   });
-  mk("auction", "Hydraulic press 400t — liquidation lot", 28000, {
+  await mk("auction", "Hydraulic press 400t — liquidation lot", 28000, {
     machineryCategory: "press", make: "Schuler", yearOfManufacture: 2008,
     hoursUsed: 31000, condition: "decommissioned",
   });
 }
 
-export function createMemoryRepo(): MemoryRepo {
+export async function createMemoryRepo(): Promise<MemoryRepo> {
   const repo = new MemoryRepo();
-  seedMemoryRepo(repo);
+  await seedMemoryRepo(repo);
   return repo;
 }
 
 // module singleton survives Next dev HMR via globalThis
 const g = globalThis as unknown as { __jmRepo?: MemoryRepo };
-export function getMemoryRepo(): MemoryRepo {
-  if (!g.__jmRepo) g.__jmRepo = createMemoryRepo();
+export async function getMemoryRepo(): Promise<MemoryRepo> {
+  if (!g.__jmRepo) g.__jmRepo = await createMemoryRepo();
   return g.__jmRepo;
 }

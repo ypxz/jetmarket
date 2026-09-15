@@ -5,12 +5,15 @@ import { getRepo } from "@/lib/repo";
 export async function GET() {
   const user = await requireUser("admin");
   if (!user) return err("admin only", 403);
-  const repo = getRepo();
+  const repo = await getRepo();
+  const ops = await repo.listOperators();
   return ok(
-    repo.listOperators().map((o) => ({
-      ...o,
-      user: repo.getUser(o.userId) ?? null,
-      listings: repo.countOperatorListings(o.id),
-    })),
+    await Promise.all(
+      ops.map(async (o) => ({
+        ...o,
+        user: (await repo.getUser(o.userId)) ?? null,
+        listings: await repo.countOperatorListings(o.id),
+      })),
+    ),
   );
 }

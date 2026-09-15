@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   for (const [k, v] of url.searchParams.entries()) {
     if (k.startsWith("f_")) facets[k.slice(2)] = v;
   }
-  const listings = getRepo().listListings({
+  const listings = await (await getRepo()).listListings({
     status: "active",
     vertical: verticalSlug(),
     ...(url.searchParams.get("type")
@@ -20,12 +20,14 @@ export async function GET(req: Request) {
     ...(url.searchParams.get("q") ? { query: url.searchParams.get("q")! } : {}),
     ...(Object.keys(facets).length ? { facets } : {}),
   });
-  const repo = getRepo();
+  const repo = await getRepo();
   return ok(
-    listings.map((l) => ({
-      ...l,
-      operator: repo.getOperator(l.operatorId) ?? null,
-    })),
+    await Promise.all(
+      listings.map(async (l) => ({
+        ...l,
+        operator: (await repo.getOperator(l.operatorId)) ?? null,
+      })),
+    ),
   );
 }
 
@@ -41,8 +43,8 @@ const CreateListing = z.object({
 export async function POST(req: Request) {
   const user = await requireUser("operator");
   if (!user) return err("sign in as an operator first", 401);
-  const repo = getRepo();
-  const operator = repo.getOperatorByUserId(user.id);
+  const repo = await getRepo();
+  const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
 
   const { data, error } = await parseBody(req, CreateListing);
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
 
   if (
     operator.plan === "free" &&
-    repo.countOperatorListings(operator.id) >= FREE_LISTING_LIMIT
+    await repo.countOperatorListings(operator.id) >= FREE_LISTING_LIMIT
   ) {
     return err(
       `free plan allows ${FREE_LISTING_LIMIT} listings — upgrade to Pro`,
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const listing = repo.createListing({
+  const listing = await repo.createListing({
     operatorId: operator.id,
     vertical: verticalSlug(),
     type: data!.type,

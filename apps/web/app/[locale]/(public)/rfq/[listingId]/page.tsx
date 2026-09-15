@@ -13,8 +13,8 @@ export default async function RfqPage({
   const vertical = getVertical();
   const t = await getTranslations("rfq");
   const vt = await getTranslations(vertical.copy.namespace);
-  const repo = getRepo();
-  const listing = repo.getListing(listingId);
+  const repo = await getRepo();
+  const listing = await repo.getListing(listingId);
   if (!listing || listing.status !== "active") notFound();
 
   const fields: RfqFieldView[] = vertical.rfqFields.map((f) => ({

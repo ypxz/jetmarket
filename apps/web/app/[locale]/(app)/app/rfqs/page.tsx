@@ -4,8 +4,8 @@ import { QuoteForm } from "./quote-form";
 
 export default async function RfqInboxPage() {
   const user = await currentUser();
-  const repo = getRepo();
-  const operator = user ? repo.getOperatorByUserId(user.id) : undefined;
+  const repo = await getRepo();
+  const operator = user ? await repo.getOperatorByUserId(user.id) : undefined;
   if (!operator) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
@@ -13,7 +13,14 @@ export default async function RfqInboxPage() {
       </main>
     );
   }
-  const rfqs = repo.listRfqs({ operatorId: operator.id });
+  const rfqs = await repo.listRfqs({ operatorId: operator.id });
+  const rfqRows = await Promise.all(
+    rfqs.map(async (r) => ({
+      rfq: r,
+      listing: (await repo.getListing(r.listingId)) ?? null,
+      quotes: await repo.listQuotes({ rfqId: r.id }),
+    })),
+  );
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -24,9 +31,7 @@ export default async function RfqInboxPage() {
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
-          {rfqs.map((r) => {
-            const listing = repo.getListing(r.listingId);
-            const quotes = repo.listQuotes({ rfqId: r.id });
+          {rfqRows.map(({ rfq: r, listing, quotes }) => {
             return (
               <li
                 key={r.id}

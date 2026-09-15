@@ -1,9 +1,14 @@
 import type { Repo } from "./types";
 import { getMemoryRepo } from "./memory";
+import { getDrizzleRepo } from "./drizzle";
 
-// Swap point: when @jetmarket/db lands with a DrizzleRepo implementing Repo,
-// select it here via env (DB_PROVIDER=postgres). Until then the slice runs on
-// the seeded in-memory repo so the whole flow works with zero infra.
-export function getRepo(): Repo {
+/**
+ * Repo selection: REPO=postgres (or DATABASE_URL set) -> Drizzle over
+ * compose Postgres; otherwise the seeded in-memory repo (zero-infra default
+ * for unit tests and offline dev). Swap point documented in TASKS.md.
+ */
+export async function getRepo(): Promise<Repo> {
+  const backend = process.env.REPO ?? (process.env.DATABASE_URL ? "postgres" : "memory");
+  if (backend === "postgres") return getDrizzleRepo();
   return getMemoryRepo();
 }

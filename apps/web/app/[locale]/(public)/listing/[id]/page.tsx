@@ -15,10 +15,10 @@ export default async function ListingPage({
   const { id } = await params;
   const t = await getTranslations("listing");
   const ct = await getTranslations("common");
-  const repo = getRepo();
-  const listing = repo.getListing(id);
+  const repo = await getRepo();
+  const listing = await repo.getListing(id);
   if (!listing || listing.status !== "active") notFound();
-  const operator = repo.getOperator(listing.operatorId) ?? null;
+  const operator = await repo.getOperator(listing.operatorId) ?? null;
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">

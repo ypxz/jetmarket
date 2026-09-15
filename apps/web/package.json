@@ -19,6 +19,7 @@
     "@jetmarket/providers": "workspace:*",
     "@jetmarket/ui": "workspace:*",
     "@jetmarket/verticals": "workspace:*",
+    "drizzle-orm": "^0.45.2",
     "next": "^15.5.0",
     "next-intl": "^4.3.0",
     "react": "^19.1.0",

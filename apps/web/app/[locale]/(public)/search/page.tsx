@@ -12,8 +12,15 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const t = await getTranslations("search");
-  const repo = getRepo();
-  const listings = searchListings(params);
+  const repo = await getRepo();
+  const listings = await searchListings(params);
+  const ops = new Map(
+    await Promise.all(
+      [...new Set(listings.map((l) => l.operatorId))].map(
+        async (id) => [id, (await repo.getOperator(id)) ?? null] as const,
+      ),
+    ),
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
@@ -32,7 +39,7 @@ export default async function SearchPage({
                 <div key={l.id} data-testid="search-result">
                   <ListingCard
                     listing={l}
-                    operator={repo.getOperator(l.operatorId) ?? null}
+                    operator={ops.get(l.operatorId) ?? null}
                   />
                 </div>
               ))}

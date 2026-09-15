@@ -30,7 +30,9 @@ export function verifySession(value: string | undefined): string | null {
 export async function currentUser(): Promise<User | null> {
   const jar = await cookies();
   const userId = verifySession(jar.get(COOKIE)?.value);
-  return userId ? (getRepo().getUser(userId) ?? null) : null;
+  if (!userId) return null;
+  const repo = await getRepo();
+  return (await repo.getUser(userId)) ?? null;
 }
 
 export async function requireUser(role?: UserRole): Promise<User | null> {

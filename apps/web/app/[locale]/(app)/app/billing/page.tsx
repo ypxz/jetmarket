@@ -5,9 +5,9 @@ import { UpgradeButton } from "./upgrade-button";
 
 export default async function BillingPage() {
   const user = await currentUser();
-  const repo = getRepo();
-  const operator = user ? repo.getOperatorByUserId(user.id) : undefined;
-  const sub = operator ? repo.getSubscription(operator.id) : undefined;
+  const repo = await getRepo();
+  const operator = user ? await repo.getOperatorByUserId(user.id) : undefined;
+  const sub = operator ? await repo.getSubscription(operator.id) : undefined;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">

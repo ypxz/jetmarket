@@ -7,16 +7,20 @@ import { getRepo } from "@/lib/repo";
 export async function GET(req: Request) {
   const email = new URL(req.url).searchParams.get("email");
   if (!email) return err("email required", 400);
-  const repo = getRepo();
-  const rfqs = repo.listRfqs({ buyerEmail: email });
+  const repo = await getRepo();
+  const rfqs = await repo.listRfqs({ buyerEmail: email });
   return ok(
-    rfqs.map((r) => ({
-      ...r,
-      listing: repo.getListing(r.listingId) ?? null,
-      quotes: repo.listQuotes({ rfqId: r.id }).map((q) => ({
-        ...q,
-        operator: repo.getOperator(q.operatorId) ?? null,
+    await Promise.all(
+      rfqs.map(async (r) => ({
+        ...r,
+        listing: (await repo.getListing(r.listingId)) ?? null,
+        quotes: await Promise.all(
+          (await repo.listQuotes({ rfqId: r.id })).map(async (q) => ({
+            ...q,
+            operator: (await repo.getOperator(q.operatorId)) ?? null,
+          })),
+        ),
       })),
-    })),
+    ),
   );
 }

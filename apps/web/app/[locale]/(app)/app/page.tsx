@@ -5,8 +5,8 @@ import { getRepo } from "@/lib/repo";
 
 export default async function OperatorDashboard() {
   const user = await currentUser();
-  const repo = getRepo();
-  const operator = user ? repo.getOperatorByUserId(user.id) : undefined;
+  const repo = await getRepo();
+  const operator = user ? await repo.getOperatorByUserId(user.id) : undefined;
 
   if (!operator) {
     return (
@@ -26,9 +26,9 @@ export default async function OperatorDashboard() {
     );
   }
 
-  const listings = repo.listListings({ operatorId: operator.id });
-  const rfqs = repo.listRfqs({ operatorId: operator.id });
-  const sub = repo.getSubscription(operator.id);
+  const listings = await repo.listListings({ operatorId: operator.id });
+  const rfqs = await repo.listRfqs({ operatorId: operator.id });
+  const sub = await repo.getSubscription(operator.id);
   const limit = operator.plan === "pro" ? "∞" : FREE_LISTING_LIMIT;
 
   return (

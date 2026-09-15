@@ -5,8 +5,8 @@ import { getRepo } from "@/lib/repo";
 export async function POST() {
   const user = await requireUser("operator");
   if (!user) return err("unauthorized", 401);
-  const repo = getRepo();
-  const operator = repo.getOperatorByUserId(user.id);
+  const repo = await getRepo();
+  const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
   return ok({
     url: `/app/billing/portal-mock?operator=${operator.id}`,

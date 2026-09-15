@@ -13,11 +13,18 @@ export default async function LandingPage() {
   const t = await getTranslations("home");
   const vt = await getTranslations(vertical.copy.namespace);
   const ct = await getTranslations("common");
-  const repo = getRepo();
+  const repo = await getRepo();
 
-  const featured = repo
-    .listListings({ status: "active", vertical: vertical.slug })
-    .slice(0, 6);
+  const featured = (
+    await repo.listListings({ status: "active", vertical: vertical.slug })
+  ).slice(0, 6);
+  const featuredOps = new Map(
+    await Promise.all(
+      [...new Set(featured.map((l) => l.operatorId))].map(
+        async (id) => [id, (await repo.getOperator(id)) ?? null] as const,
+      ),
+    ),
+  );
 
   const steps = t.raw("howItWorks.steps") as FeatureItem[];
   const faqs = t.raw("faq.items") as FaqItem[];
@@ -66,7 +73,7 @@ export default async function LandingPage() {
                 <ListingCard
                   key={l.id}
                   listing={l}
-                  operator={repo.getOperator(l.operatorId) ?? null}
+                  operator={featuredOps.get(l.operatorId) ?? null}
                 />
               ))}
             </Grid>

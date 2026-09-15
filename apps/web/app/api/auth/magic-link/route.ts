@@ -14,12 +14,12 @@ export async function POST(req: Request) {
   if (error) return error;
   const { email, role } = data!;
 
-  const repo = getRepo();
+  const repo = await getRepo();
   const adminEmails = (process.env.ADMIN_EMAILS ?? "admin@jetmarket.local")
     .split(",")
     .map((e) => e.trim().toLowerCase());
   const resolvedRole = adminEmails.includes(email.toLowerCase()) ? "admin" : role;
-  const user = repo.createUser(email, resolvedRole);
+  const user = await repo.createUser(email, resolvedRole);
 
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signSession(user.id))}`;

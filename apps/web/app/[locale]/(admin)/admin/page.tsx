@@ -7,9 +7,19 @@ export default async function AdminPage() {
   const user = await currentUser();
   if (!user || user.role !== "admin") redirect("/sign-in");
 
-  const repo = getRepo();
-  const operators = repo.listOperators();
-  const deals = repo.listDeals();
+  const repo = await getRepo();
+  const operators = await repo.listOperators();
+  const deals = await repo.listDeals();
+  const listingCounts = new Map(
+    await Promise.all(
+      operators.map(async (o) => [o.id, await repo.countOperatorListings(o.id)] as const),
+    ),
+  );
+  const dealOps = new Map(
+    await Promise.all(
+      deals.map(async (d) => [d.id, (await repo.getOperator(d.operatorId))?.name ?? "?"] as const),
+    ),
+  );
   const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
 
   return (
@@ -35,7 +45,7 @@ export default async function AdminPage() {
                 <td className="py-2 pr-4 font-medium">{o.name}</td>
                 <td className="py-2 pr-4">{o.baseAirport}</td>
                 <td className="py-2 pr-4">{o.plan}</td>
-                <td className="py-2 pr-4">{repo.countOperatorListings(o.id)}</td>
+                <td className="py-2 pr-4">{listingCounts.get(o.id) ?? 0}</td>
                 <td className="py-2 pr-4" data-testid={`admin-verified-${o.id}`}>
                   {o.verified ? "yes" : "no"}
                 </td>
@@ -68,7 +78,7 @@ export default async function AdminPage() {
             {deals.map((d) => (
               <tr key={d.id} data-testid={`deal-${d.id}`}>
                 <td className="py-2 pr-4 font-mono text-xs">{d.id}</td>
-                <td className="py-2 pr-4">{repo.getOperator(d.operatorId)?.name}</td>
+                <td className="py-2 pr-4">{dealOps.get(d.id)}</td>
                 <td className="py-2 pr-4">${d.amount.toLocaleString("en-US")}</td>
                 <td className="py-2 pr-4">{(d.feePct * 100).toFixed(1)}%</td>
                 <td className="py-2 pr-4 font-medium">${d.feeAmount.toLocaleString("en-US")}</td>

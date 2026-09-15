@@ -35,6 +35,9 @@ importers:
       '@jetmarket/verticals':
         specifier: workspace:*
         version: link:../../packages/verticals
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(postgres@3.4.9)
       next:
         specifier: ^15.5.0
         version: 15.5.25(@playwright/test@1.63.0)(@types/node@20.19.43)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

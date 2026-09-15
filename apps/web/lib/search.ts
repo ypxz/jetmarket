@@ -32,7 +32,7 @@ export interface SearchParams {
   [key: string]: string | string[] | undefined;
 }
 
-export function searchListings(params: SearchParams): Listing[] {
+export async function searchListings(params: SearchParams): Promise<Listing[]> {
   const vertical = getVertical();
   const exact: Record<string, string> = {};
   const ranges: { f: FacetConfig; min?: number; max?: number }[] = [];
@@ -57,7 +57,7 @@ export function searchListings(params: SearchParams): Listing[] {
     exact[facet.attributeKey] = facet.type === "text" ? raw.toUpperCase() : raw;
   }
 
-  const listings = getRepo().listListings({
+  const listings = await (await getRepo()).listListings({
     status: "active",
     vertical: vertical.slug,
     ...(str(params.q) ? { query: str(params.q)! } : {}),

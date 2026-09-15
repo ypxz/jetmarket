@@ -4,6 +4,6 @@ import { getRepo } from "@/lib/repo";
 
 export async function GET() {
   const user = await currentUser();
-  const operator = user ? getRepo().getOperatorByUserId(user.id) : undefined;
+  const operator = user ? (await getRepo()).getOperatorByUserId(user.id) : undefined;
   return ok({ user, operator });
 }

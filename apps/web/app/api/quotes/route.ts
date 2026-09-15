@@ -13,22 +13,22 @@ const CreateQuote = z.object({
 export async function POST(req: Request) {
   const user = await requireUser("operator");
   if (!user) return err("unauthorized", 401);
-  const repo = getRepo();
-  const operator = repo.getOperatorByUserId(user.id);
+  const repo = await getRepo();
+  const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
 
   const { data, error } = await parseBody(req, CreateQuote);
   if (error) return error;
 
-  const rfq = repo.getRfq(data!.rfqId);
+  const rfq = await repo.getRfq(data!.rfqId);
   if (!rfq) return err("rfq not found", 404);
-  const listing = repo.getListing(rfq.listingId);
+  const listing = await repo.getListing(rfq.listingId);
   if (!listing || listing.operatorId !== operator.id) {
     return err("rfq does not belong to your listings", 403);
   }
   if (rfq.status === "closed") return err("rfq already closed", 409);
 
-  const quote = repo.createQuote({
+  const quote = await repo.createQuote({
     rfqId: rfq.id,
     operatorId: operator.id,
     amount: data!.amount,
