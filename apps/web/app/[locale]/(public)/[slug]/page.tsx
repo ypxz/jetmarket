@@ -57,6 +57,10 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
     locale,
     namespace: `${vertical.copy.namespace}.seo.pages`,
   });
+  const vc = await getTranslations({
+    locale,
+    namespace: vertical.copy.namespace,
+  });
   const t = await getTranslations({ locale, namespace: "seo" });
   const ct = await getTranslations({ locale, namespace: "common" });
 
@@ -70,10 +74,12 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
     ),
   );
 
+  const listingType = def.filters.type ?? def.filters.listingType;
+
   return (
     <Page data-testid="seo-page">
       <Container>
-        <Badge>{vt("listingTypes." + String(def.filters.type ?? ""))}</Badge>
+        {listingType ? <Badge>{vc(`listingTypes.${listingType}`)}</Badge> : null}
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">
           {vt(`${slug}.title`)}
         </h1>

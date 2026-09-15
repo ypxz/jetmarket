@@ -10,7 +10,7 @@ interface FaqItem { q: string; a: string }
 
 export default async function LandingPage() {
   const vertical = getVertical();
-  const t = await getTranslations("home");
+  const t = await getTranslations(`${vertical.copy.namespace}.home`);
   const vt = await getTranslations(vertical.copy.namespace);
   const ct = await getTranslations("common");
   const repo = await getRepo();
