@@ -129,6 +129,10 @@ class MemoryRepo implements Repo {
   async getRfq(id: string) {
     return this.rfqs.get(id);
   }
+  async setRfqStatus(id: string, status: Rfq["status"]) {
+    const rfq = this.rfqs.get(id);
+    if (rfq) this.rfqs.set(id, { ...rfq, status });
+  }
   async listRfqs(filter?: { buyerEmail?: string; operatorId?: string }): Promise<Rfq[]> {
     let out = [...this.rfqs.values()];
     if (filter?.buyerEmail) out = out.filter((r) => r.buyerEmail === filter.buyerEmail);
