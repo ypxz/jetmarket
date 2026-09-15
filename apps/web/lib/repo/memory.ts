@@ -301,12 +301,15 @@ function seedMachinery(repo: MemoryRepo) {
   });
 }
 
+export function createMemoryRepo(): MemoryRepo {
+  const repo = new MemoryRepo();
+  seedMemoryRepo(repo);
+  return repo;
+}
+
 // module singleton survives Next dev HMR via globalThis
 const g = globalThis as unknown as { __jmRepo?: MemoryRepo };
 export function getMemoryRepo(): MemoryRepo {
-  if (!g.__jmRepo) {
-    g.__jmRepo = new MemoryRepo();
-    seedMemoryRepo(g.__jmRepo);
-  }
+  if (!g.__jmRepo) g.__jmRepo = createMemoryRepo();
   return g.__jmRepo;
 }
