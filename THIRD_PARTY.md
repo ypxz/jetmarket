@@ -18,6 +18,7 @@ GPL/AGPL/SSPL/fair-code projects are read for ideas only.
 | Vitest | latest | MIT | unit + integration tests | |
 | Playwright | latest | Apache-2 | e2e | |
 | stripe (SDK) | latest | MIT | payments real adapter | tested vs stripe-mock |
+| nodemailer | latest | MIT | smtp email adapter | tested vs Mailpit |
 | stripe-mock | latest | MIT (Docker image) | contract tests | |
 | Mailpit | latest | MIT (Docker image) | dev SMTP | |
 | (template base) | — | — | apps/web + packages/ui scaffold | record starter + license once `buildApps/template` lands |

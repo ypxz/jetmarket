@@ -1,5 +1,33 @@
 {
   "name": "@jetmarket/providers",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "nodemailer": "^9.1.1",
+    "postgres": "^3.4.9",
+    "stripe": "^22.6.1"
+  },
+  "devDependencies": {
+    "@jetmarket/db": "workspace:*",
+    "@types/node": "^22.20.1",
+    "@types/nodemailer": "^8.0.1",
+    "eslint": "^9.34.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.0"
+  }
 }
