@@ -1,3 +1,4 @@
+import { storageProvider } from "@jetmarket/providers";
 import type {
   Deal,
   Listing,
@@ -205,6 +206,14 @@ export async function seedMemoryRepo(repo: MemoryRepo) {
   if (vertical === "machinery") await seedMachinery(repo);
 }
 
+// Tiny deterministic placeholder photo, stored via the storage provider so
+// seeded listings exercise the same render path as uploaded ones.
+async function seedPhoto(key: string, label: string, hue: number): Promise<string> {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="hsl(${hue},45%,18%)"/><text x="400" y="240" font-family="system-ui" font-size="28" fill="hsl(${hue},30%,85%)" text-anchor="middle">${label}</text></svg>`;
+  await storageProvider().put(key, svg, { contentType: "image/svg+xml" });
+  return key;
+}
+
 async function seedJets(repo: MemoryRepo) {
   const ops = [
     { email: "ops@alpine-air.example", name: "Alpine Air Charter", base: "ZRH", fleet: "Phenom 300, CJ4", verified: true, plan: "pro" as Plan },
@@ -231,6 +240,7 @@ async function seedJets(repo: MemoryRepo) {
     title: string,
     price: number,
     attributes: Record<string, unknown>,
+    photos: string[] = [],
   ) =>
     await repo.createListing({
       operatorId,
@@ -240,13 +250,15 @@ async function seedJets(repo: MemoryRepo) {
       attributes,
       price,
       currency: "USD",
-      photos: [],
+      photos,
     });
 
   await mk(opIds[0]!, "empty_leg", "Empty leg Zurich → Nice · Phenom 300", 4200, {
     aircraftCategory: "light", model: "Phenom 300", year: 2021, seats: 7,
     rangeNm: 2000, from: "ZRH", to: "NCE", date: "2026-09-22",
-  });
+  }, [
+    await seedPhoto("seed/memory/zrh-nce-phenom.svg", "Phenom 300", 190),
+  ]);
   await mk(opIds[0]!, "empty_leg", "Empty leg Geneva → London · CJ4", 6800, {
     aircraftCategory: "light", model: "Citation CJ4", year: 2019, seats: 8,
     rangeNm: 2165, from: "GVA", to: "LTN", date: "2026-09-24",
@@ -262,7 +274,10 @@ async function seedJets(repo: MemoryRepo) {
   await mk(opIds[2]!, "aircraft_sale", "Gulfstream G650 (2018) for sale", 38500000, {
     aircraftCategory: "ultra_long", model: "G650", year: 2018, seats: 14,
     rangeNm: 7000, hoursTotal: 1450,
-  });
+  }, [
+    await seedPhoto("seed/memory/g650.svg", "Gulfstream G650", 35),
+    await seedPhoto("seed/memory/g650-cabin.svg", "G650 cabin", 200),
+  ]);
   await mk(opIds[2]!, "charter", "Falcon 2000LXS charter · Nice base", 7200, {
     aircraftCategory: "heavy", model: "Falcon 2000LXS", year: 2017, seats: 10,
     rangeNm: 4000, baseAirport: "NCE",
@@ -289,7 +304,7 @@ async function seedMachinery(repo: MemoryRepo) {
     verified: true,
     plan: "free",
   });
-  const mk = async (type: string, title: string, price: number, attributes: Record<string, unknown>) =>
+  const mk = async (type: string, title: string, price: number, attributes: Record<string, unknown>, photos: string[] = []) =>
     await repo.createListing({
       operatorId: op.id,
       vertical: "machinery",
@@ -298,12 +313,12 @@ async function seedMachinery(repo: MemoryRepo) {
       attributes,
       price,
       currency: "EUR",
-      photos: [],
+      photos,
     });
   await mk("for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
     machineryCategory: "cnc_milling", make: "DMG Mori", yearOfManufacture: 2016,
     hoursUsed: 8200, condition: "used",
-  });
+  }, [await seedPhoto("seed/memory/dmg-mori.svg", "DMG Mori CNC", 160)]);
   await mk("for_rent", "Kaeser industrial compressor · monthly", 1200, {
     machineryCategory: "generator", make: "Kaeser", yearOfManufacture: 2020,
     hoursUsed: 3100, condition: "used",

@@ -63,6 +63,18 @@ export default function NewListingPage() {
       attributes.date = f.get("date");
     }
     try {
+      const files = f
+        .getAll("photos")
+        .filter((v): v is File => v instanceof File && v.size > 0);
+      const photos: string[] = [];
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        const up = await fetch("/api/uploads", { method: "POST", body });
+        const upData = await up.json();
+        if (!up.ok) throw new Error(upData.error ?? t("failed"));
+        photos.push(upData.key);
+      }
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -72,7 +84,7 @@ export default function NewListingPage() {
           attributes,
           price: Number(f.get("price") || 0),
           currency: "USD",
-          photos: [],
+          photos,
         }),
       });
       const data = await res.json();
@@ -137,6 +149,17 @@ export default function NewListingPage() {
             <input name="date" type="date" required data-testid="listing-date" className={input} />
           </div>
         ) : null}
+        <label className="block text-sm text-muted">
+          {t("photosLabel")}
+          <input
+            name="photos"
+            type="file"
+            accept="image/*"
+            multiple
+            data-testid="listing-photos"
+            className={`${input} mt-1 file:mr-3 file:rounded-md file:border-0 file:bg-surface file:px-3 file:py-1 file:text-sm`}
+          />
+        </label>
         <button
           type="submit"
           disabled={pending}

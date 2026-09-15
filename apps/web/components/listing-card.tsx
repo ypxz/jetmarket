@@ -1,4 +1,5 @@
 import { Badge, Card, CardBody } from "@jetmarket/ui";
+import { storageProvider } from "@jetmarket/providers";
 import { getVertical } from "@jetmarket/verticals";
 import type { ComponentType } from "react";
 import { getTranslations } from "next-intl/server";
@@ -42,6 +43,14 @@ export async function ListingCard({ listing, operator }: ListingCardProps) {
   return (
     <Link href={`/listing/${listing.id}`} className="block" data-testid="listing-card">
       <Card className="h-full transition-shadow hover:shadow-pop">
+        {listing.photos[0] ? (
+          <img
+            src={storageProvider().url(listing.photos[0])}
+            alt={listing.title}
+            data-testid="listing-photo"
+            className="aspect-[4/3] w-full rounded-t-lg border-b border-border object-cover"
+          />
+        ) : null}
         <CardBody>
           <div className="flex items-center justify-between gap-2">
             <Badge>{vt(`listingTypes.${listing.type}`)}</Badge>

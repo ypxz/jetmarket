@@ -18,3 +18,4 @@ test-results/
 .vercel
 .turbo/
 /storage/
+apps/web/storage/
