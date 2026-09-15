@@ -3,7 +3,10 @@ import { machineryVertical } from "./machinery";
 import type { VerticalConfig, VerticalSlug } from "./types";
 
 export * from "./types";
-export * from "./schema";
+// Named re-exports (not `export *`) — Node's CJS named-export detection can't
+// see through star-reexports, so `import { buildRfqSchema }` fails under
+// plain node/tsx (apps/worker).
+export { buildRfqSchema, getAttributesSchema } from "./schema";
 export { jetsVertical, machineryVertical };
 
 const registry: Record<VerticalSlug, VerticalConfig> = {
