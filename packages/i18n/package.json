@@ -2,19 +2,19 @@
   "name": "@jetmarket/i18n",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*.ts",
     "./messages/*": "./messages/*"
   },
   "scripts": {
-    "lint": "exit 0",
+    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "typescript": "5.9.2",
-    "@types/node": "20.19.13"
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.0"
   }
 }

@@ -67,12 +67,6 @@ export const machineryVertical: VerticalConfig = {
       schema: z.string().length(2),
     },
     {
-      key: "priceEur",
-      labelKey: "attributes.priceEur",
-      appliesTo: ["for_sale", "auction"],
-      schema: z.number().positive(),
-    },
-    {
       key: "monthlyRentEur",
       labelKey: "attributes.monthlyRentEur",
       appliesTo: ["for_rent"],
@@ -82,8 +76,8 @@ export const machineryVertical: VerticalConfig = {
 
   facets: [
     {
-      key: "listingType",
-      labelKey: "facets.listingType",
+      key: "type",
+      labelKey: "facets.type",
       type: "enum",
       options: [
         { value: "for_sale", labelKey: "listingTypes.for_sale" },
@@ -107,10 +101,9 @@ export const machineryVertical: VerticalConfig = {
       ],
     },
     {
-      key: "priceEur",
-      labelKey: "facets.priceEur",
+      key: "price",
+      labelKey: "facets.price",
       type: "number-range",
-      attributeKey: "priceEur",
     },
     {
       key: "locationCountry",
@@ -212,17 +205,17 @@ export const machineryVertical: VerticalConfig = {
       {
         slug: "used-cnc-milling-machines",
         titleKey: "seo.pages.used-cnc-milling-machines.title",
-        filters: { listingType: "for_sale", machineryCategory: "cnc_milling" },
+        filters: { type: "for_sale", machineryCategory: "cnc_milling" },
       },
       {
         slug: "used-forklifts-for-sale",
         titleKey: "seo.pages.used-forklifts-for-sale.title",
-        filters: { listingType: "for_sale", machineryCategory: "forklift" },
+        filters: { type: "for_sale", machineryCategory: "forklift" },
       },
       {
         slug: "industrial-generators-for-rent",
         titleKey: "seo.pages.industrial-generators-for-rent.title",
-        filters: { listingType: "for_rent", machineryCategory: "generator" },
+        filters: { type: "for_rent", machineryCategory: "generator" },
       },
     ],
   },

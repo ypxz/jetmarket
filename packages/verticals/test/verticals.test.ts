@@ -55,7 +55,7 @@ describe("VerticalConfig contract (jets)", () => {
     expect(jetsVertical.seo.landingPages.length).toBeGreaterThanOrEqual(10);
     for (const page of jetsVertical.seo.landingPages) {
       expect(page.slug).toMatch(/^empty-legs-/);
-      expect(page.filters.listingType).toBe("empty_leg");
+      expect(page.filters.type).toBe("empty_leg");
     }
   });
 
@@ -76,15 +76,15 @@ describe("getAttributesSchema (jets)", () => {
     const schema = getAttributesSchema(jetsVertical, "empty_leg");
     const parsed = schema.parse({
       aircraftCategory: "light",
-      aircraftModel: "Phenom 300",
-      yearOfManufacture: 2019,
+      model: "Phenom 300",
+      year: 2019,
       seats: 7,
-      departureIcao: "ZRH",
-      arrivalIcao: "NCE",
-      departureDate: "2026-10-01",
-      priceUsd: 9500,
+      rangeNm: 2000,
+      from: "zrh",
+      to: "NCE",
+      date: "2026-10-01",
     });
-    expect(parsed.departureIcao).toBe("ZRH");
+    expect(parsed.from).toBe("ZRH");
   });
 
   it("rejects an unknown aircraft category and strips undeclared keys", () => {
@@ -92,24 +92,24 @@ describe("getAttributesSchema (jets)", () => {
     expect(() =>
       schema.parse({
         aircraftCategory: "turboprop",
-        aircraftModel: "PC-12",
-        yearOfManufacture: 2020,
+        model: "PC-12",
+        year: 2020,
         seats: 8,
-        departureIcao: "ZRH",
-        arrivalIcao: "GVA",
-        departureDate: "2026-10-01",
-        priceUsd: 4000,
+        rangeNm: 800,
+        from: "ZRH",
+        to: "GVA",
+        date: "2026-10-01",
       }),
     ).toThrow();
     const parsed = schema.parse({
       aircraftCategory: "light",
-      aircraftModel: "Phenom 300",
-      yearOfManufacture: 2019,
+      model: "Phenom 300",
+      year: 2019,
       seats: 7,
-      departureIcao: "ZRH",
-      arrivalIcao: "NCE",
-      departureDate: "2026-10-01",
-      priceUsd: 9500,
+      rangeNm: 2000,
+      from: "ZRH",
+      to: "NCE",
+      date: "2026-10-01",
       smuggledKey: "nope",
     });
     expect("smuggledKey" in parsed).toBe(false);
@@ -117,8 +117,8 @@ describe("getAttributesSchema (jets)", () => {
 
   it("empty_leg schema does not include charter-only attributes", () => {
     const schema = getAttributesSchema(jetsVertical, "empty_leg");
-    expect("baseIcao" in schema.shape).toBe(false);
-    expect("departureIcao" in schema.shape).toBe(true);
+    expect("baseAirport" in schema.shape).toBe(false);
+    expect("from" in schema.shape).toBe(true);
   });
 });
 
@@ -170,7 +170,6 @@ describe("machinery scaffold", () => {
       make: "DMG MORI",
       yearOfManufacture: 2015,
       locationCountry: "DE",
-      priceEur: 85000,
     });
     expect(parsed.machineryCategory).toBe("cnc_milling");
   });
