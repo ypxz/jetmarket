@@ -2,7 +2,7 @@ import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
-import { emailProvider } from "@jetmarket/providers";
+import { emailProvider, analyticsProvider } from "@jetmarket/providers";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1),
@@ -40,6 +40,15 @@ export async function POST(req: Request) {
     to: rfq.buyerEmail,
     subject: `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
     text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? ""}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}`,
+  });
+  analyticsProvider().track({
+    name: "quote_sent",
+    props: {
+      quoteId: quote.id,
+      rfqId: rfq.id,
+      amount: quote.amount,
+      currency: quote.currency,
+    },
   });
   return ok(quote, 201);
 }

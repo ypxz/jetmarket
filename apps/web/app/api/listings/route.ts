@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
+import { analyticsProvider } from "@jetmarket/providers";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -90,6 +91,14 @@ export async function POST(req: Request) {
     price: data!.price,
     currency: data!.currency ?? "USD",
     photos: data!.photos ?? [],
+  });
+  analyticsProvider().track({
+    name: "listing_created",
+    props: {
+      listingId: listing.id,
+      type: listing.type,
+      vertical: listing.vertical,
+    },
   });
   return ok(listing, 201);
 }
