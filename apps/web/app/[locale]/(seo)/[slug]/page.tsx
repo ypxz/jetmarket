@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { getVertical } from "@jetmarket/verticals";
 import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
+import { formatMoney } from "@/lib/format";
 import { listingSummary, resolveSeoPage, seoListingsQuery } from "@/lib/seo";
 
 type Params = Promise<{ locale: string; slug: string }>;
@@ -36,9 +37,9 @@ export default async function SeoLandingPage({
   const t = await getTranslations({ locale, namespace: "seo.pages" });
   const ts = await getTranslations({ locale, namespace: "seo" });
   const tc = await getTranslations({ locale, namespace: "common" });
-  const repo = getRepo();
+  const repo = await getRepo();
   const { type, facets } = seoListingsQuery(def);
-  const listings = repo.listListings({
+  const listings = await repo.listListings({
     status: "active",
     vertical: vertical.slug,
     type,
@@ -61,10 +62,11 @@ export default async function SeoLandingPage({
         </div>
       ) : (
         <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-          {listings.map((l) => {
-            const op = repo.getOperator(l.operatorId);
-            return (
-              <li
+          {await Promise.all(
+            listings.map(async (l) => {
+              const op = await repo.getOperator(l.operatorId);
+              return (
+                <li
                 key={l.id}
                 className="rounded-md border border-border p-4"
                 data-testid={`seo-listing-${l.id}`}
@@ -77,15 +79,16 @@ export default async function SeoLandingPage({
                 </Link>
                 <p className="mt-1 text-sm text-muted">{listingSummary(l)}</p>
                 <p className="mt-2 text-sm font-medium">
-                  {l.currency} {l.price.toLocaleString("en-US")}
+                  {formatMoney(l.price, l.currency)}
                 </p>
                 <p className="mt-1 text-xs text-muted">
                   {op?.name}
                   {op ? (op.verified ? ` · ${tc("verified")}` : ` · ${tc("unverified")}`) : ""}
                 </p>
-              </li>
-            );
-          })}
+                </li>
+              );
+            }),
+          )}
         </ul>
       )}
 
