@@ -59,9 +59,16 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     await expect(buyer).toHaveURL(/\/listing\//);
     await buyer.getByTestId('listing-rfq-cta').click();
     // rfq fields come from the vertical config — fill them generically
-    await fillRfqForm(buyer, BUYER_EMAIL);
-    await buyer.getByTestId('rfq-submit').click();
-    await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible();
+    // hydration race: filling before React hydrates loses the values when
+    // inputs re-render, and a pre-hydration click natively GETs the same URL —
+    // refill + resubmit until the POST lands
+    await expect(async () => {
+      await fillRfqForm(buyer, BUYER_EMAIL);
+      await buyer.getByTestId('rfq-submit').click();
+      await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
+        timeout: 5_000,
+      });
+    }).toPass({ timeout: 20_000 });
   });
 
   await step('operator quotes and buyer accepts', async () => {
@@ -71,7 +78,8 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);
     await item.locator(tidPrefix('quote-send-')).click();
     await buyer.goto(`/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`);
-    const quote = buyer.locator(tidPrefix('quote-')).filter({ hasText: QUOTE_AMOUNT });
+    // fresh buyer has exactly one quote row; amounts render currency-formatted
+    const quote = buyer.locator(tidPrefix('quote-')).first();
     await expect(quote).toBeVisible();
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);

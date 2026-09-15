@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import { formatMoney } from "@/lib/format";
@@ -35,6 +36,12 @@ function QuotesInner() {
     const res = await fetch(`/api/buyer/quotes?email=${encodeURIComponent(email)}`);
     setRfqs(await res.json());
   }
+
+  // Auto-load when arriving with ?email= (magic-link/thank-you redirect).
+  useEffect(() => {
+    if (email) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function accept(quoteId: string) {
     const res = await fetch(`/api/quotes/${quoteId}/accept`, {

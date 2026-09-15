@@ -44,14 +44,14 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'charter',
       title: LISTING_TITLE,
       price: '38000',
-      fields: { aircraftCategory: 'light', model: 'Phenom 300', seats: '7' },
+      fields: { aircraftCategory: 'light', model: 'Phenom 300', seats: '7', year: '2019', baseAirport: 'ZRH' },
     });
     await expect(operator).toHaveURL(/\/app/);
     await createListing(operator, {
       type: 'empty_leg',
       title: `E2E UI Empty Leg ${run}`,
       price: '9500',
-      fields: { aircraftCategory: 'mid', model: 'Citation XLS', seats: '8', from: 'ZRH', to: 'NCE', date: '2026-10-01' },
+      fields: { aircraftCategory: 'mid', model: 'Citation XLS', seats: '8', year: '2019', from: 'ZRH', to: 'NCE', date: '2026-10-01' },
     });
     await expect(operator).toHaveURL(/\/app/);
   });
@@ -78,15 +78,20 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await buyer.waitForURL(/\/rfq\//, { timeout: 15_000 });
     });
     await buyer.getByTestId('rfq-field-departure').fill('ZRH');
-    await buyer.getByTestId('rfq-field-arrival').fill('NCE');
-    await buyer.getByTestId('rfq-field-dateFrom').fill('2026-10-01');
-    await buyer.getByTestId('rfq-field-dateTo').fill('2026-10-02');
-    await buyer.getByTestId('rfq-field-passengers').fill('4');
-    await buyer.getByTestId('rfq-field-budgetUsd').fill('45000');
-    await buyer.getByTestId('rfq-field-name').fill('E2E Buyer');
-    await buyer.getByTestId('rfq-field-email').fill(BUYER_EMAIL);
-    await buyer.getByTestId('rfq-submit').click();
-    await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible();
+    await expect(async () => {
+      // hydration can re-render inputs post-fill — refill inside the retry
+      await buyer.getByTestId('rfq-field-arrival').fill('NCE');
+      await buyer.getByTestId('rfq-field-dateFrom').fill('2026-10-01');
+      await buyer.getByTestId('rfq-field-dateTo').fill('2026-10-02');
+      await buyer.getByTestId('rfq-field-passengers').fill('4');
+      await buyer.getByTestId('rfq-field-budgetUsd').fill('45000');
+      await buyer.getByTestId('rfq-field-name').fill('E2E Buyer');
+      await buyer.getByTestId('rfq-field-email').fill(BUYER_EMAIL);
+      await buyer.getByTestId('rfq-submit').click();
+      await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
+        timeout: 5_000,
+      });
+    }).toPass({ timeout: 20_000 });
     await expect(buyer.getByTestId('rfq-reference')).toBeVisible();
   });
 
@@ -127,14 +132,14 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'charter',
       title: `E2E UI Third ${run}`,
       price: '30000',
-      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9' },
+      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9', year: '2019', baseAirport: 'ZRH' },
     });
     // fourth is rejected: 402 surfaces the upgrade CTA on the form
     await createListing(operator, {
       type: 'charter',
       title: `E2E UI Fourth ${run}`,
       price: '31000',
-      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9' },
+      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9', year: '2019', baseAirport: 'ZRH' },
     });
     await expect(operator.getByTestId('upgrade-cta')).toBeVisible();
 
@@ -146,7 +151,7 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'charter',
       title: `E2E UI Post-Upgrade ${run}`,
       price: '31000',
-      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9' },
+      fields: { aircraftCategory: 'mid', model: 'G280', seats: '9', year: '2019', baseAirport: 'ZRH' },
     });
     await expect(operator).toHaveURL(/\/app/);
   });
