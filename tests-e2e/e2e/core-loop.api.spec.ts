@@ -145,6 +145,8 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
     deal: { feeAmount: number; invoiceStatus: string };
   };
   expect(deal.feeAmount).toBe(EXPECTED_FEE);
+  // Wave-2 invoices eagerly at accept time — the mock payments provider always
+  // succeeds, so the deal lands as 'invoiced' (would stay 'pending' on failure).
   expect(deal.invoiceStatus).toBe('invoiced');
 
   // QA-1: accepting a quote closes the RFQ (dashboard stops counting it open)

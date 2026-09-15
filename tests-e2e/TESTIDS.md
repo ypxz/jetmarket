@@ -55,9 +55,20 @@
 `playwright test` and CI). When the dependencies land, move the file to `e2e/`:
 
 ```bash
-git mv tests-e2e/pending/machinery.spec.ts tests-e2e/e2e/
-VERTICAL=machinery pnpm test:e2e
+git mv tests-e2e/pending/<spec>.spec.ts tests-e2e/e2e/
 ```
 
 Status: `core-loop.ui.spec.ts` promoted after W3's public slice merged.
-`machinery.spec.ts` stays pending until `VERTICAL=machinery` boots end-to-end.
+`machinery.spec.ts` promoted after T16 — runs in the env-gated `machinery`
+project: `pnpm --filter @jetmarket/tests-e2e test:e2e:machinery`.
+
+## Running machinery e2e
+
+```bash
+pnpm --filter @jetmarket/tests-e2e test:e2e:machinery
+```
+
+Boots the webServer with `VERTICAL=machinery` (inherited env) on the shared
+`jetmarket_test` DB — rows are isolated by the `vertical` column. The spec
+self-skips under any other vertical; run it sequentially after (not
+concurrently with) `test:e2e` — both share `apps/web/.next`.

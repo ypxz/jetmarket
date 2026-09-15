@@ -33,7 +33,37 @@ hero/facet search → listing → RFQ → thanks → inbox quote → buyer accep
 admin ledger → 402 → checkout → lifted. Green locally (3/3 specs incl. API
 twin + smoke).
 
+## Cycle 2 — Postgres, desktop + mobile 390px (clean recording)
+
+Run on a clean branch off merged main at the time (predated the PR#14/15/18
+fix wave): mock auth/email/payments, real Postgres via `packages/db`.
+Recording: `~/screencasts/jetmarket-cycle2/jetmarket-cycle2-edited.mp4`;
+screens in `docs/screens/cycle2-*.png` (27 shots).
+
+**New findings:** QA-9 (**blocker** — `/tos` + `/privacy` 500 on missing
+`legal.*` keys, `sections.map` crash) · QA-10 (`/imprint` raw keys +
+placeholders) · QA-11 (year "2,020") · QA-12 (warning badge white-on-white) ·
+QA-13 (mobile `/admin` tables need page-wide horizontal scroll) · QA-14
+(empty-search copy offers an action that doesn't exist) · QA-15 (listing form
+jets-hardcoded — machinery creation impossible via UI) · QA-16 (machinery
+dashboard still jets copy).
+
+**Stale-base reproductions (not regressions):** QA-1/2/3/4/5/7 showed on this
+base; fixes landed mid-run in PR#14/15/18 — verify on main next cycle.
+
+**Passed highlights:** fresh desktop + mobile operator onboarding and publish;
+faceted + seat-range search; public RFQ→thanks; inbox quote→buyer accept;
+admin verify + ledger ($6,000/3%/$180); mock checkout→Pro (3/3→unlimited);
+mobile hero-search→RFQ journey; `/search` nav journey; design-gallery
+controls.
+
+**Machinery spec promoted:** `e2e/machinery.spec.ts` in the env-gated
+`machinery` Playwright project — `pnpm --filter @jetmarket/tests-e2e
+test:e2e:machinery` boots the webServer with `VERTICAL=machinery`; the spec
+self-skips under jets so `test:e2e` stays green. Listing creation goes through
+the API until QA-15 lands.
+
 ## Screenshots
 
 `docs/screens/cycle1-*.png` (17 shots; pre-template CSS on early shots —
-template adoption landed mid-run).
+template adoption landed mid-run). `docs/screens/cycle2-*.png` (27 shots).

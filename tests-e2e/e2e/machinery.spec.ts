@@ -1,16 +1,15 @@
 // Second acceptance loop (spec §Acceptance): boot with VERTICAL=machinery —
 // placeholder taxonomy (listing types for_sale/for_rent/auction), same flow.
-// Run:  VERTICAL=machinery pnpm --filter @jetmarket/tests-e2e test:pending
-// Depends on T16 (machinery boot) AND W3's public pages — stays pending until
-// both land.
+// Runs in the `machinery` project only: `pnpm --filter @jetmarket/tests-e2e
+// test:e2e:machinery` (sets VERTICAL=machinery; the webServer inherits it).
+// Known gap (QA-15): the /app/listings/new form is jets-hardcoded — machinery
+// listings are created via the API here until a per-vertical form lands.
 import { expect, test } from '@playwright/test';
 import {
-  createListing,
   createOperatorProfile,
   fillRfqForm,
   signUpAndLogin,
   step,
-  tid,
   tidPrefix,
 } from '../helpers/flow';
 
@@ -18,7 +17,7 @@ const run = Date.now();
 const OPERATOR_EMAIL = `e2e-mach-ops-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-mach-buyer-${run}@jetmarket.local`;
 const LISTING_TITLE = `E2E Machine ${run}`;
-const QUOTE_AMOUNT = '12000';
+const EXPECTED_QUOTE = '12,000';
 
 test('machinery vertical: placeholder taxonomy boots and the core loop passes', async ({
   browser,
@@ -34,11 +33,26 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
       name: `E2E Machinery Ops ${run}`,
       baseAirport: 'ZRH',
     });
-    await createListing(operator, {
-      type: 'for_sale', // first placeholder listing type (verticals/machinery)
-      title: LISTING_TITLE,
-      price: '15000',
+    // UI listing form is jets-shaped (QA-15) — create via the API, which
+    // validates attributes against the machinery vertical schema.
+    const res = await operator.request.post('/api/listings', {
+      data: {
+        type: 'for_sale',
+        title: LISTING_TITLE,
+        price: 15000,
+        currency: 'EUR',
+        photos: [],
+        attributes: {
+          machineryCategory: 'forklift',
+          make: 'Toyota 8FB',
+          yearOfManufacture: 2019,
+          hoursUsed: 1200,
+          weightKg: 4150,
+          locationCountry: 'DE',
+        },
+      },
     });
+    expect(res.status(), await res.text()).toBe(201);
   });
 
   await step('buyer finds it and sends an RFQ', async () => {
@@ -62,10 +76,16 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     await operator.goto('/app/rfqs');
     const item = operator.locator(tidPrefix('rfq-')).filter({ hasText: LISTING_TITLE });
     await expect(item).toBeVisible();
-    await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);
+    await item.locator(tidPrefix('quote-amount-')).fill('12000');
     await item.locator(tidPrefix('quote-send-')).click();
     await buyer.goto(`/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`);
-    const quote = buyer.locator(tidPrefix('quote-')).filter({ hasText: QUOTE_AMOUNT });
+    const load = buyer.getByTestId('buyer-load');
+    if (await load.count()) {
+      if (!(await buyer.getByTestId('buyer-email').inputValue()))
+        await buyer.getByTestId('buyer-email').fill(BUYER_EMAIL);
+      await load.click();
+    }
+    const quote = buyer.locator(tidPrefix('quote-')).filter({ hasText: EXPECTED_QUOTE });
     await expect(quote).toBeVisible();
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);
