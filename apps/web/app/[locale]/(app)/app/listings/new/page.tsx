@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/fetch-json";
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -37,26 +38,31 @@ export default function NewListingPage() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    fetch("/api/vertical")
-      .then((r) => r.json())
-      .then(
-        (c: {
+    // Retry once — a route being recompiled in dev can briefly answer
+    // 404/empty/HTML, which used to throw inside r.json() as a bare
+    // SyntaxError (dev overlay + Fast Refresh reload). QA-17.
+    const load = () =>
+      fetch("/api/vertical").then((r) =>
+        readJson<{
           slug?: string;
           listingTypes?: ListingTypeOpt[];
           attributes?: AttributeView[];
-        }) => {
-          if (c.slug) setVertical(c.slug);
-          if (c.listingTypes?.length) {
-            setTypes(c.listingTypes);
-            setType((cur) =>
-              c.listingTypes!.some((t) => t.slug === cur)
-                ? cur
-                : c.listingTypes![0]!.slug,
-            );
-          }
-          if (c.attributes) setAttrs(c.attributes);
-        },
-      )
+        }>(r),
+      );
+    load()
+      .catch(() => new Promise((r) => setTimeout(r, 400)).then(load))
+      .then((c) => {
+        if (c.slug) setVertical(c.slug);
+        if (c.listingTypes?.length) {
+          setTypes(c.listingTypes);
+          setType((cur) =>
+            c.listingTypes!.some((t) => t.slug === cur)
+              ? cur
+              : c.listingTypes![0]!.slug,
+          );
+        }
+        if (c.attributes) setAttrs(c.attributes);
+      })
       .catch(() => {});
   }, []);
 
@@ -83,8 +89,8 @@ export default function NewListingPage() {
         const body = new FormData();
         body.append("file", file);
         const up = await fetch("/api/uploads", { method: "POST", body });
-        const upData = await up.json();
-        if (!up.ok) throw new Error(upData.error ?? t("failed"));
+        const upData = await readJson<{ key?: string; error?: string }>(up);
+        if (!up.ok || !upData.key) throw new Error(upData.error ?? t("failed"));
         photos.push(upData.key);
       }
       const res = await fetch("/api/listings", {
@@ -99,7 +105,7 @@ export default function NewListingPage() {
           photos,
         }),
       });
-      const data = await res.json();
+      const data = await readJson<{ error?: string }>(res);
       if (!res.ok) {
         setPending(false);
         setError(data.error ?? t("failed"));
