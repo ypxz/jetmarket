@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 export function QuoteForm({ rfqId }: { rfqId: string }) {
+  const t = useTranslations("app.rfqs");
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -24,7 +26,7 @@ export function QuoteForm({ rfqId }: { rfqId: string }) {
     });
     setSending(false);
     if (!res.ok) {
-      setError((await res.json()).error ?? "failed");
+      setError((await res.json()).error ?? t("failed"));
       return;
     }
     router.refresh();
@@ -37,13 +39,13 @@ export function QuoteForm({ rfqId }: { rfqId: string }) {
         type="number"
         required
         min={1}
-        placeholder="Quote amount"
+        placeholder={t("amountPh")}
         data-testid={`quote-amount-${rfqId}`}
         className="w-40 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
       />
       <input
         name="message"
-        placeholder="Message (optional)"
+        placeholder={t("messagePh")}
         className="min-w-48 flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
       />
       <button
@@ -52,7 +54,7 @@ export function QuoteForm({ rfqId }: { rfqId: string }) {
         data-testid={`quote-send-${rfqId}`}
         className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
-        {sending ? "Sending…" : "Send quote"}
+        {sending ? t("sending") : t("send")}
       </button>
       {error ? <span className="text-sm text-[color:var(--color-danger)]">{error}</span> : null}
     </form>

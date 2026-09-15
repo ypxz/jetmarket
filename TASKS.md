@@ -18,7 +18,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T7 | [x] lead | Operator + admin slice: auth, operator profile, listings CRUD, RFQ inbox, quote, won/lost, admin verify + fee ledger | `apps/web/**` (`/app`, `/admin`, `/api`) | operator→listing→RFQ→quote→accept path works end-to-end in mock mode |
 | T8 | [x] W4 | Tests/CI wiring: vitest setup, playwright config, e2e core-loop spec, smoke test | `tests-e2e/**`, root configs, `.github/workflows/ci.yml` | `pnpm test:all` green locally + CI green on main |
 | T9 | [x] lead | Billing: plans, mock checkout, webhook→subscriptions, plan-limit middleware, upgrade e2e | `apps/web/app/(billing)`, `packages/domain/plans.ts`, providers payments | free=3 listings enforced server-side; mock checkout upgrades to Pro |
-| T10 | [] | Landing + marketing pages on design system; legal pages | `apps/web/app/(marketing)`, `packages/ui/blocks`, `content/*.ts`, `messages/en.json` | hero/pricing/FAQ/footer/legal render from config; `/design` gallery |
+| T10 | [x] W3 | Landing + marketing pages on design system; legal pages | `apps/web/app/(marketing)`, `packages/ui/blocks`, `content/*.ts`, `messages/en.json` | hero/pricing/FAQ/footer/legal render from config; `/design` gallery |
 
 ## Wave 2 — depth (start after slice, parallel where possible)
 
@@ -30,7 +30,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T14 | [] | Success-fee invoices: deal→invoice record→payments adapter (mock + stripe-mock) | `packages/domain/fees*`, `apps/web/app/api/invoices`, admin ledger UI | 3% charter/1.5% sale; invoice appears in admin |
 | T15 | [] | Rate limit + honeypot + captcha adapter on RFQ/public forms | `apps/web`, `packages/providers/captcha` | >RFQ_RATE_LIMIT/hour → 429; e2e covers |
 | T16 | [] | Machinery vertical proof: `VERTICAL=machinery` boots, placeholder taxonomy, same flow e2e | `packages/verticals/machinery`, e2e spec | second acceptance e2e passes |
-| T17 | [] | i18n/completeness + currency formatting; a11y pass; empty/loading/error states | `apps/web`, `packages/i18n` | grep: no string literals in apps; a11y e2e on core loop |
+| T17 | [x] W1 | i18n/completeness + currency formatting; a11y pass; empty/loading/error states | `apps/web`, `packages/i18n` | grep: no string literals in apps; a11y e2e on core loop |
 | T18 | [x] W1 | Ops: health endpoint, structured logging, Dockerfile web+worker, deploy notes | `apps/*`, `Dockerfile*`, `docs/deploy.md` | `docker build` green; `/api/health` 200 |
 | T19 | [x] W1 | Marketing kit: positioning vs Avinode/XO/Stratajet, operator outreach email, 10 SEO titles, LinkedIn post, first-20-operators list | `marketing/**` | per spec §"Marketing kit" |
 | T20 | [~] W4 (from H+2:30) | QA/dogfood loop worker (from H+2:30): fresh-user runs, files findings here, verifies fixes | reports only; files tickets | ≥1 cycle/90 min; cycle count + bugs logged to STATUS |
