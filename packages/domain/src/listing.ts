@@ -1,12 +1,14 @@
 /**
  * Listing validation — attributes jsonb is checked against the zod schema the
- * VerticalConfig declares for that listing type. Core fields (title, photos,
+ * VerticalConfig declares for that listing type (composed by
+ * `getAttributesSchema` from packages/verticals). Core fields (title, photos,
  * price) are validated here too.
  */
 import { z } from "zod";
 import type { Currency } from "./money";
 import type { ListingStatus } from "./types";
-import type { AttributeSchema, VerticalConfig } from "./vertical-config";
+import { getAttributesSchema } from "./vertical-config";
+import type { ListingTypeSlug, VerticalConfig } from "./vertical-config";
 
 export const LISTING_STATUSES = [
   "draft",
@@ -25,7 +27,7 @@ export type ValidationResult<T> =
   | { ok: false; issues: ValidationIssue[] };
 
 export interface ListingDraft {
-  type: string;
+  type: ListingTypeSlug;
   title: string;
   attributes: Record<string, unknown>;
   priceMinor: number | null;
@@ -43,32 +45,35 @@ const coreFields = z.object({
   photos: z.array(z.string().min(1)).max(30).default([]),
 });
 
-export function attributeSchemaFor(
-  config: Pick<VerticalConfig, "attributes">,
+export function listingTypeDeclared(
+  config: Pick<VerticalConfig, "listingTypes">,
   listingType: string,
-): AttributeSchema | undefined {
-  return config.attributes.find((a) => a.listingType === listingType);
+): boolean {
+  return config.listingTypes.some((t) => t.slug === listingType);
 }
 
 /** Validate only the attributes jsonb for a listing type. */
 export function validateListingAttributes(
-  config: Pick<VerticalConfig, "attributes">,
+  config: Pick<VerticalConfig, "attributes" | "listingTypes">,
   listingType: string,
   attributes: unknown,
 ): ValidationResult<Record<string, unknown>> {
-  const entry = attributeSchemaFor(config, listingType);
-  if (!entry) {
+  if (!listingTypeDeclared(config, listingType)) {
     return {
       ok: false,
       issues: [
         {
           path: "type",
-          message: `no attribute schema for listing type "${listingType}"`,
+          message: `unknown listing type "${listingType}" for vertical`,
         },
       ],
     };
   }
-  const parsed = entry.schema.safeParse(attributes ?? {});
+  const schema = getAttributesSchema(
+    config as Pick<VerticalConfig, "attributes"> as VerticalConfig,
+    listingType,
+  );
+  const parsed = schema.safeParse(attributes ?? {});
   if (!parsed.success) {
     return {
       ok: false,
@@ -94,14 +99,15 @@ export interface NewListingInput {
 /**
  * Full new-listing validation: listing type must be declared by the vertical,
  * core fields must be sane, and attributes must satisfy the type's schema.
- * On success returns a normalized draft (defaults applied).
+ * On success returns a normalized draft (defaults applied, unknown attribute
+ * keys stripped).
  */
 export function validateNewListing(
   config: Pick<VerticalConfig, "listingTypes" | "attributes" | "currency">,
   input: NewListingInput,
 ): ValidationResult<ListingDraft> {
   const issues: ValidationIssue[] = [];
-  if (!config.listingTypes.includes(input.type)) {
+  if (!listingTypeDeclared(config, input.type)) {
     issues.push({
       path: "type",
       message: `unknown listing type "${input.type}" for vertical`,

@@ -7,7 +7,7 @@ import {
 } from "./matching";
 import { defaultPlans, FREE_PLAN_ID, PRO_PLAN_ID } from "./plans";
 
-const plans = defaultPlans("USD");
+const plans = defaultPlans();
 
 function op(partial: Partial<OperatorCandidate> & { id: string }): OperatorCandidate {
   return {
