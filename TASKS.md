@@ -46,7 +46,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | QA-5 | polish | Listing-type selector shows raw i18n keys (`listingTypes charter`, `listingTypes empty leg`, `listingTypes aircraft sale`) post-template | fixed (PR#14: vertical-namespace labels) | `packages/i18n`/`apps/web` type select |
 | QA-6 | polish | Dashboard/billing copy promises delayed RFQs for free/unverified operators, but RFQs arrive immediately | filed | copy vs T13 matching behavior — align |
 | QA-7 | polish | No sign-out / account-switch control (must navigate to `/sign-in` manually) | fixed (PR#15) | `apps/web` app shell |
-| QA-8 | idea | No dark mode / theme toggle reachable | filed | `packages/ui`, `apps/web` |
+| QA-8 | idea | No dark mode / theme toggle reachable | fixed (header toggle, .dark tokens) | `packages/ui`, `apps/web` |
 
 ## Improvement-loop log (append per cycle)
 
