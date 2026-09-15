@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Badge, Container, EmptyState, Grid, Page, buttonVariants } from "@jetmarket/ui";
+import { site } from "@jetmarket/config";
 import { getVertical } from "@jetmarket/verticals";
 import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getRepo } from "@/lib/repo";
 import { searchListings } from "@/lib/search";
-import { resolveSeoPage, searchHref, seoSlugs } from "@/lib/seo";
+import { resolveSeoPage, searchHref, seoSlugs, siteUrl } from "@/lib/seo";
 import { ListingCard } from "@/components/listing-card";
 
 // SEO landing pages are generated from vertical.seo.landingPages — any other
@@ -41,10 +42,22 @@ export async function generateMetadata({
     locale,
     namespace: `${vertical.copy.namespace}.seo.pages`,
   });
+  const title = vt(`${slug}.title`);
+  const description = def.introKey ? vt(`${slug}.intro`) : undefined;
+  const url = `${siteUrl()}/${slug}`;
+  // No og:image — listings carry no first-party image assets to reference.
   return {
-    title: vt(`${slug}.title`),
-    description: def.introKey ? vt(`${slug}.intro`) : undefined,
-    alternates: { canonical: `/${slug}` },
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: site.name,
+      type: "website",
+    },
+    twitter: { card: "summary", title, description },
   };
 }
 
@@ -76,8 +89,34 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
 
   const listingType = def.filters.type ?? def.filters.listingType;
 
+  const itemListLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: listings.map((l, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Product",
+        name: l.title,
+        url: `${siteUrl()}/listing/${l.id}`,
+        offers: {
+          "@type": "Offer",
+          price: l.price,
+          priceCurrency: l.currency,
+          availability: "https://schema.org/InStock",
+        },
+      },
+    })),
+  };
+
   return (
     <Page data-testid="seo-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(itemListLd).replace(/</g, "\\u003c"),
+        }}
+      />
       <Container>
         {listingType ? <Badge>{vc(`listingTypes.${listingType}`)}</Badge> : null}
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">

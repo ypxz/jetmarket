@@ -61,7 +61,8 @@
     "basedAt": "Based at {airport}",
     "rfqCta": "Request quotes for this listing",
     "notFound": "Listing not found or no longer active.",
-    "back": "← Back to search"
+    "back": "← Back to search",
+    "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator."
   },
   "rfq": {
     "title": "Request a quote",
