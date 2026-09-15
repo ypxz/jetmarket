@@ -6,7 +6,7 @@ export type BadgeVariant = "default" | "success" | "warning" | "danger" | "outli
 const variants: Record<BadgeVariant, string> = {
   default: "bg-surface text-foreground",
   success: "bg-surface text-success",
-  warning: "bg-surface text-accent",
+  warning: "bg-surface text-warning",
   danger: "bg-surface text-danger",
   outline: "border border-border text-muted",
 };

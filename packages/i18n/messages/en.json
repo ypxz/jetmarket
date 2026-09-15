@@ -40,7 +40,7 @@
     "reset": "Reset",
     "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}",
     "emptyTitle": "No listings match",
-    "emptyBody": "Loosen the filters or send an open RFQ — operators will come to you.",
+    "emptyBody": "Loosen the filters or try a broader category — new listings go live daily.",
     "min": "Min",
     "max": "Max",
     "typeFacet": "Type"
@@ -50,7 +50,7 @@
     "browseAll": "Search all matching listings",
     "genericIntro": "Browse vetted operators matching this route — request once, compare quotes.",
     "emptyTitle": "No live listings on this route yet",
-    "emptyBody": "Send an open RFQ and operators will come to you.",
+    "emptyBody": "Check back soon — operators add listings on this route regularly.",
     "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}"
   },
   "listing": {

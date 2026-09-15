@@ -33,7 +33,7 @@ export default async function AdminPage() {
         <h2 className="text-lg font-semibold">
           {t("operators", { count: operators.length })}
         </h2>
-        <table className="mt-3 w-full text-left text-sm">
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-border text-muted">
             <tr>
               <th className="py-2 pr-4">{t("colName")}</th>
@@ -60,7 +60,7 @@ export default async function AdminPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </section>
 
       <section className="mt-10">
@@ -70,7 +70,7 @@ export default async function AdminPage() {
             total: formatMoney(feeTotal, "USD"),
           })}
         </h2>
-        <table className="mt-3 w-full text-left text-sm" data-testid="fee-ledger">
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-[40rem] text-left text-sm" data-testid="fee-ledger">
           <thead className="border-b border-border text-muted">
             <tr>
               <th className="py-2 pr-4">{t("colDeal")}</th>
@@ -109,7 +109,7 @@ export default async function AdminPage() {
               </tr>
             ) : null}
           </tbody>
-        </table>
+        </table></div>
       </section>
     </main>
   );
