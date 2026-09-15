@@ -32,64 +32,6 @@
     "contact": "Contact",
     "copyright": "© {year} {name}. All rights reserved."
   },
-  "home": {
-    "eyebrow": "JetMarket",
-    "title": "Charter, empty legs and aircraft for sale from vetted operators",
-    "subtitle": "Request once, get quotes, pay a fee only when it closes.",
-    "ctaSearch": "Browse aircraft",
-    "ctaOperator": "List your aircraft",
-    "searchPlaceholder": "Where to? Try “Nice” or “G650”",
-    "howItWorks": {
-      "title": "How it works",
-      "steps": [
-        {
-          "title": "Tell us the trip",
-          "body": "Route, dates, passengers and budget — one request reaches every matching operator."
-        },
-        {
-          "title": "Compare quotes",
-          "body": "Vetted operators send firm quotes. Verified badge, fleet and price in one place."
-        },
-        {
-          "title": "Fly, then we bill",
-          "body": "You contract with the operator directly. JetMarket charges operators a success fee only when a deal closes."
-        }
-      ]
-    },
-    "featured": {
-      "title": "Latest listings",
-      "viewAll": "View all listings"
-    },
-    "pricing": {
-      "title": "Operator pricing",
-      "subtitle": "Start free. Upgrade when the requests flow."
-    },
-    "faq": {
-      "title": "Questions",
-      "items": [
-        {
-          "q": "Who do I contract with?",
-          "a": "Always with the operator. JetMarket is a marketplace, not a broker — we match requests to operators and take a success fee from them when a deal closes."
-        },
-        {
-          "q": "What does it cost me as a buyer?",
-          "a": "Nothing. Requesting quotes is free; operators pay the platform."
-        },
-        {
-          "q": "What is an empty leg?",
-          "a": "A repositioning flight an aircraft flies anyway — sold at a deep discount when it matches your route."
-        },
-        {
-          "q": "Are operators vetted?",
-          "a": "Operators self-declare their fleet and credentials; our team verifies documentation manually. Unverified operators are marked and receive RFQs with a delay."
-        },
-        {
-          "q": "Can I buy an aircraft here?",
-          "a": "Yes — aircraft_sale listings accept RFQs like any other; success fee on closed sales is 1.5%."
-        }
-      ]
-    }
-  },
   "search": {
     "title": "Search listings",
     "placeholder": "Search model, route, operator…",
@@ -290,6 +232,64 @@
             "intro": "Seasonal repositioning from Zurich to Ibiza."
           }
         }
+      },
+      "home": {
+        "eyebrow": "JetMarket",
+        "title": "Charter, empty legs and aircraft for sale from vetted operators",
+        "subtitle": "Request once, get quotes, pay a fee only when it closes.",
+        "ctaSearch": "Browse aircraft",
+        "ctaOperator": "List your aircraft",
+        "searchPlaceholder": "Where to? Try “Nice” or “G650”",
+        "howItWorks": {
+          "title": "How it works",
+          "steps": [
+            {
+              "title": "Tell us the trip",
+              "body": "Route, dates, passengers and budget — one request reaches every matching operator."
+            },
+            {
+              "title": "Compare quotes",
+              "body": "Vetted operators send firm quotes. Verified badge, fleet and price in one place."
+            },
+            {
+              "title": "Fly, then we bill",
+              "body": "You contract with the operator directly. JetMarket charges operators a success fee only when a deal closes."
+            }
+          ]
+        },
+        "featured": {
+          "title": "Latest listings",
+          "viewAll": "View all listings"
+        },
+        "pricing": {
+          "title": "Operator pricing",
+          "subtitle": "Start free. Upgrade when the requests flow."
+        },
+        "faq": {
+          "title": "Questions",
+          "items": [
+            {
+              "q": "Who do I contract with?",
+              "a": "Always with the operator. JetMarket is a marketplace, not a broker — we match requests to operators and take a success fee from them when a deal closes."
+            },
+            {
+              "q": "What does it cost me as a buyer?",
+              "a": "Nothing. Requesting quotes is free; operators pay the platform."
+            },
+            {
+              "q": "What is an empty leg?",
+              "a": "A repositioning flight an aircraft flies anyway — sold at a deep discount when it matches your route."
+            },
+            {
+              "q": "Are operators vetted?",
+              "a": "Operators self-declare their fleet and credentials; our team verifies documentation manually. Unverified operators are marked and receive RFQs with a delay."
+            },
+            {
+              "q": "Can I buy an aircraft here?",
+              "a": "Yes — aircraft_sale listings accept RFQs like any other; success fee on closed sales is 1.5%."
+            }
+          ]
+        }
       }
     },
     "machinery": {
@@ -395,6 +395,56 @@
             "title": "Industrial machinery auctions",
             "intro": "Timed auctions on used plant equipment — registered bidders only, inspection notes on every lot."
           }
+        }
+      },
+      "home": {
+        "eyebrow": "MachineryMarket",
+        "title": "Used industrial machinery from verified dealers",
+        "subtitle": "Request once, compare quotes from vetted sellers and lessors — pay a fee only when the deal closes.",
+        "ctaSearch": "Search",
+        "ctaOperator": "List your machines",
+        "searchPlaceholder": "Search make, category, country…",
+        "howItWorks": {
+          "title": "How it works",
+          "steps": [
+            {
+              "title": "Tell us the machine",
+              "body": "Category, make, budget and delivery postcode — one request reaches every matching dealer."
+            },
+            {
+              "title": "Compare quotes",
+              "body": "Vetted dealers send firm quotes. Verified badge, spec sheet and price in one place."
+            },
+            {
+              "title": "Buy or rent, then we bill",
+              "body": "You contract with the dealer directly. MachineryMarket charges sellers a success fee only when a deal closes."
+            }
+          ]
+        },
+        "featured": {
+          "title": "Latest listings",
+          "viewAll": "View all listings"
+        },
+        "pricing": {
+          "title": "Dealer pricing",
+          "subtitle": "Start free. Upgrade when the requests flow."
+        },
+        "faq": {
+          "title": "Questions",
+          "items": [
+            {
+              "q": "Who do I contract with?",
+              "a": "Always with the dealer. MachineryMarket is a marketplace, not a broker — we match requests to sellers and take a success fee from them when a deal closes."
+            },
+            {
+              "q": "What does it cost me as a buyer?",
+              "a": "Nothing. Requesting quotes is free — dealers pay the success fee."
+            },
+            {
+              "q": "Is the equipment inspected?",
+              "a": "Listings show stated hours, condition and service history. Arrange inspection directly with the dealer before purchase."
+            }
+          ]
         }
       }
     }

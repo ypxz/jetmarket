@@ -29,7 +29,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T13 | [] | RFQ fan-out matching: RFQ → N operators by fleet fit + notify via email adapter | `packages/domain/matching*`, `apps/worker/**` | unverified operators get delay; unit-tested |
 | T14 | [] | Success-fee invoices: deal→invoice record→payments adapter (mock + stripe-mock) | `packages/domain/fees*`, `apps/web/app/api/invoices`, admin ledger UI | 3% charter/1.5% sale; invoice appears in admin |
 | T15 | [] | Rate limit + honeypot + captcha adapter on RFQ/public forms | `apps/web`, `packages/providers/captcha` | >RFQ_RATE_LIMIT/hour → 429; e2e covers |
-| T16 | [] | Machinery vertical proof: `VERTICAL=machinery` boots, placeholder taxonomy, same flow e2e | `packages/verticals/machinery`, e2e spec | second acceptance e2e passes |
+| T16 | [x] W3 | Machinery vertical proof: `VERTICAL=machinery` boots, placeholder taxonomy, same flow e2e | `packages/verticals/machinery`, e2e spec | second acceptance e2e passes |
 | T17 | [x] W1 | i18n/completeness + currency formatting; a11y pass; empty/loading/error states | `apps/web`, `packages/i18n` | grep: no string literals in apps; a11y e2e on core loop |
 | T18 | [x] W1 | Ops: health endpoint, structured logging, Dockerfile web+worker, deploy notes | `apps/*`, `Dockerfile*`, `docs/deploy.md` | `docker build` green; `/api/health` 200 |
 | T19 | [x] W1 | Marketing kit: positioning vs Avinode/XO/Stratajet, operator outreach email, 10 SEO titles, LinkedIn post, first-20-operators list | `marketing/**` | per spec §"Marketing kit" |
