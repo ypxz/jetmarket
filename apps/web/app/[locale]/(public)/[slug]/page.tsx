@@ -60,8 +60,15 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
   const t = await getTranslations({ locale, namespace: "seo" });
   const ct = await getTranslations({ locale, namespace: "common" });
 
-  const listings = searchListings(def.filters);
-  const repo = getRepo();
+  const listings = await searchListings(def.filters);
+  const repo = await getRepo();
+  const ops = new Map(
+    await Promise.all(
+      [...new Set(listings.map((l) => l.operatorId))].map(
+        async (id) => [id, (await repo.getOperator(id)) ?? null] as const,
+      ),
+    ),
+  );
 
   return (
     <Page data-testid="seo-page">
@@ -90,7 +97,7 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
                 <ListingCard
                   key={l.id}
                   listing={l}
-                  operator={repo.getOperator(l.operatorId)}
+                  operator={ops.get(l.operatorId) ?? null}
                 />
               ))}
             </Grid>
