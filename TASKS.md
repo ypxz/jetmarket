@@ -11,7 +11,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 |---|--------|--------|-----------------------------------------|------------|
 | T1 | [x] W1 | Research (RESEARCH.md) | `RESEARCH.md`, feeds `marketing/` | Checklist in RESEARCH.md complete; licenses verified |
 | T2 | [~] W2 | Domain core: types, matching, fees, plan limits | `packages/domain/**` | `pnpm --filter @jetmarket/domain test` green; ≥80% cov of domain |
-| T3 | [~] W3 | Verticals: contract + `jets` config + `machinery` scaffold | `packages/verticals/**` | `VerticalConfig` type; zod schemas; config loads by `VERTICAL` env; unit-tested |
+| T3 | [x] W3 | Verticals: contract + `jets` config + `machinery` scaffold | `packages/verticals/**` | `VerticalConfig` type; zod schemas; config loads by `VERTICAL` env; unit-tested |
 | T4 | [~] W2 | DB: Drizzle schema + migrations + typed client + jets seed | `packages/db/**` | `db:migrate`+`db:seed` run on compose pg; integration test green |
 | T5 | [~] W2 | Providers: auth, email, storage, payments, captcha, search, analytics | `packages/providers/**` | each `mock` deterministic; `real` = typed skeleton or stripe vs stripe-mock; contract tests where possible |
 | T6 | [~] W3 | Web slice: browse/search+facets, listing page, RFQ form | `apps/web/**` (public routes) + `packages/ui/**`, `packages/i18n/**`, `packages/config/**` | buyer: search → listing → RFQ saved; mock email quote page; responsive |
