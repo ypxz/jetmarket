@@ -1,7 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
+import { formatMoney } from "@/lib/format";
 
 interface Quote {
   id: string;
@@ -21,6 +23,8 @@ interface Rfq {
 }
 
 function QuotesInner() {
+  const t = useTranslations("quotes");
+  const tc = useTranslations("common");
   const params = useSearchParams();
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [rfqs, setRfqs] = useState<Rfq[] | null>(null);
@@ -40,34 +44,34 @@ function QuotesInner() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setMsg(data.error ?? "failed");
+      setMsg(data.error ?? tc("error"));
       return;
     }
-    setMsg(`Accepted — deal ${data.deal.id} closed. Operator will be invoiced the success fee.`);
+    setMsg(t("accepted", { id: data.deal.id }));
     await load();
   }
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="text-2xl font-semibold">My requests &amp; quotes</h1>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
       <form onSubmit={load} className="mt-4 flex gap-2">
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email used in your RFQ"
+          placeholder={t("emailLabel")}
           data-testid="buyer-email"
           className="w-72 rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" data-testid="buyer-load">
-          Load
+          {t("load")}
         </button>
       </form>
       {msg ? <p className="mt-4 rounded-md bg-surface p-3 text-sm" data-testid="accept-msg">{msg}</p> : null}
       {rfqs ? (
         rfqs.length === 0 ? (
-          <p className="mt-6 text-sm text-muted">No requests for this email.</p>
+          <p className="mt-6 text-sm text-muted">{t("empty")}</p>
         ) : (
           <ul className="mt-6 space-y-4">
             {rfqs.map((r) => (
@@ -77,18 +81,18 @@ function QuotesInner() {
                   <span className="text-xs text-muted">{r.status}</span>
                 </div>
                 {r.quotes.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted">Waiting for operator quotes…</p>
+                  <p className="mt-2 text-sm text-muted">{t("waiting")}</p>
                 ) : (
                   <ul className="mt-3 space-y-2">
                     {r.quotes.map((q) => (
                       <li key={q.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface p-3" data-testid={`quote-${q.id}`}>
                         <div>
                           <span className="font-medium">
-                            {q.currency} {q.amount.toLocaleString("en-US")}
+                            {formatMoney(q.amount, q.currency)}
                           </span>{" "}
                           <span className="text-sm text-muted">
-                            by {q.operator?.name}
-                            {q.operator?.verified ? " (verified)" : " (unverified)"} · {q.status}
+                            {t("by", { name: q.operator?.name ?? "" })}
+                            {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {q.status}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                         </div>
@@ -98,7 +102,7 @@ function QuotesInner() {
                             data-testid={`accept-${q.id}`}
                             className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
                           >
-                            Accept
+                            {t("accept")}
                           </button>
                         ) : null}
                       </li>

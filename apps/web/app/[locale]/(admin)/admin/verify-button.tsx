@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 export function VerifyButton({
   operatorId,
@@ -9,6 +10,7 @@ export function VerifyButton({
   operatorId: string;
   verified: boolean;
 }) {
+  const t = useTranslations("admin");
   const router = useRouter();
   async function toggle() {
     await fetch(`/api/admin/operators/${operatorId}/verify`, { method: "POST" });
@@ -20,7 +22,7 @@ export function VerifyButton({
       data-testid={`verify-${operatorId}`}
       className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface"
     >
-      {verified ? "Unverify" : "Verify"}
+      {verified ? t("unverify") : t("verify")}
     </button>
   );
 }

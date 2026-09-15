@@ -2,6 +2,7 @@
 
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 interface ListingTypeOpt {
@@ -15,6 +16,7 @@ const FALLBACK_TYPES: ListingTypeOpt[] = [
 ];
 
 export default function NewListingPage() {
+  const t = useTranslations("app.newListing");
   const router = useRouter();
   const [types, setTypes] = useState<ListingTypeOpt[]>(FALLBACK_TYPES);
   const [type, setType] = useState<string>("charter");
@@ -68,7 +70,7 @@ export default function NewListingPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "failed");
+      setError(data.error ?? t("failed"));
       if (res.status === 402) setLimitHit(true);
       return;
     }
@@ -81,7 +83,7 @@ export default function NewListingPage() {
 
   return (
     <main className="mx-auto max-w-xl px-6 py-10">
-      <h1 className="text-2xl font-semibold">New listing</h1>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <select
           value={type}
@@ -98,28 +100,28 @@ export default function NewListingPage() {
         <input
           name="title"
           required
-          placeholder="Title (e.g. Empty leg Zurich → Nice · Phenom 300)"
+          placeholder={t("titlePh")}
           data-testid="listing-title"
           className={input}
         />
         <div className="grid grid-cols-2 gap-3">
           <select name="aircraftCategory" data-testid="listing-category" className={input}>
-            <option value="light">Light jet</option>
-            <option value="mid">Mid-size</option>
-            <option value="super_mid">Super mid</option>
-            <option value="heavy">Heavy</option>
-            <option value="ultra_long">Ultra-long range</option>
+            <option value="light">{t("catLight")}</option>
+            <option value="mid">{t("catMid")}</option>
+            <option value="super_mid">{t("catSuperMid")}</option>
+            <option value="heavy">{t("catHeavy")}</option>
+            <option value="ultra_long">{t("catUltra")}</option>
           </select>
-          <input name="model" required placeholder="Model (e.g. Phenom 300)" data-testid="listing-model" className={input} />
-          <input name="year" type="number" placeholder="Year" className={input} />
-          <input name="seats" type="number" required placeholder="Seats" data-testid="listing-seats" className={input} />
-          <input name="rangeNm" type="number" placeholder="Range (nm)" className={input} />
-          <input name="price" type="number" required min={0} placeholder="Price (USD)" data-testid="listing-price" className={input} />
+          <input name="model" required placeholder={t("modelPh")} data-testid="listing-model" className={input} />
+          <input name="year" type="number" placeholder={t("yearPh")} className={input} />
+          <input name="seats" type="number" required placeholder={t("seatsPh")} data-testid="listing-seats" className={input} />
+          <input name="rangeNm" type="number" placeholder={t("rangePh")} className={input} />
+          <input name="price" type="number" required min={0} placeholder={t("pricePh")} data-testid="listing-price" className={input} />
         </div>
         {type === "empty_leg" ? (
           <div className="grid grid-cols-3 gap-3">
-            <input name="from" required placeholder="From (ZRH)" data-testid="listing-from" className={input} />
-            <input name="to" required placeholder="To (NCE)" data-testid="listing-to" className={input} />
+            <input name="from" required placeholder={t("fromPh")} data-testid="listing-from" className={input} />
+            <input name="to" required placeholder={t("toPh")} data-testid="listing-to" className={input} />
             <input name="date" type="date" required data-testid="listing-date" className={input} />
           </div>
         ) : null}
@@ -128,14 +130,14 @@ export default function NewListingPage() {
           data-testid="listing-save"
           className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
         >
-          Publish listing
+          {t("publish")}
         </button>
         {error ? (
           <div className="rounded-md border border-border bg-surface p-3 text-sm">
             <p className="text-[color:var(--color-danger)]">{error}</p>
             {limitHit ? (
               <Link href="/app/billing" className="mt-1 inline-block font-medium text-primary underline" data-testid="upgrade-cta">
-                Upgrade to Pro — unlimited listings →
+                {t("upgradeCta")}
               </Link>
             ) : null}
           </div>
