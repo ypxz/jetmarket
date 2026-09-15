@@ -2,9 +2,8 @@ import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
-import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
-import { paymentsProvider } from "@jetmarket/providers";
+import { emailProvider, paymentsProvider } from "@jetmarket/providers";
 
 const Body = z.object({ buyerEmail: z.string().email() });
 
@@ -66,11 +65,11 @@ export async function POST(
   const operator = await repo.getOperator(quote.operatorId);
   const owner = operator ? await repo.getUser(operator.userId) : undefined;
   if (owner) {
-    await sendMail(
-      owner.email,
-      `Deal closed on “${listing?.title ?? "listing"}”`,
-      `Buyer accepted your quote of ${quote.currency} ${quote.amount}. Success fee (${(feePct * 100).toFixed(1)}%): ${quote.currency} ${deal.feeAmount}. Invoice pending.`,
-    );
+    await emailProvider().send({
+      to: owner.email,
+      subject: `Deal closed on “${listing?.title ?? "listing"}”`,
+      text: `Buyer accepted your quote of ${quote.currency} ${quote.amount}. Success fee (${(feePct * 100).toFixed(1)}%): ${quote.currency} ${deal.feeAmount}. Invoice ${deal.invoiceRef ? `ref ${deal.invoiceRef}` : "pending"}.`,
+    });
   }
   return ok({ quote: await repo.getQuote(id), deal });
 }
