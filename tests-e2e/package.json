@@ -1,5 +1,12 @@
 {
   "name": "@jetmarket/tests-e2e",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "smoke": "playwright test --grep @smoke"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
 }
