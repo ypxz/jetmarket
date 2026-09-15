@@ -24,6 +24,7 @@ export default function NewListingPage() {
   const [vertical, setVertical] = useState<string>("jets");
   const [error, setError] = useState<string | null>(null);
   const [limitHit, setLimitHit] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     fetch("/api/vertical")
@@ -44,6 +45,8 @@ export default function NewListingPage() {
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (pending) return;
+    setPending(true);
     setError(null);
     setLimitHit(false);
     const f = new FormData(e.currentTarget);
@@ -59,30 +62,36 @@ export default function NewListingPage() {
       attributes.to = f.get("to");
       attributes.date = f.get("date");
     }
-    const res = await fetch("/api/listings", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        type,
-        title: f.get("title"),
-        attributes,
-        price: Number(f.get("price") || 0),
-        currency: "USD",
-        photos: [],
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? t("failed"));
-      if (res.status === 402) setLimitHit(true);
-      return;
+    try {
+      const res = await fetch("/api/listings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type,
+          title: f.get("title"),
+          attributes,
+          price: Number(f.get("price") || 0),
+          currency: "USD",
+          photos: [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPending(false);
+        setError(data.error ?? t("failed"));
+        if (res.status === 402) setLimitHit(true);
+        return;
+      }
+      router.push("/app");
+      router.refresh();
+    } catch {
+      setPending(false);
+      setError(t("failed"));
     }
-    router.push("/app");
-    router.refresh();
   }
 
   const input =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
+    "w-full min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm";
 
   return (
     <main className="mx-auto max-w-xl px-6 py-10">
@@ -122,7 +131,7 @@ export default function NewListingPage() {
           <input name="price" type="number" required min={0} placeholder={t("pricePh")} data-testid="listing-price" className={input} />
         </div>
         {type === "empty_leg" ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <input name="from" required placeholder={t("fromPh")} data-testid="listing-from" className={input} />
             <input name="to" required placeholder={t("toPh")} data-testid="listing-to" className={input} />
             <input name="date" type="date" required data-testid="listing-date" className={input} />
@@ -130,10 +139,11 @@ export default function NewListingPage() {
         ) : null}
         <button
           type="submit"
+          disabled={pending}
           data-testid="listing-save"
-          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
+          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {t("publish")}
+          {pending ? t("publishing") : t("publish")}
         </button>
         {error ? (
           <div className="rounded-md border border-border bg-surface p-3 text-sm">

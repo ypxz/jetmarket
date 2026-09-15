@@ -508,7 +508,8 @@
       "toPh": "To (NCE)",
       "publish": "Publish listing",
       "upgradeCta": "Upgrade to Pro — unlimited listings →",
-      "failed": "failed"
+      "failed": "failed",
+      "publishing": "Publishing…"
     },
     "rfqs": {
       "needProfile": "Create an operator profile first.",

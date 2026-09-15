@@ -9,29 +9,56 @@ export async function SiteHeader() {
   const t = await getTranslations("nav");
   return (
     <header className="border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+        <Link
+          href="/"
+          className="shrink-0 text-lg font-semibold tracking-tight"
+        >
           {site.name}
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/search" className="text-muted hover:text-foreground">
+        <nav className="flex min-w-0 items-center justify-end gap-3 text-sm sm:gap-4">
+          <Link
+            href="/search"
+            className="shrink-0 text-muted hover:text-foreground"
+          >
             {t("search")}
           </Link>
           {user?.role === "operator" || user?.role === "admin" ? (
-            <Link href="/app" className="text-muted hover:text-foreground">
+            <Link
+              href="/app"
+              className="shrink-0 text-muted hover:text-foreground"
+            >
               {t("operator")}
             </Link>
           ) : null}
           {user?.role === "admin" ? (
-            <Link href="/admin" className="text-muted hover:text-foreground">
+            <Link
+              href="/admin"
+              className="shrink-0 text-muted hover:text-foreground"
+            >
               {t("admin")}
             </Link>
           ) : null}
-          <Link href="/quotes" className="text-muted hover:text-foreground">
+          <Link
+            href="/quotes"
+            className="shrink-0 text-muted hover:text-foreground"
+          >
             {t("myQuotes")}
           </Link>
           {user ? (
-            <span className="text-muted">{user.email}</span>
+            <>
+              <span className="hidden truncate text-muted md:inline">
+                {user.email}
+              </span>
+              <form action="/api/auth/logout" method="post">
+                <button
+                  type="submit"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  {t("signOut")}
+                </button>
+              </form>
+            </>
           ) : (
             <Link href="/sign-in" className={buttonVariants({ size: "sm" })}>
               {t("signIn")}
