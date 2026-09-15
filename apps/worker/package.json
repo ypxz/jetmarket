@@ -1,5 +1,34 @@
 {
   "name": "@jetmarket/worker",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@jetmarket/db": "workspace:*",
+    "@jetmarket/domain": "workspace:*",
+    "@jetmarket/providers": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "eslint": "^9.34.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.0"
+  }
 }

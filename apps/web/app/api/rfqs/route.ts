@@ -4,6 +4,8 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { logInfo } from "@/lib/log";
 import { sendMail } from "@/lib/outbox";
 import { getRepo } from "@/lib/repo";
+import { getDbSql } from "@/lib/repo/drizzle";
+import { enqueueJob } from "@jetmarket/db";
 
 const CreateRfq = z.object({
   listingId: z.string().min(1),
@@ -39,15 +41,21 @@ export async function POST(req: Request) {
     fields: parsed.data,
   });
 
-  const operator = await repo.getOperator(listing.operatorId);
-  if (operator) {
-    const owner = await repo.getUser(operator.userId);
-    if (owner) {
-      await sendMail(
-        owner.email,
-        `New RFQ on “${listing.title}”`,
-        `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
-      );
+  if (process.env.DATABASE_URL) {
+    // Postgres mode: the worker fans the RFQ out to matched operators.
+    await enqueueJob(getDbSql(), "rfq.fanout", { rfqId: rfq.id });
+  } else {
+    // Memory mode has no worker — keep the direct single-operator notice.
+    const operator = await repo.getOperator(listing.operatorId);
+    if (operator) {
+      const owner = await repo.getUser(operator.userId);
+      if (owner) {
+        await sendMail(
+          owner.email,
+          `New RFQ on “${listing.title}”`,
+          `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
+        );
+      }
     }
   }
   logInfo("rfq.created", {

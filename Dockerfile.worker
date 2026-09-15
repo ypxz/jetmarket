@@ -1,13 +1,8 @@
-# JetMarket worker image — placeholder until T13 lands apps/worker code.
-# When it does, replace CMD with `pnpm --filter @jetmarket/worker start`
-# and give the package a real start script.
-
+# JetMarket worker — polls the jobs table for RFQ fan-out + quote notifications.
 FROM node:20-alpine
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
 ENV NODE_ENV=production
-# No runnable worker yet: keep the container alive so orchestrators see a
-# healthy service; logs note the stub.
-CMD ["node", "-e", "console.log(JSON.stringify({ts:new Date().toISOString(),level:'info',event:'worker.stub'})); setInterval(()=>{}, 1<<30)"]
+CMD ["pnpm", "--filter", "@jetmarket/worker", "start"]

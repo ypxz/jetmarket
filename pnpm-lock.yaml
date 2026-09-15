@@ -82,7 +82,42 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)
 
-  apps/worker: {}
+  apps/worker:
+    dependencies:
+      '@jetmarket/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@jetmarket/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@jetmarket/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(postgres@3.4.9)
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      eslint:
+        specifier: ^9.34.0
+        version: 9.39.5(jiti@2.7.0)
+      tsx:
+        specifier: ^4.23.13
+        version: 4.23.13
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.42.0
+        version: 8.70.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)
 
   packages/config:
     devDependencies:
