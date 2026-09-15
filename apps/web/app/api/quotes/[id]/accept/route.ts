@@ -38,6 +38,7 @@ export async function POST(
     feeAmount: Math.round(quote.amount * feePct * 100) / 100,
     invoiceStatus: "pending",
   });
+  await repo.setRfqStatus(rfq.id, "closed");
 
   const operator = await repo.getOperator(quote.operatorId);
   const owner = operator ? await repo.getUser(operator.userId) : undefined;

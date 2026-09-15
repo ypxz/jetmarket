@@ -39,7 +39,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 
 | # | Severity | Finding | Status | Owns |
 |---|----------|---------|--------|------|
-| QA-1 | bug | Accepting a quote creates the deal/fee ledger entry but the RFQ stays `quoted` and the operator dashboard still counts it open (repro: $6,000 + $7,000 quotes; accept persists, Accept button correctly disappears) | filed | `apps/web/app/api/quotes/[id]/accept`, repo status transition |
+| QA-1 | bug | Accepting a quote creates the deal/fee ledger entry but the RFQ stays `quoted` and the operator dashboard still counts it open (repro: $6,000 + $7,000 quotes; accept persists, Accept button correctly disappears) | fixed (PR pending) | `apps/web/app/api/quotes/[id]/accept`, repo status transition |
 | QA-2 | bug | Negative `seats` accepted on listing publish (−2 → listing goes active) | filed | `apps/web` listing form/API validation, `packages/verticals` schema |
 | QA-3 | bug | Mobile 390px viewport: operator header overflows — document width 554px; email + nav clip. Empty-leg date/model placeholders clip too | filed | `apps/web` app shell/header |
 | QA-4 | bug | Publish button has no busy state: double-click creates duplicate listings (repro: two identical "Fourth Charter" rows) | filed | `apps/web` listing form |

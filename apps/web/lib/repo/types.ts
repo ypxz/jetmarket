@@ -116,6 +116,7 @@ export interface Repo {
 
   createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;
+  setRfqStatus(id: string, status: RfqStatus): Promise<void>;
   listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;

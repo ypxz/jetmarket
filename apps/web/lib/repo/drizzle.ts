@@ -313,6 +313,15 @@ export class DrizzleRepo implements Repo {
       .limit(1);
     return r ? toRfq(r) : undefined;
   }
+  async setRfqStatus(id: string, status: RfqStatus): Promise<void> {
+    // iface "open" -> db "new"; iface "expired" has no db state -> "closed".
+    const dbStatus =
+      status === "open" ? "new" : status === "expired" ? "closed" : status;
+    await this.db
+      .update(rfqs)
+      .set({ status: dbStatus })
+      .where(eq(rfqs.id, id));
+  }
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
