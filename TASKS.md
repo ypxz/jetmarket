@@ -24,7 +24,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 
 | # | Status | Ticket | Owns | Acceptance |
 |---|--------|--------|------|------------|
-| T11 | [] | Seed data: 15 operators, 60 listings incl. empty legs ZRH/GVA/NCE/LTN; realistic synthetic | `packages/db/seed/**` | `db:seed` idempotent; photos via storage mock |
+| T11 | [x] W2 | Seed data: 15 operators, 60 listings incl. empty legs ZRH/GVA/NCE/LTN; realistic synthetic | `packages/db/seed/**` | `db:seed` idempotent; photos via storage mock |
 | T12 | [x] W3 | SEO route pages from `vertical.seo.landingPages` (e.g. "empty legs Zurich–Nice") | `apps/web/app/(seo)`, `packages/verticals/*/seo.ts` | ≥10 route pages per vertical, sitemap.xml |
 | T13 | [] | RFQ fan-out matching: RFQ → N operators by fleet fit + notify via email adapter | `packages/domain/matching*`, `apps/worker/**` | unverified operators get delay; unit-tested |
 | T14 | [] | Success-fee invoices: deal→invoice record→payments adapter (mock + stripe-mock) | `packages/domain/fees*`, `apps/web/app/api/invoices`, admin ledger UI | 3% charter/1.5% sale; invoice appears in admin |
