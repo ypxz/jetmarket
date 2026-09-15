@@ -14,11 +14,15 @@ tests-e2e/
 | Command | What |
 |---|---|
 | `pnpm test:e2e` | Playwright `e2e/` specs; boots `pnpm dev` itself on an isolated DB |
+| `pnpm test:e2e:machinery` | machinery-vertical loop (env-gated `machinery` project) |
 | `pnpm test:contract` | vitest contract specs (skip cleanly when docker services are down) |
 | `pnpm test:pending` | run `pending/` specs (e.g. while W3's public pages land) |
-| `VERTICAL=machinery pnpm test:pending` | machinery-vertical loop |
 | `pnpm smoke --url=https://…` | smoke any deploy (root `scripts/smoke.ts`) |
 | `pnpm test:all` | services → lint → typecheck → unit → integration → contract → e2e |
+
+> Never run two `next dev` servers / e2e runs against this checkout at once —
+> they share `apps/web/.next` and corrupt each other's compile state. Run
+> `test:e2e` and `test:e2e:machinery` sequentially.
 
 ## Notes
 

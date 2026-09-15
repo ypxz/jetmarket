@@ -140,7 +140,9 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
     deal: { feeAmount: number; invoiceStatus: string };
   };
   expect(deal.feeAmount).toBe(EXPECTED_FEE);
-  expect(deal.invoiceStatus).toBe('pending');
+  // Wave-2 invoices eagerly at accept time — the mock payments provider always
+  // succeeds, so the deal lands as 'invoiced' (would stay 'pending' on failure).
+  expect(deal.invoiceStatus).toBe('invoiced');
 
   // --- admin: fee ledger shows deal + invoice ------------------------------
   const admin = await login(ADMIN_EMAIL);

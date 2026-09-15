@@ -19,19 +19,29 @@ export async function signUpAndLogin(
   role: 'buyer' | 'operator' | 'admin' = 'buyer',
 ) {
   await page.goto('/sign-in');
-  await page.getByTestId('signin-email').fill(email);
-  if (role !== 'buyer') {
-    // role radios currently have no testid — see TESTIDS.md (signin-role-*)
-    const radio = page.getByRole('radio', { name: new RegExp(role, 'i') });
-    await radio.check();
-    await expect(radio).toBeChecked();
+  // `next dev` Fast Refresh can remount the page mid-fill (runtime error in
+  // another route's compile clears inputs) — refill before each attempt and
+  // retry the POST once instead of trusting the first fill.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByTestId('signin-email').fill(email);
+    if (role !== 'buyer') {
+      // role radios currently have no testid — see TESTIDS.md (signin-role-*)
+      const radio = page.getByRole('radio', { name: new RegExp(role, 'i') });
+      await radio.check();
+      await expect(radio).toBeChecked();
+    }
+    const posted = page
+      .waitForResponse(
+        (r) => r.url().includes('/api/auth/magic-link') && r.request().method() === 'POST',
+        { timeout: 60_000 }, // generous: cold `next dev` compiles can stall the POST
+      )
+      .then(() => true)
+      .catch(() => false);
+    await page.getByTestId('signin-submit').click();
+    if (await posted) break;
+    if (attempt === 1) throw new Error('magic-link POST never fired after 2 attempts');
+    await page.goto('/sign-in'); // fresh mount before the retry
   }
-  const posted = page.waitForResponse(
-    (r) => r.url().includes('/api/auth/magic-link') && r.request().method() === 'POST',
-    { timeout: 60_000 }, // generous: cold `next dev` compiles can stall the POST
-  );
-  await page.getByTestId('signin-submit').click();
-  await posted;
   const devLink = page.getByTestId('signin-devlink');
   if (await devLink.isVisible({ timeout: 15_000 }).catch(() => false)) {
     await devLink.click();
@@ -117,6 +127,10 @@ export async function fillDynamicFields(page: Page, values: Record<string, strin
  * without hardcoding keys. `email` fills the email-typed field.
  */
 export async function fillRfqForm(page: Page, email: string) {
+  // Wait for the form itself: after listing-rfq-cta client-nav the rfq page can
+  // still be compiling — without this the loop finds 0 controls and submits an
+  // empty form, hitting native required-field validation.
+  await page.getByTestId('rfq-form').waitFor();
   const controls = page.locator('form [data-testid^="rfq-field-"]');
   for (const el of await controls.all()) {
     const tag = await el.evaluate((n) => n.tagName.toLowerCase());

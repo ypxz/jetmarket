@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test:e2e": "playwright test --project=chromium --pass-with-no-tests",
+    "test:e2e:machinery": "VERTICAL=machinery playwright test --project=machinery --pass-with-no-tests",
     "test:pending": "E2E_SERVER=1 playwright test --project=pending --pass-with-no-tests",
     "test:contract": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"

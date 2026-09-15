@@ -56,6 +56,14 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
+      // Machinery-vertical loop. Env-gated: only runs via `test:e2e:machinery`,
+      // which boots the webServer with VERTICAL=machinery (the spec also
+      // self-skips under any other vertical, so `test:e2e` stays jets-green).
+      name: 'machinery',
+      testMatch: 'e2e/machinery.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
       // Specs written ahead of the app (see TESTIDS.md). Promote by moving the
       // file to e2e/ once the testids it uses exist; CI runs e2e/ only.
       name: 'pending',
