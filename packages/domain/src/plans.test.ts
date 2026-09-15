@@ -10,25 +10,24 @@ import {
 } from "./plans";
 
 describe("plans", () => {
-  const [free, pro] = defaultPlans("USD");
+  const [free, pro] = defaultPlans();
 
   it("ships a generic free/pro pair matching the spec", () => {
     expect(free).toMatchObject({
-      id: FREE_PLAN_ID,
+      slug: FREE_PLAN_ID,
       maxListings: 3,
-      rfqDelayMinutes: 360,
-      priceMinor: 0,
+      rfqDelayHours: 24,
+      monthlyPriceUsd: 0,
     });
     expect(pro).toMatchObject({
-      id: PRO_PLAN_ID,
+      slug: PRO_PLAN_ID,
       maxListings: null,
-      rfqDelayMinutes: 0,
-      priceMinor: 19_900,
+      monthlyPriceUsd: 199,
     });
   });
 
-  it("looks plans up by id", () => {
-    expect(planById(defaultPlans(), "pro")?.name).toBe("Pro");
+  it("looks plans up by slug", () => {
+    expect(planById(defaultPlans(), "pro")?.nameKey).toBe("plans.pro.name");
     expect(planById(defaultPlans(), "nope")).toBeUndefined();
   });
 
@@ -48,10 +47,10 @@ describe("plans", () => {
   });
 
   it("delays RFQs for free and unverified, instant for verified pro", () => {
-    expect(rfqDeliveryDelayMinutes(free!, true)).toBe(360);
+    expect(rfqDeliveryDelayMinutes(free!, true)).toBe(24 * 60);
     expect(rfqDeliveryDelayMinutes(pro!, true)).toBe(0);
     expect(rfqDeliveryDelayMinutes(pro!, false)).toBe(360);
-    expect(rfqDeliveryDelayMinutes(free!, false)).toBe(360);
+    expect(rfqDeliveryDelayMinutes(free!, false)).toBe(24 * 60);
     expect(deliveryFor(pro!, true)).toBe("instant");
     expect(deliveryFor(pro!, false)).toBe("delayed");
     expect(deliveryFor(free!, true)).toBe("delayed");

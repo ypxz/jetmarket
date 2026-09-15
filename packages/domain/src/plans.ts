@@ -1,43 +1,40 @@
 /**
  * Plan limits (spec §"Business model"): free = 3 listings + delayed RFQs;
  * pro = unlimited + instant RFQs. Concrete plans come from
- * VerticalConfig.fees.subscriptionPlans; `defaultPlans` gives callers the
- * generic free/pro pair used by the jets config and tests.
+ * VerticalConfig.fees.subscriptionPlans (jets: free delay = 24h);
+ * `defaultPlans` mirrors that pair for callers without a config at hand.
  */
-import type { Currency } from "./money";
 import type { Plan } from "./vertical-config";
 
 export const FREE_PLAN_ID = "free";
 export const PRO_PLAN_ID = "pro";
 
-/** Default RFQ delivery delay for the free tier. */
-export const FREE_RFQ_DELAY_MINUTES = 360;
-/** Additional delay for unverified operators regardless of plan. */
+/** Additional RFQ delivery delay for unverified operators, any plan. */
 export const UNVERIFIED_RFQ_DELAY_MINUTES = 360;
 
-export function defaultPlans(currency: Currency = "USD"): Plan[] {
+/** Generic free/pro pair — same shape the jets config declares. */
+export function defaultPlans(): Plan[] {
   return [
     {
-      id: FREE_PLAN_ID,
-      name: "Free",
-      priceMinor: 0,
-      currency,
+      slug: FREE_PLAN_ID,
+      nameKey: "plans.free.name",
+      monthlyPriceUsd: 0,
       maxListings: 3,
-      rfqDelayMinutes: FREE_RFQ_DELAY_MINUTES,
+      featuresKey: "plans.free.features",
+      rfqDelayHours: 24,
     },
     {
-      id: PRO_PLAN_ID,
-      name: "Pro",
-      priceMinor: 19_900,
-      currency,
+      slug: PRO_PLAN_ID,
+      nameKey: "plans.pro.name",
+      monthlyPriceUsd: 199,
       maxListings: null,
-      rfqDelayMinutes: 0,
+      featuresKey: "plans.pro.features",
     },
   ];
 }
 
-export function planById(plans: Plan[], id: string): Plan | undefined {
-  return plans.find((p) => p.id === id);
+export function planById(plans: Plan[], slug: string): Plan | undefined {
+  return plans.find((p) => p.slug === slug);
 }
 
 export interface PlanLimitResult {
@@ -68,8 +65,9 @@ export function rfqDeliveryDelayMinutes(
   plan: Plan,
   verified: boolean,
 ): number {
+  const planDelay = Math.round((plan.rfqDelayHours ?? 0) * 60);
   return Math.max(
-    plan.rfqDelayMinutes,
+    planDelay,
     verified ? 0 : UNVERIFIED_RFQ_DELAY_MINUTES,
   );
 }
