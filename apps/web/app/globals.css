@@ -3,10 +3,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Classes used inside workspace packages must be scanned too. */
+@source "../../../packages/ui";
+
 /*
  * Map semantic tokens to Tailwind v4 theme utilities.
  * Only token references — no literals (enforced by scripts/check-design-literals).
- * Aliases (surface/muted/ink) keep existing JetMarket class names working.
+ * Aliases (surface/muted/ink/danger) keep JetMarket class names working.
  */
 @theme inline {
   --color-background: var(--background);
@@ -33,6 +36,9 @@
   --color-surface: var(--card);
   --color-muted: var(--muted-foreground);
   --color-ink: var(--foreground);
+  --color-danger: var(--destructive);
+  --color-bg: var(--background);
+  --color-fg: var(--foreground);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);

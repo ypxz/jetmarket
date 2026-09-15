@@ -1,16 +1,23 @@
 /**
- * Site identity for JetMarket. Legal/marketing pages read from here.
+ * Site-wide content config — placeholders until a real entity/copy lands.
+ * Legal pages render these values; replace before go-live (see GO_LIVE.md).
  */
 export const site = {
-  name: process.env.NEXT_PUBLIC_SITE_NAME ?? "JetMarket",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  description:
-    "The modular high-ticket marketplace: charter jets, empty legs and aircraft sales — one core, swappable verticals.",
-  /** Legal entity shown on imprint/ToS/privacy pages */
-  legalName: "JetMarket Ltd.",
-  legalAddress: "Bahnhofstrasse 1, 8000 Zurich, Switzerland",
-  legalEmail: "legal@jetmarket.example",
-  supportEmail: "support@jetmarket.example",
+  name: "JetMarket",
+  /** Public origin used in absolute links/emails (APP_URL env can override). */
+  domain: "jetmarket.example",
+  tagline: "Charter, empty legs and aircraft for sale from vetted operators",
+  contactEmail: "hello@jetmarket.example",
+  legal: {
+    /** PLACEHOLDER — replace with the real operating entity before launch. */
+    entityName: "JetMarket Ltd (placeholder)",
+    addressLine1: "Bahnhofstrasse 1 (placeholder)",
+    city: "Zurich",
+    postalCode: "8001",
+    country: "Switzerland",
+    registrationId: "CHE-000.000.000 (placeholder)",
+    contactEmail: "legal@jetmarket.example",
+  },
 } as const;
 
 export type Site = typeof site;

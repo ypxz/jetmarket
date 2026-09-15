@@ -1,12 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": [
-    "src",
-    "messages"
-  ],
   "compilerOptions": {
-    "types": [
-      "node"
-    ]
-  }
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "messages/**/*.json"],
+  "exclude": ["node_modules"]
 }

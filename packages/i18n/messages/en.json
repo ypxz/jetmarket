@@ -1,14 +1,368 @@
 {
-  "meta": {
-    "title": "JetMarket — private aviation marketplace",
-    "description": "Charter, empty legs and aircraft for sale from vetted operators. Request once, get quotes, pay a fee only when it closes."
+  "common": {
+    "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator.",
+    "verified": "Verified operator",
+    "unverified": "Unverified operator",
+    "onRequest": "On request",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "backToSearch": "← Back to search",
+    "currencyPerMonth": "/mo",
+    "from": "From {price}"
   },
   "nav": {
+    "search": "Search",
+    "myQuotes": "My quotes",
+    "operator": "Operator",
+    "admin": "Admin",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "design": "Design",
     "pricing": "Pricing",
     "faq": "FAQ",
     "login": "Sign in",
-    "app": "Open app",
-    "design": "Design"
+    "app": "Open app"
+  },
+  "footer": {
+    "legal": "Legal",
+    "tos": "Terms of service",
+    "privacy": "Privacy",
+    "imprint": "Imprint",
+    "contact": "Contact",
+    "copyright": "© {year} {name}. All rights reserved."
+  },
+  "home": {
+    "eyebrow": "JetMarket",
+    "title": "Charter, empty legs and aircraft for sale from vetted operators",
+    "subtitle": "Request once, get quotes, pay a fee only when it closes.",
+    "ctaSearch": "Browse aircraft",
+    "ctaOperator": "List your aircraft",
+    "searchPlaceholder": "Where to? Try “Nice” or “G650”",
+    "howItWorks": {
+      "title": "How it works",
+      "steps": [
+        {
+          "title": "Tell us the trip",
+          "body": "Route, dates, passengers and budget — one request reaches every matching operator."
+        },
+        {
+          "title": "Compare quotes",
+          "body": "Vetted operators send firm quotes. Verified badge, fleet and price in one place."
+        },
+        {
+          "title": "Fly, then we bill",
+          "body": "You contract with the operator directly. JetMarket charges operators a success fee only when a deal closes."
+        }
+      ]
+    },
+    "featured": {
+      "title": "Latest listings",
+      "viewAll": "View all listings"
+    },
+    "pricing": {
+      "title": "Operator pricing",
+      "subtitle": "Start free. Upgrade when the requests flow."
+    },
+    "faq": {
+      "title": "Questions",
+      "items": [
+        {
+          "q": "Who do I contract with?",
+          "a": "Always with the operator. JetMarket is a marketplace, not a broker — we match requests to operators and take a success fee from them when a deal closes."
+        },
+        {
+          "q": "What does it cost me as a buyer?",
+          "a": "Nothing. Requesting quotes is free; operators pay the platform."
+        },
+        {
+          "q": "What is an empty leg?",
+          "a": "A repositioning flight an aircraft flies anyway — sold at a deep discount when it matches your route."
+        },
+        {
+          "q": "Are operators vetted?",
+          "a": "Operators self-declare their fleet and credentials; our team verifies documentation manually. Unverified operators are marked and receive RFQs with a delay."
+        },
+        {
+          "q": "Can I buy an aircraft here?",
+          "a": "Yes — aircraft_sale listings accept RFQs like any other; success fee on closed sales is 1.5%."
+        }
+      ]
+    }
+  },
+  "search": {
+    "title": "Search listings",
+    "placeholder": "Search model, route, operator…",
+    "submit": "Apply filters",
+    "reset": "Reset",
+    "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}",
+    "emptyTitle": "No listings match",
+    "emptyBody": "Loosen the filters or send an open RFQ — operators will come to you.",
+    "min": "Min",
+    "max": "Max",
+    "typeFacet": "Type"
+  },
+  "listing": {
+    "gallery": "Photos",
+    "photoPlaceholder": "Photo {n}",
+    "attributes": "Aircraft details",
+    "operator": "Operator",
+    "basedAt": "Based at {airport}",
+    "rfqCta": "Request quotes for this listing",
+    "notFound": "Listing not found or no longer active.",
+    "back": "← Back to search"
+  },
+  "rfq": {
+    "title": "Request a quote",
+    "subtitle": "Tell operators what you need — they reply with firm quotes.",
+    "forListing": "For: {title}",
+    "groups": {
+      "route": "Route",
+      "dates": "Dates",
+      "contact": "Contact"
+    },
+    "submit": "Send request",
+    "sending": "Sending…",
+    "success": "Request sent",
+    "thanksTitle": "Request received",
+    "thanksBody": "Your request was sent to the listing's operator and matching operators. Quotes appear on your quotes page and arrive by email.",
+    "thanksRef": "Reference: {id}",
+    "viewQuotes": "View my requests & quotes",
+    "honeypotHint": "Leave this field empty",
+    "error": "Could not send your request — check the fields and try again.",
+    "rateLimited": "Too many requests — try again later.",
+    "emailHint": "Quotes are sent to this address."
+  },
+  "quotes": {
+    "title": "My requests & quotes",
+    "emailLabel": "Email used in your RFQ",
+    "load": "Load",
+    "empty": "No requests for this email.",
+    "waiting": "Waiting for operator quotes…",
+    "accept": "Accept",
+    "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
+    "by": "by {name}",
+    "status": "Status: {status}"
+  },
+  "design": {
+    "title": "Design system",
+    "subtitle": "Every primitive and block, rendered from tokens.css",
+    "primitives": "Primitives",
+    "layoutSection": "Layout",
+    "blocksSection": "Blocks"
+  },
+  "legal": {
+    "tos": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "imprint": "Imprint",
+    "placeholder": "Placeholder text — replace before launch."
+  },
+  "errors": {
+    "notFoundTitle": "Not found",
+    "notFoundBody": "This page does not exist.",
+    "genericTitle": "Something went wrong",
+    "notFound": "Page not found",
+    "generic": "Something went wrong"
+  },
+  "vertical": {
+    "jets": {
+      "listingTypes": {
+        "charter": "Charter",
+        "empty_leg": "Empty leg",
+        "aircraft_sale": "Aircraft for sale"
+      },
+      "attributes": {
+        "aircraftCategory": "Category",
+        "model": "Model",
+        "year": "Year",
+        "seats": "Seats",
+        "rangeNm": "Range",
+        "baseAirport": "Base airport",
+        "from": "Departs",
+        "to": "Arrives",
+        "date": "Date",
+        "hoursTotal": "Total time"
+      },
+      "categories": {
+        "light": "Light jet",
+        "mid": "Midsize",
+        "super_mid": "Super-midsize",
+        "heavy": "Heavy",
+        "ultra_long": "Ultra-long range"
+      },
+      "facets": {
+        "type": "Listing type",
+        "aircraftCategory": "Aircraft category",
+        "from": "Departure",
+        "to": "Arrival",
+        "seats": "Seats",
+        "price": "Price"
+      },
+      "units": {
+        "seats": "seats",
+        "nm": "nm",
+        "hours": "h",
+        "kg": "kg"
+      },
+      "rfq": {
+        "departure": "Departure",
+        "arrival": "Arrival",
+        "dateFrom": "Earliest date",
+        "dateTo": "Latest date",
+        "passengers": "Passengers",
+        "budgetUsd": "Budget (USD)",
+        "name": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "notes": "Notes for operators",
+        "placeholders": {
+          "departure": "Zurich or ZRH",
+          "arrival": "Nice or NCE"
+        }
+      },
+      "plans": {
+        "free": {
+          "name": "Free",
+          "features": [
+            "3 listings",
+            "RFQ inbox",
+            "RFQs delayed 24h"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "features": [
+            "Unlimited listings",
+            "Instant RFQs",
+            "Analytics",
+            "Priority placement"
+          ]
+        }
+      },
+      "seo": {
+        "pages": {
+          "empty-legs-zurich-nice": {
+            "title": "Empty legs Zurich → Nice",
+            "intro": "Discounted one-way repositioning flights from Zurich to Nice when operators fly the leg anyway."
+          },
+          "empty-legs-geneva-nice": {
+            "title": "Empty legs Geneva → Nice",
+            "intro": "Same-direction repositioning between Geneva and Nice at empty-leg pricing."
+          },
+          "empty-legs-london-nice": {
+            "title": "Empty legs London → Nice",
+            "intro": "London-area departures to the Riviera at reduced repositioning rates."
+          },
+          "empty-legs-nice-london": {
+            "title": "Empty legs Nice → London",
+            "intro": "Return repositioning legs from Nice to London airports."
+          },
+          "empty-legs-london-zurich": {
+            "title": "Empty legs London → Zurich",
+            "intro": "London to Zurich one-ways when aircraft reposition."
+          },
+          "empty-legs-zurich-geneva": {
+            "title": "Empty legs Zurich → Geneva",
+            "intro": "Short-haul repositioning between Zurich and Geneva."
+          },
+          "empty-legs-paris-nice": {
+            "title": "Empty legs Paris → Nice",
+            "intro": "Paris Le Bourget to the Côte d'Azur on repositioning legs."
+          },
+          "empty-legs-zurich-malaga": {
+            "title": "Empty legs Zurich → Málaga",
+            "intro": "Zurich departures to the Costa del Sol at empty-leg prices."
+          },
+          "empty-legs-geneva-palma": {
+            "title": "Empty legs Geneva → Palma",
+            "intro": "Geneva to Palma de Mallorca repositioning legs."
+          },
+          "empty-legs-zurich-ibiza": {
+            "title": "Empty legs Zurich → Ibiza",
+            "intro": "Seasonal repositioning from Zurich to Ibiza."
+          }
+        }
+      }
+    },
+    "machinery": {
+      "listingTypes": {
+        "for_sale": "For sale",
+        "for_rent": "For rent",
+        "auction": "Auction"
+      },
+      "attributes": {
+        "machineryCategory": "Category",
+        "make": "Make",
+        "yearOfManufacture": "Year",
+        "hoursUsed": "Hours used",
+        "weightKg": "Weight",
+        "locationCountry": "Country",
+        "monthlyRentEur": "Monthly rent"
+      },
+      "categories": {
+        "cnc_milling": "CNC milling",
+        "lathe": "Lathe",
+        "press": "Press",
+        "conveyor": "Conveyor",
+        "forklift": "Forklift",
+        "generator": "Generator",
+        "other": "Other"
+      },
+      "facets": {
+        "type": "Listing type",
+        "machineryCategory": "Machine category",
+        "price": "Price",
+        "locationCountry": "Country"
+      },
+      "units": {
+        "hours": "h",
+        "kg": "kg"
+      },
+      "rfq": {
+        "deliveryPostcode": "Delivery postcode",
+        "dateFrom": "Needed from",
+        "dateTo": "Needed until",
+        "budgetEur": "Budget (EUR)",
+        "name": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "notes": "Notes for sellers"
+      },
+      "plans": {
+        "free": {
+          "name": "Free",
+          "features": [
+            "3 listings",
+            "Delayed RFQs"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "features": [
+            "Unlimited listings",
+            "Instant RFQs",
+            "Analytics"
+          ]
+        }
+      },
+      "seo": {
+        "pages": {
+          "used-cnc-milling-machines": {
+            "title": "Used CNC milling machines"
+          },
+          "used-forklifts-for-sale": {
+            "title": "Used forklifts for sale"
+          },
+          "industrial-generators-for-rent": {
+            "title": "Industrial generators for rent"
+          }
+        }
+      }
+    }
+  },
+  "meta": {
+    "title": "JetMarket — private aviation marketplace",
+    "description": "Charter, empty legs and aircraft for sale from vetted operators. Request once, get quotes, pay a fee only when it closes."
   },
   "landing": {
     "hero": {
@@ -102,30 +456,5 @@
     "success": "Payment successful — welcome to Pro.",
     "canceled": "Checkout canceled.",
     "mockPay": "Pay (mock)"
-  },
-  "legal": {
-    "tos": "Terms of Service",
-    "privacy": "Privacy Policy",
-    "imprint": "Imprint",
-    "placeholder": "Placeholder text — replace before launch."
-  },
-  "footer": {
-    "legal": "Legal"
-  },
-  "design": {
-    "title": "Design system",
-    "subtitle": "Every primitive and block, rendered from tokens.css"
-  },
-  "errors": {
-    "notFound": "Page not found",
-    "generic": "Something went wrong"
-  },
-  "home": {
-    "eyebrow": "JetMarket",
-    "title": "Charter, empty legs and aircraft for sale from vetted operators",
-    "subtitle": "Request once, get quotes, pay a fee only when it closes."
-  },
-  "common": {
-    "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator."
   }
 }

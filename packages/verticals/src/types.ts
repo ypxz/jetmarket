@@ -39,10 +39,15 @@ export interface FacetOption {
 
 /** A filter shown in the search sidebar. */
 export interface FacetConfig {
+  /** Facet id; also the search-param name (e.g. "type", "aircraftCategory"). */
   key: string;
   labelKey: string;
   type: "enum" | "number-range" | "text";
-  /** Attribute jsonb key this facet filters on. Omit for built-ins (listingType). */
+  /**
+   * attributes jsonb key this facet filters on. Omit for facets that filter
+   * built-in Listing fields instead (key "type" -> listing.type,
+   * "price" -> listing.price).
+   */
   attributeKey?: string;
   options?: FacetOption[];
 }
