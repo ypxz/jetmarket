@@ -54,8 +54,8 @@ export interface MatchResult {
 
 const CATEGORY_KEYS = ["category", "aircraftCategory"] as const;
 const SEAT_KEYS = ["seats", "pax", "passengers"] as const;
-const DEPARTURE_KEYS = ["departure", "from", "origin"] as const;
-const ARRIVAL_KEYS = ["arrival", "to", "destination"] as const;
+const DEPARTURE_KEYS = ["departure", "departureIcao", "from", "origin"] as const;
+const ARRIVAL_KEYS = ["arrival", "arrivalIcao", "to", "destination"] as const;
 
 function firstString(
   fields: Record<string, unknown>,
@@ -183,15 +183,14 @@ export function matchOperators(
     if (options.excludeOperatorIds?.has(c.id)) continue;
     const fit = bestFit(c, req, regionMap);
     if (!fit) continue;
-    // Unknown plan ids fall back to a no-delay plan; unverified operators are
-    // still delayed via UNVERIFIED_RFQ_DELAY_MINUTES.
-    const plan: Plan = plans.find((p) => p.id === c.planId) ?? {
-      id: c.planId,
-      name: c.planId,
-      priceMinor: 0,
-      currency: "USD",
+    // Unknown plan slugs fall back to a no-delay plan; unverified operators
+    // are still delayed via UNVERIFIED_RFQ_DELAY_MINUTES.
+    const plan: Plan = plans.find((p) => p.slug === c.planId) ?? {
+      slug: c.planId,
+      nameKey: c.planId,
+      monthlyPriceUsd: 0,
       maxListings: null,
-      rfqDelayMinutes: 0,
+      featuresKey: "",
     };
     const delayMinutes = rfqDeliveryDelayMinutes(plan, c.verified);
     results.push({
