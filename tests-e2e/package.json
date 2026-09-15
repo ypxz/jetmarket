@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
+    "@jetmarket/providers": "workspace:*",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.5.0",
     "postgres": "^3.4.9",
