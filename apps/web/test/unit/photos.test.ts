@@ -1,6 +1,15 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { storageProvider } from "@jetmarket/providers";
 import { createMemoryRepo } from "@/lib/repo/memory";
+
+// Parallel test files all call createMemoryRepo() → same seed keys. A private
+// STORAGE_DIR keeps our put/get assertions off the shared ./storage files —
+// otherwise a concurrent truncate+rewrite can be observed as 0 bytes.
+process.env.STORAGE_DIR = mkdtempSync(join(tmpdir(), "jm-photos-"));
+(globalThis as { __jmStorage?: unknown }).__jmStorage = undefined;
 
 describe("listing photos via storage provider", () => {
   it("memory seeds store photo keys and the mock provider serves them", async () => {
