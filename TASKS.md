@@ -36,10 +36,12 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T20 | [~] W4 (from H+2:30) | QA/dogfood loop worker (from H+2:30): fresh-user runs, files findings here, verifies fixes | reports only; files tickets | ≥1 cycle/90 min; cycle count + bugs logged to STATUS |
 | T21 | [x] W2 | Billing checkout via payments provider: checkout + webhook→subscription; mock keeps e2e contract | `apps/web/app/api/billing/**` | Pro upgrade e2e still green through provider path |
 | T22 | [x] W2 | Email provider swap: sendMail → `emailProvider().send` everywhere | `apps/web/lib/outbox.ts`, api routes | outbox files still readable by e2e/contract |
-||||||| d862565
 | T23 | [x] W3 | Listing photos via storage provider (mock writes local/serve path) + render on public listing card/detail | `packages/providers/storage`, `apps/web` listing forms/cards | photo upload+render works offline in mock |
 | T24 | [x] W1 | Analytics events wired (rfq_created/quote_sent/deal_closed/page_view) via `analyticsProvider()` | `apps/web` api routes, `packages/providers/analytics` | events land in mock sink; unit-covered |
-| T25 | [] W1 | Listing + SEO pages: OG/Twitter meta + JSON-LD (Product/Vehicle offers) | `apps/web` listing/[id], (seo)/[slug] | view-source shows canonical+og+jsonld; no literals |
+| T25 | [~] W1 (PR#34) | Listing + SEO pages: OG/Twitter meta + JSON-LD (Product/Vehicle offers) | `apps/web` listing/[id], (seo)/[slug] | view-source shows canonical+og+jsonld; no literals |
+| T26 | [~] W1 | MORNING_REPORT draft + screenshots (`docs/MORNING-REPORT.md`, `docs/screens/`) | `docs/**`, `marketing/**` | real test counts + CI link + GO_LIVE digest + confidence score |
+| T27 | [] W2 | Quote lifecycle depth: decline (buyer) + withdraw (operator) routes, RFQ expiry sweep in worker (open rfqs past dateTo → expired, sent quotes → declined), admin "mark invoice paid" | `apps/web/app/api/**`, `apps/worker/**`, repo iface if needed | unit + integration; e2e decline path |
+| T28 | [] W3 | Lifecycle UI: buyer quotes page gets decline/accept buttons + state badges; operator RFQ detail shows sent quotes + withdraw; admin deals get invoice-paid action | `apps/web` (app)/quotes, (app)/rfqs/[id], (admin)/admin | decline+withdraw+paid round-trip works in UI; i18n clean |
 
 ## QA findings (T20 dogfood)
 
