@@ -76,11 +76,35 @@ QA-20 (mobile header nav still wraps over logo) · QA-21 (outbound mail
 missing `From:` header in Mailpit) · QA-22 (oversized photo → bare "failed").
 
 **New coverage:** `e2e/lifecycle.api.spec.ts` — decline (403→200→409),
-accept-after-decline 409, withdraw (401→200→409), re-quote 500 (QA-18),
-accept→invoiced, mark-paid (403→200→409), ledger paid row.
+accept-after-decline 409, withdraw (401→200→409), re-quote 500 (QA-18 —
+updated to 201/409 in PR#40), accept→invoiced, mark-paid (403→200→409),
+ledger paid row.
 
 Machinery: `test:e2e:machinery` now defaults `E2E_PORT=3101` — avoids
 attaching to a jets dev server on :3000 via reuseExistingServer.
+
+## Cycle 4 — verify QA-18..23 + og:image/PORT regression
+
+All six fixes confirmed on main — no new findings:
+
+- **QA-18** `POST /api/quotes` after decline/withdraw → 201; while a quote is
+  live → clean 409 (partial-unique `0002_quotes_partial_unique` + route-level
+  check). `e2e/lifecycle.api.spec.ts` re-pinned upstream; suite 6 pass/1 skip.
+- **QA-19** pro operator's `/app/billing` renders `data-testid="billing-portal"`
+  ("Manage subscription") → `POST /api/billing/portal`.
+- **QA-20** 390px header: nav wraps *below* the logo — no overlap; `/app/rfqs`
+  and `/admin` have zero page-level horizontal scroll (tables scroll
+  in-container per QA-13's fix).
+- **QA-21** `EMAIL_PROVIDER=smtp` → Mailpit receives
+  `From: JetMarket <noreply@jetmarket.local>` on magic-link mail.
+- **QA-22** oversized upload → 422 "image must be between 1 byte and 5 MB",
+  surfaced verbatim by the form.
+- **QA-23** after `pnpm --filter @jetmarket/db seed`, all ~105
+  `/storage/seed/**.svg` serve 200 (was 404).
+
+og:image regression: `/en/listing/<id>` emits
+`og:image → opengraph-image` route → 200 `image/png` 1200×630. `pnpm dev`
+boots and honors `PORT`.
 
 ## Screenshots
 
