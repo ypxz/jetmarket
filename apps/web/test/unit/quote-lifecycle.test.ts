@@ -16,6 +16,7 @@ vi.mock("next/headers", () => ({
 import { sessionCookie, signSession } from "../../lib/auth";
 import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Quote, Repo } from "../../lib/repo/types";
+import { POST as createQuote } from "../../app/api/quotes/route";
 import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
 import { POST as declineQuote } from "../../app/api/quotes/[id]/decline/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
@@ -106,6 +107,36 @@ describe("POST /api/quotes/[id]/decline (buyer)", () => {
       params("quo_missing"),
     );
     expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /api/quotes re-quote (QA-18)", () => {
+  it("409s a live duplicate; re-quote allowed after withdraw; then 409", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, op, listing, rfq, quote } = await fixture(repo);
+
+    asUser(opUser.id);
+    // a live 'sent' quote already exists for this rfq+operator
+    const dup = await createQuote(
+      post({ rfqId: rfq.id, amount: 8000, message: "dup" }),
+    );
+    expect(dup.status).toBe(409);
+
+    // withdraw it, then the same operator may quote again
+    const wd = await withdrawQuote(post(), params(quote.id));
+    expect(wd.status).toBe(200);
+    const req = await createQuote(
+      post({ rfqId: rfq.id, amount: 8500, message: "re" }),
+    );
+    expect(req.status).toBe(201);
+
+    // and the fresh live quote blocks another
+    const dup2 = await createQuote(
+      post({ rfqId: rfq.id, amount: 8600 }),
+    );
+    expect(dup2.status).toBe(409);
+    void op;
+    void listing;
   });
 });
 

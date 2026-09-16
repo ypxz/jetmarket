@@ -28,13 +28,32 @@ export async function POST(req: Request) {
   }
   if (rfq.status === "closed") return err("rfq already closed", 409);
 
-  const quote = await repo.createQuote({
-    rfqId: rfq.id,
-    operatorId: operator.id,
-    amount: data!.amount,
-    currency: listing.currency,
-    message: data!.message ?? "",
-  });
+  // One live quote per operator per rfq; a declined/withdrawn one may be
+  // re-quoted (partial-unique index backs the same invariant — the catch
+  // turns a lost race into the same clean 409).
+  const mine = await repo.listQuotes({ rfqId: rfq.id, operatorId: operator.id });
+  if (mine.some((q) => q.status === "sent" || q.status === "accepted")) {
+    return err("you already have a live quote on this rfq", 409);
+  }
+  let quote;
+  try {
+    quote = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: operator.id,
+      amount: data!.amount,
+      currency: listing.currency,
+      message: data!.message ?? "",
+    });
+  } catch (e) {
+    // Drizzle wraps driver errors — the pg code sits on the cause.
+    const code =
+      (e as { code?: string }).code ??
+      (e as { cause?: { code?: string } }).cause?.code;
+    if (code === "23505") {
+      return err("you already have a live quote on this rfq", 409);
+    }
+    throw e;
+  }
 
   await emailProvider().send({
     to: rfq.buyerEmail,

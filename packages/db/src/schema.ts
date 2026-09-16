@@ -2,6 +2,7 @@
  * Drizzle schema — mirrors migrations/0001_init.sql. Keep the two in sync;
  * migrations are hand-written SQL (deterministic), this file is the typed view.
  */
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -163,7 +164,11 @@ export const quotes = pgTable(
       .defaultNow(),
   },
   (t) => [
-    uniqueIndex("quotes_rfq_operator_uniq").on(t.rfqId, t.operatorId),
+    // One *live* quote per (rfq, operator) — terminal statuses don't count,
+    // so decline/withdraw frees the operator to re-quote (0002 migration).
+    uniqueIndex("quotes_rfq_operator_live_uniq")
+      .on(t.rfqId, t.operatorId)
+      .where(sql`status in ('sent', 'accepted')`),
     index("quotes_rfq_idx").on(t.rfqId),
   ],
 );

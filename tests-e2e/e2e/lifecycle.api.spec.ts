@@ -123,13 +123,17 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
   expect(withdraw.ok()).toBeTruthy();
   expect((await withdraw.json()).status).toBe('withdrawn');
   expect((await operator.post(`/api/quotes/${qWithdrawn}/withdraw`)).status()).toBe(409);
-  // QA-18: re-quoting the same rfq after withdrawing hits the
-  // (rfq_id, operator_id) unique constraint and 500s instead of a clean 4xx.
-  // Flip this expectation when the route maps the conflict properly.
+  // QA-18: re-quoting after a terminal quote is allowed (201); while the new
+  // quote is live a further one is a clean 409 — never the raw 500 the blanket
+  // unique constraint used to produce.
   const requote = await operator.post('/api/quotes', {
     data: { rfqId: rfq2, amount: 12500, message: 'second try' },
   });
-  expect(requote.status()).toBe(500);
+  expect(requote.status()).toBe(201);
+  const requote2 = await operator.post('/api/quotes', {
+    data: { rfqId: rfq2, amount: 13000, message: 'third try' },
+  });
+  expect(requote2.status()).toBe(409);
 
   // --- accept → invoiced → mark-paid ---------------------------------------
   const qAccepted = await sendQuote(operator, await newRfq(), 30000);
