@@ -19,8 +19,15 @@ export function pollIntervalMs(env: NodeJS.ProcessEnv = process.env): number {
   return Number.isFinite(v) && v > 0 ? v : DEFAULT_POLL_MS;
 }
 
-/** One poll iteration: delayed-match sweep, then claim+handle a batch. */
+/** One poll iteration: RFQ expiry sweep, delayed-match sweep, then
+ * claim+handle a batch. */
 export async function tick(deps: WorkerDeps): Promise<number> {
+  const expired = await deps.repo.expireRfqs(new Date());
+  if (expired.rfqs || expired.quotes)
+    console.log(
+      `[worker] expired ${expired.rfqs} rfq(s), declined ${expired.quotes} quote(s)`,
+    );
+
   const delivered = await deliverDueMatches(deps);
   if (delivered) console.log(`[worker] delivered ${delivered} delayed match(es)`);
 

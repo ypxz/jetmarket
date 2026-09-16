@@ -169,10 +169,34 @@ class MemoryRepo implements Repo {
     if (q) this.quotes.set(id, { ...q, status });
   }
 
+  async expireRfqs(cutoff: string) {
+    const day = cutoff.slice(0, 10);
+    const expired = [...this.rfqs.values()].filter(
+      (r) =>
+        (r.status === "open" || r.status === "quoted") &&
+        typeof r.fields["dateTo"] === "string" &&
+        r.fields["dateTo"] < day,
+    );
+    let quotes = 0;
+    for (const r of expired) {
+      this.rfqs.set(r.id, { ...r, status: "expired" });
+      for (const q of this.quotes.values()) {
+        if (q.rfqId === r.id && q.status === "sent") {
+          this.quotes.set(q.id, { ...q, status: "declined" });
+          quotes++;
+        }
+      }
+    }
+    return { rfqs: expired.length, quotes };
+  }
+
   async createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal> {
     const deal: Deal = { ...d, id: uid("deal"), closedAt: now() };
     this.deals.set(deal.id, deal);
     return deal;
+  }
+  async getDeal(id: string) {
+    return this.deals.get(id);
   }
   async setDealInvoice(
     id: string,
@@ -181,7 +205,11 @@ class MemoryRepo implements Repo {
   ) {
     const deal = this.deals.get(id);
     if (deal)
-      this.deals.set(id, { ...deal, invoiceStatus: status, invoiceRef: ref });
+      this.deals.set(id, {
+        ...deal,
+        invoiceStatus: status,
+        invoiceRef: ref ?? deal.invoiceRef,
+      });
   }
   async listDeals(filter?: { operatorId?: string }): Promise<Deal[]> {
     let out = [...this.deals.values()];

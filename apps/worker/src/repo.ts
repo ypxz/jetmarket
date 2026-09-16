@@ -1,5 +1,5 @@
 import { and, eq, lte } from "drizzle-orm";
-import type { Db } from "@jetmarket/db";
+import { expireStaleRfqs, type Db } from "@jetmarket/db";
 import {
   listings,
   operators,
@@ -30,6 +30,9 @@ export interface WorkerRepo {
   markRfqMatched(rfqId: string): Promise<void>;
   /** Flip due delayed matches to pending; returns their ids. */
   deliverDueMatches(now: Date): Promise<string[]>;
+  /** Expiry sweep: stale open/quoted rfqs -> closed, their sent quotes ->
+   * declined (shares the one-pass SQL with the web DrizzleRepo). */
+  expireRfqs(now: Date): Promise<{ rfqs: number; quotes: number }>;
   loadMatchContext(matchId: string): Promise<{
     matchId: string;
     rfqId: string;
@@ -157,6 +160,10 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         .where(eq(rfqMatches.id, matchId))
         .limit(1);
       return rows[0] ?? null;
+    },
+
+    async expireRfqs(now) {
+      return expireStaleRfqs(db, now);
     },
 
     async markMatchState(matchId, state) {

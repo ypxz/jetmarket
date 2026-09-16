@@ -123,6 +123,12 @@ export interface Repo {
     buyerEmail?: string;
     operatorId?: string;
   }): Promise<Rfq[]>;
+  /**
+   * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is
+   * strictly before `cutoff` -> "expired"; their still-"sent" quotes ->
+   * "declined". Returns affected counts.
+   */
+  expireRfqs(cutoff: string): Promise<{ rfqs: number; quotes: number }>;
 
   createQuote(
     q: Omit<Quote, "id" | "createdAt" | "status">,
@@ -132,7 +138,9 @@ export interface Repo {
   setQuoteStatus(id: string, status: QuoteStatus): Promise<void>;
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
+  getDeal(id: string): Promise<Deal | undefined>;
   listDeals(filter?: { operatorId?: string }): Promise<Deal[]>;
+  /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid). */
   setDealInvoice(
     id: string,
     status: Deal["invoiceStatus"],

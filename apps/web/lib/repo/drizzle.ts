@@ -7,7 +7,7 @@
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { createDb, schema, type Db } from "@jetmarket/db";
+import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import type {
   Deal,
   Listing,
@@ -357,6 +357,10 @@ export class DrizzleRepo implements Repo {
     return rows.map(toRfq);
   }
 
+  async expireRfqs(cutoff: string) {
+    return expireStaleRfqs(this.db, new Date(cutoff));
+  }
+
   async createQuote(
     q: Omit<Quote, "id" | "createdAt" | "status">,
   ): Promise<Quote> {
@@ -426,6 +430,16 @@ export class DrizzleRepo implements Repo {
       .limit(1);
     return toDeal(row!, q!);
   }
+  async getDeal(id: string): Promise<Deal | undefined> {
+    if (!isUuid(id)) return undefined;
+    const [r] = await this.db
+      .select({ deal: deals, quote: quotes })
+      .from(deals)
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .where(eq(deals.id, id))
+      .limit(1);
+    return r ? toDeal(r.deal, r.quote) : undefined;
+  }
   async setDealInvoice(
     id: string,
     status: Deal["invoiceStatus"],
@@ -433,7 +447,10 @@ export class DrizzleRepo implements Repo {
   ): Promise<void> {
     await this.db
       .update(deals)
-      .set({ invoiceStatus: status, invoiceRef: ref ?? null })
+      .set({
+        invoiceStatus: status,
+        ...(ref !== undefined ? { invoiceRef: ref } : {}),
+      })
       .where(eq(deals.id, id));
   }
   async listDeals(filter?: { operatorId?: string }): Promise<Deal[]> {

@@ -94,7 +94,9 @@
     "accept": "Accept",
     "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
     "by": "by {name}",
-    "status": "Status: {status}"
+    "status": "Status: {status}",
+    "decline": "Decline",
+    "declinedMsg": "Quote declined."
   },
   "design": {
     "title": "Design system",
