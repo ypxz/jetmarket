@@ -69,7 +69,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | QA-20 | bug | Mobile 390px: header still overlaps — nav wraps over the "JetMarket" logo text ("Sign out" drops below); QA-3's fix covered dashboard width, not nav wrap | filed | `apps/web` app shell/header |
 | QA-21 | bug | Outbound emails (magic link, quote, deal, RFQ fan-out) reach Mailpit with **no `From:` header** — real SMTP providers will reject | filed | `packages/providers` email adapter |
 | QA-22 | polish | Oversized photo upload → bare "failed" text under file input — no size-limit message despite "up to 5 MB each" hint | filed | `apps/web` listing form upload UX |
-| QA-23 | polish | Seeded listing photos 404: `GET /storage/seed/<op>/<slug>-p0.svg` → 404 for all ~105 seeded photos — DB has photo rows but storage mock has no files | filed | `packages/db` seed + `packages/providers/storage` |
+| QA-23 | polish | Seeded listing photos 404: `GET /storage/seed/<op>/<slug>-p0.svg` → 404 for all ~105 seeded photos — DB has photo rows but storage mock has no files | fixed (lead — seed writes to apps/web/storage via import.meta anchor, not pkg cwd) | `packages/db` seed + `packages/providers/storage` |
 
 ## Improvement-loop log (append per cycle)
 

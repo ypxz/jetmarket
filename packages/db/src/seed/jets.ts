@@ -8,7 +8,8 @@
  * operators 101–115, listings 200–259.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Db } from "../client";
 import { listings, operators, users } from "../schema";
 import type { NewListing, NewOperator, NewUser } from "../schema";
@@ -296,7 +297,15 @@ export async function seedJets(
   opts: { storageDir?: string; now?: Date } = {},
 ): Promise<SeedResult> {
   const now = opts.now ?? new Date();
-  const storageDir = opts.storageDir ?? process.env.STORAGE_DIR ?? "./storage";
+  // Photos must land where apps/web's storage mock serves them — the web app's
+  // own ./storage, not this package's cwd. Anchor to the monorepo layout so
+  // `pnpm --filter @jetmarket/db seed` works from anywhere.
+  const webStorage = resolve(
+    fileURLToPath(new URL("../../../../apps/web/storage", import.meta.url)),
+  );
+  const storageDir =
+    opts.storageDir ??
+    (process.env.STORAGE_DIR ? resolve(process.env.STORAGE_DIR) : webStorage);
   const { userRows, opRows, listingRows } = buildJetsSeed(now);
 
   // Photo placeholders on the storage mock's filesystem.
