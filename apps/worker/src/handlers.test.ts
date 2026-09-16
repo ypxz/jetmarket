@@ -54,6 +54,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     markRfqMatched: async (id) => {
       rec("markRfqMatched", id);
     },
+    expireRfqs: async (now) => {
+      rec("expireRfqs", now);
+      return { rfqs: 0, quotes: 0 };
+    },
     deliverDueMatches: async (now) => {
       rec("deliverDueMatches", now);
       return ["m-due-1", "m-due-2"];

@@ -204,5 +204,124 @@ export function repoContract(
       });
       expect(queried.map((l) => l.title)).toEqual([`${tag} G650 for sale`]);
     });
+
+    it("sweeps expired rfqs: past dateTo -> expired/closed, sent quotes -> declined", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`exp-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Exp Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Exp Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const stale = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `buyer-${tag}@test.dev`,
+        fields: { dateTo: "2000-01-01" },
+      });
+      const fresh = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `buyer-${tag}@test.dev`,
+        fields: { dateTo: "2999-01-01" },
+      });
+      const staleQuote = await repo.createQuote({
+        rfqId: stale.id,
+        operatorId: op.id,
+        amount: 5000,
+        currency: "USD",
+        message: "",
+      });
+      const freshQuote = await repo.createQuote({
+        rfqId: fresh.id,
+        operatorId: op.id,
+        amount: 6000,
+        currency: "USD",
+        message: "",
+      });
+
+      const res = await repo.expireRfqs(new Date().toISOString());
+      expect(res).toEqual({ rfqs: 1, quotes: 1 });
+      // iface "expired" maps to db "closed" — accept either terminal state.
+      expect(["expired", "closed"]).toContain(
+        (await repo.getRfq(stale.id))?.status,
+      );
+      expect((await repo.getRfq(fresh.id))?.status).toBe("quoted");
+      expect((await repo.getQuote(staleQuote.id))?.status).toBe("declined");
+      expect((await repo.getQuote(freshQuote.id))?.status).toBe("sent");
+      // idempotent
+      expect(await repo.expireRfqs(new Date().toISOString())).toEqual({
+        rfqs: 0,
+        quotes: 0,
+      });
+    });
+
+    it("keeps invoiceRef across invoiceStatus transitions (invoiced -> paid)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`inv-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Inv Air",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Inv Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `b-${tag}@test.dev`,
+        fields: {},
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 5000,
+        currency: "USD",
+        message: "",
+      });
+      const deal = await repo.createDeal({
+        quoteId: quote.id,
+        operatorId: op.id,
+        amount: 5000,
+        feePct: 0.03,
+        feeAmount: 150,
+        invoiceStatus: "pending",
+      });
+      expect(await repo.getDeal(deal.id)).toMatchObject({
+        invoiceStatus: "pending",
+      });
+      await repo.setDealInvoice(deal.id, "invoiced", "inv_test_1");
+      await repo.setDealInvoice(deal.id, "paid"); // ref omitted -> preserved
+      expect(await repo.getDeal(deal.id)).toMatchObject({
+        invoiceStatus: "paid",
+        invoiceRef: "inv_test_1",
+      });
+    });
   });
 }

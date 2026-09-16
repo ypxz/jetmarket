@@ -58,6 +58,21 @@ function QuotesInner() {
     await load();
   }
 
+  async function decline(quoteId: string) {
+    const res = await fetch(`/api/quotes/${quoteId}/decline`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ buyerEmail: email }),
+    });
+    const data = await readJson<{ error?: string }>(res);
+    if (!res.ok) {
+      setMsg(data.error ?? tc("error"));
+      return;
+    }
+    setMsg(t("declinedMsg"));
+    await load();
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -104,13 +119,22 @@ function QuotesInner() {
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                         </div>
                         {q.status === "sent" ? (
-                          <button
-                            onClick={() => accept(q.id)}
-                            data-testid={`accept-${q.id}`}
-                            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-                          >
-                            {t("accept")}
-                          </button>
+                          <span className="flex gap-2">
+                            <button
+                              onClick={() => accept(q.id)}
+                              data-testid={`accept-${q.id}`}
+                              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                            >
+                              {t("accept")}
+                            </button>
+                            <button
+                              onClick={() => decline(q.id)}
+                              data-testid={`decline-${q.id}`}
+                              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                            >
+                              {t("decline")}
+                            </button>
+                          </span>
                         ) : null}
                       </li>
                     ))}

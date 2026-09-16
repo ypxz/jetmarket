@@ -9,6 +9,7 @@ import {
 import {
   rfqMatches,
   rfqs,
+  quotes,
   users,
   operators,
 } from "@jetmarket/db/schema";
@@ -128,6 +129,65 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       .from(rfqMatches)
       .where(eq(rfqMatches.state, "sent"));
     expect(sent.length).toBeGreaterThan(0);
+  });
+
+  it("expires stale rfqs and declines their sent quotes on tick", async () => {
+    const rfqId = await insertRfq({
+      departure: "ZRH",
+      arrival: "NCE",
+      dateFrom: "2020-01-01",
+      dateTo: "2020-01-02",
+      email: "buyer@x.com",
+    });
+    const freshId = await insertRfq({
+      departure: "ZRH",
+      arrival: "NCE",
+      dateFrom: "2999-01-01",
+      dateTo: "2999-01-02",
+      email: "buyer@x.com",
+    });
+    const [op] = await db.select({ id: operators.id }).from(operators).limit(1);
+    const [staleQuote] = await db
+      .insert(quotes)
+      .values({
+        rfqId,
+        operatorId: op!.id,
+        amountMinor: 10000,
+        status: "sent",
+      })
+      .returning({ id: quotes.id });
+    const [freshQuote] = await db
+      .insert(quotes)
+      .values({
+        rfqId: freshId,
+        operatorId: op!.id,
+        amountMinor: 10000,
+        status: "sent",
+      })
+      .returning({ id: quotes.id });
+
+    await tick(deps());
+
+    const [expired] = await db
+      .select({ status: rfqs.status })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqId));
+    expect(expired!.status).toBe("closed"); // iface "expired" -> db closed
+    const [fresh] = await db
+      .select({ status: rfqs.status })
+      .from(rfqs)
+      .where(eq(rfqs.id, freshId));
+    expect(fresh!.status).not.toBe("closed");
+    const [stale] = await db
+      .select({ status: quotes.status })
+      .from(quotes)
+      .where(eq(quotes.id, staleQuote!.id));
+    expect(stale!.status).toBe("declined");
+    const [live] = await db
+      .select({ status: quotes.status })
+      .from(quotes)
+      .where(eq(quotes.id, freshQuote!.id));
+    expect(live!.status).toBe("sent");
   });
 
   it("retries a bad payload to failed after max attempts", async () => {
