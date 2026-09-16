@@ -34,7 +34,8 @@ export async function generateMetadata({
     price: formatMoney(listing.price, listing.currency),
     siteName: site.name,
   });
-  // No og:image — photos may be external URLs; don't hotlink other hosts.
+  // og:image comes from ./opengraph-image.tsx — a generated first-party card,
+  // since listing photos may be external URLs we must not hotlink.
   return {
     title: listing.title,
     description,
