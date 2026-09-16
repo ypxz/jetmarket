@@ -61,7 +61,7 @@ detail in `RESEARCH.md` §1.
 ## Known gaps
 
 - Real provider impls are typed skeletons (`TODO(go-live)`): Stripe live, Resend/SES, Turnstile, Supabase Auth+Storage, Meilisearch — all verified only against mocks.
-- SEO is thin: 10 landing-page stubs share a generic intro fallback; `en` locale only; `og:image` now generated per listing + site-wide card (ImageResponse, first-party — no hotlinking).
+- SEO is thin: 10 landing pages have unique one-line intros but little depth (title + intro + listing grid only); `en` locale only. `og:image` IS generated per listing + site-wide card (ImageResponse, first-party — no hotlinking).
 - RFQ rate limit is an in-process `Map` — single-instance only, needs a shared store behind >1 replica.
 - Operator verification is manual admin-only; no document/KYC flow.
 - No buyer-facing account area beyond the magic-link quotes page (accept/decline live); operator RFQ inbox shows sent quotes + withdraw but has no per-RFQ detail view.
