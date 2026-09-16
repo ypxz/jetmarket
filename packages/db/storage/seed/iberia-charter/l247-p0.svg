@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
-  <rect width="800" height="450" fill="hsl(280,45%,18%)"/>
-  <path d="M120 300 L400 180 L680 300" stroke="hsl(280,60%,70%)" stroke-width="6" fill="none"/>
-  <circle cx="400" cy="180" r="14" fill="hsl(280,60%,70%)"/>
-  <text x="400" y="360" font-family="system-ui" font-size="28" fill="hsl(280,30%,85%)" text-anchor="middle">MAD → NCE empty leg — Embraer Phenom 300E</text>
-</svg>
