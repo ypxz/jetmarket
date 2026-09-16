@@ -1,7 +1,31 @@
 # GO_LIVE — human steps to take JetMarket live
 
-> Stub — completed during the hardening cycle (H+6:30). Format per PLAN.md §5/§8:
-> which accounts to create, which env vars to fill, expected monthly cost.
+> Format per PLAN.md §5/§8: which accounts to create, which env vars to fill,
+> expected monthly cost. Mock mode is the default everywhere — the product
+> demos fully offline today (`pnpm i && pnpm dev`).
+
+## What is verified vs what is a skeleton
+
+| Path | Status |
+|---|---|
+| Core loop (operator → listing → RFQ → quote → accept → deal + fee invoice → Pro upgrade) | **verified e2e** — Playwright, memory + Postgres |
+| `VERTICAL=machinery` same loop | **verified e2e** (second CI e2e leg) |
+| RFQ fan-out matching + delayed notify for unverified operators | **verified on Postgres + worker** |
+| Stripe payments (checkout/webhook/invoices) | **contract-tested vs stripe-mock**; live keys untested |
+| Email delivery | mock outbox + Mailpit contract; `resend`/`smtp` skeletons `TODO(go-live)` |
+| Supabase auth/storage | skeletons `TODO(go-live)`; mock auth + local storage verified |
+| Turnstile captcha | skeleton + mock `force-fail` path tested; real site key untested |
+
+## Deploy path (cheapest first)
+
+1. `docker build -f Dockerfile.web -t jetmarket-web .` and
+   `docker build -f Dockerfile.worker -t jetmarket-worker .` (or Fly.io
+   `fly launch` per service). Verified: web image boots + serves `/en` + `/api/health`.
+2. Point `DATABASE_URL`/`TEST_DATABASE_URL` at managed Postgres; run
+   `pnpm --filter @jetmarket/db migrate` + `seed` once.
+3. `VERTICAL=jets` (or your config folder), `APP_URL` to the public origin,
+   `SESSION_SECRET` to a real random value, `ADMIN_EMAILS` to yours.
+4. `WORKER_POLL_MS` optional; the worker only needs `DATABASE_URL` — no web env.
 
 ## Accounts to create (human-only — phone/card/identity required)
 
@@ -27,10 +51,11 @@
 
 ## Env vars
 
-Every var is documented in `.env.example`. Flip `*_PROVIDER` from `mock` to the
-real adapter and fill the keys listed there. Typed `real.ts` skeletons marked
-`TODO(go-live)` are listed in RESEARCH/TASKS and must be finished against the
-provider's docs/sandbox before real traffic.
+Every var is documented in `.env.example` (audit: 100% coverage of
+`process.env.*` usage). Flip `*_PROVIDER` from `mock` to the real adapter and
+fill the keys listed there. Typed `real.ts` skeletons marked `TODO(go-live)`
+are listed in RESEARCH/TASKS and must be finished against the provider's
+docs/sandbox before real traffic.
 
 ## Compliance checklist
 
