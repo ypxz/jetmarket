@@ -1,12 +1,16 @@
+import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { invoiceStateVariant } from "@/lib/state-variant";
+import { MarkPaidButton } from "./mark-paid";
 import { VerifyButton } from "./verify-button";
 
 export default async function AdminPage() {
   const t = await getTranslations("admin");
+  const tc = await getTranslations("common");
   const user = await currentUser();
   if (!user || user.role !== "admin") redirect("/sign-in");
 
@@ -91,11 +95,16 @@ export default async function AdminPage() {
                 <td className="py-2 pr-4">{(d.feePct * 100).toFixed(1)}%</td>
                 <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, "USD")}</td>
                 <td className="py-2 pr-4" data-testid={`deal-invoice-${d.id}`}>
-                  {d.invoiceStatus}
+                  <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
+                    {tc(`invoiceState.${d.invoiceStatus}`)}
+                  </Badge>
                   {d.invoiceRef ? (
                     <span className="ml-1 font-mono text-xs text-muted">
                       {d.invoiceRef}
                     </span>
+                  ) : null}
+                  {d.invoiceStatus === "invoiced" ? (
+                    <MarkPaidButton dealId={d.id} />
                   ) : null}
                 </td>
                 <td className="py-2 text-muted">{new Date(d.closedAt).toLocaleDateString("en-US")}</td>

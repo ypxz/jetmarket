@@ -1,18 +1,20 @@
 "use client";
 
 import { readJson } from "@/lib/fetch-json";
+import { Badge } from "@jetmarket/ui";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import { formatMoney } from "@/lib/format";
+import { quoteStateVariant } from "@/lib/state-variant";
 
 interface Quote {
   id: string;
   amount: number;
   currency: string;
   message: string;
-  status: string;
+  status: "sent" | "accepted" | "declined" | "withdrawn";
   operator: { name: string; verified: boolean } | null;
 }
 interface Rfq {
@@ -58,6 +60,20 @@ function QuotesInner() {
     await load();
   }
 
+  async function decline(quoteId: string) {
+    const res = await fetch(`/api/quotes/${quoteId}/decline`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ buyerEmail: email }),
+    });
+    if (!res.ok) {
+      setMsg((await readJson<{ error?: string }>(res)).error ?? tc("error"));
+      return;
+    }
+    setMsg(t("declinedMsg"));
+    await load();
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -99,18 +115,33 @@ function QuotesInner() {
                           </span>{" "}
                           <span className="text-sm text-muted">
                             {t("by", { name: q.operator?.name ?? "" })}
-                            {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {q.status}
-                          </span>
+                            {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`}
+                          </span>{" "}
+                          <Badge
+                            variant={quoteStateVariant(q.status)}
+                            data-testid={`quote-state-${q.id}`}
+                          >
+                            {tc(`quoteState.${q.status}`)}
+                          </Badge>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                         </div>
                         {q.status === "sent" ? (
-                          <button
-                            onClick={() => accept(q.id)}
-                            data-testid={`accept-${q.id}`}
-                            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-                          >
-                            {t("accept")}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => accept(q.id)}
+                              data-testid={`accept-${q.id}`}
+                              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                            >
+                              {t("accept")}
+                            </button>
+                            <button
+                              onClick={() => decline(q.id)}
+                              data-testid={`decline-${q.id}`}
+                              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+                            >
+                              {t("decline")}
+                            </button>
+                          </div>
                         ) : null}
                       </li>
                     ))}

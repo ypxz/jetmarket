@@ -9,7 +9,18 @@
     "retry": "Retry",
     "backToSearch": "← Back to search",
     "currencyPerMonth": "/mo",
-    "from": "From {price}"
+    "from": "From {price}",
+    "quoteState": {
+      "sent": "sent",
+      "accepted": "accepted",
+      "declined": "declined",
+      "withdrawn": "withdrawn"
+    },
+    "invoiceState": {
+      "pending": "pending",
+      "invoiced": "invoiced",
+      "paid": "paid"
+    }
   },
   "nav": {
     "search": "Search",
@@ -93,7 +104,10 @@
     "accept": "Accept",
     "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
     "by": "by {name}",
-    "status": "Status: {status}"
+    "status": "Status: {status}",
+    "decline": "Decline",
+    "declining": "Declining…",
+    "declinedMsg": "Quote declined."
   },
   "design": {
     "title": "Design system",
@@ -673,7 +687,9 @@
       "send": "Send quote",
       "sending": "Sending…",
       "failed": "failed",
-      "listingFallback": "listing"
+      "listingFallback": "listing",
+      "withdraw": "Withdraw",
+      "withdrawing": "Withdrawing…"
     },
     "billing": {
       "title": "Plan & billing",
@@ -715,6 +731,8 @@
     "colFee": "Fee",
     "colInvoice": "Invoice",
     "colClosed": "Closed",
-    "noDeals": "No closed deals yet."
+    "noDeals": "No closed deals yet.",
+    "markPaid": "Mark paid",
+    "markingPaid": "Marking…"
   }
 }

@@ -1,11 +1,15 @@
+import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { quoteStateVariant } from "@/lib/state-variant";
 import { QuoteForm } from "./quote-form";
+import { WithdrawButton } from "./withdraw-button";
 
 export default async function RfqInboxPage() {
   const t = await getTranslations("app.rfqs");
+  const tc = await getTranslations("common");
   const user = await currentUser();
   const repo = await getRepo();
   const operator = user ? await repo.getOperatorByUserId(user.id) : undefined;
@@ -62,12 +66,30 @@ export default async function RfqInboxPage() {
                   ))}
                 </dl>
                 {quotes.length > 0 ? (
-                  <p className="mt-3 text-sm text-[color:var(--color-success)]">
-                    {t("quoteSent", {
-                      amount: formatMoney(quotes[0]!.amount, quotes[0]!.currency),
-                      status: quotes[0]!.status,
-                    })}
-                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {quotes.map((q) => (
+                      <li
+                        key={q.id}
+                        data-testid={`op-quote-${q.id}`}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
+                      >
+                        <span className="font-medium">
+                          {formatMoney(q.amount, q.currency)}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <Badge
+                            variant={quoteStateVariant(q.status)}
+                            data-testid={`quote-state-${q.id}`}
+                          >
+                            {tc(`quoteState.${q.status}`)}
+                          </Badge>
+                          {q.status === "sent" ? (
+                            <WithdrawButton quoteId={q.id} />
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
                   <QuoteForm rfqId={r.id} />
                 )}
