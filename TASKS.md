@@ -64,6 +64,12 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | QA-15 | bug | `/app/listings/new` is jets-hardcoded (seats/model/from/to/date): under `VERTICAL=machinery` required attrs (machineryCategory/make/yearOfManufacture) have no inputs → UI listing creation impossible; e2e creates via API | fixed (PR#27) | `apps/web` listing form per-vertical |
 | QA-16 | polish | Machinery operator dashboard still shows jets copy ("Create your first charter, empty leg or aircraft sale") | fixed (PR#29) | `apps/web` dashboard i18n per-vertical |
 | QA-17 | bug | Intermittent `SyntaxError: Unexpected end of JSON input` → 500 on `/app` in dev (e2e server logs); triggers Fast Refresh full-reloads that clear in-progress form state mid-session | fixed (PR#33) | `apps/web` — likely a client `JSON.parse`/`fetch` on `/api/vertical` or dashboard data |
+| QA-18 | bug | Operator can only send ONE quote per RFQ: `POST /api/quotes` after decline/withdraw hits unique `(rfq_id,operator_id)` → **500** raw constraint error (should be clean 409 or allowed re-quote). `e2e/lifecycle.api.spec.ts` pins current 500 — flip when fixed | filed | `apps/web/app/api/quotes`, `packages/db` quotes unique |
+| QA-19 | polish | `/app/billing` shows Pro "Active until …" but no portal/manage-subscription button — `POST /api/billing/portal` exists unused | filed | `apps/web` billing page |
+| QA-20 | bug | Mobile 390px: header still overlaps — nav wraps over the "JetMarket" logo text ("Sign out" drops below); QA-3's fix covered dashboard width, not nav wrap | filed | `apps/web` app shell/header |
+| QA-21 | bug | Outbound emails (magic link, quote, deal, RFQ fan-out) reach Mailpit with **no `From:` header** — real SMTP providers will reject | filed | `packages/providers` email adapter |
+| QA-22 | polish | Oversized photo upload → bare "failed" text under file input — no size-limit message despite "up to 5 MB each" hint | filed | `apps/web` listing form upload UX |
+| QA-23 | polish | Seeded listing photos 404: `GET /storage/seed/<op>/<slug>-p0.svg` → 404 for all ~105 seeded photos — DB has photo rows but storage mock has no files | filed | `packages/db` seed + `packages/providers/storage` |
 
 ## Improvement-loop log (append per cycle)
 
@@ -71,6 +77,8 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 |---|---|---|---|---|
 | 1 | H+3:00 | QA-1..QA-8 (4 bug, 3 polish, 1 idea) | — | Fresh-user run, mock mode, desktop+mobile(390px). Interrupted mid-run by concurrent merge/next-dev — mobile admin/landing + clean rerun deferred to cycle 2. Screens: docs/screens/cycle1-* |
 | 2 | H+4:30 | QA-9..QA-16 (1 blocker, 4 bug, 3 polish) | — | Clean recorded run, real Postgres, desktop + mobile 390px: full operator→buyer→admin loop incl. mobile onboarding/publish + hero-search→RFQ. Ran on pre-PR#14/15/18 base — QA-1/2/3/4/5/7 reproduced there; re-verify on main next cycle. Machinery spec promoted (env-gated `machinery` project, `test:e2e:machinery`). Screens: docs/screens/cycle2-*; recording in screencasts/ (not committed) |
+| 3 | H+8:00 | QA-18..QA-22 (3 bug, 2 polish) | QA-1..17 verified fixed on main | Regression on wave-4 main: QA-1/2/4/5/7/8 screenshot-verified (accept→closed, 422 negative seats, dedup publish, translated types, sign-out, dark persist); legal+T23 photos confirmed working. New `e2e/lifecycle.api.spec.ts` covers T27/T28 round-trips + 403/409 edges; expiry sweep stays worker-unit-tested. Agent run interrupted mid-cycle — completed via spec-level regression. Screens: docs/screens/cycle3-* |
+| 3b | H+9:30 | QA-23 (polish) + lifecycle regression | — | Wave-4 regression: `e2e/lifecycle.api.spec.ts` green (decline/withdraw/mark-paid + 403/409 edges + QA-18 pinned). Full suite 6 pass/1 skip. Seed-photo 404s found in server logs (QA-23) |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
 
