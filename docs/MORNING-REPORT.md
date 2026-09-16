@@ -20,10 +20,10 @@ offline in mock mode (`pnpm i && pnpm db:up && pnpm dev`).
 
 ## Tests
 
-- **unit**: 115 tests, 23 files — `pnpm -r test` green (verticals 15, domain 42, db 5, providers 14, worker 5, apps/web 34 incl. route-level analytics assertions).
+- **unit**: 119 tests — `pnpm -r test` green (verticals 15, domain 42, db 5, providers 14, worker 5, apps/web 38 incl. lifecycle-route + analytics assertions).
 - **integration**: 15 cases, 4 files (`repo.contract` shared suite executed against memory + drizzle backends, worker, db migrations, meilisearch) — green on CI; skipped locally here (Docker Hub pull rate-limited).
 - **contract**: 8 cases, 3 files (stripe-mock, Mailpit, provider env-selection) — green on CI; skipped locally here for the same reason.
-- **e2e**: 6 Playwright tests, 4 specs — jets chromium: core-loop UI + API + smoke + RFQ abuse; machinery project: vertical acceptance — green on CI.
+- **e2e**: 6 Playwright tests, 5 specs — jets chromium: core-loop UI + API + quote-decline UI + RFQ abuse; machinery project: vertical acceptance — green on CI (both legs). Repo smoke (`pnpm smoke`) green.
 
 ## CI
 
@@ -64,7 +64,7 @@ detail in `RESEARCH.md` §1.
 - SEO is thin: 10 landing-page stubs share a generic intro fallback; `en` locale only; no `og:image` (no first-party image assets — deliberately not hotlinking).
 - RFQ rate limit is an in-process `Map` — single-instance only, needs a shared store behind >1 replica.
 - Operator verification is manual admin-only; no document/KYC flow.
-- No buyer-facing account area beyond magic-link quotes page; quote decline/withdraw lifecycle is T27/T28 (in flight).
+- No buyer-facing account area beyond the magic-link quotes page (accept/decline live); operator RFQ inbox shows sent quotes + withdraw but has no per-RFQ detail view.
 - Machinery vertical is a placeholder taxonomy proving configurability, not a real second market.
 - Analytics is event-name plumbing into a mock sink; no destination wired.
 
