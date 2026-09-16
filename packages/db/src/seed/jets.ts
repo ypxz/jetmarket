@@ -301,7 +301,8 @@ export async function seedJets(
   // own ./storage, not this package's cwd. Anchor to the monorepo layout so
   // `pnpm --filter @jetmarket/db seed` works from anywhere.
   const webStorage = resolve(
-    fileURLToPath(new URL("../../../../apps/web/storage", import.meta.url)),
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../../apps/web/storage",
   );
   const storageDir =
     opts.storageDir ??
