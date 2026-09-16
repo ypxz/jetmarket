@@ -114,9 +114,9 @@ export default function NewListingPage() {
       }
       router.push("/app");
       router.refresh();
-    } catch {
+    } catch (e) {
       setPending(false);
-      setError(t("failed"));
+      setError(e instanceof Error && e.message ? e.message : t("failed"));
     }
   }
 
