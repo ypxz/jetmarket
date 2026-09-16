@@ -10,14 +10,14 @@ export async function SiteHeader() {
   const t = await getTranslations("nav");
   return (
     <header className="border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-3">
         <Link
           href="/"
           className="shrink-0 text-lg font-semibold tracking-tight"
         >
           {site.name}
         </Link>
-        <nav className="flex min-w-0 items-center justify-end gap-3 text-sm sm:gap-4">
+        <nav className="flex min-w-0 flex-wrap items-center justify-end gap-3 text-sm sm:gap-4">
           <Link
             href="/search"
             className="shrink-0 text-muted hover:text-foreground"

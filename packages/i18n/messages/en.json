@@ -704,7 +704,9 @@
       "processing": "Processing mock checkout…",
       "failed": "Failed — retry",
       "upgradeMock": "Upgrade with mock checkout",
-      "feeNote": "Success fees are invoiced separately on closed deals: 3% charter / empty leg, 1.5% aircraft sale. Checkout runs in mock mode."
+      "feeNote": "Success fees are invoiced separately on closed deals: 3% charter / empty leg, 1.5% aircraft sale. Checkout runs in mock mode.",
+      "manageSub": "Manage subscription",
+      "opening": "Opening portal…"
     }
   },
   "checkout": {
