@@ -41,7 +41,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | T25 | [~] W1 (PR#34) | Listing + SEO pages: OG/Twitter meta + JSON-LD (Product/Vehicle offers) | `apps/web` listing/[id], (seo)/[slug] | view-source shows canonical+og+jsonld; no literals |
 | T26 | [~] W1 | MORNING_REPORT draft + screenshots (`docs/MORNING-REPORT.md`, `docs/screens/`) | `docs/**`, `marketing/**` | real test counts + CI link + GO_LIVE digest + confidence score |
 | T27 | [x] W2 | Quote lifecycle depth: decline (buyer) + withdraw (operator) routes, RFQ expiry sweep in worker (open rfqs past dateTo → expired, sent quotes → declined), admin "mark invoice paid" | `apps/web/app/api/**`, `apps/worker/**`, repo iface if needed | unit + integration; e2e decline path |
-| T28 | [] W3 | Lifecycle UI: buyer quotes page gets decline/accept buttons + state badges; operator RFQ detail shows sent quotes + withdraw; admin deals get invoice-paid action | `apps/web` (app)/quotes, (app)/rfqs/[id], (admin)/admin | decline+withdraw+paid round-trip works in UI; i18n clean |
+| T28 | [x] W3 | Lifecycle UI: buyer quotes page gets decline/accept buttons + state badges; operator RFQ detail shows sent quotes + withdraw; admin deals get invoice-paid action | `apps/web` (app)/quotes, (app)/rfqs/[id], (admin)/admin | decline+withdraw+paid round-trip works in UI; i18n clean |
 
 ## QA findings (T20 dogfood)
 

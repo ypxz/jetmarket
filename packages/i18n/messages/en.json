@@ -9,7 +9,18 @@
     "retry": "Retry",
     "backToSearch": "← Back to search",
     "currencyPerMonth": "/mo",
-    "from": "From {price}"
+    "from": "From {price}",
+    "quoteState": {
+      "sent": "sent",
+      "accepted": "accepted",
+      "declined": "declined",
+      "withdrawn": "withdrawn"
+    },
+    "invoiceState": {
+      "pending": "pending",
+      "invoiced": "invoiced",
+      "paid": "paid"
+    }
   },
   "nav": {
     "search": "Search",
@@ -96,7 +107,8 @@
     "by": "by {name}",
     "status": "Status: {status}",
     "decline": "Decline",
-    "declinedMsg": "Quote declined."
+    "declinedMsg": "Quote declined.",
+    "declining": "Declining…"
   },
   "design": {
     "title": "Design system",
@@ -676,7 +688,9 @@
       "send": "Send quote",
       "sending": "Sending…",
       "failed": "failed",
-      "listingFallback": "listing"
+      "listingFallback": "listing",
+      "withdraw": "Withdraw",
+      "withdrawing": "Withdrawing…"
     },
     "billing": {
       "title": "Plan & billing",
@@ -718,6 +732,8 @@
     "colFee": "Fee",
     "colInvoice": "Invoice",
     "colClosed": "Closed",
-    "noDeals": "No closed deals yet."
+    "noDeals": "No closed deals yet.",
+    "markPaid": "Mark paid",
+    "markingPaid": "Marking…"
   }
 }
