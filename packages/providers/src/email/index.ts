@@ -2,7 +2,7 @@ import { envOf } from "../env";
 import type { Env } from "../env";
 import { MockEmailProvider } from "./mock";
 import { ResendEmailProvider, SmtpEmailProvider } from "./real";
-import type { EmailProvider } from "./types";
+import { DEFAULT_FROM, type EmailProvider } from "./types";
 
 export * from "./types";
 export { MockEmailProvider, readOutbox } from "./mock";
@@ -22,24 +22,33 @@ export function emailProviderName(env?: Env): EmailProviderName {
  */
 export function createEmailProvider(env?: Env): EmailProvider {
   const e = envOf(env);
-  switch (emailProviderName(e)) {
-    case "smtp":
-      return new SmtpEmailProvider({
-        smtpUrl: e.SMTP_URL ?? "smtp://localhost:1025",
-        from: e.EMAIL_FROM,
-      });
-    case "resend":
-      return new ResendEmailProvider({
-        apiKey: e.RESEND_API_KEY ?? "",
-        from: e.EMAIL_FROM,
-      });
-    case "mock":
-    default:
-      return new MockEmailProvider({
-        outboxDir: e.EMAIL_OUTBOX_DIR,
-        from: e.EMAIL_FROM,
-      });
-  }
+  const adapter = ((): EmailProvider => {
+    switch (emailProviderName(e)) {
+      case "smtp":
+        return new SmtpEmailProvider({
+          smtpUrl: e.SMTP_URL ?? "smtp://localhost:1025",
+          from: e.EMAIL_FROM,
+        });
+      case "resend":
+        return new ResendEmailProvider({
+          apiKey: e.RESEND_API_KEY ?? "",
+          from: e.EMAIL_FROM,
+        });
+      case "mock":
+      default:
+        return new MockEmailProvider({
+          outboxDir: e.EMAIL_OUTBOX_DIR,
+          from: e.EMAIL_FROM,
+        });
+    }
+  })();
+  // Central sender guarantee (QA-21): every outbound mail carries a From —
+  // per-message `from` wins, then EMAIL_FROM, then the site contact. Applied
+  // here so any adapter (incl. future ones) can't emit a headerless mail.
+  const siteFrom = e.EMAIL_FROM ?? DEFAULT_FROM;
+  return {
+    send: (m) => adapter.send(m.from ? m : { ...m, from: siteFrom }),
+  };
 }
 
 // Singleton survives dev-server HMR via globalThis.

@@ -1,7 +1,12 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { todoGoLive } from "../errors";
-import type { EmailMessage, EmailProvider, SentEmail } from "./types";
+import {
+  DEFAULT_FROM,
+  type EmailMessage,
+  type EmailProvider,
+  type SentEmail,
+} from "./types";
 
 /**
  * SMTP email via nodemailer — works against the compose Mailpit
@@ -13,7 +18,9 @@ export class SmtpEmailProvider implements EmailProvider {
 
   constructor(opts: { smtpUrl: string; from?: string }) {
     this.transport = nodemailer.createTransport(opts.smtpUrl);
-    this.from = opts.from;
+    // Default sender — Mailpit tolerates a missing From but real relays
+    // reject it; EMAIL_FROM overrides, per-message `from` wins over both.
+    this.from = opts.from ?? DEFAULT_FROM;
   }
 
   async send(message: EmailMessage): Promise<SentEmail> {
@@ -70,7 +77,7 @@ export class ResendEmailProvider implements EmailProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: message.from ?? this.opts.from,
+        from: message.from ?? this.opts.from ?? DEFAULT_FROM,
         to: [message.to],
         subject: message.subject,
         text: message.text,
