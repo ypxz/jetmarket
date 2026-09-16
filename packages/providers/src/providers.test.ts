@@ -110,3 +110,42 @@ describe("env selection", () => {
     expect(analyticsProviderName({ ANALYTICS_PROVIDER: "real" })).toBe("real");
   });
 });
+
+describe("email From defaulting (QA-21)", () => {
+  it("fills From from EMAIL_FROM, else the site contact; per-message wins", async () => {
+    const { mkdtempSync, readFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { createEmailProvider } = await import("./email/index");
+    const { readOutbox } = await import("./email/mock");
+
+    const emlFrom = (dir: string, id: string) =>
+      readFileSync(join(dir, `${id}.eml`), "utf8").split("\r\n")[0];
+
+    // no EMAIL_FROM anywhere -> site contact
+    const dir1 = mkdtempSync(join(tmpdir(), "jm-mail-from-"));
+    const p1 = createEmailProvider({ EMAIL_PROVIDER: "mock", EMAIL_OUTBOX_DIR: dir1 });
+    const s1 = await p1.send({ to: "a@b.c", subject: "s", text: "t" });
+    expect(emlFrom(dir1, s1.id)).toBe("From: JetMarket <noreply@jetmarket.local>");
+    expect(readOutbox(dir1)[0]!.from).toBe("JetMarket <noreply@jetmarket.local>");
+
+    // EMAIL_FROM wins when the message has none
+    const dir2 = mkdtempSync(join(tmpdir(), "jm-mail-from-"));
+    const p2 = createEmailProvider({
+      EMAIL_PROVIDER: "mock",
+      EMAIL_OUTBOX_DIR: dir2,
+      EMAIL_FROM: "Ops <ops@jetmarket.local>",
+    });
+    const s2 = await p2.send({ to: "a@b.c", subject: "s", text: "t" });
+    expect(emlFrom(dir2, s2.id)).toBe("From: Ops <ops@jetmarket.local>");
+
+    // per-message from overrides both
+    const s3 = await p2.send({
+      to: "a@b.c",
+      subject: "s",
+      text: "t",
+      from: "Caller <caller@x.dev>",
+    });
+    expect(emlFrom(dir2, s3.id)).toBe("From: Caller <caller@x.dev>");
+  });
+});

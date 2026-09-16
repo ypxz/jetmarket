@@ -1,6 +1,11 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { EmailMessage, EmailProvider, SentEmail } from "./types";
+import {
+  DEFAULT_FROM,
+  type EmailMessage,
+  type EmailProvider,
+  type SentEmail,
+} from "./types";
 
 export interface MockEmailOptions {
   /** Outbox dir (EMAIL_OUTBOX_DIR; default tmp/outbox). */
@@ -24,7 +29,7 @@ export class MockEmailProvider implements EmailProvider {
 
   constructor(opts: MockEmailOptions = {}) {
     this.dir = opts.outboxDir ?? DEFAULT_OUTBOX_DIR;
-    this.from = opts.from ?? "JetMarket <noreply@jetmarket.local>";
+    this.from = opts.from ?? DEFAULT_FROM;
     this.now = opts.now ?? (() => new Date());
   }
 

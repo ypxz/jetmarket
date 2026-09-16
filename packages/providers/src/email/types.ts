@@ -1,3 +1,7 @@
+/** Site contact used when neither the call site nor EMAIL_FROM sets a
+ * sender — real relays reject messages without a From header. */
+export const DEFAULT_FROM = "JetMarket <noreply@jetmarket.local>";
+
 export interface EmailMessage {
   to: string;
   subject: string;

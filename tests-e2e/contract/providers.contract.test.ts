@@ -6,7 +6,10 @@
 //   pnpm db:up && pnpm test:contract
 import { describe, expect, inject, it } from 'vitest';
 import { StripePaymentsProvider } from '@jetmarket/providers/payments/index';
-import { SmtpEmailProvider } from '@jetmarket/providers/email/index';
+import {
+  createEmailProvider,
+  SmtpEmailProvider,
+} from '@jetmarket/providers/email/index';
 import { SERVICES } from './services';
 
 const stripeUp = inject('stripeMockUp');
@@ -82,5 +85,37 @@ describe.skipIf(!mailpitUp)('smtp adapter contract (mailpit)', () => {
       if (!found) await new Promise((r) => setTimeout(r, 150));
     }
     expect(found, 'smtp adapter message delivered to mailpit').toBeTruthy();
+  });
+
+  it('QA-21: sends carry a From header even with no EMAIL_FROM configured', async () => {
+    // createEmailProvider applies the central default (EMAIL_FROM -> site
+    // contact) — callers never set `from` today, real relays reject missing.
+    const email = createEmailProvider({
+      EMAIL_PROVIDER: 'smtp',
+      SMTP_URL: 'smtp://localhost:1025',
+    });
+    const to = `from-contract-${Date.now()}@jetmarket.local`;
+    await email.send({ to, subject: 'From check', text: 'has a sender' });
+
+    const api = SERVICES.mailpit.url;
+    let found: { ID: string } | undefined;
+    for (let i = 0; i < 20 && !found; i++) {
+      const res = await fetch(`${api}/api/v1/messages?limit=50`);
+      const list = (await res.json()) as MailpitList;
+      found = list.messages.find((m) =>
+        (m.To ?? []).some((t) => t.Address === to),
+      );
+      if (!found) await new Promise((r) => setTimeout(r, 150));
+    }
+    expect(found, 'mail delivered to mailpit').toBeTruthy();
+
+    const full = await fetch(`${api}/api/v1/message/${found!.ID}`);
+    const msg = (await full.json()) as {
+      From?: { Name?: string; Address?: string };
+    };
+    // Mailpit parses headers into a structure — assert sender + display name
+    // (a real relay only needs the address; the name proves the envelope).
+    expect(msg.From?.Address).toBe('noreply@jetmarket.local');
+    expect(msg.From?.Name).toBe('JetMarket');
   });
 });
