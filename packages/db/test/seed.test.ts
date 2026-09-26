@@ -75,3 +75,54 @@ describe("buildJetsSeed", () => {
     for (const o of seed.opRows) expect(byOp.has(o.id!)).toBe(true);
   });
 });
+
+import { machineryVertical } from "@jetmarket/verticals";
+import { buildMachinerySeed, MACHINERY_SEED_COUNTS } from "../src/seed/machinery";
+
+describe("buildMachinerySeed", () => {
+  const mseed = buildMachinerySeed();
+
+  it("produces 8 dealers and 17 listings", () => {
+    expect(mseed.userRows).toHaveLength(MACHINERY_SEED_COUNTS.operators);
+    expect(mseed.opRows).toHaveLength(MACHINERY_SEED_COUNTS.operators);
+    expect(mseed.listingRows).toHaveLength(MACHINERY_SEED_COUNTS.listings);
+  });
+
+  it("ids do not collide with the jets seed counter space", () => {
+    const jetsIds = new Set(
+      [...seed.userRows, ...seed.opRows, ...seed.listingRows].map((r) => r.id),
+    );
+    for (const r of [...mseed.userRows, ...mseed.opRows, ...mseed.listingRows]) {
+      expect(jetsIds.has(r.id!)).toBe(false);
+    }
+  });
+
+  it("validates every listing against the machinery config", () => {
+    for (const l of mseed.listingRows) {
+      const r = validateNewListing(machineryVertical, {
+        type: l.type,
+        title: l.title,
+        attributes: l.attributes ?? {},
+        priceMinor: l.priceMinor,
+        currency: l.currency,
+        status: l.status,
+        photos: l.photos ?? [],
+      });
+      expect(r.ok, `${l.title}: ${r.ok ? "" : JSON.stringify(r.issues)}`).toBe(
+        true,
+      );
+    }
+  });
+
+  it("covers all three machinery listing types in EUR", () => {
+    const types = new Set(mseed.listingRows.map((l) => l.type));
+    expect(types.has("for_sale")).toBe(true);
+    expect(types.has("for_rent")).toBe(true);
+    expect(types.has("auction")).toBe(true);
+    for (const l of mseed.listingRows) expect(l.currency).toBe("EUR");
+    // rent listings carry monthlyRentEur
+    for (const l of mseed.listingRows.filter((r) => r.type === "for_rent")) {
+      expect(l.attributes?.["monthlyRentEur"]).toBeGreaterThan(0);
+    }
+  });
+});
