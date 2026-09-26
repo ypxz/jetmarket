@@ -20,7 +20,7 @@ offline in mock mode (`pnpm i && pnpm db:up && pnpm dev`).
 
 ## Tests
 
-- **unit**: 119 tests — `pnpm -r test` green (verticals 15, domain 42, db 5, providers 14, worker 5, apps/web 38 incl. lifecycle-route + analytics assertions).
+- **unit**: 125 tests — `pnpm -r test` green (verticals 15, domain 42, db 9 incl. seed-vs-config validation, providers 15, worker 5, apps/web 39 incl. lifecycle-route + analytics assertions).
 - **integration**: 15 cases, 4 files (`repo.contract` shared suite executed against memory + drizzle backends, worker, db migrations, meilisearch) — green on CI; skipped locally here (Docker Hub pull rate-limited).
 - **contract**: 8 cases, 3 files (stripe-mock, Mailpit, provider env-selection) — green on CI; skipped locally here for the same reason.
 - **e2e**: 6 Playwright tests, 5 specs — jets chromium: core-loop UI + API + quote-decline UI + RFQ abuse; machinery project: vertical acceptance — green on CI (both legs). Repo smoke (`pnpm smoke`) green.
@@ -75,7 +75,7 @@ detail in `RESEARCH.md` §1.
 - Fee model: Pro subscription $199/mo + success fee 3% charter/empty-leg, 1.5% sale — from `packages/verticals` fees config, not hard-coded.
 - `Product` JSON-LD (not `Vehicle`) since listings span charter/legs/sale; `page_view` analytics skipped — SSR tracking needs request-context plumbing for little mock-mode value.
 - postgres.js `Unlicense` kept with an explicit flag + MIT `pg` fallback rather than swapping silently.
-- A second vertical (machinery) shipped early to prove the config-driven marketplace loop generalizes.
+- A second vertical (machinery) shipped early to prove the config-driven marketplace loop generalizes — incl. a full machinery seed (`VERTICAL=machinery pnpm db:seed`: 8 dealers / 17 listings, all schema-validated).
 
 ## Confidence this reaches CHF 1k MRR in 6 months: 5/10
 
