@@ -14,7 +14,7 @@ with `VERTICAL=machinery`.
 ```bash
 pnpm i
 pnpm db:up        # postgres + stripe-mock + mailpit (docker)
-pnpm db:migrate && pnpm db:seed
+pnpm db:migrate && pnpm db:seed        # seeds active vertical (VERTICAL env, default jets; machinery seeds 8 dealers/17 listings)
 pnpm dev          # http://localhost:3000
 ```
 
