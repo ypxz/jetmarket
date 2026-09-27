@@ -12,13 +12,25 @@ export function err(message: string, status = 400, extra?: unknown) {
   );
 }
 
+// JSON API payloads here are small (form fields, messages); uploads go
+// through multipart on a different route. Cap to bound request-body memory.
+const MAX_JSON_BODY_BYTES = 64 * 1024;
+
 export async function parseBody<T>(
   req: Request,
   schema: ZodSchema<T>,
 ): Promise<{ data?: T; error?: NextResponse }> {
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_JSON_BODY_BYTES) {
+    return { error: err("payload too large", 413) };
+  }
+  const text = await req.text();
+  // No content-length (chunked) still lands here — re-check post-read.
+  if (text.length > MAX_JSON_BODY_BYTES) {
+    return { error: err("payload too large", 413) };
+  }
   let json: unknown;
   try {
-    json = await req.json();
+    json = JSON.parse(text);
   } catch {
     return { error: err("invalid JSON body") };
   }
