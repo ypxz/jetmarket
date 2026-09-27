@@ -4,6 +4,7 @@ import {
   createDb,
   databaseUrl,
   failJob,
+  requeueStaleJobs,
 } from "@jetmarket/db";
 import { defaultPlans } from "@jetmarket/domain";
 import { createEmailProvider } from "@jetmarket/providers/email";
@@ -30,6 +31,14 @@ export async function tick(deps: WorkerDeps): Promise<number> {
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) console.log(`[worker] delivered ${delivered} delayed match(es)`);
+
+  // Crash recovery: a worker that dies mid-claim leaves rows 'running'
+  // forever — requeue anything untouched for >10 min so it retries.
+  const requeued = await requeueStaleJobs(
+    deps.sql,
+    new Date(Date.now() - 10 * 60_000),
+  );
+  if (requeued) console.log(`[worker] requeued ${requeued} stale job(s)`);
 
   const jobs = await claimJobs(deps.sql, [...JOB_KINDS], CLAIM_BATCH);
   for (const job of jobs) {
