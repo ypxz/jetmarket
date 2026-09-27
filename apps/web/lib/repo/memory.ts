@@ -110,7 +110,7 @@ class MemoryRepo implements Repo {
         out = out.filter((l) => String(l.attributes[k] ?? "") === v);
       }
     }
-    return out;
+    return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
   async updateListingStatus(id: string, status: Listing["status"]) {
     const l = this.listings.get(id);

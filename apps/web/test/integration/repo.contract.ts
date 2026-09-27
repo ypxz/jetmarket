@@ -205,6 +205,42 @@ export function repoContract(
       expect(queried.map((l) => l.title)).toEqual([`${tag} G650 for sale`]);
     });
 
+    it("returns listings newest-first (memory matches drizzle order)", async () => {
+      const repo = await factory();
+      const tag = `ord${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Order Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const mk = (title: string) =>
+        repo.createListing({
+          operatorId: op.id,
+          vertical: "jets",
+          type: "charter",
+          title,
+          price: 1000,
+          currency: "USD",
+          photos: [],
+          attributes: { aircraftCategory: "light" },
+        });
+      await mk(`${tag} first`);
+      // createdAt is millisecond-precision in memory — a gap keeps the
+      // ordering assertion deterministic on both backends.
+      await new Promise((r) => setTimeout(r, 10));
+      await mk(`${tag} second`);
+
+      const rows = await repo.listListings({ operatorId: op.id });
+      expect(rows.map((l) => l.title).slice(0, 2)).toEqual([
+        `${tag} second`,
+        `${tag} first`,
+      ]);
+    });
+
     it("sweeps expired rfqs: past dateTo -> expired/closed, sent quotes -> declined", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);
