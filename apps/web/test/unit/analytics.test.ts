@@ -12,15 +12,19 @@ vi.mock("next/headers", async () => {
   // Can't import @/lib/auth here — it itself imports next/headers and would
   // deadlock on this factory. signSession is just an HMAC; replicate it.
   const { createHmac } = await import("node:crypto");
-  const sig = (id: string) =>
+  const sig = (id: string, iat: number) =>
     createHmac("sha256", process.env.SESSION_SECRET ?? "dev-only-not-a-secret")
-      .update(id)
+      .update(`s:${id}.${iat}`)
       .digest("hex");
+  const sessionToken = (id: string) => {
+    const iat = Date.now();
+    return `${id}.${iat}.${sig(id, iat)}`;
+  };
   return {
     cookies: async () => ({
       get: (name: string) =>
         name === "jm_session" && h.userId
-          ? { value: `${h.userId}.${sig(h.userId)}` }
+          ? { value: sessionToken(h.userId) }
           : undefined,
       set() {},
       delete() {},

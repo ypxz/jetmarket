@@ -2,7 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { emailProvider } from "@jetmarket/providers";
-import { signSession } from "@/lib/auth";
+import { signMagicLink } from "@/lib/auth";
 
 const Body = z.object({
   email: z.string().email(),
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   const user = await repo.createUser(email, resolvedRole);
 
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
-  const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signSession(user.id))}`;
+  const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}`;
   await emailProvider().send({
     to: email,
     subject: "Your JetMarket sign-in link",

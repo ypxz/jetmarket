@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { sessionCookie, verifySession } from "@/lib/auth";
+import { sessionCookie, signSession, verifyMagicLink } from "@/lib/auth";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") ?? undefined;
-  const userId = verifySession(token);
+  const userId = verifyMagicLink(token);
   if (!userId || !token) {
     return NextResponse.redirect(new URL("/sign-in?error=invalid-token", url.origin));
   }
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const rawNext = url.searchParams.get("next") ?? "/";
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
   const res = NextResponse.redirect(new URL(next, url.origin));
-  res.cookies.set(sessionCookie, token, {
+  res.cookies.set(sessionCookie, signSession(userId), {
     httpOnly: true,
     sameSite: "lax",
     secure: url.protocol === "https:",

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { FREE_LISTING_LIMIT, successFeePctFor } from "../fees";
-import { signSession, verifySession } from "../auth";
+import {
+  signMagicLink,
+  signSession,
+  verifyMagicLink,
+  verifySession,
+} from "../auth";
 import { createMemoryRepo } from "./memory";
 
 describe("memory repo (seeded)", async () => {
@@ -95,8 +100,30 @@ describe("session signing", () => {
   it("round-trips and rejects tampering", () => {
     const token = signSession("usr_test1");
     expect(verifySession(token)).toBe("usr_test1");
-    expect(verifySession("usr_test1.deadbeef")).toBeNull();
+    expect(verifySession("usr_test1.1.deadbeef")).toBeNull();
     expect(verifySession("garbage")).toBeNull();
     expect(verifySession(undefined)).toBeNull();
+  });
+
+  it("expires stale tokens and never crosses purposes", async () => {
+    // Fresh tokens pass; tokens aged past their TTL are rejected.
+    const session = signSession("u1");
+    const link = signMagicLink("u1");
+    expect(verifySession(session)).toBe("u1");
+    expect(verifyMagicLink(link)).toBe("u1");
+    // A session token can't be replayed as a magic link (or vice versa).
+    expect(verifyMagicLink(session)).toBeNull();
+    expect(verifySession(link)).toBeNull();
+
+    // Forge an expired-but-validly-signed link (31-min-old iat).
+    const { createHmac } = await import("node:crypto");
+    const iat = Date.now() - 31 * 60_000;
+    const sig = createHmac(
+      "sha256",
+      process.env.SESSION_SECRET ?? "dev-only-not-a-secret",
+    )
+      .update(`ml:u1.${iat}`)
+      .digest("hex");
+    expect(verifyMagicLink(`u1.${iat}.${sig}`)).toBeNull();
   });
 });
