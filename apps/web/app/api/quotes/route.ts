@@ -29,7 +29,11 @@ export async function POST(req: Request) {
   if (!listing || listing.operatorId !== operator.id) {
     return err("rfq does not belong to your listings", 403);
   }
-  if (rfq.status === "closed") return err("rfq already closed", 409);
+  // Live states only — expired/spam/closed RFQs reject new quotes (the iface
+  // maps expired→closed in drizzle, so check the iface vocabulary).
+  if (!["open", "matched", "quoted"].includes(rfq.status)) {
+    return err("rfq is no longer open", 409);
+  }
 
   // One live quote per operator per rfq; a declined/withdrawn one may be
   // re-quoted (partial-unique index backs the same invariant — the catch
