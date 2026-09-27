@@ -17,6 +17,7 @@
 | operator dashboard | `onboarding-cta`, `operator-name`, `plan-badge`, `new-listing-cta` |
 | onboarding form | `operator-name-input`, `operator-base-input`, `operator-fleet-input`, `operator-save` |
 | listing form | `listing-type`, `listing-title`, `listing-category`, `listing-model`, `listing-seats`, `listing-price`, `listing-from`, `listing-to`, `listing-date`, `listing-save`, `upgrade-cta` (402 surface) |
+| edit listing (`/app/listings/[id]/edit`) | `edit-title`, `edit-price`, `edit-attr-<key>` per dynamic field, `edit-save`, `edit-error`; dashboard CTA is `edit-listing-<id>` |
 | RFQ inbox (`/app/rfqs`) | `rfq-<id>` per row, `quote-amount-<rfqId>`, `quote-send-<rfqId>`, `rfq-empty` |
 | buyer quotes (`/quotes`) | `buyer-email`, `buyer-load`, `buyer-rfq-<id>`, `quote-<id>`, `accept-<id>`, `decline-<id>`, `accept-msg` |
 | admin (`/admin`) | `fee-ledger`, `deal-<id>`, `admin-op-<id>`, `admin-verified-<id>`, `verify-<operatorId>` |

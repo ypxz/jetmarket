@@ -79,6 +79,18 @@ export async function createListing(page: Page, input: ListingInput) {
       .catch(() => typeSelect.selectOption({ index: 1 }, { timeout: 4_000 }).catch(() => {}));
   }
   await page.getByTestId('listing-title').fill(input.title);
+  // The dynamic fields render only after GET /api/vertical lands — wait for
+  // the first requested key before filling so fast dev compiles don't leave
+  // attributes {} (the previous fill-then-render race dropped every field).
+  const firstKey = Object.keys(input.fields ?? {})[0];
+  if (firstKey) {
+    await page
+      .getByTestId(`listing-${firstKey}`)
+      .or(page.getByTestId(`field-${firstKey}`))
+      .first()
+      .waitFor({ timeout: 15_000 })
+      .catch(() => {});
+  }
   await fillDynamicFields(page, input.fields ?? {});
   await page.getByTestId('listing-price').fill(input.price);
   await page.getByTestId('listing-save').click();
