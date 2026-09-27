@@ -4,6 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
+import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { analyticsProvider } from "@jetmarket/providers";
 
@@ -13,6 +14,9 @@ export async function GET(req: Request) {
   for (const [k, v] of url.searchParams.entries()) {
     if (k.startsWith("f_")) facets[k.slice(2)] = v;
   }
+  // Optional ?limit/&offset= cap the payload; default is one page (QA-66).
+  const lim = Number(url.searchParams.get("limit"));
+  const off = Number(url.searchParams.get("offset"));
   const listings = await (await getRepo()).listListings({
     status: "active",
     vertical: verticalSlug(),
@@ -21,6 +25,8 @@ export async function GET(req: Request) {
       : {}),
     ...(url.searchParams.get("q") ? { query: url.searchParams.get("q")! } : {}),
     ...(Object.keys(facets).length ? { facets } : {}),
+    limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : SEARCH_PAGE_SIZE,
+    offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });
   const repo = await getRepo();
   return ok(

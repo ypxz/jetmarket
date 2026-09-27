@@ -101,7 +101,7 @@ describe.skipIf(!reachable)("quotes partial-unique (QA-18)", () => {
 // QA-65: a delivered (pending) rfq_match makes the RFQ inbox-visible and
 // quotable for the matched operator — the owner OR the match holder.
 describe.skipIf(!reachable)("fan-out match inbox visibility (QA-65)", () => {
-  const { quotes, rfqs, rfqMatches, operators, users, listings } = schema;
+  const { rfqs, rfqMatches, operators, users, listings } = schema;
 
   it("pending match sees the rfq; delayed does not; both can/cannot quote accordingly", async () => {
     const db = client!.db;
