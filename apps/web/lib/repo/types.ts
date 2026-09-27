@@ -194,8 +194,15 @@ export interface Repo {
     operatorIds: string[],
   ): Promise<Record<string, number>>;
 
-  createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq>;
+  createRfq(
+    r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
+      /** sha256 natural key — unique column; duplicate insert must throw. */
+      dedupeKey?: string;
+    },
+  ): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;
+  /** Lookup by dedupe key — the idempotent path after a duplicate insert. */
+  getRfqByDedupeKey(key: string): Promise<Rfq | undefined>;
   /** Atomically transition an RFQ to `status` when its current status is in
    * `expectedIn`; returns false otherwise. Lets accept() use the RFQ as the
    * single-winner arbiter against concurrent sibling accepts (QA-99). */

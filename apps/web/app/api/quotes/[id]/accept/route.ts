@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
+import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
@@ -81,7 +81,7 @@ export async function POST(
     // Duplicate accept raced past the "sent" check: deals.quote_id unique
     // (db) / guard (memory) rejects the second deal — tell the buyer cleanly.
     const msg = e instanceof Error ? e.message : "";
-    if (msg.includes("deal already exists") || msg.includes("duplicate key")) {
+    if (msg.includes("deal already exists") || isUniqueViolation(e)) {
       return err("quote already accepted", 409);
     }
     throw e;

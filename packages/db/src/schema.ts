@@ -99,6 +99,7 @@ export const rfqs = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default({}),
+    dedupeKey: text("dedupe_key"),
     status: text("status", {
       enum: ["new", "matched", "quoted", "closed", "spam"],
     })
@@ -111,6 +112,9 @@ export const rfqs = pgTable(
   (t) => [
     index("rfqs_status_idx").on(t.status, t.createdAt),
     index("rfqs_buyer_idx").on(t.buyerEmail, t.createdAt),
+    uniqueIndex("rfqs_dedupe_key")
+      .on(t.dedupeKey)
+      .where(sql`${t.dedupeKey} is not null`),
   ],
 );
 

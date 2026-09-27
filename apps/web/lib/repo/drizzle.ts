@@ -416,7 +416,11 @@ export class DrizzleRepo implements Repo {
     return r?.n ?? 0;
   }
 
-  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq> {
+  async createRfq(
+    r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
+      dedupeKey?: string;
+    },
+  ): Promise<Rfq> {
     const [row] = await this.db
       .insert(rfqs)
       .values({
@@ -425,9 +429,18 @@ export class DrizzleRepo implements Repo {
         buyerEmail: r.buyerEmail,
         fields: r.fields,
         status: "new",
+        dedupeKey: r.dedupeKey ?? null,
       })
       .returning();
     return toRfq(row!);
+  }
+  async getRfqByDedupeKey(key: string): Promise<Rfq | undefined> {
+    const [r] = await this.db
+      .select()
+      .from(rfqs)
+      .where(eq(rfqs.dedupeKey, key))
+      .limit(1);
+    return r ? toRfq(r) : undefined;
   }
   async getRfq(id: string): Promise<Rfq | undefined> {
     if (!isUuid(id)) return undefined;

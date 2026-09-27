@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
-import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
+import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { fanoutRfq } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
@@ -18,6 +19,19 @@ const CreateRfq = z.object({
   // always passes; turnstile verifies server-side.
   captchaToken: z.string().optional(),
 });
+
+/** Stable stringify: sorted object keys so field order never defeats dedupe. */
+function canonicalize(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalize).join(",")}]`;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalize(o[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(v) ?? "null";
+}
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
@@ -45,12 +59,38 @@ export async function POST(req: Request) {
   const parsed = buildRfqSchema(getVertical()).safeParse(fields);
   if (!parsed.success) return err("invalid fields", 422, parsed.error.issues);
 
-  const rfq = await repo.createRfq({
-    vertical: listing.vertical,
-    listingId,
-    buyerEmail,
-    fields: parsed.data,
-  });
+  // Idempotent submit: dedupe key = sha256(listing|email|canonical fields).
+  // Double-click, refresh-resubmit, or retried concurrent POSTs all collide
+  // on the unique index instead of minting duplicate RFQs/owner emails.
+  const dedupeKey = createHash("sha256")
+    .update(`${listingId}|${buyerEmail.toLowerCase()}|${canonicalize(parsed.data)}`)
+    .digest("hex");
+  let rfq;
+  let deduped = false;
+  try {
+    rfq = await repo.createRfq({
+      vertical: listing.vertical,
+      listingId,
+      buyerEmail,
+      fields: parsed.data,
+      dedupeKey,
+    });
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      const existing = await repo.getRfqByDedupeKey(dedupeKey);
+      if (!existing) throw e;
+      rfq = existing;
+      deduped = true;
+    } else {
+      throw e;
+    }
+  }
+  if (deduped) {
+    // No accessToken on replay: the POST is unauthenticated, and re-emitting
+    // the buyer bearer token to anyone who can guess the same payload would
+    // leak the quote inbox. The original requester already got it once.
+    return ok({ received: true, rfqId: rfq.id, deduped: true }, 200);
+  }
 
   // The listing owner gets the direct notice in every mode — it must not
   // depend on the worker being up.

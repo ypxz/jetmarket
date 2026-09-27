@@ -78,3 +78,22 @@ export function clientIp(req: Request): string {
     "local"
   );
 }
+
+/** True when `e` (or its drizzle/postgres.js `.cause`) is a unique-constraint
+ *  violation — the "23505" code and "duplicate key value" detail nest on the
+ *  cause, not the wrapper message. */
+export function isUniqueViolation(e: unknown): boolean {
+  for (let cur: unknown = e; cur; ) {
+    if (cur instanceof Error) {
+      if (cur.message.includes("duplicate key") || cur.message.includes("23505"))
+        return true;
+      const code = (cur as { code?: string }).code;
+      if (code === "23505") return true;
+      cur = cur.cause;
+    } else {
+      if (String(cur).includes("duplicate key")) return true;
+      break;
+    }
+  }
+  return false;
+}

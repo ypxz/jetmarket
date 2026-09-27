@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Repo } from "../../lib/repo/types";
+import { isUniqueViolation } from "../../lib/api";
 
 export function repoContract(
   name: string,
@@ -82,6 +83,40 @@ export function repoContract(
       expect(
         await repo.listRfqs({ operatorId: op.id, limit: 1, offset: 1 }),
       ).toHaveLength(0);
+
+      // Dedupe: same key collides (unique index / map) and resolves the
+      // original RFQ; a different key or absent key inserts normally.
+      const key = `dedupe-${tag}`;
+      const first = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `dup-${tag}@test.dev`,
+        fields: { ref: key },
+        dedupeKey: key,
+      });
+      const dupErr = await repo
+        .createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: `dup-${tag}@test.dev`,
+          fields: { ref: key },
+          dedupeKey: key,
+        })
+        .then(() => null)
+        .catch((e: unknown) => e);
+      expect(dupErr).toBeTruthy();
+      expect(isUniqueViolation(dupErr)).toBe(true);
+      expect(await repo.getRfqByDedupeKey(key)).toMatchObject({
+        id: first.id,
+      });
+      const other = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `dup-${tag}@test.dev`,
+        fields: { ref: "other" },
+        dedupeKey: `other-${tag}`,
+      });
+      expect(other.id).not.toBe(first.id);
 
       const quote = await repo.createQuote({
         rfqId: rfq.id,

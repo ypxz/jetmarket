@@ -61,7 +61,11 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
     // fresh bucket per run — RFQ rate limiter keys on x-forwarded-for
     extraHTTPHeaders: { 'x-forwarded-for': `198.51.100.${(run % 200) + 1}` },
   });
+  let rfqSeq = 0;
   const newRfq = async () => {
+    // Each call must differ from the previous — identical payloads dedupe to
+    // the same RFQ server-side (QA-106), so vary the budget per RFQ.
+    rfqSeq += 1;
     const rfq = await publicCtx.post('/api/rfqs', {
       data: {
         listingId,
@@ -72,7 +76,7 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
           dateFrom: '2026-10-01',
           dateTo: '2026-10-03',
           passengers: 4,
-          budgetUsd: 25000,
+          budgetUsd: 25000 + rfqSeq,
           name: 'LC Buyer',
           email: BUYER_EMAIL,
         },

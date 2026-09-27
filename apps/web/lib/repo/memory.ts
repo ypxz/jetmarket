@@ -214,16 +214,33 @@ class MemoryRepo implements Repo {
     return out;
   }
 
-  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq> {
+  private rfqDedupe = new Map<string, string>(); // dedupeKey -> rfqId
+
+  async createRfq(
+    r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
+      dedupeKey?: string;
+    },
+  ): Promise<Rfq> {
+    if (r.dedupeKey) {
+      const hit = this.rfqDedupe.get(r.dedupeKey);
+      if (hit) throw new Error("duplicate key value violates unique constraint");
+    }
+    const { dedupeKey, ...rest } = r;
+    void dedupeKey;
     const rfq: Rfq = {
-      ...r,
+      ...rest,
       id: uid("rfq"),
       status: "open",
       accessToken: crypto.randomUUID(),
       createdAt: now(),
     };
     this.rfqs.set(rfq.id, rfq);
+    if (r.dedupeKey) this.rfqDedupe.set(r.dedupeKey, rfq.id);
     return rfq;
+  }
+  async getRfqByDedupeKey(key: string) {
+    const id = this.rfqDedupe.get(key);
+    return id ? this.rfqs.get(id) : undefined;
   }
   async getRfq(id: string) {
     return this.rfqs.get(id);
