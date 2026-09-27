@@ -76,10 +76,17 @@ function repoFilter(p: ParsedParams) {
   };
 }
 
-/** Full filtered set — used by SEO landing pages that render everything. */
-export async function searchListings(params: SearchParams): Promise<Listing[]> {
+/**
+ * Filtered listing set for SEO landing pages. Unfiltered reads are capped at
+ * `limit` (default 48) — a landing page is a teaser for /search, which has
+ * its own pager, so rendering every match is never the intent.
+ */
+export async function searchListings(
+  params: SearchParams,
+  limit = 48,
+): Promise<Listing[]> {
   const p = parseParams(params);
-  return (await getRepo()).listListings(repoFilter(p));
+  return (await getRepo()).listListings({ ...repoFilter(p), limit });
 }
 
 export const SEARCH_PAGE_SIZE = 24;
