@@ -1,11 +1,13 @@
 // RFQ abuse guards (T15): honeypot fake-accept, captcha verify via the mock
 // provider's force-fail token, and the per-IP hourly rate limit.
-// The limiter buckets on x-forwarded-for, so a unique test IP isolates the
-// bucket from the core-loop spec (which posts on the default "local" key).
+// The limiter buckets on x-forwarded-for. TEST-NET-3 is this spec's dedicated
+// segment (core-loop uses 192.0.2.x, lifecycle 198.51.100.x): every spec needs
+// a disjoint segment because run-derived octets collide when two spec files
+// load within the same millisecond (same Date.now() → same bucket → flaky 429).
 import { expect, request, test } from '@playwright/test';
 
 const run = Date.now();
-const IP = `198.51.100.${(run % 200) + 1}`;
+const IP = `203.0.113.${(run % 200) + 1}`;
 
 test('rfq abuse: captcha force-fail → 403, honeypot → fake 201, rate limit → 429', async () => {
   const ctx = await request.newContext({

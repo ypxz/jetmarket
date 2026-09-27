@@ -28,5 +28,10 @@
   "devDependencies": {
     "tsx": "4.20.5"
   },
-  "type": "module"
+  "type": "module",
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.23"
+    }
+  }
 }
