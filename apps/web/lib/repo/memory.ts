@@ -198,6 +198,10 @@ class MemoryRepo implements Repo {
   }
 
   async createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal> {
+    // Mirrors deals.quote_id unique — concurrent accepts must not double-deal.
+    if ([...this.deals.values()].some((x) => x.quoteId === d.quoteId)) {
+      throw new Error("deal already exists for quote");
+    }
     const deal: Deal = { ...d, id: uid("deal"), closedAt: now() };
     this.deals.set(deal.id, deal);
     return deal;

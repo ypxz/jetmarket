@@ -44,14 +44,25 @@ export async function POST(
 
   const listing = await repo.getListing(rfq.listingId);
   const feePct = listing ? successFeePctFor(listing.type) : 0.03;
-  const deal = await repo.createDeal({
-    quoteId: quote.id,
-    operatorId: quote.operatorId,
-    amount: quote.amount,
-    feePct,
-    feeAmount: Math.round(quote.amount * feePct * 100) / 100,
-    invoiceStatus: "pending",
-  });
+  let deal;
+  try {
+    deal = await repo.createDeal({
+      quoteId: quote.id,
+      operatorId: quote.operatorId,
+      amount: quote.amount,
+      feePct,
+      feeAmount: Math.round(quote.amount * feePct * 100) / 100,
+      invoiceStatus: "pending",
+    });
+  } catch (e) {
+    // Duplicate accept raced past the "sent" check: deals.quote_id unique
+    // (db) / guard (memory) rejects the second deal — tell the buyer cleanly.
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("deal already exists") || msg.includes("duplicate key")) {
+      return err("quote already accepted", 409);
+    }
+    throw e;
+  }
   await repo.setRfqStatus(rfq.id, "closed");
 
   analyticsProvider().track({

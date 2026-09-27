@@ -399,6 +399,17 @@ export function repoContract(
         invoiceStatus: "paid",
         invoiceRef: "inv_test_1",
       });
+      // deals.quote_id is unique — a racing double-accept must be rejected.
+      await expect(
+        repo.createDeal({
+          quoteId: quote.id,
+          operatorId: op.id,
+          amount: 5000,
+          feePct: 0.03,
+          feeAmount: 150,
+          invoiceStatus: "pending",
+        }),
+      ).rejects.toThrow();
     });
   });
 }
