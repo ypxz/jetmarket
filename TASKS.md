@@ -143,6 +143,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 64 | ~00:55 | QA-73 | info leak | Lead-run: post-QA-65, matched operators' inbox showed ALL quotes on the shared RFQ incl. competitor amounts — scoped `listQuotes` to the viewing operator in both `/api/operator/rfqs` and `/app/rfqs` |
 | 65 | ~01:15 | QA-74 | unbounded read | Lead-run: admin page called `listOperators()` uncapped for the table — capped at 100 (header count already shows true total); `/api/admin/operators` was capped in QA-67 |
 | 66 | ~01:25 | QA-75 | unbounded read | Lead-run: `/api/buyer/quotes` scanned all of a buyer's RFQs before the token filter — capped at 200 (post-fetch match needs headroom) |
+| 67 | ~01:40 | QA-76 | unbounded render | Lead-run: SEO `[slug]` pages rendered the full filtered set via unbounded `searchListings` — added `limit` param (default 48); landing pages are teasers for /search which paginates |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
