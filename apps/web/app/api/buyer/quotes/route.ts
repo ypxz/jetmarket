@@ -1,4 +1,4 @@
-import { err, ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 
 // Buyer-side view: quotes received for an RFQ. Gated by the per-RFQ bearer
@@ -6,6 +6,9 @@ import { getRepo } from "@/lib/repo";
 // email — possession of the link is proof of inbox (QA-39). Bare email lookup
 // is deliberately not offered.
 export async function GET(req: Request) {
+  if (!rateLimit(`buyer-quotes:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const url = new URL(req.url);
   const email = url.searchParams.get("email");
   const token = url.searchParams.get("t");
