@@ -48,7 +48,7 @@ const CreateListing = z.object({
   attributes: z.record(z.string(), z.unknown()).default({}),
   price: z.number().positive().max(1e9),
   currency: z.string().length(3).default("USD"),
-  photos: z.array(z.string()).default([]),
+  photos: z.array(z.string().max(300)).max(12).default([]),
 });
 
 export async function POST(req: Request) {
