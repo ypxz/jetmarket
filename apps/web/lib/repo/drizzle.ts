@@ -126,13 +126,18 @@ export class DrizzleRepo implements Repo {
   constructor(private db: Db) {}
 
   async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
-    const existing = await this.findUserByEmail(email);
+    const normalized = email.toLowerCase();
+    const existing = await this.findUserByEmail(normalized);
     if (existing) return existing;
-    const [r] = await this.db
+    // onConflictDoNothing keeps concurrent sign-ups on the same email from
+    // erroring on the unique constraint; the re-read returns the winner's row.
+    await this.db
       .insert(users)
-      .values({ email, role })
-      .returning();
-    return toUser(r!);
+      .values({ email: normalized, role })
+      .onConflictDoNothing({ target: users.email });
+    const user = await this.findUserByEmail(normalized);
+    if (!user) throw new Error("createUser: insert raced and winner vanished");
+    return user;
   }
   async findUserByEmail(email: string): Promise<User | undefined> {
     const [r] = await this.db

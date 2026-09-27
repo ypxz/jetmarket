@@ -25,9 +25,10 @@ class MemoryRepo implements Repo {
   subscriptions = new Map<string, Subscription>();
 
   async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
-    const existing = await this.findUserByEmail(email);
+    const normalized = email.toLowerCase();
+    const existing = await this.findUserByEmail(normalized);
     if (existing) return existing;
-    const u: User = { id: uid("usr"), email, role, createdAt: now() };
+    const u: User = { id: uid("usr"), email: normalized, role, createdAt: now() };
     this.users.set(u.id, u);
     return u;
   }
