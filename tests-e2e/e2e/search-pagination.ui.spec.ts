@@ -9,7 +9,7 @@ test('search paginates results and keeps facet params across pages', async ({
   await page.goto('/search');
 
   await expect(page.getByTestId('search-results-count')).toBeVisible();
-  const pager = page.getByTestId('search-pager');
+  const pager = page.getByTestId('pager');
   await expect(pager).toBeVisible();
   await expect(pager).toContainText('Page 1 of');
 
@@ -29,7 +29,7 @@ test('search paginates results and keeps facet params across pages', async ({
   await page.getByTestId('facet-apply').click();
   await expect(page).toHaveURL(/type=empty_leg/);
   await expect(page).not.toHaveURL(/[?&]page=/); // filtering resets to page 1
-  const filteredPager = page.getByTestId('search-pager');
+  const filteredPager = page.getByTestId('pager');
   if ((await filteredPager.count()) > 0) {
     await filteredPager.getByRole('link', { name: 'Next' }).click();
     await expect(page).toHaveURL(/type=empty_leg/);

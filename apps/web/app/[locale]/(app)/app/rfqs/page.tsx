@@ -1,13 +1,20 @@
 import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
+import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { paginate } from "@/lib/search";
 import { quoteStateVariant } from "@/lib/state-variant";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 
-export default async function RfqInboxPage() {
+export default async function RfqInboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   const t = await getTranslations("app.rfqs");
   const tc = await getTranslations("common");
   const user = await currentUser();
@@ -21,8 +28,9 @@ export default async function RfqInboxPage() {
     );
   }
   const rfqs = await repo.listRfqs({ operatorId: operator.id });
+  const { items: rfqsPage, page, pages } = paginate(rfqs, params.page);
   const rfqRows = await Promise.all(
-    rfqs.map(async (r) => ({
+    rfqsPage.map(async (r) => ({
       rfq: r,
       listing: (await repo.getListing(r.listingId)) ?? null,
       quotes: await repo.listQuotes({ rfqId: r.id }),
@@ -98,6 +106,12 @@ export default async function RfqInboxPage() {
           })}
         </ul>
       )}
+      <Pager
+        basePath="/app/rfqs"
+        params={params}
+        page={page}
+        pages={pages}
+      />
     </main>
   );
 }

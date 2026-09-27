@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 
 function pageHref(
+  basePath: string,
   params: Record<string, string | string[] | undefined>,
   page: number,
 ): string {
@@ -12,30 +13,32 @@ function pageHref(
   }
   if (page > 1) sp.set("page", String(page));
   const qs = sp.toString();
-  return `/search${qs ? `?${qs}` : ""}`;
+  return `${basePath}${qs ? `?${qs}` : ""}`;
 }
 
-export async function SearchPager({
+export async function Pager({
+  basePath,
   params,
   page,
   pages,
 }: {
+  basePath: string;
   params: Record<string, string | string[] | undefined>;
   page: number;
   pages: number;
 }) {
-  const t = await getTranslations("search");
+  const t = await getTranslations("common.pager");
   if (pages <= 1) return null;
   const linkCls =
     "rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-surface";
   return (
     <nav
-      aria-label={t("pagination")}
+      aria-label={t("label")}
       className="mt-6 flex items-center justify-between"
-      data-testid="search-pager"
+      data-testid="pager"
     >
       {page > 1 ? (
-        <Link href={pageHref(params, page - 1)} className={linkCls}>
+        <Link href={pageHref(basePath, params, page - 1)} className={linkCls}>
           {t("prev")}
         </Link>
       ) : (
@@ -45,7 +48,7 @@ export async function SearchPager({
         {t("pageOf", { page, pages })}
       </span>
       {page < pages ? (
-        <Link href={pageHref(params, page + 1)} className={linkCls}>
+        <Link href={pageHref(basePath, params, page + 1)} className={linkCls}>
           {t("next")}
         </Link>
       ) : (

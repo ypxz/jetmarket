@@ -2,7 +2,7 @@ import { EmptyState, Grid } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { FacetSidebar } from "@/components/facet-sidebar";
 import { ListingCard } from "@/components/listing-card";
-import { SearchPager } from "@/components/search-pager";
+import { Pager } from "@/components/pager";
 import { getRepo } from "@/lib/repo";
 import { paginate, searchListings } from "@/lib/search";
 
@@ -50,7 +50,12 @@ export default async function SearchPage({
                   </div>
                 ))}
               </Grid>
-              <SearchPager params={params} page={page} pages={pages} />
+              <Pager
+                basePath="/search"
+                params={params}
+                page={page}
+                pages={pages}
+              />
             </>
           )}
         </section>

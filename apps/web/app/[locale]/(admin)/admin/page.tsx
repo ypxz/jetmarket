@@ -1,14 +1,21 @@
 import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { paginate } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
 import { MarkPaidButton } from "./mark-paid";
 import { VerifyButton } from "./verify-button";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   const t = await getTranslations("admin");
   const tc = await getTranslations("common");
   const user = await currentUser();
@@ -16,7 +23,11 @@ export default async function AdminPage() {
 
   const repo = await getRepo();
   const operators = await repo.listOperators();
-  const deals = await repo.listDeals();
+  const allDeals = await repo.listDeals();
+  const { items: deals, page, pages, total: dealTotal } = paginate(
+    allDeals,
+    params.page,
+  );
   const listingCounts = new Map(
     await Promise.all(
       operators.map(async (o) => [o.id, await repo.countOperatorListings(o.id)] as const),
@@ -27,7 +38,7 @@ export default async function AdminPage() {
       deals.map(async (d) => [d.id, (await repo.getOperator(d.operatorId))?.name ?? "?"] as const),
     ),
   );
-  const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
+  const feeTotal = allDeals.reduce((s, d) => s + d.feeAmount, 0);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -70,7 +81,7 @@ export default async function AdminPage() {
       <section className="mt-10">
         <h2 className="text-lg font-semibold">
           {t("ledger", {
-            count: deals.length,
+            count: dealTotal,
             total: formatMoney(feeTotal, "USD"),
           })}
         </h2>
@@ -119,6 +130,12 @@ export default async function AdminPage() {
             ) : null}
           </tbody>
         </table></div>
+        <Pager
+          basePath="/admin"
+          params={params}
+          page={page}
+          pages={pages}
+        />
       </section>
     </main>
   );
