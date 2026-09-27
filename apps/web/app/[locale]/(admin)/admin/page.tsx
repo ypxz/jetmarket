@@ -5,7 +5,7 @@ import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
-import { paginate } from "@/lib/search";
+import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
 import { MarkPaidButton, VoidInvoiceButton } from "./mark-paid";
 import { VerifyButton } from "./verify-button";
@@ -22,12 +22,16 @@ export default async function AdminPage({
   if (!user || user.role !== "admin") redirect("/sign-in");
 
   const repo = await getRepo();
+  const operatorCount = await repo.countOperators();
+  const dealTotal = await repo.countDeals();
+  const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
+  const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
+  const page = Number.isInteger(rawPage) && rawPage >= 1 ? Math.min(rawPage, dealPages) : 1;
+  const deals = await repo.listDeals({
+    limit: SEARCH_PAGE_SIZE,
+    offset: (page - 1) * SEARCH_PAGE_SIZE,
+  });
   const operators = await repo.listOperators();
-  const allDeals = await repo.listDeals();
-  const { items: deals, page, pages, total: dealTotal } = paginate(
-    allDeals,
-    params.page,
-  );
   const listingCounts = new Map(
     await Promise.all(
       operators.map(async (o) => [o.id, await repo.countOperatorListings(o.id)] as const),
@@ -38,7 +42,7 @@ export default async function AdminPage({
       deals.map(async (d) => [d.id, (await repo.getOperator(d.operatorId))?.name ?? "?"] as const),
     ),
   );
-  const feeTotal = allDeals.reduce((s, d) => s + d.feeAmount, 0);
+  const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -46,7 +50,7 @@ export default async function AdminPage({
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold">
-          {t("operators", { count: operators.length })}
+          {t("operators", { count: operatorCount })}
         </h2>
         <div className="overflow-x-auto"><table className="mt-3 w-full min-w-xl text-left text-sm">
           <thead className="border-b border-border text-muted">
@@ -137,7 +141,7 @@ export default async function AdminPage({
           basePath="/admin"
           params={params}
           page={page}
-          pages={pages}
+          pages={dealPages}
         />
       </section>
     </main>

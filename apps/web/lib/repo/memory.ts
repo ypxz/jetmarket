@@ -54,8 +54,17 @@ class MemoryRepo implements Repo {
   async getOperatorByUserId(userId: string) {
     return [...this.operators.values()].find((o) => o.userId === userId);
   }
-  async listOperators() {
-    return [...this.operators.values()];
+  async listOperators(filter?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<Operator[]> {
+    let out = [...this.operators.values()];
+    if (filter?.offset) out = out.slice(filter.offset);
+    if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
+    return out;
+  }
+  async countOperators(): Promise<number> {
+    return this.operators.size;
   }
   async setOperatorVerified(id: string, verified: boolean) {
     const op = this.operators.get(id);
@@ -297,10 +306,21 @@ class MemoryRepo implements Repo {
         invoiceRef: ref ?? deal.invoiceRef,
       });
   }
-  async listDeals(filter?: { operatorId?: string }): Promise<Deal[]> {
+  async listDeals(filter?: {
+    operatorId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Deal[]> {
     let out = [...this.deals.values()];
     if (filter?.operatorId) out = out.filter((d) => d.operatorId === filter.operatorId);
-    return out.sort((a, b) => b.closedAt.localeCompare(a.closedAt));
+    out = out.sort((a, b) => b.closedAt.localeCompare(a.closedAt));
+    if (filter?.offset) out = out.slice(filter.offset);
+    if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
+    return out;
+  }
+  async countDeals(filter?: { operatorId?: string }): Promise<number> {
+    return (await this.listDeals({ ...filter, limit: undefined, offset: undefined }))
+      .length;
   }
 
   async upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription> {

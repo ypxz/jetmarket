@@ -108,7 +108,11 @@ export interface Repo {
   ): Promise<Operator>;
   getOperator(id: string): Promise<Operator | undefined>;
   getOperatorByUserId(userId: string): Promise<Operator | undefined>;
-  listOperators(): Promise<Operator[]>;
+  listOperators(filter?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<Operator[]>;
+  countOperators(): Promise<number>;
   setOperatorVerified(id: string, verified: boolean): Promise<void>;
   setOperatorPlan(id: string, plan: Plan): Promise<void>;
 
@@ -183,7 +187,12 @@ export interface Repo {
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
   getDeal(id: string): Promise<Deal | undefined>;
-  listDeals(filter?: { operatorId?: string }): Promise<Deal[]>;
+  listDeals(filter?: {
+    operatorId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Deal[]>;
+  countDeals(filter?: { operatorId?: string }): Promise<number>;
   /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid). */
   setDealInvoice(
     id: string,

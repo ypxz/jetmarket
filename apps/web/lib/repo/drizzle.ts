@@ -260,9 +260,20 @@ export class DrizzleRepo implements Repo {
       .limit(1);
     return r ? toOperator(r) : undefined;
   }
-  async listOperators(): Promise<Operator[]> {
-    const rows = await this.db.select().from(operators);
-    return rows.map(toOperator);
+  async listOperators(filter?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<Operator[]> {
+    let q = this.db.select().from(operators).$dynamic();
+    if (filter?.limit !== undefined) q = q.limit(filter.limit);
+    if (filter?.offset) q = q.offset(filter.offset);
+    return (await q).map(toOperator);
+  }
+  async countOperators(): Promise<number> {
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(operators);
+    return r?.n ?? 0;
   }
   async setOperatorVerified(id: string, verified: boolean): Promise<void> {
     await this.db
@@ -545,16 +556,36 @@ export class DrizzleRepo implements Repo {
       })
       .where(eq(deals.id, id));
   }
-  async listDeals(filter?: { operatorId?: string }): Promise<Deal[]> {
-    const rows = await this.db
+  async listDeals(filter?: {
+    operatorId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Deal[]> {
+    // operatorId lives on the parent quote — join first so the filter is SQL.
+    const conds = filter?.operatorId
+      ? [eq(quotes.operatorId, filter.operatorId)]
+      : [];
+    let q = this.db
       .select({ deal: deals, quote: quotes })
       .from(deals)
       .innerJoin(quotes, eq(deals.quoteId, quotes.id))
-      .orderBy(desc(deals.closedAt));
-    let out = rows.map((r) => toDeal(r.deal, r.quote));
-    if (filter?.operatorId)
-      out = out.filter((d) => d.operatorId === filter.operatorId);
-    return out;
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(deals.closedAt))
+      .$dynamic();
+    if (filter?.limit !== undefined) q = q.limit(filter.limit);
+    if (filter?.offset) q = q.offset(filter.offset);
+    return (await q).map((r) => toDeal(r.deal, r.quote));
+  }
+  async countDeals(filter?: { operatorId?: string }): Promise<number> {
+    const conds = filter?.operatorId
+      ? [eq(quotes.operatorId, filter.operatorId)]
+      : [];
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(deals)
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .where(conds.length ? and(...conds) : undefined);
+    return r?.n ?? 0;
   }
 
   async upsertSubscription(
