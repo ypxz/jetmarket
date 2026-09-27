@@ -16,7 +16,9 @@ export async function GET(req: Request) {
   if (!email) return err("email required", 400);
   if (!token) return err("use the link from your email", 401);
   const repo = await getRepo();
-  const rfqs = (await repo.listRfqs({ buyerEmail: email })).filter(
+  // The token match happens post-fetch, so the cap must stay generous — a
+  // buyer with >200 RFQs on older links loses the match. Still bounded.
+  const rfqs = (await repo.listRfqs({ buyerEmail: email, limit: 200 })).filter(
     (r) => r.accessToken === token,
   );
   return ok(
