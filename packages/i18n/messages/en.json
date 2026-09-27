@@ -1,762 +1,764 @@
 {
-  "common": {
-    "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator.",
-    "verified": "Verified operator",
-    "unverified": "Unverified operator",
-    "onRequest": "On request",
-    "loading": "Loading…",
-    "error": "Something went wrong",
-    "retry": "Retry",
-    "backToSearch": "← Back to search",
-    "currencyPerMonth": "/mo",
-    "from": "From {price}",
-    "quoteState": {
-      "sent": "sent",
-      "accepted": "accepted",
-      "declined": "declined",
-      "withdrawn": "withdrawn"
+ "common": {
+  "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator.",
+  "verified": "Verified operator",
+  "unverified": "Unverified operator",
+  "onRequest": "On request",
+  "loading": "Loading…",
+  "error": "Something went wrong",
+  "retry": "Retry",
+  "backToSearch": "← Back to search",
+  "currencyPerMonth": "/mo",
+  "from": "From {price}",
+  "quoteState": {
+   "sent": "sent",
+   "accepted": "accepted",
+   "declined": "declined",
+   "withdrawn": "withdrawn"
+  },
+  "invoiceState": {
+   "pending": "pending",
+   "invoiced": "invoiced",
+   "paid": "paid",
+   "void": "void"
+  },
+  "pager": {
+   "label": "Pagination",
+   "prev": "Previous",
+   "next": "Next",
+   "pageOf": "Page {page} of {pages}"
+  }
+ },
+ "nav": {
+  "search": "Search",
+  "myQuotes": "My quotes",
+  "operator": "Operator",
+  "admin": "Admin",
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "design": "Design",
+  "pricing": "Pricing",
+  "faq": "FAQ",
+  "login": "Sign in",
+  "app": "Open app",
+  "theme": "Toggle dark mode"
+ },
+ "footer": {
+  "legal": "Legal",
+  "tos": "Terms of service",
+  "privacy": "Privacy",
+  "imprint": "Imprint",
+  "contact": "Contact",
+  "copyright": "© {year} {name}. All rights reserved."
+ },
+ "search": {
+  "title": "Search listings",
+  "placeholder": "Search model, route, operator…",
+  "submit": "Apply filters",
+  "reset": "Reset",
+  "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}",
+  "emptyTitle": "No listings match",
+  "emptyBody": "Loosen the filters or try a broader category — new listings go live daily.",
+  "min": "Min",
+  "max": "Max",
+  "typeFacet": "Type"
+ },
+ "seo": {
+  "listingsHeading": "Available listings",
+  "browseAll": "Search all matching listings",
+  "genericIntro": "Browse vetted operators matching this route — request once, compare quotes.",
+  "emptyTitle": "No live listings on this route yet",
+  "emptyBody": "Check back soon — operators add listings on this route regularly.",
+  "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}"
+ },
+ "listing": {
+  "gallery": "Photos",
+  "photoPlaceholder": "Photo {n}",
+  "attributes": "Aircraft details",
+  "operator": "Operator",
+  "basedAt": "Based at {airport}",
+  "rfqCta": "Request quotes for this listing",
+  "notFound": "Listing not found or no longer active.",
+  "back": "← Back to search",
+  "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator."
+ },
+ "rfq": {
+  "title": "Request a quote",
+  "subtitle": "Tell operators what you need — they reply with firm quotes.",
+  "forListing": "For: {title}",
+  "groups": {
+   "route": "Route",
+   "dates": "Dates",
+   "contact": "Contact"
+  },
+  "submit": "Send request",
+  "sending": "Sending…",
+  "success": "Request sent",
+  "thanksTitle": "Request received",
+  "thanksBody": "Your request was sent to the listing's operator and matching operators. Quotes appear on your quotes page and arrive by email.",
+  "thanksRef": "Reference: {id}",
+  "viewQuotes": "View my requests & quotes",
+  "honeypotHint": "Leave this field empty",
+  "error": "Could not send your request — check the fields and try again.",
+  "rateLimited": "Too many requests — try again later.",
+  "emailHint": "Quotes are sent to this address."
+ },
+ "quotes": {
+  "title": "My requests & quotes",
+  "emailLabel": "Email used in your RFQ",
+  "load": "Load",
+  "empty": "No requests for this email.",
+  "waiting": "Waiting for operator quotes…",
+  "accept": "Accept",
+  "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
+  "by": "by {name}",
+  "status": "Status: {status}",
+  "decline": "Decline",
+  "declinedMsg": "Quote declined.",
+  "declining": "Declining…",
+  "needLink": "Open the link from your RFQ or quote email to view your quotes."
+ },
+ "design": {
+  "title": "Design system",
+  "subtitle": "Every primitive and block, rendered from tokens.css",
+  "primitives": "Primitives",
+  "layoutSection": "Layout",
+  "blocksSection": "Blocks"
+ },
+ "legal": {
+  "tos": {
+   "title": "Terms of Service",
+   "updated": "Last updated: {date}",
+   "sections": [
+    {
+     "h": "1. The service",
+     "body": "{entity} operates an online marketplace that connects buyers with independent sellers and operators. {entity} is a marketplace, not a broker, dealer, or carrier: it does not own, operate, inspect, or sell the listed items and is never a party to a transaction between users."
     },
-    "invoiceState": {
-      "pending": "pending",
-      "invoiced": "invoiced",
-      "paid": "paid",
-      "void": "void"
+    {
+     "h": "2. Accounts",
+     "body": "You sign in with an email magic link — no password is stored. You are responsible for activity under your account and for keeping your contact details accurate. Operator accounts may be verified manually before their listings receive RFQs without delay."
     },
-    "pager": {
-      "label": "Pagination",
-      "prev": "Previous",
-      "next": "Next",
-      "pageOf": "Page {page} of {pages}"
+    {
+     "h": "3. Listings and requests for quotation",
+     "body": "Operators list items and buyers send requests for quotation (RFQs). {entity} forwards RFQs to matching operators, who reply with quotes. Listings and quotes are statements by the operator only; {entity} does not verify their accuracy, legality, or availability."
+    },
+    {
+     "h": "4. Contracts and fees",
+     "body": "A contract forms solely between buyer and operator when a quote is accepted. Sellers pay {entity} a success fee on closed deals as published in the fee schedule; buyers pay nothing to {entity}. Success fees are invoiced to the operator after deal confirmation."
+    },
+    {
+     "h": "5. Acceptable use",
+     "body": "You must not post unlawful, misleading, or fraudulent listings, submit spam or automated RFQs, scrape the service, or misrepresent your identity or inventory. {entity} may suspend accounts and remove content that violates these terms."
+    },
+    {
+     "h": "6. Liability",
+     "body": "The service is provided \"as is\". {entity} is not liable for operator performance, item condition, transaction outcomes, or indirect damages. Nothing in these terms limits liability that cannot be limited by law."
+    },
+    {
+     "h": "7. Changes",
+     "body": "{entity} may update these terms with notice on this page. Continued use after an update constitutes acceptance."
     }
+   ]
   },
-  "nav": {
-    "search": "Search",
-    "myQuotes": "My quotes",
-    "operator": "Operator",
-    "admin": "Admin",
-    "signIn": "Sign in",
-    "signOut": "Sign out",
-    "design": "Design",
-    "pricing": "Pricing",
-    "faq": "FAQ",
-    "login": "Sign in",
-    "app": "Open app",
-    "theme": "Toggle dark mode"
-  },
-  "footer": {
-    "legal": "Legal",
-    "tos": "Terms of service",
-    "privacy": "Privacy",
-    "imprint": "Imprint",
-    "contact": "Contact",
-    "copyright": "© {year} {name}. All rights reserved."
-  },
-  "search": {
-    "title": "Search listings",
-    "placeholder": "Search model, route, operator…",
-    "submit": "Apply filters",
-    "reset": "Reset",
-    "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}",
-    "emptyTitle": "No listings match",
-    "emptyBody": "Loosen the filters or try a broader category — new listings go live daily.",
-    "min": "Min",
-    "max": "Max",
-    "typeFacet": "Type"
-  },
-  "seo": {
-    "listingsHeading": "Available listings",
-    "browseAll": "Search all matching listings",
-    "genericIntro": "Browse vetted operators matching this route — request once, compare quotes.",
-    "emptyTitle": "No live listings on this route yet",
-    "emptyBody": "Check back soon — operators add listings on this route regularly.",
-    "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}"
-  },
-  "listing": {
-    "gallery": "Photos",
-    "photoPlaceholder": "Photo {n}",
-    "attributes": "Aircraft details",
-    "operator": "Operator",
-    "basedAt": "Based at {airport}",
-    "rfqCta": "Request quotes for this listing",
-    "notFound": "Listing not found or no longer active.",
-    "back": "← Back to search",
-    "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator."
-  },
-  "rfq": {
-    "title": "Request a quote",
-    "subtitle": "Tell operators what you need — they reply with firm quotes.",
-    "forListing": "For: {title}",
-    "groups": {
-      "route": "Route",
-      "dates": "Dates",
-      "contact": "Contact"
+  "privacy": {
+   "title": "Privacy Policy",
+   "updated": "Last updated: {date}",
+   "sections": [
+    {
+     "h": "1. What we collect",
+     "body": "Account email and role; operator profile details (company name, base, fleet summary); listing content including photos; RFQ field values and the buyer email attached to each request; quotes and deal records."
     },
-    "submit": "Send request",
-    "sending": "Sending…",
-    "success": "Request sent",
-    "thanksTitle": "Request received",
-    "thanksBody": "Your request was sent to the listing's operator and matching operators. Quotes appear on your quotes page and arrive by email.",
-    "thanksRef": "Reference: {id}",
-    "viewQuotes": "View my requests & quotes",
-    "honeypotHint": "Leave this field empty",
-    "error": "Could not send your request — check the fields and try again.",
-    "rateLimited": "Too many requests — try again later.",
-    "emailHint": "Quotes are sent to this address."
-  },
-  "quotes": {
-    "title": "My requests & quotes",
-    "emailLabel": "Email used in your RFQ",
-    "load": "Load",
-    "empty": "No requests for this email.",
-    "waiting": "Waiting for operator quotes…",
-    "accept": "Accept",
-    "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
-    "by": "by {name}",
-    "status": "Status: {status}",
-    "decline": "Decline",
-    "declinedMsg": "Quote declined.",
-    "declining": "Declining…",
-    "needLink": "Open the link from your RFQ or quote email to view your quotes."
-  },
-  "design": {
-    "title": "Design system",
-    "subtitle": "Every primitive and block, rendered from tokens.css",
-    "primitives": "Primitives",
-    "layoutSection": "Layout",
-    "blocksSection": "Blocks"
-  },
-  "legal": {
-    "tos": {
-      "title": "Terms of Service",
-      "updated": "Last updated: {date}",
-      "sections": [
-        {
-          "h": "1. The service",
-          "body": "{entity} operates an online marketplace that connects buyers with independent sellers and operators. {entity} is a marketplace, not a broker, dealer, or carrier: it does not own, operate, inspect, or sell the listed items and is never a party to a transaction between users."
-        },
-        {
-          "h": "2. Accounts",
-          "body": "You sign in with an email magic link — no password is stored. You are responsible for activity under your account and for keeping your contact details accurate. Operator accounts may be verified manually before their listings receive RFQs without delay."
-        },
-        {
-          "h": "3. Listings and requests for quotation",
-          "body": "Operators list items and buyers send requests for quotation (RFQs). {entity} forwards RFQs to matching operators, who reply with quotes. Listings and quotes are statements by the operator only; {entity} does not verify their accuracy, legality, or availability."
-        },
-        {
-          "h": "4. Contracts and fees",
-          "body": "A contract forms solely between buyer and operator when a quote is accepted. Sellers pay {entity} a success fee on closed deals as published in the fee schedule; buyers pay nothing to {entity}. Success fees are invoiced to the operator after deal confirmation."
-        },
-        {
-          "h": "5. Acceptable use",
-          "body": "You must not post unlawful, misleading, or fraudulent listings, submit spam or automated RFQs, scrape the service, or misrepresent your identity or inventory. {entity} may suspend accounts and remove content that violates these terms."
-        },
-        {
-          "h": "6. Liability",
-          "body": "The service is provided \"as is\". {entity} is not liable for operator performance, item condition, transaction outcomes, or indirect damages. Nothing in these terms limits liability that cannot be limited by law."
-        },
-        {
-          "h": "7. Changes",
-          "body": "{entity} may update these terms with notice on this page. Continued use after an update constitutes acceptance."
-        }
-      ]
+    {
+     "h": "2. How we use it",
+     "body": "To run the marketplace: authenticating sign-ins, routing RFQs to matching operators, delivering quotes, invoicing success fees, and preventing abuse (rate limits, honeypots, captcha checks)."
     },
-    "privacy": {
-      "title": "Privacy Policy",
-      "updated": "Last updated: {date}",
-      "sections": [
-        {
-          "h": "1. What we collect",
-          "body": "Account email and role; operator profile details (company name, base, fleet summary); listing content including photos; RFQ field values and the buyer email attached to each request; quotes and deal records."
-        },
-        {
-          "h": "2. How we use it",
-          "body": "To run the marketplace: authenticating sign-ins, routing RFQs to matching operators, delivering quotes, invoicing success fees, and preventing abuse (rate limits, honeypots, captcha checks)."
-        },
-        {
-          "h": "3. Sharing",
-          "body": "RFQ details go to the operators we match them to; quotes and contact details go to the requesting buyer. We do not sell personal data. Service providers (email, payments, storage) process data only to provide their function."
-        },
-        {
-          "h": "4. Retention",
-          "body": "Listings, RFQs, quotes, and deals are retained while your account is active and as required for invoicing and legal obligations."
-        },
-        {
-          "h": "5. Your rights",
-          "body": "You may request access, correction, export, or deletion of your personal data by writing to {email}. Deleting your account removes your listings and profile; transaction records are kept where legally required."
-        },
-        {
-          "h": "6. Contact",
-          "body": "Privacy questions: {email}. {entity} is the data controller for this service."
-        }
-      ]
+    {
+     "h": "3. Sharing",
+     "body": "RFQ details go to the operators we match them to; quotes and contact details go to the requesting buyer. We do not sell personal data. Service providers (email, payments, storage) process data only to provide their function."
     },
-    "imprint": {
-      "title": "Imprint",
-      "entityLabel": "Operating entity",
-      "addressLabel": "Registered address",
-      "registrationLabel": "Commercial register",
-      "contactLabel": "Contact"
+    {
+     "h": "4. Retention",
+     "body": "Listings, RFQs, quotes, and deals are retained while your account is active and as required for invoicing and legal obligations."
     },
-    "placeholder": "Placeholder text — replace before launch."
+    {
+     "h": "5. Your rights",
+     "body": "You may request access, correction, export, or deletion of your personal data by writing to {email}. Deleting your account removes your listings and profile; transaction records are kept where legally required."
+    },
+    {
+     "h": "6. Contact",
+     "body": "Privacy questions: {email}. {entity} is the data controller for this service."
+    }
+   ]
   },
-  "errors": {
-    "notFoundTitle": "Not found",
-    "notFoundBody": "This page does not exist.",
-    "genericTitle": "Something went wrong",
-    "notFound": "Page not found",
-    "generic": "Something went wrong"
+  "imprint": {
+   "title": "Imprint",
+   "entityLabel": "Operating entity",
+   "addressLabel": "Registered address",
+   "registrationLabel": "Commercial register",
+   "contactLabel": "Contact"
   },
-  "vertical": {
-    "jets": {
-      "listingTypes": {
-        "charter": "Charter",
-        "empty_leg": "Empty leg",
-        "aircraft_sale": "Aircraft for sale"
+  "placeholder": "Placeholder text — replace before launch."
+ },
+ "errors": {
+  "notFoundTitle": "Not found",
+  "notFoundBody": "This page does not exist.",
+  "genericTitle": "Something went wrong",
+  "notFound": "Page not found",
+  "generic": "Something went wrong"
+ },
+ "vertical": {
+  "jets": {
+   "listingTypes": {
+    "charter": "Charter",
+    "empty_leg": "Empty leg",
+    "aircraft_sale": "Aircraft for sale"
+   },
+   "attributes": {
+    "aircraftCategory": "Category",
+    "model": "Model",
+    "year": "Year",
+    "seats": "Seats",
+    "rangeNm": "Range",
+    "baseAirport": "Base airport",
+    "from": "Departs",
+    "to": "Arrives",
+    "date": "Date",
+    "hoursTotal": "Total time"
+   },
+   "categories": {
+    "light": "Light jet",
+    "mid": "Midsize",
+    "super_mid": "Super-midsize",
+    "heavy": "Heavy",
+    "ultra_long": "Ultra-long range"
+   },
+   "facets": {
+    "type": "Listing type",
+    "aircraftCategory": "Aircraft category",
+    "from": "Departure",
+    "to": "Arrival",
+    "seats": "Seats",
+    "price": "Price"
+   },
+   "units": {
+    "seats": "seats",
+    "nm": "nm",
+    "hours": "h",
+    "kg": "kg"
+   },
+   "rfq": {
+    "departure": "Departure",
+    "arrival": "Arrival",
+    "dateFrom": "Earliest date",
+    "dateTo": "Latest date",
+    "passengers": "Passengers",
+    "budgetUsd": "Budget (USD)",
+    "name": "Full name",
+    "email": "Email",
+    "phone": "Phone",
+    "notes": "Notes for operators",
+    "placeholders": {
+     "departure": "Zurich or ZRH",
+     "arrival": "Nice or NCE"
+    }
+   },
+   "plans": {
+    "free": {
+     "name": "Free",
+     "features": [
+      "3 listings",
+      "RFQ inbox",
+      "RFQs delayed 24h"
+     ]
+    },
+    "pro": {
+     "name": "Pro",
+     "features": [
+      "Unlimited listings",
+      "Instant RFQs",
+      "Analytics",
+      "Priority placement"
+     ]
+    }
+   },
+   "seo": {
+    "pages": {
+     "empty-legs-zurich-nice": {
+      "title": "Empty legs Zurich → Nice",
+      "intro": "Discounted one-way repositioning flights from Zurich to Nice when operators fly the leg anyway."
+     },
+     "empty-legs-geneva-nice": {
+      "title": "Empty legs Geneva → Nice",
+      "intro": "Same-direction repositioning between Geneva and Nice at empty-leg pricing."
+     },
+     "empty-legs-london-nice": {
+      "title": "Empty legs London → Nice",
+      "intro": "London-area departures to the Riviera at reduced repositioning rates."
+     },
+     "empty-legs-nice-london": {
+      "title": "Empty legs Nice → London",
+      "intro": "Return repositioning legs from Nice to London airports."
+     },
+     "empty-legs-london-zurich": {
+      "title": "Empty legs London → Zurich",
+      "intro": "London to Zurich one-ways when aircraft reposition."
+     },
+     "empty-legs-zurich-geneva": {
+      "title": "Empty legs Zurich → Geneva",
+      "intro": "Short-haul repositioning between Zurich and Geneva."
+     },
+     "empty-legs-paris-nice": {
+      "title": "Empty legs Paris → Nice",
+      "intro": "Paris Le Bourget to the Côte d'Azur on repositioning legs."
+     },
+     "empty-legs-zurich-malaga": {
+      "title": "Empty legs Zurich → Málaga",
+      "intro": "Zurich departures to the Costa del Sol at empty-leg prices."
+     },
+     "empty-legs-geneva-palma": {
+      "title": "Empty legs Geneva → Palma",
+      "intro": "Geneva to Palma de Mallorca repositioning legs."
+     },
+     "empty-legs-zurich-ibiza": {
+      "title": "Empty legs Zurich → Ibiza",
+      "intro": "Seasonal repositioning from Zurich to Ibiza."
+     }
+    }
+   },
+   "home": {
+    "eyebrow": "JetMarket",
+    "title": "Charter, empty legs and aircraft for sale from vetted operators",
+    "subtitle": "Request once, get quotes, pay a fee only when it closes.",
+    "ctaSearch": "Browse aircraft",
+    "ctaOperator": "List your aircraft",
+    "searchPlaceholder": "Where to? Try “Nice” or “G650”",
+    "howItWorks": {
+     "title": "How it works",
+     "steps": [
+      {
+       "title": "Tell us the trip",
+       "body": "Route, dates, passengers and budget — one request reaches every matching operator."
       },
-      "attributes": {
-        "aircraftCategory": "Category",
-        "model": "Model",
-        "year": "Year",
-        "seats": "Seats",
-        "rangeNm": "Range",
-        "baseAirport": "Base airport",
-        "from": "Departs",
-        "to": "Arrives",
-        "date": "Date",
-        "hoursTotal": "Total time"
+      {
+       "title": "Compare quotes",
+       "body": "Vetted operators send firm quotes. Verified badge, fleet and price in one place."
       },
-      "categories": {
-        "light": "Light jet",
-        "mid": "Midsize",
-        "super_mid": "Super-midsize",
-        "heavy": "Heavy",
-        "ultra_long": "Ultra-long range"
-      },
-      "facets": {
-        "type": "Listing type",
-        "aircraftCategory": "Aircraft category",
-        "from": "Departure",
-        "to": "Arrival",
-        "seats": "Seats",
-        "price": "Price"
-      },
-      "units": {
-        "seats": "seats",
-        "nm": "nm",
-        "hours": "h",
-        "kg": "kg"
-      },
-      "rfq": {
-        "departure": "Departure",
-        "arrival": "Arrival",
-        "dateFrom": "Earliest date",
-        "dateTo": "Latest date",
-        "passengers": "Passengers",
-        "budgetUsd": "Budget (USD)",
-        "name": "Full name",
-        "email": "Email",
-        "phone": "Phone",
-        "notes": "Notes for operators",
-        "placeholders": {
-          "departure": "Zurich or ZRH",
-          "arrival": "Nice or NCE"
-        }
-      },
-      "plans": {
-        "free": {
-          "name": "Free",
-          "features": [
-            "3 listings",
-            "RFQ inbox",
-            "RFQs delayed 24h"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "features": [
-            "Unlimited listings",
-            "Instant RFQs",
-            "Analytics",
-            "Priority placement"
-          ]
-        }
-      },
-      "seo": {
-        "pages": {
-          "empty-legs-zurich-nice": {
-            "title": "Empty legs Zurich → Nice",
-            "intro": "Discounted one-way repositioning flights from Zurich to Nice when operators fly the leg anyway."
-          },
-          "empty-legs-geneva-nice": {
-            "title": "Empty legs Geneva → Nice",
-            "intro": "Same-direction repositioning between Geneva and Nice at empty-leg pricing."
-          },
-          "empty-legs-london-nice": {
-            "title": "Empty legs London → Nice",
-            "intro": "London-area departures to the Riviera at reduced repositioning rates."
-          },
-          "empty-legs-nice-london": {
-            "title": "Empty legs Nice → London",
-            "intro": "Return repositioning legs from Nice to London airports."
-          },
-          "empty-legs-london-zurich": {
-            "title": "Empty legs London → Zurich",
-            "intro": "London to Zurich one-ways when aircraft reposition."
-          },
-          "empty-legs-zurich-geneva": {
-            "title": "Empty legs Zurich → Geneva",
-            "intro": "Short-haul repositioning between Zurich and Geneva."
-          },
-          "empty-legs-paris-nice": {
-            "title": "Empty legs Paris → Nice",
-            "intro": "Paris Le Bourget to the Côte d'Azur on repositioning legs."
-          },
-          "empty-legs-zurich-malaga": {
-            "title": "Empty legs Zurich → Málaga",
-            "intro": "Zurich departures to the Costa del Sol at empty-leg prices."
-          },
-          "empty-legs-geneva-palma": {
-            "title": "Empty legs Geneva → Palma",
-            "intro": "Geneva to Palma de Mallorca repositioning legs."
-          },
-          "empty-legs-zurich-ibiza": {
-            "title": "Empty legs Zurich → Ibiza",
-            "intro": "Seasonal repositioning from Zurich to Ibiza."
-          }
-        }
-      },
-      "home": {
-        "eyebrow": "JetMarket",
-        "title": "Charter, empty legs and aircraft for sale from vetted operators",
-        "subtitle": "Request once, get quotes, pay a fee only when it closes.",
-        "ctaSearch": "Browse aircraft",
-        "ctaOperator": "List your aircraft",
-        "searchPlaceholder": "Where to? Try “Nice” or “G650”",
-        "howItWorks": {
-          "title": "How it works",
-          "steps": [
-            {
-              "title": "Tell us the trip",
-              "body": "Route, dates, passengers and budget — one request reaches every matching operator."
-            },
-            {
-              "title": "Compare quotes",
-              "body": "Vetted operators send firm quotes. Verified badge, fleet and price in one place."
-            },
-            {
-              "title": "Fly, then we bill",
-              "body": "You contract with the operator directly. JetMarket charges operators a success fee only when a deal closes."
-            }
-          ]
-        },
-        "featured": {
-          "title": "Latest listings",
-          "viewAll": "View all listings"
-        },
-        "pricing": {
-          "title": "Operator pricing",
-          "subtitle": "Start free. Upgrade when the requests flow."
-        },
-        "faq": {
-          "title": "Questions",
-          "items": [
-            {
-              "q": "Who do I contract with?",
-              "a": "Always with the operator. JetMarket is a marketplace, not a broker — we match requests to operators and take a success fee from them when a deal closes."
-            },
-            {
-              "q": "What does it cost me as a buyer?",
-              "a": "Nothing. Requesting quotes is free; operators pay the platform."
-            },
-            {
-              "q": "What is an empty leg?",
-              "a": "A repositioning flight an aircraft flies anyway — sold at a deep discount when it matches your route."
-            },
-            {
-              "q": "Are operators vetted?",
-              "a": "Operators self-declare their fleet and credentials; our team verifies documentation manually. Unverified operators are marked and receive RFQs with a delay."
-            },
-            {
-              "q": "Can I buy an aircraft here?",
-              "a": "Yes — aircraft_sale listings accept RFQs like any other; success fee on closed sales is 1.5%."
-            }
-          ]
-        }
+      {
+       "title": "Fly, then we bill",
+       "body": "You contract with the operator directly. JetMarket charges operators a success fee only when a deal closes."
       }
+     ]
     },
-    "machinery": {
-      "listingTypes": {
-        "for_sale": "For sale",
-        "for_rent": "For rent",
-        "auction": "Auction"
+    "featured": {
+     "title": "Latest listings",
+     "viewAll": "View all listings"
+    },
+    "pricing": {
+     "title": "Operator pricing",
+     "subtitle": "Start free. Upgrade when the requests flow."
+    },
+    "faq": {
+     "title": "Questions",
+     "items": [
+      {
+       "q": "Who do I contract with?",
+       "a": "Always with the operator. JetMarket is a marketplace, not a broker — we match requests to operators and take a success fee from them when a deal closes."
       },
-      "attributes": {
-        "machineryCategory": "Category",
-        "make": "Make",
-        "yearOfManufacture": "Year",
-        "hoursUsed": "Hours used",
-        "weightKg": "Weight",
-        "locationCountry": "Country",
-        "monthlyRentEur": "Monthly rent"
+      {
+       "q": "What does it cost me as a buyer?",
+       "a": "Nothing. Requesting quotes is free; operators pay the platform."
       },
-      "categories": {
-        "cnc_milling": "CNC milling",
-        "lathe": "Lathe",
-        "press": "Press",
-        "conveyor": "Conveyor",
-        "forklift": "Forklift",
-        "generator": "Generator",
-        "other": "Other"
+      {
+       "q": "What is an empty leg?",
+       "a": "A repositioning flight an aircraft flies anyway — sold at a deep discount when it matches your route."
       },
-      "facets": {
-        "type": "Listing type",
-        "machineryCategory": "Machine category",
-        "price": "Price",
-        "locationCountry": "Country"
+      {
+       "q": "Are operators vetted?",
+       "a": "Operators self-declare their fleet and credentials; our team verifies documentation manually. Unverified operators are marked and receive RFQs with a delay."
       },
-      "units": {
-        "hours": "h",
-        "kg": "kg"
-      },
-      "rfq": {
-        "deliveryPostcode": "Delivery postcode",
-        "dateFrom": "Needed from",
-        "dateTo": "Needed until",
-        "budgetEur": "Budget (EUR)",
-        "name": "Full name",
-        "email": "Email",
-        "phone": "Phone",
-        "notes": "Notes for sellers"
-      },
-      "plans": {
-        "free": {
-          "name": "Free",
-          "features": [
-            "3 listings",
-            "Delayed RFQs"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "features": [
-            "Unlimited listings",
-            "Instant RFQs",
-            "Analytics"
-          ]
-        }
-      },
-      "seo": {
-        "pages": {
-          "used-cnc-milling-machines": {
-            "title": "Used CNC milling machines",
-            "intro": "Used CNC machining centres from verified dealers — spindle hours, control and condition up front, one RFQ to all sellers."
-          },
-          "used-forklifts-for-sale": {
-            "title": "Used forklifts for sale",
-            "intro": "Used forklifts from dealer fleets — capacity, mast and service history on every listing."
-          },
-          "industrial-generators-for-rent": {
-            "title": "Industrial generators for rent",
-            "intro": "Industrial generators for temporary power — kVA ratings and delivery included, quotes within a day."
-          },
-          "used-lathes-for-sale": {
-            "title": "Used lathes for sale",
-            "intro": "CNC and manual lathes from verified dealers — compare machines, hours and tooling, then request a quote."
-          },
-          "press-brakes-for-sale": {
-            "title": "Press brakes for sale",
-            "intro": "Hydraulic and CNC press brakes listed by fabricators — tonnage, bed length and condition up front."
-          },
-          "conveyor-systems-for-sale": {
-            "title": "Conveyor systems for sale",
-            "intro": "Belt, roller and chain conveyor lines from plant decommissions — spec the line, send one RFQ."
-          },
-          "forklifts-for-rent": {
-            "title": "Forklifts for rent",
-            "intro": "Counterbalance and warehouse forklifts for short or long-term hire — vetted lessors, one request."
-          },
-          "cnc-milling-machines-for-rent": {
-            "title": "CNC milling machines for rent",
-            "intro": "Rent 3- and 5-axis machining capacity by the month — ideal for overflow orders and trials."
-          },
-          "decommissioned-equipment-for-sale": {
-            "title": "Decommissioned industrial equipment",
-            "intro": "Plant-closure machinery sold as-is by owners — presses, conveyors and auxiliaries at clearance prices."
-          },
-          "industrial-machinery-auctions": {
-            "title": "Industrial machinery auctions",
-            "intro": "Timed auctions on used plant equipment — registered bidders only, inspection notes on every lot."
-          }
-        }
-      },
-      "home": {
-        "eyebrow": "MachineryMarket",
-        "title": "Used industrial machinery from verified dealers",
-        "subtitle": "Request once, compare quotes from vetted sellers and lessors — pay a fee only when the deal closes.",
-        "ctaSearch": "Search",
-        "ctaOperator": "List your machines",
-        "searchPlaceholder": "Search make, category, country…",
-        "howItWorks": {
-          "title": "How it works",
-          "steps": [
-            {
-              "title": "Tell us the machine",
-              "body": "Category, make, budget and delivery postcode — one request reaches every matching dealer."
-            },
-            {
-              "title": "Compare quotes",
-              "body": "Vetted dealers send firm quotes. Verified badge, spec sheet and price in one place."
-            },
-            {
-              "title": "Buy or rent, then we bill",
-              "body": "You contract with the dealer directly. MachineryMarket charges sellers a success fee only when a deal closes."
-            }
-          ]
-        },
-        "featured": {
-          "title": "Latest listings",
-          "viewAll": "View all listings"
-        },
-        "pricing": {
-          "title": "Dealer pricing",
-          "subtitle": "Start free. Upgrade when the requests flow."
-        },
-        "faq": {
-          "title": "Questions",
-          "items": [
-            {
-              "q": "Who do I contract with?",
-              "a": "Always with the dealer. MachineryMarket is a marketplace, not a broker — we match requests to sellers and take a success fee from them when a deal closes."
-            },
-            {
-              "q": "What does it cost me as a buyer?",
-              "a": "Nothing. Requesting quotes is free — dealers pay the success fee."
-            },
-            {
-              "q": "Is the equipment inspected?",
-              "a": "Listings show stated hours, condition and service history. Arrange inspection directly with the dealer before purchase."
-            }
-          ]
-        }
+      {
+       "q": "Can I buy an aircraft here?",
+       "a": "Yes — aircraft_sale listings accept RFQs like any other; success fee on closed sales is 1.5%."
       }
+     ]
     }
+   }
   },
-  "meta": {
-    "title": "JetMarket — private aviation marketplace",
-    "description": "Charter, empty legs and aircraft for sale from vetted operators. Request once, get quotes, pay a fee only when it closes."
-  },
-  "landing": {
-    "hero": {
-      "title": "Ship your SaaS this week, not this quarter",
-      "subtitle": "Auth, billing, i18n, a token-driven design system, and every external service behind a mockable provider — wired and tested.",
-      "cta": "Start building"
+  "machinery": {
+   "listingTypes": {
+    "for_sale": "For sale",
+    "for_rent": "For rent",
+    "auction": "Auction"
+   },
+   "attributes": {
+    "machineryCategory": "Category",
+    "make": "Make",
+    "yearOfManufacture": "Year",
+    "hoursUsed": "Hours used",
+    "weightKg": "Weight",
+    "locationCountry": "Country",
+    "monthlyRentEur": "Monthly rent"
+   },
+   "categories": {
+    "cnc_milling": "CNC milling",
+    "lathe": "Lathe",
+    "press": "Press",
+    "conveyor": "Conveyor",
+    "forklift": "Forklift",
+    "generator": "Generator",
+    "other": "Other"
+   },
+   "facets": {
+    "type": "Listing type",
+    "machineryCategory": "Machine category",
+    "price": "Price",
+    "locationCountry": "Country"
+   },
+   "units": {
+    "hours": "h",
+    "kg": "kg"
+   },
+   "rfq": {
+    "deliveryPostcode": "Delivery postcode",
+    "dateFrom": "Needed from",
+    "dateTo": "Needed until",
+    "budgetEur": "Budget (EUR)",
+    "name": "Full name",
+    "email": "Email",
+    "phone": "Phone",
+    "notes": "Notes for sellers"
+   },
+   "plans": {
+    "free": {
+     "name": "Free",
+     "features": [
+      "3 listings",
+      "Delayed RFQs"
+     ]
     },
-    "cta": {
-      "title": "Ready to launch?",
-      "subtitle": "Fill in .env and go live. Everything already works with mocks."
+    "pro": {
+     "name": "Pro",
+     "features": [
+      "Unlimited listings",
+      "Instant RFQs",
+      "Analytics"
+     ]
     }
+   },
+   "seo": {
+    "pages": {
+     "used-cnc-milling-machines": {
+      "title": "Used CNC milling machines",
+      "intro": "Used CNC machining centres from verified dealers — spindle hours, control and condition up front, one RFQ to all sellers."
+     },
+     "used-forklifts-for-sale": {
+      "title": "Used forklifts for sale",
+      "intro": "Used forklifts from dealer fleets — capacity, mast and service history on every listing."
+     },
+     "industrial-generators-for-rent": {
+      "title": "Industrial generators for rent",
+      "intro": "Industrial generators for temporary power — kVA ratings and delivery included, quotes within a day."
+     },
+     "used-lathes-for-sale": {
+      "title": "Used lathes for sale",
+      "intro": "CNC and manual lathes from verified dealers — compare machines, hours and tooling, then request a quote."
+     },
+     "press-brakes-for-sale": {
+      "title": "Press brakes for sale",
+      "intro": "Hydraulic and CNC press brakes listed by fabricators — tonnage, bed length and condition up front."
+     },
+     "conveyor-systems-for-sale": {
+      "title": "Conveyor systems for sale",
+      "intro": "Belt, roller and chain conveyor lines from plant decommissions — spec the line, send one RFQ."
+     },
+     "forklifts-for-rent": {
+      "title": "Forklifts for rent",
+      "intro": "Counterbalance and warehouse forklifts for short or long-term hire — vetted lessors, one request."
+     },
+     "cnc-milling-machines-for-rent": {
+      "title": "CNC milling machines for rent",
+      "intro": "Rent 3- and 5-axis machining capacity by the month — ideal for overflow orders and trials."
+     },
+     "decommissioned-equipment-for-sale": {
+      "title": "Decommissioned industrial equipment",
+      "intro": "Plant-closure machinery sold as-is by owners — presses, conveyors and auxiliaries at clearance prices."
+     },
+     "industrial-machinery-auctions": {
+      "title": "Industrial machinery auctions",
+      "intro": "Timed auctions on used plant equipment — registered bidders only, inspection notes on every lot."
+     }
+    }
+   },
+   "home": {
+    "eyebrow": "MachineryMarket",
+    "title": "Used industrial machinery from verified dealers",
+    "subtitle": "Request once, compare quotes from vetted sellers and lessors — pay a fee only when the deal closes.",
+    "ctaSearch": "Search",
+    "ctaOperator": "List your machines",
+    "searchPlaceholder": "Search make, category, country…",
+    "howItWorks": {
+     "title": "How it works",
+     "steps": [
+      {
+       "title": "Tell us the machine",
+       "body": "Category, make, budget and delivery postcode — one request reaches every matching dealer."
+      },
+      {
+       "title": "Compare quotes",
+       "body": "Vetted dealers send firm quotes. Verified badge, spec sheet and price in one place."
+      },
+      {
+       "title": "Buy or rent, then we bill",
+       "body": "You contract with the dealer directly. MachineryMarket charges sellers a success fee only when a deal closes."
+      }
+     ]
+    },
+    "featured": {
+     "title": "Latest listings",
+     "viewAll": "View all listings"
+    },
+    "pricing": {
+     "title": "Dealer pricing",
+     "subtitle": "Start free. Upgrade when the requests flow."
+    },
+    "faq": {
+     "title": "Questions",
+     "items": [
+      {
+       "q": "Who do I contract with?",
+       "a": "Always with the dealer. MachineryMarket is a marketplace, not a broker — we match requests to sellers and take a success fee from them when a deal closes."
+      },
+      {
+       "q": "What does it cost me as a buyer?",
+       "a": "Nothing. Requesting quotes is free — dealers pay the success fee."
+      },
+      {
+       "q": "Is the equipment inspected?",
+       "a": "Listings show stated hours, condition and service history. Arrange inspection directly with the dealer before purchase."
+      }
+     ]
+    }
+   }
+  }
+ },
+ "meta": {
+  "title": "JetMarket — private aviation marketplace",
+  "description": "Charter, empty legs and aircraft for sale from vetted operators. Request once, get quotes, pay a fee only when it closes."
+ },
+ "landing": {
+  "hero": {
+   "title": "Ship your SaaS this week, not this quarter",
+   "subtitle": "Auth, billing, i18n, a token-driven design system, and every external service behind a mockable provider — wired and tested.",
+   "cta": "Start building"
+  },
+  "cta": {
+   "title": "Ready to launch?",
+   "subtitle": "Fill in .env and go live. Everything already works with mocks."
+  }
+ },
+ "features": {
+  "0": {
+   "title": "Provider adapters",
+   "body": "Payments, LLM, email, auth, storage and analytics behind one interface — mock locally, real by env var."
+  },
+  "1": {
+   "title": "Billing built in",
+   "body": "Plans, quotas, checkout, portal and webhooks into a subscriptions table — tested end-to-end with stripe-mock."
+  },
+  "2": {
+   "title": "i18n from day one",
+   "body": "Every string in message catalogs, locale routing scaffolded, prices formatted per locale."
+  },
+  "3": {
+   "title": "Token design system",
+   "body": "Restyle the whole product from one tokens.css. Colors, radii and typography cascade through every primitive and block."
+  }
+ },
+ "pricing": {
+  "title": "Pricing",
+  "subtitle": "Start free, upgrade when you outgrow it.",
+  "monthly": "/month",
+  "currentPlan": "Current plan",
+  "upgrade": "Upgrade to Pro",
+  "selectFree": "Start free",
+  "plans": {
+   "free": {
+    "name": "Free",
+    "description": "For trying things out"
+   },
+   "pro": {
+    "name": "Pro",
+    "description": "For production workloads"
+   }
   },
   "features": {
-    "0": {
-      "title": "Provider adapters",
-      "body": "Payments, LLM, email, auth, storage and analytics behind one interface — mock locally, real by env var."
-    },
-    "1": {
-      "title": "Billing built in",
-      "body": "Plans, quotas, checkout, portal and webhooks into a subscriptions table — tested end-to-end with stripe-mock."
-    },
-    "2": {
-      "title": "i18n from day one",
-      "body": "Every string in message catalogs, locale routing scaffolded, prices formatted per locale."
-    },
-    "3": {
-      "title": "Token design system",
-      "body": "Restyle the whole product from one tokens.css. Colors, radii and typography cascade through every primitive and block."
-    }
-  },
-  "pricing": {
-    "title": "Pricing",
-    "subtitle": "Start free, upgrade when you outgrow it.",
-    "monthly": "/month",
-    "currentPlan": "Current plan",
-    "upgrade": "Upgrade to Pro",
-    "selectFree": "Start free",
-    "plans": {
-      "free": {
-        "name": "Free",
-        "description": "For trying things out"
-      },
-      "pro": {
-        "name": "Pro",
-        "description": "For production workloads"
-      }
-    },
-    "features": {
-      "core": "Core features",
-      "community-support": "Community support",
-      "unlimited-renders": "Unlimited renders",
-      "priority-support": "Priority support"
-    }
-  },
-  "faq": {
-    "0": {
-      "q": "Do I need any API keys to run this?",
-      "a": "No. Every provider ships a mock implementation — the app runs and is fully demoable offline."
-    },
-    "1": {
-      "q": "How do I go live?",
-      "a": "Fill the real keys into your env file and switch the *_PROVIDER variables from mock. See GO_LIVE.template.md."
-    },
-    "2": {
-      "q": "Can I change the design?",
-      "a": "Yes — edit packages/ui/tokens.css. Colors, radii and typography cascade through every primitive and block."
-    }
-  },
-  "auth": {
-    "loginTitle": "Sign in",
-    "loginSubtitle": "Enter your email to receive a magic link.",
-    "emailLabel": "Email",
-    "emailPlaceholder": "you@example.com",
-    "submit": "Send magic link",
-    "mockHint": "Mock mode: sign-in is instant, no email is sent.",
-    "logout": "Sign out",
-    "checkEmail": "Check your email for a magic link.",
-    "noPassword": "We email you a magic link. No password needed.",
-    "buyer": "I'm a buyer",
-    "operator": "I'm an operator",
-    "sentLine": "Link sent. In mock mode it is also right here:",
-    "continue": "Continue to JetMarket →",
-    "adminTip": "Tip: sign in as {email} for the admin area."
-  },
-  "app": {
-    "dashboard": {
-      "becomeOperator": "Become an operator",
-      "becomeOperatorBody": "Create your operator profile to list aircraft and receive RFQs.",
-      "createProfile": "Create operator profile",
-      "base": "Base {icao} · {fleet}",
-      "fleetTbd": "fleet TBD",
-      "verified": "verified",
-      "unverifiedDelay": "unverified — profile under review",
-      "proPlan": "Pro plan",
-      "freePlan": "Free plan",
-      "upgrade": "Upgrade — ${price}/mo",
-      "listings": "Listings ({count}/{limit})",
-      "newListing": "New listing",
-      "edit": "Edit",
-      "pause": "Pause",
-      "publish": "Publish",
-      "archive": "Archive",
-      "noListings": "No listings yet. Create your first {types}.",
-      "rfqInbox": "RFQ inbox ({count} open)",
-      "openInbox": "Open inbox →",
-      "subActive": "Subscription active until {date}"
-    },
-    "welcome": "Welcome back",
-    "plan": "Plan",
-    "usage": "Usage this month",
-    "proGateTitle": "Pro feature",
-    "proGateBody": "This area needs the Pro plan. Upgrade to unlock it.",
-    "upgradeNow": "Upgrade now",
-    "proUnlockedTitle": "Pro unlocked",
-    "proUnlockedBody": "You are on Pro — the gated content renders here.",
-    "onboarding": {
-      "title": "Operator profile",
-      "subtitle": "Profiles start unverified — our team reviews each one.",
-      "name": "Company name",
-      "baseAirport": "Base airport (e.g. ZRH)",
-      "fleetSummary": "Fleet summary (models, seats)",
-      "save": "Save profile",
-      "failed": "failed"
-    },
-    "newListing": {
-      "title": "New listing",
-      "titlePh": "Title (e.g. Empty leg Zurich → Nice · Phenom 300)",
-      "catLight": "Light jet",
-      "catMid": "Mid-size",
-      "catSuperMid": "Super mid",
-      "catHeavy": "Heavy",
-      "catUltra": "Ultra-long range",
-      "modelPh": "Model (e.g. Phenom 300)",
-      "yearPh": "Year",
-      "seatsPh": "Seats",
-      "rangePh": "Range (nm)",
-      "pricePh": "Price (USD)",
-      "fromPh": "From (ZRH)",
-      "toPh": "To (NCE)",
-      "publish": "Publish listing",
-      "photosLabel": "Photos (optional — JPG/PNG/SVG, up to 5 MB each)",
-      "upgradeCta": "Upgrade to Pro — unlimited listings →",
-      "failed": "failed",
-      "publishing": "Publishing…"
-    },
-    "rfqs": {
-      "needProfile": "Create an operator profile first.",
-      "title": "RFQ inbox",
-      "empty": "No requests yet. Buyers RFQ from your public listing pages.",
-      "from": "From {email} · {date}",
-      "quoteSent": "Quote sent — {amount} ({status})",
-      "amountPh": "Quote amount",
-      "messagePh": "Message (optional)",
-      "send": "Send quote",
-      "sending": "Sending…",
-      "failed": "failed",
-      "listingFallback": "listing",
-      "withdraw": "Withdraw",
-      "withdrawing": "Withdrawing…"
-    },
-    "billing": {
-      "title": "Plan & billing",
-      "free": "Free",
-      "freeLine": "{limit} listings · standard RFQ delivery",
-      "pro": "Pro",
-      "proLine": "Unlimited listings · instant RFQ inbox · analytics",
-      "perMonth": "/mo",
-      "active": "Active",
-      "activeUntil": "Active until {date}",
-      "processing": "Processing mock checkout…",
-      "failed": "Failed — retry",
-      "upgradeMock": "Upgrade with mock checkout",
-      "feeNote": "Success fees are invoiced separately on closed deals: 3% charter / empty leg, 1.5% aircraft sale. Checkout runs in mock mode.",
-      "manageSub": "Manage subscription",
-      "opening": "Opening portal…"
-    },
-    "editListing": {
-      "title": "Edit listing",
-      "fieldTitle": "Title",
-      "fieldPrice": "Price (USD)",
-      "save": "Save",
-      "saving": "Saving…"
-    }
-  },
-  "checkout": {
-    "success": "Payment successful — welcome to Pro.",
-    "canceled": "Checkout canceled.",
-    "mockPay": "Pay (mock)"
-  },
-  "admin": {
-    "title": "Admin",
-    "operators": "Operators ({count})",
-    "colName": "Name",
-    "colBase": "Base",
-    "colPlan": "Plan",
-    "colListings": "Listings",
-    "colVerified": "Verified",
-    "yes": "yes",
-    "no": "no",
-    "verify": "Verify",
-    "unverify": "Unverify",
-    "ledger": "Fee ledger ({count} deals · {total} fees)",
-    "colDeal": "Deal",
-    "colOperator": "Operator",
-    "colAmount": "Amount",
-    "colFeePct": "Fee %",
-    "colFee": "Fee",
-    "colInvoice": "Invoice",
-    "colClosed": "Closed",
-    "noDeals": "No closed deals yet.",
-    "markPaid": "Mark paid",
-    "markingPaid": "Marking…",
-    "voidInvoice": "Void",
-    "voiding": "Voiding…"
+   "core": "Core features",
+   "community-support": "Community support",
+   "unlimited-renders": "Unlimited renders",
+   "priority-support": "Priority support"
   }
+ },
+ "faq": {
+  "0": {
+   "q": "Do I need any API keys to run this?",
+   "a": "No. Every provider ships a mock implementation — the app runs and is fully demoable offline."
+  },
+  "1": {
+   "q": "How do I go live?",
+   "a": "Fill the real keys into your env file and switch the *_PROVIDER variables from mock. See GO_LIVE.template.md."
+  },
+  "2": {
+   "q": "Can I change the design?",
+   "a": "Yes — edit packages/ui/tokens.css. Colors, radii and typography cascade through every primitive and block."
+  }
+ },
+ "auth": {
+  "loginTitle": "Sign in",
+  "loginSubtitle": "Enter your email to receive a magic link.",
+  "emailLabel": "Email",
+  "emailPlaceholder": "you@example.com",
+  "submit": "Send magic link",
+  "mockHint": "Mock mode: sign-in is instant, no email is sent.",
+  "logout": "Sign out",
+  "checkEmail": "Check your email for a magic link.",
+  "noPassword": "We email you a magic link. No password needed.",
+  "buyer": "I'm a buyer",
+  "operator": "I'm an operator",
+  "sentLine": "Link sent. In mock mode it is also right here:",
+  "continue": "Continue to JetMarket →",
+  "adminTip": "Tip: sign in as {email} for the admin area."
+ },
+ "app": {
+  "dashboard": {
+   "becomeOperator": "Become an operator",
+   "becomeOperatorBody": "Create your operator profile to list aircraft and receive RFQs.",
+   "createProfile": "Create operator profile",
+   "base": "Base {icao} · {fleet}",
+   "fleetTbd": "fleet TBD",
+   "verified": "verified",
+   "unverifiedDelay": "unverified — profile under review",
+   "proPlan": "Pro plan",
+   "freePlan": "Free plan",
+   "upgrade": "Upgrade — ${price}/mo",
+   "listings": "Listings ({count}/{limit})",
+   "newListing": "New listing",
+   "edit": "Edit",
+   "pause": "Pause",
+   "publish": "Publish",
+   "archive": "Archive",
+   "noListings": "No listings yet. Create your first {types}.",
+   "rfqInbox": "RFQ inbox ({count} open)",
+   "openInbox": "Open inbox →",
+   "subActive": "Subscription active until {date}"
+  },
+  "welcome": "Welcome back",
+  "plan": "Plan",
+  "usage": "Usage this month",
+  "proGateTitle": "Pro feature",
+  "proGateBody": "This area needs the Pro plan. Upgrade to unlock it.",
+  "upgradeNow": "Upgrade now",
+  "proUnlockedTitle": "Pro unlocked",
+  "proUnlockedBody": "You are on Pro — the gated content renders here.",
+  "onboarding": {
+   "title": "Operator profile",
+   "subtitle": "Profiles start unverified — our team reviews each one.",
+   "name": "Company name",
+   "baseAirport": "Base airport (e.g. ZRH)",
+   "fleetSummary": "Fleet summary (models, seats)",
+   "save": "Save profile",
+   "failed": "failed"
+  },
+  "newListing": {
+   "title": "New listing",
+   "titlePh": "Title (e.g. Empty leg Zurich → Nice · Phenom 300)",
+   "catLight": "Light jet",
+   "catMid": "Mid-size",
+   "catSuperMid": "Super mid",
+   "catHeavy": "Heavy",
+   "catUltra": "Ultra-long range",
+   "modelPh": "Model (e.g. Phenom 300)",
+   "yearPh": "Year",
+   "seatsPh": "Seats",
+   "rangePh": "Range (nm)",
+   "pricePh": "Price (USD)",
+   "fromPh": "From (ZRH)",
+   "toPh": "To (NCE)",
+   "publish": "Publish listing",
+   "photosLabel": "Photos (optional — JPG/PNG/SVG, up to 5 MB each)",
+   "upgradeCta": "Upgrade to Pro — unlimited listings →",
+   "failed": "failed",
+   "publishing": "Publishing…"
+  },
+  "rfqs": {
+   "needProfile": "Create an operator profile first.",
+   "title": "RFQ inbox",
+   "empty": "No requests yet. Buyers RFQ from your public listing pages.",
+   "from": "From {email} · {date}",
+   "quoteSent": "Quote sent — {amount} ({status})",
+   "amountPh": "Quote amount",
+   "messagePh": "Message (optional)",
+   "send": "Send quote",
+   "sending": "Sending…",
+   "failed": "failed",
+   "listingFallback": "listing",
+   "withdraw": "Withdraw",
+   "withdrawing": "Withdrawing…",
+   "notOpen": "This request is {status} — quoting is closed.",
+   "noQuotes": "No quotes yet"
+  },
+  "billing": {
+   "title": "Plan & billing",
+   "free": "Free",
+   "freeLine": "{limit} listings · standard RFQ delivery",
+   "pro": "Pro",
+   "proLine": "Unlimited listings · instant RFQ inbox · analytics",
+   "perMonth": "/mo",
+   "active": "Active",
+   "activeUntil": "Active until {date}",
+   "processing": "Processing mock checkout…",
+   "failed": "Failed — retry",
+   "upgradeMock": "Upgrade with mock checkout",
+   "feeNote": "Success fees are invoiced separately on closed deals: 3% charter / empty leg, 1.5% aircraft sale. Checkout runs in mock mode.",
+   "manageSub": "Manage subscription",
+   "opening": "Opening portal…"
+  },
+  "editListing": {
+   "title": "Edit listing",
+   "fieldTitle": "Title",
+   "fieldPrice": "Price (USD)",
+   "save": "Save",
+   "saving": "Saving…"
+  }
+ },
+ "checkout": {
+  "success": "Payment successful — welcome to Pro.",
+  "canceled": "Checkout canceled.",
+  "mockPay": "Pay (mock)"
+ },
+ "admin": {
+  "title": "Admin",
+  "operators": "Operators ({count})",
+  "colName": "Name",
+  "colBase": "Base",
+  "colPlan": "Plan",
+  "colListings": "Listings",
+  "colVerified": "Verified",
+  "yes": "yes",
+  "no": "no",
+  "verify": "Verify",
+  "unverify": "Unverify",
+  "ledger": "Fee ledger ({count} deals · {total} fees)",
+  "colDeal": "Deal",
+  "colOperator": "Operator",
+  "colAmount": "Amount",
+  "colFeePct": "Fee %",
+  "colFee": "Fee",
+  "colInvoice": "Invoice",
+  "colClosed": "Closed",
+  "noDeals": "No closed deals yet.",
+  "markPaid": "Mark paid",
+  "markingPaid": "Marking…",
+  "voidInvoice": "Void",
+  "voiding": "Voiding…"
+ }
 }

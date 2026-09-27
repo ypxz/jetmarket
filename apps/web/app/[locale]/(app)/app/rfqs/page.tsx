@@ -9,6 +9,9 @@ import { quoteStateVariant } from "@/lib/state-variant";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 
+/** RFQ states that still accept quotes — same gate as POST /api/quotes. */
+const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
+
 export default async function RfqInboxPage({
   searchParams,
 }: {
@@ -91,15 +94,19 @@ export default async function RfqInboxPage({
                           >
                             {tc(`quoteState.${q.status}`)}
                           </Badge>
-                          {q.status === "sent" ? (
+                          {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
                             <WithdrawButton quoteId={q.id} />
                           ) : null}
                         </span>
                       </li>
                     ))}
                   </ul>
-                ) : (
+                ) : LIVE_RFQ_STATES.has(r.status) ? (
                   <QuoteForm rfqId={r.id} />
+                ) : (
+                  <p className="mt-3 text-sm text-muted" data-testid={`rfq-closed-${r.id}`}>
+                    {t("notOpen", { status: r.status })}
+                  </p>
                 )}
               </li>
             );
