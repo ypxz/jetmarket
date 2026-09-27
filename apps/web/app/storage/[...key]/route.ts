@@ -23,12 +23,18 @@ export async function GET(
     const data = await storageProvider().get(joined);
     if (!data) return new Response("not found", { status: 404 });
     const ext = joined.split(".").pop()?.toLowerCase() ?? "";
-    return new Response(new Uint8Array(data), {
-      headers: {
-        "content-type": TYPES[ext] ?? "application/octet-stream",
-        "cache-control": "public, max-age=3600, immutable",
-      },
-    });
+    const headers: Record<string, string> = {
+      "content-type": TYPES[ext] ?? "application/octet-stream",
+      "cache-control": "public, max-age=3600, immutable",
+      "x-content-type-options": "nosniff",
+    };
+    // SVG can carry scripts — serve it inert (sandboxed + attachment) so an
+    // uploaded file can't execute same-origin script.
+    if (ext === "svg") {
+      headers["content-security-policy"] = "default-src 'none'; style-src 'unsafe-inline'";
+      headers["content-disposition"] = "attachment";
+    }
+    return new Response(new Uint8Array(data), { headers });
   } catch {
     return new Response("not found", { status: 404 });
   }
