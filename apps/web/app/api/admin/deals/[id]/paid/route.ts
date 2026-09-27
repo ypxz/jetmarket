@@ -1,5 +1,6 @@
 import { err, ok } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
+import { logInfo } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 
 // Admin marks a success-fee invoice paid (mock ledger settlement).
@@ -18,5 +19,6 @@ export async function POST(
   }
   // ref omitted on purpose — keeps the provider's invoice ref.
   await repo.setDealInvoice(id, "paid");
+  logInfo("admin.deal_invoice_paid", { adminId: user.id, dealId: id });
   return ok(await repo.getDeal(id));
 }

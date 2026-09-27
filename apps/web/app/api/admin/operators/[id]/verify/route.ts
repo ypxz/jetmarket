@@ -1,5 +1,6 @@
 import { err, ok } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
+import { logInfo } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 
 export async function POST(
@@ -13,5 +14,10 @@ export async function POST(
   const op = await repo.getOperator(id);
   if (!op) return err("not found", 404);
   await repo.setOperatorVerified(id, !op.verified);
+  logInfo("admin.operator_verify_toggled", {
+    adminId: user.id,
+    operatorId: id,
+    verified: !op.verified,
+  });
   return ok(await repo.getOperator(id));
 }
