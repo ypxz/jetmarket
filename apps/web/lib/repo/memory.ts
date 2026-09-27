@@ -270,11 +270,17 @@ class MemoryRepo implements Repo {
 
   async expireRfqs(cutoff: string) {
     const day = cutoff.slice(0, 10);
+    const stale = new Date(cutoff);
+    stale.setUTCDate(stale.getUTCDate() - 30);
     const expired = [...this.rfqs.values()].filter(
       (r) =>
-        (r.status === "open" || r.status === "quoted") &&
-        typeof r.fields["dateTo"] === "string" &&
-        r.fields["dateTo"] < day,
+        (r.status === "open" ||
+          r.status === "matched" ||
+          r.status === "quoted") &&
+        (typeof r.fields["dateTo"] === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(r.fields["dateTo"])
+          ? r.fields["dateTo"] < day
+          : r.createdAt < stale.toISOString()),
     );
     let quotes = 0;
     for (const r of expired) {

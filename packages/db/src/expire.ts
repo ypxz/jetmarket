@@ -10,8 +10,10 @@ export interface ExpireResult {
 
 /**
  * RFQ expiry sweep — one CTE pass. An RFQ is stale when status is open-ish
- * (new/matched/quoted) and its `fields.dateTo` is a YYYY-MM-DD strictly before
- * `cutoff` (day granularity: an RFQ is live through its last day). The RFQs go
+ * (new/matched/quoted) and either: its `fields.dateTo` is a YYYY-MM-DD strictly
+ * before `cutoff` (day granularity: an RFQ is live through its last day), or it
+ * has no parseable dateTo (verticals where the field is optional, e.g. machinery
+ * for-sale) and it was created more than 30 days before `cutoff`. The RFQs go
  * to 'closed' (the web Repo iface maps "expired" there) and every still-'sent'
  * quote on them to 'declined' — a buyer can no longer act on a dead request.
  * Shared by the worker tick and DrizzleRepo.expireRfqs so both see identical
@@ -22,8 +24,15 @@ export async function expireStaleRfqs(db: Db, cutoff: Date): Promise<ExpireResul
     WITH expired_rfqs AS (
       UPDATE rfqs SET status = 'closed'
       WHERE status IN ('new', 'matched', 'quoted')
-        AND fields->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND (fields->>'dateTo')::date < ${cutoff.toISOString()}::date
+        AND (
+          -- dated request: live through dateTo, dead the day after
+          (fields->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
+            AND (fields->>'dateTo')::date < ${cutoff.toISOString()}::date)
+          OR
+          -- undated/malformed request (e.g. machinery for-sale): 30-day stale horizon
+          (coalesce(fields->>'dateTo', '') !~ '^\\d{4}-\\d{2}-\\d{2}$'
+            AND created_at < ${cutoff.toISOString()}::timestamptz - interval '30 days')
+        )
       RETURNING id
     ),
     declined_quotes AS (

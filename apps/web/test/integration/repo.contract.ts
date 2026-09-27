@@ -429,8 +429,18 @@ export function repoContract(
         message: "",
       });
 
+      // Undated request (e.g. machinery for-sale): survives the sweep — the
+      // 30-day stale horizon hasn't elapsed.
+      const undated = await repo.createRfq({
+        vertical: "machinery",
+        listingId: listing.id,
+        buyerEmail: `buyer-${tag}@test.dev`,
+        fields: { budgetEur: 50000 },
+      });
+
       const res = await repo.expireRfqs(new Date().toISOString());
       expect(res).toEqual({ rfqs: 1, quotes: 1 });
+      expect((await repo.getRfq(undated.id))?.status).toBe("open");
       // iface "expired" maps to db "closed" — accept either terminal state.
       expect(["expired", "closed"]).toContain(
         (await repo.getRfq(stale.id))?.status,
