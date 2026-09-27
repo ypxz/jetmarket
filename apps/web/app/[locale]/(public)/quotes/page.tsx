@@ -130,7 +130,8 @@ function QuotesInner() {
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                         </div>
-                        {q.status === "sent" ? (
+                        {q.status === "sent" &&
+                        ["open", "matched", "quoted"].includes(r.status) ? (
                           <span className="flex gap-2">
                             <button
                               onClick={() => accept(q.id)}
