@@ -61,7 +61,11 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await buyer.getByTestId('facet-q').fill(LISTING_TITLE);
     await buyer.getByTestId('facet-type').selectOption('charter');
     await buyer.getByTestId('facet-apply').click();
-    await expect(buyer.locator(tid('search-results'))).toContainText(LISTING_TITLE);
+    // First search after boot may sit behind `next dev` cold-compiles —
+    // give the results list longer than the default expect timeout.
+    await expect(buyer.locator(tid('search-results'))).toContainText(LISTING_TITLE, {
+      timeout: 30_000,
+    });
     await buyer
       .getByTestId('search-result')
       .filter({ hasText: LISTING_TITLE })
