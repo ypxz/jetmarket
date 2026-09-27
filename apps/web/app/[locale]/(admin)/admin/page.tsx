@@ -31,7 +31,9 @@ export default async function AdminPage({
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
   });
-  const operators = await repo.listOperators();
+  // Cap the table render — count in the header already reflects the true total;
+  // beyond 100 operators this page needs a pager, not a longer table.
+  const operators = await repo.listOperators({ limit: 100 });
   const listingCounts = new Map(
     await Promise.all(
       operators.map(async (o) => [o.id, await repo.countOperatorListings(o.id)] as const),
