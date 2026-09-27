@@ -68,9 +68,20 @@ export function repoContract(
       expect(rfq.status).toBe("open");
       expect(rfq.accessToken).toBeTruthy();
       expect(await repo.listRfqs({ operatorId: op.id })).toHaveLength(1);
+      expect(await repo.countRfqs({ operatorId: op.id })).toBe(1);
       expect(
         await repo.listRfqs({ buyerEmail: `buyer-${tag}@test.dev` }),
       ).toHaveLength(1);
+      expect(
+        await repo.countRfqs({ buyerEmail: `buyer-${tag}@test.dev` }),
+      ).toBe(1);
+      // limit/offset slice, newest-first ordering preserved.
+      expect(
+        await repo.listRfqs({ operatorId: op.id, limit: 1, offset: 0 }),
+      ).toHaveLength(1);
+      expect(
+        await repo.listRfqs({ operatorId: op.id, limit: 1, offset: 1 }),
+      ).toHaveLength(0);
 
       const quote = await repo.createQuote({
         rfqId: rfq.id,

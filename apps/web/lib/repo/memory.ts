@@ -191,7 +191,12 @@ class MemoryRepo implements Repo {
     const rfq = this.rfqs.get(id);
     if (rfq) this.rfqs.set(id, { ...rfq, status });
   }
-  async listRfqs(filter?: { buyerEmail?: string; operatorId?: string }): Promise<Rfq[]> {
+  async listRfqs(filter?: {
+    buyerEmail?: string;
+    operatorId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Rfq[]> {
     let out = [...this.rfqs.values()];
     if (filter?.buyerEmail) out = out.filter((r) => r.buyerEmail === filter.buyerEmail);
     if (filter?.operatorId) {
@@ -202,7 +207,18 @@ class MemoryRepo implements Repo {
       );
       out = out.filter((r) => opListingIds.has(r.listingId));
     }
-    return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    out = out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (filter?.offset) out = out.slice(filter.offset);
+    if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
+    return out;
+  }
+
+  async countRfqs(filter?: {
+    buyerEmail?: string;
+    operatorId?: string;
+  }): Promise<number> {
+    return (await this.listRfqs({ ...filter, limit: undefined, offset: undefined }))
+      .length;
   }
 
   async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {

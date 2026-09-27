@@ -156,7 +156,15 @@ export interface Repo {
   listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    /** Page slice applied after other filters, newest-first. */
+    limit?: number;
+    offset?: number;
   }): Promise<Rfq[]>;
+  /** RFQ rows matching the same filter shape, ignoring limit/offset. */
+  countRfqs(filter?: {
+    buyerEmail?: string;
+    operatorId?: string;
+  }): Promise<number>;
   /**
    * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is
    * strictly before `cutoff` -> "expired"; their still-"sent" quotes ->

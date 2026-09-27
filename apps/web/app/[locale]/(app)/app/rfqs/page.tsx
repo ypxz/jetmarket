@@ -4,7 +4,7 @@ import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
-import { paginate } from "@/lib/search";
+import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { quoteStateVariant } from "@/lib/state-variant";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
@@ -30,8 +30,15 @@ export default async function RfqInboxPage({
       </main>
     );
   }
-  const rfqs = await repo.listRfqs({ operatorId: operator.id });
-  const { items: rfqsPage, page, pages } = paginate(rfqs, params.page);
+  const total = await repo.countRfqs({ operatorId: operator.id });
+  const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
+  const n = Number(Array.isArray(params.page) ? params.page[0] : params.page);
+  const page = Number.isInteger(n) && n >= 1 ? Math.min(n, pages) : 1;
+  const rfqsPage = await repo.listRfqs({
+    operatorId: operator.id,
+    limit: SEARCH_PAGE_SIZE,
+    offset: (page - 1) * SEARCH_PAGE_SIZE,
+  });
   const rfqRows = await Promise.all(
     rfqsPage.map(async (r) => ({
       rfq: r,
@@ -43,7 +50,7 @@ export default async function RfqInboxPage({
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
-      {rfqs.length === 0 ? (
+      {total === 0 ? (
         <p className="mt-6 rounded-md border border-dashed border-border p-6 text-sm text-muted" data-testid="rfq-empty">
           {t("empty")}
         </p>

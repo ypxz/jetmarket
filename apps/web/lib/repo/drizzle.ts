@@ -389,24 +389,53 @@ export class DrizzleRepo implements Repo {
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    limit?: number;
+    offset?: number;
   }): Promise<Rfq[]> {
     if (filter?.operatorId) {
-      const rows = await this.db
+      let q = this.db
         .select({ rfq: rfqs })
         .from(rfqs)
         .innerJoin(listings, eq(rfqs.listingId, listings.id))
         .where(eq(listings.operatorId, filter.operatorId))
-        .orderBy(desc(rfqs.createdAt));
-      return rows.map((r) => toRfq(r.rfq));
+        .orderBy(desc(rfqs.createdAt))
+        .$dynamic();
+      if (filter.limit !== undefined) q = q.limit(filter.limit);
+      if (filter.offset) q = q.offset(filter.offset);
+      return (await q).map((r) => toRfq(r.rfq));
     }
     const conds = [];
     if (filter?.buyerEmail) conds.push(eq(rfqs.buyerEmail, filter.buyerEmail));
-    const rows = await this.db
+    let q = this.db
       .select()
       .from(rfqs)
       .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(rfqs.createdAt));
-    return rows.map(toRfq);
+      .orderBy(desc(rfqs.createdAt))
+      .$dynamic();
+    if (filter?.limit !== undefined) q = q.limit(filter.limit);
+    if (filter?.offset) q = q.offset(filter.offset);
+    return (await q).map(toRfq);
+  }
+
+  async countRfqs(filter?: {
+    buyerEmail?: string;
+    operatorId?: string;
+  }): Promise<number> {
+    if (filter?.operatorId) {
+      const [r] = await this.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(rfqs)
+        .innerJoin(listings, eq(rfqs.listingId, listings.id))
+        .where(eq(listings.operatorId, filter.operatorId));
+      return r?.n ?? 0;
+    }
+    const conds = [];
+    if (filter?.buyerEmail) conds.push(eq(rfqs.buyerEmail, filter.buyerEmail));
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(rfqs)
+      .where(conds.length ? and(...conds) : undefined);
+    return r?.n ?? 0;
   }
 
   async expireRfqs(cutoff: string) {
