@@ -35,7 +35,9 @@ export async function POST(
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
-  await repo.setQuoteStatus(id, "declined");
+  if (!(await repo.setQuoteStatus(id, "declined", "sent"))) {
+    return err("quote already transitioned", 409);
+  }
   analyticsProvider().track({
     name: "quote_declined",
     props: { quoteId: quote.id, rfqId: rfq.id },

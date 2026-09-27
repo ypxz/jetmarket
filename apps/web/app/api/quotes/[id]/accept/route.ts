@@ -40,9 +40,16 @@ export async function POST(
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
-  await repo.setQuoteStatus(id, "accepted");
+  // CAS the transition: two accepts racing on sibling quotes (or an accept
+  // racing a decline/withdraw) both pass the read check above — only the
+  // atomic winner may proceed to close a deal (QA-99).
+  if (!(await repo.setQuoteStatus(id, "accepted", "sent"))) {
+    return err("quote already transitioned", 409);
+  }
   for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
-    if (q.id !== id && q.status === "sent") await repo.setQuoteStatus(q.id, "declined");
+    if (q.id !== id && q.status === "sent") {
+      await repo.setQuoteStatus(q.id, "declined", "sent");
+    }
   }
 
   const listing = await repo.getListing(rfq.listingId);

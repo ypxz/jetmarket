@@ -588,11 +588,17 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(quotes.createdAt));
     return rows.map(toQuote);
   }
-  async setQuoteStatus(id: string, status: QuoteStatus): Promise<void> {
-    await this.db
+  async setQuoteStatus(
+    id: string,
+    status: QuoteStatus,
+    expected: QuoteStatus,
+  ): Promise<boolean> {
+    const rows = await this.db
       .update(quotes)
       .set({ status, updatedAt: new Date() })
-      .where(eq(quotes.id, id));
+      .where(and(eq(quotes.id, id), eq(quotes.status, expected)))
+      .returning({ id: quotes.id });
+    return rows.length > 0;
   }
 
   async createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal> {

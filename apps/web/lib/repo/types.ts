@@ -222,7 +222,14 @@ export interface Repo {
   ): Promise<Quote>;
   getQuote(id: string): Promise<Quote | undefined>;
   listQuotes(filter?: { rfqId?: string; operatorId?: string }): Promise<Quote[]>;
-  setQuoteStatus(id: string, status: QuoteStatus): Promise<void>;
+  /** Atomically transition a quote `expected → status`; returns false (no
+   * write) when the current status is not `expected`. Required so concurrent
+   * accept/decline/withdraw can't double-mutate (QA-99). */
+  setQuoteStatus(
+    id: string,
+    status: QuoteStatus,
+    expected: QuoteStatus,
+  ): Promise<boolean>;
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
   getDeal(id: string): Promise<Deal | undefined>;

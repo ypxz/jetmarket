@@ -50,7 +50,7 @@ describe("memory repo (seeded)", async () => {
       message: "",
     });
     expect((await repo.getRfq(rfq.id))!.status).toBe("quoted");
-    await repo.setQuoteStatus(q.id, "accepted");
+    await repo.setQuoteStatus(q.id, "accepted", "sent");
     expect((await repo.getQuote(q.id))!.status).toBe("accepted");
   });
 

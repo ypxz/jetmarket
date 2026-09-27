@@ -94,7 +94,15 @@ export function repoContract(
       // Creating a quote moves the RFQ open → quoted.
       expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
 
-      await repo.setQuoteStatus(quote.id, "accepted");
+      expect(await repo.setQuoteStatus(quote.id, "accepted", "sent")).toBe(
+        true,
+      );
+      expect((await repo.getQuote(quote.id))?.status).toBe("accepted");
+      // Conditional transition refuses to clobber a terminal state (QA-99):
+      // a second "sent" guard fails and the row is untouched.
+      expect(await repo.setQuoteStatus(quote.id, "declined", "sent")).toBe(
+        false,
+      );
       expect((await repo.getQuote(quote.id))?.status).toBe("accepted");
 
       const deal = await repo.createDeal({

@@ -296,9 +296,11 @@ class MemoryRepo implements Repo {
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  async setQuoteStatus(id: string, status: Quote["status"]) {
+  async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"]) {
     const q = this.quotes.get(id);
-    if (q) this.quotes.set(id, { ...q, status });
+    if (!q || q.status !== expected) return false;
+    this.quotes.set(id, { ...q, status });
+    return true;
   }
 
   async expireRfqs(cutoff: string) {

@@ -23,7 +23,9 @@ export async function POST(
   if (quote.operatorId !== operator.id) return err("not your quote", 403);
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
-  await repo.setQuoteStatus(id, "withdrawn");
+  if (!(await repo.setQuoteStatus(id, "withdrawn", "sent"))) {
+    return err("quote already transitioned", 409);
+  }
   analyticsProvider().track({
     name: "quote_withdrawn",
     props: { quoteId: quote.id, rfqId: quote.rfqId, operatorId: operator.id },
