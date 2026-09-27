@@ -10,6 +10,11 @@ import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { analyticsProvider } from "@jetmarket/providers";
 
 export async function GET(req: Request) {
+  // Public search runs LIKE/facet queries — keep it cheap per IP so a
+  // scraper can't sit on the DB (QA-107).
+  if (!rateLimit(`listing-search:${clientIp(req)}`, 240, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const url = new URL(req.url);
   const facets: Record<string, string> = {};
   for (const [k, v] of url.searchParams.entries()) {
@@ -29,16 +34,20 @@ export async function GET(req: Request) {
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : SEARCH_PAGE_SIZE,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });
+  // Batched operator join — one inArray query for the whole page (QA-104).
   const repo = await getRepo();
+  const opById = new Map(
+    (
+      await repo.listOperators({
+        ids: [...new Set(listings.map((l) => l.operatorId))],
+      })
+    ).map((o) => [o.id, publicOperator(o)] as const),
+  );
   return ok(
-    await Promise.all(
-      listings.map(async (l) => ({
-        ...l,
-        operator: await repo
-          .getOperator(l.operatorId)
-          .then((o) => (o ? publicOperator(o) : null)),
-      })),
-    ),
+    listings.map((l) => ({
+      ...l,
+      operator: opById.get(l.operatorId) ?? null,
+    })),
   );
 }
 
