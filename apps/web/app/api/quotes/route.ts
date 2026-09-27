@@ -6,7 +6,7 @@ import { emailProvider, analyticsProvider } from "@jetmarket/providers";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1),
-  amount: z.number().positive(),
+  amount: z.number().positive().max(1e9),
   message: z.string().max(2000).default(""),
 });
 
