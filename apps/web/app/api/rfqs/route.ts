@@ -2,6 +2,7 @@ import { captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/pr
 import { z } from "zod";
 import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
+import { fanoutRfq } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { getDbSql } from "@/lib/repo/drizzle";
@@ -76,6 +77,10 @@ export async function POST(req: Request) {
         error: e instanceof Error ? e.message : String(e),
       });
     }
+  } else {
+    // Memory mode has no worker — fan out inline so mock demos exercise the
+    // multi-operator loop (QA-89).
+    await fanoutRfq(repo, rfq, listing);
   }
   logInfo("rfq.created", {
     rfqId: rfq.id,

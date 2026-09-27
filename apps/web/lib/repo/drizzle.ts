@@ -507,6 +507,40 @@ export class DrizzleRepo implements Repo {
     return r !== undefined;
   }
 
+  async createRfqMatches(
+    rows: {
+      rfqId: string;
+      operatorId: string;
+      listingId?: string | null;
+      deliverAt?: Date;
+    }[],
+  ): Promise<void> {
+    if (!rows.length) return;
+    const now = new Date();
+    await this.db
+      .insert(rfqMatches)
+      .values(
+        rows.map((r) => ({
+          rfqId: r.rfqId,
+          operatorId: r.operatorId,
+          listingId: r.listingId ?? null,
+          state:
+            r.deliverAt && r.deliverAt > now
+              ? ("delayed" as const)
+              : ("pending" as const),
+          deliverAt: r.deliverAt ?? now,
+        })),
+      )
+      .onConflictDoNothing({
+        target: [rfqMatches.rfqId, rfqMatches.operatorId],
+      });
+    // Mirror the worker's markRfqMatched — only off 'new', never resurrect.
+    await this.db
+      .update(rfqs)
+      .set({ status: "matched" })
+      .where(and(eq(rfqs.id, rows[0]!.rfqId), eq(rfqs.status, "new")));
+  }
+
   async expireRfqs(cutoff: string) {
     return expireStaleRfqs(this.db, new Date(cutoff));
   }

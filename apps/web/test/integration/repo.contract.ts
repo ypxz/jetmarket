@@ -109,6 +109,63 @@ export function repoContract(
       expect(await repo.listDeals({ operatorId: op.id })).toHaveLength(1);
     });
 
+    it("fan-out matches grant inbox access; delayed matches hide until due", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mk = async (n: string) => {
+        const u = await repo.createUser(`${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: false,
+          plan: "free",
+        });
+      };
+      const [owner, matched, delayedOp] = await Promise.all([
+        mk("owner"),
+        mk("matched"),
+        mk("delayed"),
+      ]);
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Fanout Jet ${tag}`,
+        price: 7000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `b-${tag}@test.dev`,
+        fields: { from: "ZRH", to: "NCE" },
+      });
+
+      await repo.createRfqMatches([
+        { rfqId: rfq.id, operatorId: matched.id, listingId: listing.id },
+        {
+          rfqId: rfq.id,
+          operatorId: delayedOp.id,
+          deliverAt: new Date(Date.now() + 60_000),
+        },
+      ]);
+
+      // RFQ is marked matched off its initial state.
+      expect((await repo.getRfq(rfq.id))?.status).toBe("matched");
+
+      // Delivered match sees + can quote; delayed and unmatched do not.
+      expect(await repo.hasRfqMatch(rfq.id, matched.id)).toBe(true);
+      expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(false);
+      expect(await repo.hasRfqMatch(rfq.id, owner.id)).toBe(false);
+      expect((await repo.listRfqs({ operatorId: matched.id })).map((r) => r.id)).toContain(rfq.id);
+      expect(await repo.countRfqs({ operatorId: matched.id })).toBe(1);
+      expect((await repo.listRfqs({ operatorId: delayedOp.id })).map((r) => r.id)).not.toContain(rfq.id);
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

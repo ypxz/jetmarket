@@ -23,6 +23,11 @@ class MemoryRepo implements Repo {
   quotes = new Map<string, Quote>();
   deals = new Map<string, Deal>();
   subscriptions = new Map<string, Subscription>();
+  /** rfqId -> operatorId -> match row (memory-mode fan-out, QA-89). */
+  rfqMatches = new Map<
+    string,
+    Map<string, { listingId: string | null; deliverAt?: Date }>
+  >();
 
   async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
     const normalized = email.toLowerCase();
@@ -214,7 +219,10 @@ class MemoryRepo implements Repo {
           .filter((l) => l.operatorId === filter.operatorId)
           .map((l) => l.id),
       );
-      out = out.filter((r) => opListingIds.has(r.listingId));
+      const opId = filter.operatorId;
+      out = out.filter(
+        (r) => opListingIds.has(r.listingId) || this.matchVisible(r.id, opId),
+      );
     }
     out = out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (filter?.offset) out = out.slice(filter.offset);
@@ -222,12 +230,37 @@ class MemoryRepo implements Repo {
     return out;
   }
 
+  /** A match is visible once due — no sweep needed in memory mode. */
+  private matchVisible(rfqId: string, operatorId: string): boolean {
+    const m = this.rfqMatches.get(rfqId)?.get(operatorId);
+    return !!m && (!m.deliverAt || m.deliverAt.getTime() <= Date.now());
+  }
+
   async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
-    // Memory mode has no rfq_matches — the RFQ reaches only its listing's
-    // operator (documented gap: no worker, no fan-out).
-    void rfqId;
-    void operatorId;
-    return false;
+    return this.matchVisible(rfqId, operatorId);
+  }
+
+  async createRfqMatches(
+    rows: {
+      rfqId: string;
+      operatorId: string;
+      listingId?: string | null;
+      deliverAt?: Date;
+    }[],
+  ): Promise<void> {
+    for (const r of rows) {
+      const forRfq = this.rfqMatches.get(r.rfqId) ?? new Map();
+      forRfq.set(r.operatorId, {
+        listingId: r.listingId ?? null,
+        ...(r.deliverAt ? { deliverAt: r.deliverAt } : {}),
+      });
+      this.rfqMatches.set(r.rfqId, forRfq);
+    }
+    // Mirror markRfqMatched: only off the initial state, never resurrect.
+    if (rows.length) {
+      const rfq = this.rfqs.get(rows[0]!.rfqId);
+      if (rfq && rfq.status === "open") rfq.status = "matched";
+    }
   }
 
   async countRfqs(filter?: {

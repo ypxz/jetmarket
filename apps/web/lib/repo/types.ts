@@ -187,9 +187,22 @@ export interface Repo {
    * True when a delivered rfq_match links this operator to the RFQ — the
    * bearer alternative to owning the RFQ's listing (QA-65: fan-out matches
    * are only usable if the matched operator can see and quote the RFQ).
-   * Memory mode has no matches table and always returns false.
    */
   hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean>;
+  /**
+   * Record operator matches for an RFQ. Postgres mode writes rfq_matches via
+   * the worker; memory mode calls this inline so mock demos exercise the
+   * multi-operator loop. A row with a future `deliverAt` is invisible until
+   * due (mirrors state 'delayed'); absent `deliverAt` means delivered now.
+   */
+  createRfqMatches(
+    rows: {
+      rfqId: string;
+      operatorId: string;
+      listingId?: string | null;
+      deliverAt?: Date;
+    }[],
+  ): Promise<void>;
   /** RFQ rows matching the same filter shape, ignoring limit/offset. */
   countRfqs(filter?: {
     buyerEmail?: string;
