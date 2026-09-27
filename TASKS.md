@@ -148,6 +148,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 69 | ~02:05 | QA-78 | schema bounds | Lead-run: quote `amount` had no upper bound and listing POST accepted `price: 0` while PATCH demanded positive — both now `positive().max(1e9)` |
 | 70 | ~02:15 | QA-79 | unbounded render | Lead-run: operator dashboard listed ALL own listings (uncapped `listListings`) — capped at 100, header count uses `countOperatorListings` |
 | 71 | ~02:25 | QA-80 | seo | Lead-run: sitemap omitted individual `/listing/<id>` pages (the canonical-bearing indexable content) — active listings now listed, capped at 1000 |
+| 72 | ~02:35 | QA-81 | search | Lead-run: `query` param interpolated raw into `ilike` — user `%`/`_` acted as wildcards; escaped for literal match |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
