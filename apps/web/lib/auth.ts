@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { getRepo } from "./repo";
 import type { User, UserRole } from "./repo/types";
@@ -11,7 +11,13 @@ import type { User, UserRole } from "./repo/types";
 const COOKIE = "jm_session";
 
 function secret() {
-  return process.env.SESSION_SECRET ?? "dev-only-not-a-secret";
+  const s = process.env.SESSION_SECRET;
+  // Hardcoded fallback exists for local dev/tests only — in production a
+  // missing secret would let anyone forge sessions for arbitrary users.
+  if (!s && process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET is required in production");
+  }
+  return s ?? "dev-only-not-a-secret";
 }
 
 export function signSession(userId: string): string {
@@ -22,9 +28,9 @@ export function signSession(userId: string): string {
 export function verifySession(value: string | undefined): string | null {
   if (!value) return null;
   const [userId, sig] = value.split(".");
-  if (!userId || !sig) return null;
+  if (!userId || !sig || sig.length !== 64) return null;
   const expect = createHmac("sha256", secret()).update(userId).digest("hex");
-  return sig === expect ? userId : null;
+  return timingSafeEqual(Buffer.from(sig), Buffer.from(expect)) ? userId : null;
 }
 
 export async function currentUser(): Promise<User | null> {
