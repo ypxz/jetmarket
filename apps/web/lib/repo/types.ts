@@ -164,6 +164,8 @@ export interface Repo {
   countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    /** Exclude these iface statuses (e.g. "closed" counts only live RFQs). */
+    statusNot?: RfqStatus[];
   }): Promise<number>;
   /**
    * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is

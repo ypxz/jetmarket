@@ -420,17 +420,28 @@ export class DrizzleRepo implements Repo {
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    statusNot?: RfqStatus[];
   }): Promise<number> {
+    // iface statuses -> db vocabulary (open -> new; expired -> closed).
+    const bannedDb = filter?.statusNot?.map((s) =>
+      s === "open" ? "new" : s === "expired" ? "closed" : s,
+    );
+    const statusCond = bannedDb?.length
+      ? sql`${rfqs.status} NOT IN ${bannedDb}`
+      : undefined;
     if (filter?.operatorId) {
+      const conds = [eq(listings.operatorId, filter.operatorId)];
+      if (statusCond) conds.push(statusCond);
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(rfqs)
         .innerJoin(listings, eq(rfqs.listingId, listings.id))
-        .where(eq(listings.operatorId, filter.operatorId));
+        .where(and(...conds));
       return r?.n ?? 0;
     }
     const conds = [];
     if (filter?.buyerEmail) conds.push(eq(rfqs.buyerEmail, filter.buyerEmail));
+    if (statusCond) conds.push(statusCond);
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(rfqs)

@@ -216,9 +216,18 @@ class MemoryRepo implements Repo {
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    statusNot?: Rfq["status"][];
   }): Promise<number> {
-    return (await this.listRfqs({ ...filter, limit: undefined, offset: undefined }))
-      .length;
+    let out = await this.listRfqs({
+      ...filter,
+      limit: undefined,
+      offset: undefined,
+    });
+    if (filter?.statusNot?.length) {
+      const banned = new Set(filter.statusNot);
+      out = out.filter((r) => !banned.has(r.status));
+    }
+    return out.length;
   }
 
   async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {

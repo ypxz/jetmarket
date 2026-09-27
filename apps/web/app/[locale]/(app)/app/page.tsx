@@ -35,7 +35,10 @@ export default async function OperatorDashboard() {
   }
 
   const listings = await repo.listListings({ operatorId: operator.id });
-  const rfqs = await repo.listRfqs({ operatorId: operator.id });
+  const openRfqs = await repo.countRfqs({
+    operatorId: operator.id,
+    statusNot: ["closed"],
+  });
   const sub = await repo.getSubscription(operator.id);
   const limit = operator.plan === "pro" ? "∞" : String(FREE_LISTING_LIMIT);
 
@@ -116,7 +119,7 @@ export default async function OperatorDashboard() {
       <section className="mt-10">
         <h2 className="text-lg font-semibold">
           {t("rfqInbox", {
-            count: rfqs.filter((r) => r.status !== "closed").length,
+            count: openRfqs,
           })}
         </h2>
         <p className="mt-1 text-sm text-muted">
