@@ -132,6 +132,8 @@ export interface Repo {
   createUser(email: string, role?: UserRole): Promise<User>;
   findUserByEmail(email: string): Promise<User | undefined>;
   getUser(id: string): Promise<User | undefined>;
+  /** Batch-lookup users by id — join-style admin pages. */
+  listUsers(ids: string[]): Promise<User[]>;
 
   upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },

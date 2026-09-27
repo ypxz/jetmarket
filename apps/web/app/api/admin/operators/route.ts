@@ -14,13 +14,18 @@ export async function GET(req: Request) {
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : 50,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });
+  // Batched: one users lookup + one grouped listings count for the page —
+  // was 2 queries per operator row (QA-103).
+  const [userRows, listingCounts] = await Promise.all([
+    repo.listUsers(ops.map((o) => o.userId)),
+    repo.listListingCountsByOperator(ops.map((o) => o.id)),
+  ]);
+  const userById = new Map(userRows.map((u) => [u.id, u] as const));
   return ok(
-    await Promise.all(
-      ops.map(async (o) => ({
-        ...o,
-        user: (await repo.getUser(o.userId)) ?? null,
-        listings: await repo.countOperatorListings(o.id),
-      })),
-    ),
+    ops.map((o) => ({
+      ...o,
+      user: userById.get(o.userId) ?? null,
+      listings: listingCounts[o.id] ?? 0,
+    })),
   );
 }

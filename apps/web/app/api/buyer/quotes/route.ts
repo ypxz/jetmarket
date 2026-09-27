@@ -21,22 +21,37 @@ export async function GET(req: Request) {
   const rfqs = (await repo.listRfqs({ buyerEmail: email, limit: 200 })).filter(
     (r) => r.accessToken === token,
   );
+  // Batched: one listing + one quote + one operator lookup for the whole
+  // inbox — was ~3 queries per quote row (QA-103). Buyers legitimately see
+  // every quote on their own RFQs.
+  const [listingRows, quoteRows] = await Promise.all([
+    repo.listListings({ ids: [...new Set(rfqs.map((r) => r.listingId))] }),
+    repo.listQuotes({ rfqIds: rfqs.map((r) => r.id) }),
+  ]);
+  const opById = new Map(
+    (
+      await repo.listOperators({
+        ids: [...new Set(quoteRows.map((q) => q.operatorId))],
+      })
+    ).map((o) => [o.id, publicOperator(o)] as const),
+  );
+  const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
+  const quotesByRfq = new Map<string, typeof quoteRows>();
+  for (const q of quoteRows) {
+    const arr = quotesByRfq.get(q.rfqId) ?? [];
+    arr.push(q);
+    quotesByRfq.set(q.rfqId, arr);
+  }
   return ok(
-    await Promise.all(
-      rfqs.map(async (rfq) => ({
-        // strip the bearer token — callers proved inbox access to get here,
-        // but there's no reason to echo it back
-        ...{ ...rfq, accessToken: undefined },
-        listing: (await repo.getListing(rfq.listingId)) ?? null,
-        quotes: await Promise.all(
-          (await repo.listQuotes({ rfqId: rfq.id })).map(async (q) => ({
-            ...q,
-            operator: await repo
-              .getOperator(q.operatorId)
-              .then((o) => (o ? publicOperator(o) : null)),
-          })),
-        ),
+    rfqs.map((rfq) => ({
+      // strip the bearer token — callers proved inbox access to get here,
+      // but there's no reason to echo it back
+      ...{ ...rfq, accessToken: undefined },
+      listing: listingById.get(rfq.listingId) ?? null,
+      quotes: (quotesByRfq.get(rfq.id) ?? []).map((q) => ({
+        ...q,
+        operator: opById.get(q.operatorId) ?? null,
       })),
-    ),
+    })),
   );
 }

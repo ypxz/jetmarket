@@ -227,6 +227,14 @@ export class DrizzleRepo implements Repo {
       .limit(1);
     return r ? toUser(r) : undefined;
   }
+  async listUsers(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(users)
+      .where(inArray(users.id, ids));
+    return rows.map(toUser);
+  }
 
   async upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },

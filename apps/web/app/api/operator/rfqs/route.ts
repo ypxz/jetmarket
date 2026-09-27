@@ -18,16 +18,27 @@ export async function GET(req: Request) {
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 100) : SEARCH_PAGE_SIZE,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });
+  // Batched: one listing + one own-quotes lookup for the whole page — was
+  // 2 queries per RFQ row (QA-103).
+  const [listingRows, quoteRows] = await Promise.all([
+    repo.listListings({ ids: [...new Set(rfqs.map((r) => r.listingId))] }),
+    repo.listQuotes({ rfqIds: rfqs.map((r) => r.id), operatorId: operator.id }),
+  ]);
+  const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
+  const quotesByRfq = new Map<string, typeof quoteRows>();
+  for (const q of quoteRows) {
+    const arr = quotesByRfq.get(q.rfqId) ?? [];
+    arr.push(q);
+    quotesByRfq.set(q.rfqId, arr);
+  }
   return ok(
-    await Promise.all(
-      rfqs.map(async (rfq) => ({
-        // never leak the buyer bearer token — operators with it could
-        // impersonate the buyer and accept their own quote (QA-41)
-        ...{ ...rfq, accessToken: undefined },
-        listing: (await repo.getListing(rfq.listingId)) ?? null,
-        // own quotes only — matched operators must not see competitors' amounts (QA-73)
-        quotes: await repo.listQuotes({ rfqId: rfq.id, operatorId: operator.id }),
-      })),
-    ),
+    rfqs.map((rfq) => ({
+      // never leak the buyer bearer token — operators with it could
+      // impersonate the buyer and accept their own quote (QA-41)
+      ...{ ...rfq, accessToken: undefined },
+      listing: listingById.get(rfq.listingId) ?? null,
+      // own quotes only — matched operators must not see competitors' amounts (QA-73)
+      quotes: quotesByRfq.get(rfq.id) ?? [],
+    })),
   );
 }

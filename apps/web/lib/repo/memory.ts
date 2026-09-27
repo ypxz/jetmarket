@@ -44,6 +44,10 @@ class MemoryRepo implements Repo {
   async getUser(id: string) {
     return this.users.get(id);
   }
+  async listUsers(ids: string[]) {
+    const want = new Set(ids);
+    return [...this.users.values()].filter((u) => want.has(u.id));
+  }
 
   async upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },
