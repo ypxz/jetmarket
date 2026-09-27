@@ -25,8 +25,16 @@ import type {
   UserRole,
 } from "./types";
 
-const { users, operators, listings, rfqs, quotes, deals, subscriptions } =
-  schema;
+const {
+  users,
+  operators,
+  listings,
+  rfqs,
+  rfqMatches,
+  quotes,
+  deals,
+  subscriptions,
+} = schema;
 
 const iso = (d: Date | null | undefined): string =>
   (d ?? new Date()).toISOString();
@@ -404,11 +412,22 @@ export class DrizzleRepo implements Repo {
     offset?: number;
   }): Promise<Rfq[]> {
     if (filter?.operatorId) {
+      // Owner sees the RFQ via its listing; a fan-out-matched operator sees it
+      // once the match is delivered (state pending — delayed matches are not
+      // inbox-visible until the sweep flips them).
+      const matched = sql`exists (
+        select 1 from rfq_matches m
+        where m.rfq_id = ${rfqs.id}
+          and m.operator_id = ${filter.operatorId}
+          and m.state = 'pending'
+      )`;
       let q = this.db
         .select({ rfq: rfqs })
         .from(rfqs)
         .innerJoin(listings, eq(rfqs.listingId, listings.id))
-        .where(eq(listings.operatorId, filter.operatorId))
+        .where(
+          or(eq(listings.operatorId, filter.operatorId), matched),
+        )
         .orderBy(desc(rfqs.createdAt))
         .$dynamic();
       if (filter.limit !== undefined) q = q.limit(filter.limit);
@@ -441,7 +460,13 @@ export class DrizzleRepo implements Repo {
       ? sql`${rfqs.status} NOT IN ${bannedDb}`
       : undefined;
     if (filter?.operatorId) {
-      const conds = [eq(listings.operatorId, filter.operatorId)];
+      const matched = sql`exists (
+        select 1 from rfq_matches m
+        where m.rfq_id = ${rfqs.id}
+          and m.operator_id = ${filter.operatorId}
+          and m.state = 'pending'
+      )`;
+      const conds = [or(eq(listings.operatorId, filter.operatorId), matched)!];
       if (statusCond) conds.push(statusCond);
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
@@ -458,6 +483,21 @@ export class DrizzleRepo implements Repo {
       .from(rfqs)
       .where(conds.length ? and(...conds) : undefined);
     return r?.n ?? 0;
+  }
+
+  async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
+    const [r] = await this.db
+      .select({ id: rfqMatches.id })
+      .from(rfqMatches)
+      .where(
+        and(
+          eq(rfqMatches.rfqId, rfqId),
+          eq(rfqMatches.operatorId, operatorId),
+          eq(rfqMatches.state, "pending"),
+        ),
+      )
+      .limit(1);
+    return r !== undefined;
   }
 
   async expireRfqs(cutoff: string) {

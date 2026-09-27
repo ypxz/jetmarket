@@ -26,9 +26,14 @@ export async function POST(req: Request) {
   const rfq = await repo.getRfq(data!.rfqId);
   if (!rfq) return err("rfq not found", 404);
   const listing = await repo.getListing(rfq.listingId);
-  if (!listing || listing.operatorId !== operator.id) {
-    return err("rfq does not belong to your listings", 403);
-  }
+  // Bearer paths: own the RFQ's listing, or hold a delivered fan-out match.
+  // A matched RFQ still references the originating listing for context —
+  // if it was deleted there is nothing to quote against.
+  if (!listing) return err("rfq not found", 404);
+  const allowed =
+    listing.operatorId === operator.id ||
+    (await repo.hasRfqMatch(rfq.id, operator.id));
+  if (!allowed) return err("rfq does not belong to your listings", 403);
   // Live states only — expired/spam/closed RFQs reject new quotes (the iface
   // maps expired→closed in drizzle, so check the iface vocabulary).
   if (!["open", "matched", "quoted"].includes(rfq.status)) {

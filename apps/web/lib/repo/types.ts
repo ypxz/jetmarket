@@ -159,11 +159,19 @@ export interface Repo {
   setRfqStatus(id: string, status: RfqStatus): Promise<void>;
   listRfqs(filter?: {
     buyerEmail?: string;
+    /** Listing owner OR an operator with a delivered (pending) rfq_match. */
     operatorId?: string;
     /** Page slice applied after other filters, newest-first. */
     limit?: number;
     offset?: number;
   }): Promise<Rfq[]>;
+  /**
+   * True when a delivered rfq_match links this operator to the RFQ — the
+   * bearer alternative to owning the RFQ's listing (QA-65: fan-out matches
+   * are only usable if the matched operator can see and quote the RFQ).
+   * Memory mode has no matches table and always returns false.
+   */
+  hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean>;
   /** RFQ rows matching the same filter shape, ignoring limit/offset. */
   countRfqs(filter?: {
     buyerEmail?: string;

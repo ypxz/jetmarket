@@ -222,6 +222,14 @@ class MemoryRepo implements Repo {
     return out;
   }
 
+  async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
+    // Memory mode has no rfq_matches — the RFQ reaches only its listing's
+    // operator (documented gap: no worker, no fan-out).
+    void rfqId;
+    void operatorId;
+    return false;
+  }
+
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
