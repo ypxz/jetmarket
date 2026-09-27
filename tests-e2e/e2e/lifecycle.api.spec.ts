@@ -176,4 +176,27 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
   const row = ledger.find((d) => d.id === deal.id);
   expect(row).toBeTruthy();
   expect(row!.invoiceStatus).toBe('paid');
+
+  // --- listing status transitions (PATCH /api/listings/[id]) ---------------
+  // a buyer can't reach it (401), a different operator can't see it (404),
+  // and the owner can cycle draft/active/paused freely.
+  expect(
+    (await buyer.patch(`/api/listings/${listingId}`, { data: { status: 'paused' } })).status(),
+  ).toBe(401);
+  const otherOp = await login(`e2e-lc-other-${run}@jetmarket.local`, 'operator');
+  await otherOp.post('/api/operators', {
+    data: { name: `Other Ops ${run}`, baseAirport: 'LGW' },
+  });
+  expect(
+    (await otherOp.patch(`/api/listings/${listingId}`, { data: { status: 'paused' } })).status(),
+  ).toBe(404);
+  const paused = await operator.patch(`/api/listings/${listingId}`, {
+    data: { status: 'paused' },
+  });
+  expect(paused.ok()).toBeTruthy();
+  expect(((await paused.json()) as { status: string }).status).toBe('paused');
+  const reactivated = await operator.patch(`/api/listings/${listingId}`, {
+    data: { status: 'active' },
+  });
+  expect(((await reactivated.json()) as { status: string }).status).toBe('active');
 });
