@@ -14,13 +14,18 @@ export async function GET(req: Request) {
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : 50,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });
+  // Two batched lookups instead of 2N per-row fetches (QA-103).
+  const [quoteRows, opRows] = await Promise.all([
+    repo.listQuotes({ ids: [...new Set(dealRows.map((d) => d.quoteId))] }),
+    repo.listOperators({ ids: [...new Set(dealRows.map((d) => d.operatorId))] }),
+  ]);
+  const quoteById = new Map(quoteRows.map((q) => [q.id, q] as const));
+  const opById = new Map(opRows.map((o) => [o.id, o] as const));
   return ok(
-    await Promise.all(
-      dealRows.map(async (d) => ({
-        ...d,
-        quote: (await repo.getQuote(d.quoteId)) ?? null,
-        operator: (await repo.getOperator(d.operatorId)) ?? null,
-      })),
-    ),
+    dealRows.map((d) => ({
+      ...d,
+      quote: quoteById.get(d.quoteId) ?? null,
+      operator: opById.get(d.operatorId) ?? null,
+    })),
   );
 }

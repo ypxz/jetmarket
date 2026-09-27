@@ -1,5 +1,5 @@
 import type { BadgeVariant } from "@jetmarket/ui";
-import type { Deal, Quote } from "@/lib/repo/types";
+import type { Deal, JobInfo, Quote } from "@/lib/repo/types";
 
 export function quoteStateVariant(status: Quote["status"]): BadgeVariant {
   switch (status) {
@@ -25,6 +25,19 @@ export function invoiceStateVariant(
     case "paid":
       return "success";
     case "void":
+      return "outline";
+  }
+}
+
+export function jobStateVariant(status: JobInfo["status"]): BadgeVariant {
+  switch (status) {
+    case "done":
+      return "success";
+    case "failed":
+      return "danger";
+    case "running":
+      return "warning";
+    case "pending":
       return "outline";
   }
 }

@@ -10,6 +10,7 @@ import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import type {
   Deal,
+  JobInfo,
   Listing,
   ListingStatus,
   ListingType,
@@ -34,6 +35,7 @@ const {
   quotes,
   deals,
   subscriptions,
+  jobs,
 } = schema;
 
 const iso = (d: Date | null | undefined): string =>
@@ -609,10 +611,15 @@ export class DrizzleRepo implements Repo {
   async listQuotes(filter?: {
     rfqId?: string;
     operatorId?: string;
+    ids?: string[];
   }): Promise<Quote[]> {
     const conds = [];
     if (filter?.rfqId) conds.push(eq(quotes.rfqId, filter.rfqId));
     if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
+    if (filter?.ids) {
+      if (filter.ids.length === 0) return [];
+      conds.push(inArray(quotes.id, filter.ids));
+    }
     const rows = await this.db
       .select()
       .from(quotes)
@@ -630,6 +637,43 @@ export class DrizzleRepo implements Repo {
       .set({ status, updatedAt: new Date() })
       .where(and(eq(quotes.id, id), eq(quotes.status, expected)))
       .returning({ id: quotes.id });
+    return rows.length > 0;
+  }
+
+  async listJobs(filter?: {
+    status?: JobInfo["status"];
+    limit?: number;
+  }): Promise<JobInfo[]> {
+    let q = this.db
+      .select()
+      .from(jobs)
+      .orderBy(desc(jobs.updatedAt))
+      .$dynamic();
+    if (filter?.status) q = q.where(eq(jobs.status, filter.status));
+    q = q.limit(Math.min(filter?.limit ?? 50, 200));
+    return (await q).map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      status: r.status,
+      runAt: r.runAt.toISOString(),
+      attempts: r.attempts,
+      maxAttempts: r.maxAttempts,
+      lastError: r.lastError,
+      updatedAt: r.updatedAt.toISOString(),
+    }));
+  }
+  async retryJob(id: string): Promise<boolean> {
+    const rows = await this.db
+      .update(jobs)
+      .set({
+        status: "pending",
+        runAt: new Date(),
+        attempts: 0,
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(jobs.id, id), eq(jobs.status, "failed")))
+      .returning({ id: jobs.id });
     return rows.length > 0;
   }
 

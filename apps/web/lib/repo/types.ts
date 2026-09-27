@@ -82,6 +82,18 @@ export interface Rfq {
 
 export type QuoteStatus = "sent" | "accepted" | "declined" | "withdrawn";
 
+/** Read projection of a background-job row (worker queue) for admin ops. */
+export interface JobInfo {
+  id: string;
+  kind: string;
+  status: "pending" | "running" | "done" | "failed";
+  runAt: string;
+  attempts: number;
+  maxAttempts: number;
+  lastError: string | null;
+  updatedAt: string;
+}
+
 export interface Quote {
   id: string;
   rfqId: string;
@@ -234,7 +246,11 @@ export interface Repo {
     q: Omit<Quote, "id" | "createdAt" | "status">,
   ): Promise<Quote>;
   getQuote(id: string): Promise<Quote | undefined>;
-  listQuotes(filter?: { rfqId?: string; operatorId?: string }): Promise<Quote[]>;
+  listQuotes(filter?: {
+    rfqId?: string;
+    operatorId?: string;
+    ids?: string[];
+  }): Promise<Quote[]>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */
@@ -243,6 +259,16 @@ export interface Repo {
     status: QuoteStatus,
     expected: QuoteStatus,
   ): Promise<boolean>;
+
+  /** Job-queue visibility for /admin/jobs (QA-102). Memory mode runs its
+   *  fan-out inline — it has no queue, so these are always empty/no-ops. */
+  listJobs(filter?: {
+    status?: JobInfo["status"];
+    limit?: number;
+  }): Promise<JobInfo[]>;
+  /** CAS a failed job back to pending (attempts/lastError reset); false unless
+   *  the job exists and is currently failed. */
+  retryJob(id: string): Promise<boolean>;
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
   getDeal(id: string): Promise<Deal | undefined>;

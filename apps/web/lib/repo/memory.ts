@@ -1,6 +1,7 @@
 import { storageProvider } from "@jetmarket/providers";
 import type {
   Deal,
+  JobInfo,
   Listing,
   Operator,
   Plan,
@@ -307,10 +308,14 @@ class MemoryRepo implements Repo {
   async getQuote(id: string) {
     return this.quotes.get(id);
   }
-  async listQuotes(filter?: { rfqId?: string; operatorId?: string }): Promise<Quote[]> {
+  async listQuotes(filter?: { rfqId?: string; operatorId?: string; ids?: string[] }): Promise<Quote[]> {
     let out = [...this.quotes.values()];
     if (filter?.rfqId) out = out.filter((q) => q.rfqId === filter.rfqId);
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
+    if (filter?.ids) {
+      const want = new Set(filter.ids);
+      out = out.filter((q) => want.has(q.id));
+    }
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"]) {
@@ -345,6 +350,18 @@ class MemoryRepo implements Repo {
       }
     }
     return { rfqs: expired.length, quotes };
+  }
+
+  async listJobs(_filter?: {
+    status?: "pending" | "running" | "done" | "failed";
+    limit?: number;
+  }) {
+    void _filter;
+    return [] as JobInfo[];
+  }
+  async retryJob(id: string) {
+    void id;
+    return false;
   }
 
   async createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal> {

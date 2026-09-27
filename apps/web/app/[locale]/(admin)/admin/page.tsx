@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
+import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
@@ -52,6 +53,11 @@ export default async function AdminPage({
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <p className="mt-1 text-sm">
+        <Link href="/admin/jobs" className="text-muted underline">
+          {t("viewJobs")}
+        </Link>
+      </p>
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold">
