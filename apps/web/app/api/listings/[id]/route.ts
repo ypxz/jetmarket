@@ -1,6 +1,6 @@
 import { getAttributesSchema } from "@jetmarket/verticals";
 import { z } from "zod";
-import { err, ok, parseBody } from "@/lib/api";
+import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
@@ -36,6 +36,9 @@ export async function PATCH(
   const operator = await repo.getOperatorByUserId(user.id);
   if (!listing || !operator || listing.operatorId !== operator.id) {
     return err("not found", 404);
+  }
+  if (!rateLimit(`listing-patch:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
   }
   const { data, error } = await parseBody(req, PatchListing);
   if (error) return error;

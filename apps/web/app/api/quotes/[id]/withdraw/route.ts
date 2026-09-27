@@ -1,4 +1,4 @@
-import { err, ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { analyticsProvider } from "@jetmarket/providers";
@@ -10,6 +10,9 @@ export async function POST(
 ) {
   const user = await requireUser("operator");
   if (!user) return err("unauthorized", 401);
+  if (!rateLimit(`quote-withdraw:${clientIp(_req)}`, 30, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);

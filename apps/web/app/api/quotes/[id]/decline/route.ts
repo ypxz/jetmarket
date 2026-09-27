@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { err, ok, parseBody } from "@/lib/api";
+import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { analyticsProvider } from "@jetmarket/providers";
 
@@ -16,6 +16,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (!rateLimit(`quote-decline:${clientIp(req)}`, 30, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const { data, error } = await parseBody(req, Body);
   if (error) return error;
 
