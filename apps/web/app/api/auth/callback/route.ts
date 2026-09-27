@@ -8,10 +8,15 @@ export async function GET(req: Request) {
   if (!userId || !token) {
     return NextResponse.redirect(new URL("/sign-in?error=invalid-token", url.origin));
   }
-  const res = NextResponse.redirect(new URL(url.searchParams.get("next") ?? "/", url.origin));
+  // `next` must be a site-relative path — an absolute URL would ride the
+  // session cookie to an attacker domain (open redirect).
+  const rawNext = url.searchParams.get("next") ?? "/";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const res = NextResponse.redirect(new URL(next, url.origin));
   res.cookies.set(sessionCookie, token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: url.protocol === "https:",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
