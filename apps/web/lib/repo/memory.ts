@@ -90,7 +90,35 @@ class MemoryRepo implements Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    limit?: number;
+    offset?: number;
   }): Promise<Listing[]> {
+    const out = this.filterListings(filter).sort(
+      (a, b) => b.createdAt.localeCompare(a.createdAt),
+    );
+    const start = filter?.offset ?? 0;
+    return filter?.limit !== undefined
+      ? out.slice(start, start + filter.limit)
+      : out.slice(start);
+  }
+  async countListings(filter?: {
+    operatorId?: string;
+    status?: Listing["status"];
+    type?: Listing["type"];
+    vertical?: string;
+    query?: string;
+    facets?: Record<string, string>;
+  }): Promise<number> {
+    return this.filterListings(filter).length;
+  }
+  private filterListings(filter?: {
+    operatorId?: string;
+    status?: Listing["status"];
+    type?: Listing["type"];
+    vertical?: string;
+    query?: string;
+    facets?: Record<string, string>;
+  }): Listing[] {
     let out = [...this.listings.values()];
     if (filter?.operatorId) out = out.filter((l) => l.operatorId === filter.operatorId);
     if (filter?.status) out = out.filter((l) => l.status === filter.status);
@@ -111,7 +139,7 @@ class MemoryRepo implements Repo {
         out = out.filter((l) => String(l.attributes[k] ?? "") === v);
       }
     }
-    return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return out;
   }
   async updateListingStatus(id: string, status: Listing["status"]) {
     const l = this.listings.get(id);

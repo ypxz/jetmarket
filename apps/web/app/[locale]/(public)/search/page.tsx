@@ -4,7 +4,7 @@ import { FacetSidebar } from "@/components/facet-sidebar";
 import { ListingCard } from "@/components/listing-card";
 import { Pager } from "@/components/pager";
 import { getRepo } from "@/lib/repo";
-import { paginate, searchListings } from "@/lib/search";
+import { searchListingsPage } from "@/lib/search";
 
 export default async function SearchPage({
   searchParams,
@@ -14,11 +14,8 @@ export default async function SearchPage({
   const params = await searchParams;
   const t = await getTranslations("search");
   const repo = await getRepo();
-  const all = await searchListings(params);
-  const { items: listings, page, pages, total } = paginate(
-    all,
-    params.page,
-  );
+  const { items: listings, page, pages, total } =
+    await searchListingsPage(params);
   const ops = new Map(
     await Promise.all(
       [...new Set(listings.map((l) => l.operatorId))].map(

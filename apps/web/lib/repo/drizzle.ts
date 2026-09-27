@@ -124,6 +124,40 @@ const UUID_RE =
 /** Non-uuid ids can only come from non-db impls/tests — miss, don't 22P02. */
 const isUuid = (v: string) => UUID_RE.test(v);
 
+interface ListingFilter {
+  operatorId?: string;
+  status?: ListingStatus;
+  type?: ListingType;
+  vertical?: string;
+  query?: string;
+  facets?: Record<string, string>;
+}
+
+/** Shared WHERE builder so listListings/countListings never drift apart.
+ *  Facet equality runs in SQL (`attributes ->> k = v`) — required for
+ *  limit/offset to paginate the same set the filters describe. */
+function listingConds(filter?: ListingFilter) {
+  const conds = [];
+  if (filter?.operatorId) conds.push(eq(listings.operatorId, filter.operatorId));
+  if (filter?.status) conds.push(eq(listings.status, filter.status));
+  if (filter?.type) conds.push(eq(listings.type, filter.type));
+  if (filter?.vertical) conds.push(eq(listings.vertical, filter.vertical));
+  if (filter?.query) {
+    const q = `%${filter.query}%`;
+    // match title or any stringified attribute value
+    conds.push(
+      or(ilike(listings.title, q), sql`${listings.attributes}::text ilike ${q}`)!,
+    );
+  }
+  if (filter?.facets) {
+    for (const [k, v] of Object.entries(filter.facets)) {
+      if (!v) continue;
+      conds.push(sql`${listings.attributes} ->> ${k} = ${v}`);
+    }
+  }
+  return conds.length ? and(...conds) : undefined;
+}
+
 export class DrizzleRepo implements Repo {
   constructor(private db: Db) {}
 
@@ -253,43 +287,27 @@ export class DrizzleRepo implements Repo {
       .limit(1);
     return r ? toListing(r) : undefined;
   }
-  async listListings(filter?: {
-    operatorId?: string;
-    status?: ListingStatus;
-    type?: ListingType;
-    vertical?: string;
-    query?: string;
-    facets?: Record<string, string>;
+  async listListings(filter?: ListingFilter & {
+    limit?: number;
+    offset?: number;
   }): Promise<Listing[]> {
-    const conds = [];
-    if (filter?.operatorId) conds.push(eq(listings.operatorId, filter.operatorId));
-    if (filter?.status) conds.push(eq(listings.status, filter.status));
-    if (filter?.type) conds.push(eq(listings.type, filter.type));
-    if (filter?.vertical) conds.push(eq(listings.vertical, filter.vertical));
-    if (filter?.query) {
-      const q = `%${filter.query}%`;
-      // match title or any stringified attribute value
-      conds.push(
-        or(
-          ilike(listings.title, q),
-          sql`${listings.attributes}::text ilike ${q}`,
-        )!,
-      );
-    }
-    const rows = await this.db
+    let q = this.db
       .select()
       .from(listings)
-      .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(listings.createdAt));
-    let out = rows.map(toListing);
-    // jsonb facet equality stays app-side until the search provider lands
-    if (filter?.facets) {
-      for (const [k, v] of Object.entries(filter.facets)) {
-        if (!v) continue;
-        out = out.filter((l) => String(l.attributes[k] ?? "") === v);
-      }
-    }
-    return out;
+      .where(listingConds(filter))
+      .orderBy(desc(listings.createdAt))
+      .$dynamic();
+    if (filter?.limit !== undefined) q = q.limit(filter.limit);
+    if (filter?.offset) q = q.offset(filter.offset);
+    const rows = await q;
+    return rows.map(toListing);
+  }
+  async countListings(filter?: ListingFilter): Promise<number> {
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(listings)
+      .where(listingConds(filter));
+    return r?.n ?? 0;
   }
   async updateListingStatus(id: string, status: ListingStatus): Promise<void> {
     await this.db

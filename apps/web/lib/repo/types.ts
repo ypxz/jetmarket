@@ -123,7 +123,19 @@ export interface Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    /** Page slice applied after all other filters, newest-first. */
+    limit?: number;
+    offset?: number;
   }): Promise<Listing[]>;
+  /** Rows matching the same filter shape, ignoring limit/offset. */
+  countListings(filter?: {
+    operatorId?: string;
+    status?: ListingStatus;
+    type?: ListingType;
+    vertical?: string;
+    query?: string;
+    facets?: Record<string, string>;
+  }): Promise<number>;
   updateListingStatus(id: string, status: ListingStatus): Promise<void>;
   updateListing(
     id: string,

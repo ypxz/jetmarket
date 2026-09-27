@@ -259,6 +259,52 @@ export function repoContract(
       ]);
     });
 
+    it("paginates listings with limit/offset and countListings", async () => {
+      const repo = await factory();
+      const tag = `pg${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Page Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      for (let i = 0; i < 5; i++) {
+        await repo.createListing({
+          operatorId: op.id,
+          vertical: "jets",
+          type: "charter",
+          title: `${tag} page-${i}`,
+          price: 1000 + i,
+          currency: "USD",
+          photos: [],
+          attributes: { aircraftCategory: "light" },
+        });
+        await new Promise((r) => setTimeout(r, 5));
+      }
+      const base = { operatorId: op.id };
+      const total = await repo.countListings(base);
+      const all = await repo.listListings(base);
+      expect(total).toBe(all.length);
+      const page1 = await repo.listListings({ ...base, limit: 2, offset: 0 });
+      const page2 = await repo.listListings({ ...base, limit: 2, offset: 2 });
+      expect(page1.map((l) => l.id)).toEqual(all.slice(0, 2).map((l) => l.id));
+      expect(page2.map((l) => l.id)).toEqual(all.slice(2, 4).map((l) => l.id));
+      expect(page1).not.toEqual(page2);
+      // facets + limit: the page must come from the facet-filtered set
+      const faceted = await repo.listListings({
+        ...base,
+        facets: { aircraftCategory: "nope" },
+        limit: 2,
+      });
+      expect(faceted).toHaveLength(0);
+      expect(
+        await repo.countListings({ ...base, facets: { aircraftCategory: "nope" } }),
+      ).toBe(0);
+    });
+
     it("returns listings newest-first (memory matches drizzle order)", async () => {
       const repo = await factory();
       const tag = `ord${Date.now().toString(36)}`;
