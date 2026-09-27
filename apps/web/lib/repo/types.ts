@@ -82,7 +82,7 @@ export interface Deal {
   amount: number;
   feePct: number;
   feeAmount: number;
-  invoiceStatus: "pending" | "invoiced" | "paid";
+  invoiceStatus: "pending" | "invoiced" | "paid" | "void";
   /** Provider-side invoice id (stripe-mock `in_…` or mock `inv_…`). */
   invoiceRef?: string;
   closedAt: string;

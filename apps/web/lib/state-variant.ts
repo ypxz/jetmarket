@@ -24,5 +24,7 @@ export function invoiceStateVariant(
       return "default";
     case "paid":
       return "success";
+    case "void":
+      return "outline";
   }
 }

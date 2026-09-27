@@ -19,7 +19,8 @@
     "invoiceState": {
       "pending": "pending",
       "invoiced": "invoiced",
-      "paid": "paid"
+      "paid": "paid",
+      "void": "void"
     },
     "pager": {
       "label": "Pagination",
