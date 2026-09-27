@@ -96,3 +96,85 @@ describe.skipIf(!reachable)("quotes partial-unique (QA-18)", () => {
     await insertQuote("sent"); // no throw — re-quote path
   });
 });
+
+
+// QA-65: a delivered (pending) rfq_match makes the RFQ inbox-visible and
+// quotable for the matched operator — the owner OR the match holder.
+describe.skipIf(!reachable)("fan-out match inbox visibility (QA-65)", () => {
+  const { quotes, rfqs, rfqMatches, operators, users, listings } = schema;
+
+  it("pending match sees the rfq; delayed does not; both can/cannot quote accordingly", async () => {
+    const db = client!.db;
+    const repo = new DrizzleRepo(db);
+    const tag = Date.now().toString(36);
+
+    const [u] = await db
+      .insert(users)
+      .values({ email: `q65-${tag}@test.dev`, role: "operator" })
+      .returning();
+    const [op] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Q65 Air", plan: "pro" })
+      .returning();
+    const [l] = await db
+      .insert(listings)
+      .values({
+        operatorId: op!.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Q65 ${tag}`,
+        priceMinor: 100,
+        status: "active",
+      })
+      .returning();
+    const [rfq] = await db
+      .insert(rfqs)
+      .values({
+        vertical: "jets",
+        listingId: l!.id,
+        buyerEmail: `b-${tag}@test.dev`,
+        fields: {},
+        status: "new",
+      })
+      .returning();
+
+    // a second operator matched via fan-out (pending = delivered)
+    const [u2] = await db
+      .insert(users)
+      .values({ email: `q65b-${tag}@test.dev`, role: "operator" })
+      .returning();
+    const [op2] = await db
+      .insert(operators)
+      .values({ userId: u2!.id, name: "Q65 B Air", plan: "free" })
+      .returning();
+    await db.insert(rfqMatches).values({
+      rfqId: rfq!.id,
+      operatorId: op2!.id,
+      listingId: l!.id,
+      state: "pending",
+    });
+
+    expect(await repo.hasRfqMatch(rfq!.id, op2!.id)).toBe(true);
+    const inbox2 = await repo.listRfqs({ operatorId: op2!.id });
+    expect(inbox2.map((r) => r.id)).toContain(rfq!.id);
+
+    // delayed match is NOT yet visible
+    const [u3] = await db
+      .insert(users)
+      .values({ email: `q65c-${tag}@test.dev`, role: "operator" })
+      .returning();
+    const [op3] = await db
+      .insert(operators)
+      .values({ userId: u3!.id, name: "Q65 C Air", plan: "free" })
+      .returning();
+    await db.insert(rfqMatches).values({
+      rfqId: rfq!.id,
+      operatorId: op3!.id,
+      listingId: l!.id,
+      state: "delayed",
+    });
+    expect(await repo.hasRfqMatch(rfq!.id, op3!.id)).toBe(false);
+    const inbox3 = await repo.listRfqs({ operatorId: op3!.id });
+    expect(inbox3.map((r) => r.id)).not.toContain(rfq!.id);
+  });
+});
