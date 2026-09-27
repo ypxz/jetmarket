@@ -152,7 +152,10 @@ function listingConds(filter?: ListingFilter) {
   if (filter?.type) conds.push(eq(listings.type, filter.type));
   if (filter?.vertical) conds.push(eq(listings.vertical, filter.vertical));
   if (filter?.query) {
-    const q = `%${filter.query}%`;
+    // Escape LIKE metachars — user input must match literally ("100%" must
+    // not behave like a wildcard pattern).
+    const esc = filter.query.replace(/[%_\\]/g, (m) => `\\${m}`);
+    const q = `%${esc}%`;
     // match title or any stringified attribute value
     conds.push(
       or(ilike(listings.title, q), sql`${listings.attributes}::text ilike ${q}`)!,
