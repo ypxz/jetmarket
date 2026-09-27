@@ -15,6 +15,7 @@
 | Email delivery | mock outbox + Mailpit contract; `resend`/`smtp` skeletons `TODO(go-live)` |
 | Supabase auth/storage | skeletons `TODO(go-live)`; mock auth + local storage verified |
 | Turnstile captcha | skeleton + mock `force-fail` path tested; real site key untested |
+| Security baseline | **shipped** — per-IP rate limits on all public POSTs, 64KB JSON cap, honeypot+captcha, svg sandbox on /storage, security headers, no open redirects |
 
 ## Deploy path (cheapest first)
 
