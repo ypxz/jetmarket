@@ -2,6 +2,7 @@ import { getAttributesSchema } from "@jetmarket/verticals";
 import { z } from "zod";
 import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
+import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { verticalConfig } from "@/lib/vertical";
 
@@ -39,6 +40,19 @@ export async function PATCH(
   const { data, error } = await parseBody(req, PatchListing);
   if (error) return error;
   if (data!.status) {
+    // Reactivating on the free plan still counts against the listing cap —
+    // the create route enforces it, PATCH must too (QA-63).
+    if (
+      data!.status === "active" &&
+      listing.status !== "active" &&
+      operator.plan === "free" &&
+      (await repo.countOperatorListings(operator.id)) >= FREE_LISTING_LIMIT
+    ) {
+      return err(
+        `free plan allows ${FREE_LISTING_LIMIT} listings — upgrade to Pro`,
+        403,
+      );
+    }
     await repo.updateListingStatus(id, data!.status);
   }
   const patch: Parameters<typeof repo.updateListing>[1] = {};
