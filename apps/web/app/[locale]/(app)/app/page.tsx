@@ -34,7 +34,12 @@ export default async function OperatorDashboard() {
     );
   }
 
-  const listings = await repo.listListings({ operatorId: operator.id });
+  // Cap the dashboard render — the header count uses the true total; beyond
+  // 100 listings this page needs a pager, not a longer card wall.
+  const [listings, listingCount] = await Promise.all([
+    repo.listListings({ operatorId: operator.id, limit: 100 }),
+    repo.countOperatorListings(operator.id),
+  ]);
   const openRfqs = await repo.countRfqs({
     operatorId: operator.id,
     statusNot: ["closed"],
@@ -80,7 +85,7 @@ export default async function OperatorDashboard() {
       <section className="mt-10">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            {t("listings", { count: listings.length, limit })}
+            {t("listings", { count: listingCount, limit })}
           </h2>
           <Link
             href="/app/listings/new"
