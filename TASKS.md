@@ -159,7 +159,8 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 80 | ~04:15 | QA-89 | memory-mode parity | Mock mode had no fan-out — only owners saw RFQs. POST /rfqs now runs domain matching inline (deliverAt lazy-gates delayed), flips rfq to 'matched', emails instant matches; +createRfqMatches on both impls + contract test |
 | 81 | ~04:20 | QA-90 | perf | /api/buyer/quotes filtered rfqs by buyer_email with no index — migration 0005 adds rfqs_buyer_idx(buyer_email, created_at) |
 | 82 | ~04:25 | QA-91 | ops | /api/health returned ok with a dead DB — now probes select 1 under DATABASE_URL and 503s on failure (verified live) |
-| 83 | ~23:10 | QA-92 | deploy | .dockerignore lacked .env* — Dockerfile `COPY . .` would bake env files (and secrets) into images; added `.env*` + `!.env.example` exception |
+| 83 | ~23:15 | QA-92 | deploy | .dockerignore lacked .env* — Dockerfile `COPY . .` would bake env files (and secrets) into images; added `.env*` + `!.env.example` exception |
+| 84 | ~23:40 | QA-93 | ops | jobs table grew unboundedly (done/failed kept forever) — pruneJobs() deletes done>7d / failed>30d, wired hourly-throttled into worker tick; integration test covers retention boundaries |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)

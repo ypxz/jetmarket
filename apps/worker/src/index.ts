@@ -4,6 +4,7 @@ import {
   createDb,
   databaseUrl,
   failJob,
+  pruneJobs,
   requeueStaleJobs,
 } from "@jetmarket/db";
 import { defaultPlans } from "@jetmarket/domain";
@@ -14,6 +15,11 @@ import { createWorkerRepo } from "./repo";
 const JOB_KINDS = ["rfq.fanout", "email.quote_notification"] as const;
 const DEFAULT_POLL_MS = 5_000;
 const CLAIM_BATCH = 10;
+const PRUNE_EVERY_MS = 60 * 60_000;
+const DONE_RETENTION_MS = 7 * 24 * 60 * 60_000;
+const FAILED_RETENTION_MS = 30 * 24 * 60 * 60_000;
+
+let lastPruneAt = 0;
 
 export function pollIntervalMs(env: NodeJS.ProcessEnv = process.env): number {
   const v = Number(env.WORKER_POLL_MS);
@@ -39,6 +45,18 @@ export async function tick(deps: WorkerDeps): Promise<number> {
     new Date(Date.now() - 10 * 60_000),
   );
   if (requeued) console.log(`[worker] requeued ${requeued} stale job(s)`);
+
+  // Retention: terminal jobs pile up forever otherwise — sweep hourly
+  // (done>7d, failed>30d for forensics).
+  const nowMs = Date.now();
+  if (nowMs - lastPruneAt >= PRUNE_EVERY_MS) {
+    lastPruneAt = nowMs;
+    const pruned = await pruneJobs(deps.sql, {
+      doneOlderThan: new Date(nowMs - DONE_RETENTION_MS),
+      failedOlderThan: new Date(nowMs - FAILED_RETENTION_MS),
+    });
+    if (pruned) console.log(`[worker] pruned ${pruned} terminal job(s)`);
+  }
 
   const jobs = await claimJobs(deps.sql, [...JOB_KINDS], CLAIM_BATCH);
   for (const job of jobs) {

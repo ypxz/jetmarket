@@ -3,6 +3,7 @@ import {
   createDb,
   databaseUrl,
   enqueueJob,
+  pruneJobs,
   runMigrations,
   seedJets,
 } from "@jetmarket/db";
@@ -205,5 +206,44 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     }
     expect(["pending", "failed"]).toContain(row[0]!.status);
     expect(row[0]!.last_error).toContain("not found");
+  });
+
+  it("prunes old terminal jobs but keeps recent + pending ones", async () => {
+    const mk = async (status: string, ageDays: number) => {
+      const id = await enqueueJob(sql, "email.quote_notification", {
+        matchId: randomUUID(),
+      });
+      await sql`
+        update jobs set status = ${status},
+               updated_at = now() - (${ageDays} || ' days')::interval
+         where id = ${id}`;
+      return id;
+    };
+    const oldDone = await mk("done", 8);
+    const recentDone = await mk("done", 1);
+    const oldFailed = await mk("failed", 31);
+    const recentFailed = await mk("failed", 2);
+    const oldPending = await mk("pending", 60);
+
+    const pruned = await pruneJobs(sql, {
+      doneOlderThan: new Date(Date.now() - 7 * 24 * 60 * 60_000),
+      failedOlderThan: new Date(Date.now() - 30 * 24 * 60 * 60_000),
+    });
+    expect(pruned).toBeGreaterThanOrEqual(2);
+
+    const remaining = await sql<{ id: string }[]>`
+      select id from jobs where id = any(${[
+        oldDone,
+        recentDone,
+        oldFailed,
+        recentFailed,
+        oldPending,
+      ]})`;
+    const remainingIds = new Set(remaining.map((r) => r.id));
+    expect(remainingIds.has(oldDone)).toBe(false);
+    expect(remainingIds.has(oldFailed)).toBe(false);
+    expect(remainingIds.has(recentDone)).toBe(true);
+    expect(remainingIds.has(recentFailed)).toBe(true);
+    expect(remainingIds.has(oldPending)).toBe(true);
   });
 });

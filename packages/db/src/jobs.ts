@@ -99,3 +99,21 @@ export async function requeueStaleJobs(
   `;
   return rows.length;
 }
+
+/**
+ * Delete terminal jobs past their retention cutoffs so the table stays small:
+ * `done` rows beyond doneOlderThan, `failed` rows beyond failedOlderThan.
+ * Pending/running rows are never pruned. Returns the number deleted.
+ */
+export async function pruneJobs(
+  sql: Sql,
+  opts: { doneOlderThan: Date; failedOlderThan: Date },
+): Promise<number> {
+  const rows = await sql<{ id: string }[]>`
+    delete from jobs
+     where (status = 'done'   and updated_at < ${opts.doneOlderThan.toISOString()})
+        or (status = 'failed' and updated_at < ${opts.failedOlderThan.toISOString()})
+    returning id
+  `;
+  return rows.length;
+}
