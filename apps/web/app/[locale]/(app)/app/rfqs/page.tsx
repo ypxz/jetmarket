@@ -43,7 +43,9 @@ export default async function RfqInboxPage({
     rfqsPage.map(async (r) => ({
       rfq: r,
       listing: (await repo.getListing(r.listingId)) ?? null,
-      quotes: await repo.listQuotes({ rfqId: r.id }),
+      // own quotes only — fan-out matches make other operators' RFQs visible
+      // here; their quote amounts must not leak to competitors (QA-73)
+      quotes: await repo.listQuotes({ rfqId: r.id, operatorId: operator.id }),
     })),
   );
 

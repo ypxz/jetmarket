@@ -25,7 +25,8 @@ export async function GET(req: Request) {
         // impersonate the buyer and accept their own quote (QA-41)
         ...{ ...rfq, accessToken: undefined },
         listing: (await repo.getListing(rfq.listingId)) ?? null,
-        quotes: await repo.listQuotes({ rfqId: rfq.id }),
+        // own quotes only — matched operators must not see competitors' amounts (QA-73)
+        quotes: await repo.listQuotes({ rfqId: rfq.id, operatorId: operator.id }),
       })),
     ),
   );
