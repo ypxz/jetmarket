@@ -16,7 +16,7 @@
     "@types/node": "^26.5.0",
     "postgres": "^3.4.9",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.2"
   },
   "exports": {
     "./contract/*": "./contract/*.ts",
