@@ -15,9 +15,11 @@ export default async function LandingPage() {
   const ct = await getTranslations("common");
   const repo = await getRepo();
 
-  const featured = (
-    await repo.listListings({ status: "active", vertical: vertical.slug })
-  ).slice(0, 6);
+  const featured = await repo.listListings({
+    status: "active",
+    vertical: vertical.slug,
+    limit: 6,
+  });
   const featuredOps = new Map(
     await Promise.all(
       [...new Set(featured.map((l) => l.operatorId))].map(
