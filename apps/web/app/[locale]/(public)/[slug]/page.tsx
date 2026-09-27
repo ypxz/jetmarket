@@ -7,6 +7,7 @@ import { getVertical } from "@jetmarket/verticals";
 import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 import { searchListings } from "@/lib/search";
 import { resolveSeoPage, searchHref, seoSlugs, siteUrl } from "@/lib/seo";
 import { ListingCard } from "@/components/listing-card";
@@ -82,7 +83,8 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
   const ops = new Map(
     await Promise.all(
       [...new Set(listings.map((l) => l.operatorId))].map(
-        async (id) => [id, (await repo.getOperator(id)) ?? null] as const,
+        async (id) =>
+          [id, (await repo.getOperator(id).then((o) => (o ? publicOperator(o) : null)))] as const,
       ),
     ),
   );

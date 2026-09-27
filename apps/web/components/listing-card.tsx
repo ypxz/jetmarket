@@ -6,11 +6,11 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { attrsFor, optionLabelKey } from "@/lib/attrs";
 import { formatAttribute, formatMoney } from "@/lib/format";
-import type { Listing, Operator } from "@/lib/repo/types";
+import type { Listing, PublicOperator } from "@/lib/repo/types";
 
 interface ListingCardProps {
   listing: Listing;
-  operator?: Operator | null;
+  operator?: PublicOperator | null;
 }
 
 export async function ListingCard({ listing, operator }: ListingCardProps) {

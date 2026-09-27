@@ -4,6 +4,7 @@ import { FacetSidebar } from "@/components/facet-sidebar";
 import { ListingCard } from "@/components/listing-card";
 import { Pager } from "@/components/pager";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 import { searchListingsPage } from "@/lib/search";
 
 export default async function SearchPage({
@@ -19,7 +20,8 @@ export default async function SearchPage({
   const ops = new Map(
     await Promise.all(
       [...new Set(listings.map((l) => l.operatorId))].map(
-        async (id) => [id, (await repo.getOperator(id)) ?? null] as const,
+        async (id) =>
+          [id, (await repo.getOperator(id).then((o) => (o ? publicOperator(o) : null)))] as const,
       ),
     ),
   );

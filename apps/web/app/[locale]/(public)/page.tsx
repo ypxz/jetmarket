@@ -3,6 +3,7 @@ import { getVertical } from "@jetmarket/verticals";
 import { getTranslations } from "next-intl/server";
 import { ListingCard } from "@/components/listing-card";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 import { site } from "@jetmarket/config";
 
 interface FeatureItem { title: string; body: string }
@@ -23,7 +24,8 @@ export default async function LandingPage() {
   const featuredOps = new Map(
     await Promise.all(
       [...new Set(featured.map((l) => l.operatorId))].map(
-        async (id) => [id, (await repo.getOperator(id)) ?? null] as const,
+        async (id) =>
+          [id, (await repo.getOperator(id).then((o) => (o ? publicOperator(o) : null)))] as const,
       ),
     ),
   );
