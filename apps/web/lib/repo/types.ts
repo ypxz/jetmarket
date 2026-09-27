@@ -41,7 +41,14 @@ export interface Listing {
   createdAt: string;
 }
 
-export type RfqStatus = "open" | "quoted" | "closed" | "expired";
+// "matched"/"spam" are db-side states that surface through iface reads.
+export type RfqStatus =
+  | "open"
+  | "matched"
+  | "quoted"
+  | "closed"
+  | "expired"
+  | "spam";
 
 export interface Rfq {
   id: string;
