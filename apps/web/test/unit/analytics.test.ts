@@ -124,7 +124,9 @@ describe("analytics events on money routes (mock sink)", async () => {
       message: "",
     });
     const before = sink.events.length;
-    const res = await postAccept(jsonReq({ buyerEmail: "buyer3@x.example" }), {
+    const res = await postAccept(
+      jsonReq({ buyerEmail: "buyer3@x.example", token: rfq.accessToken }),
+      {
       params: Promise.resolve({ id: quote.id }),
     });
     expect(res.status).toBe(200);

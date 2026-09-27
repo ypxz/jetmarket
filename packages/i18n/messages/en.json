@@ -114,7 +114,8 @@
     "status": "Status: {status}",
     "decline": "Decline",
     "declinedMsg": "Quote declined.",
-    "declining": "Declining…"
+    "declining": "Declining…",
+    "needLink": "Open the link from your RFQ or quote email to view your quotes."
   },
   "design": {
     "title": "Design system",

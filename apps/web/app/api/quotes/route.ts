@@ -65,7 +65,7 @@ export async function POST(req: Request) {
   await emailProvider().send({
     to: rfq.buyerEmail,
     subject: `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
-    text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? ""}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}`,
+    text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? ""}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}&t=${encodeURIComponent(rfq.accessToken)}`,
   });
   analyticsProvider().track({
     name: "quote_sent",

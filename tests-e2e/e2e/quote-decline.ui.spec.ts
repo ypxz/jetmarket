@@ -68,7 +68,8 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
   });
 
   await step('buyer declines the quote', async () => {
-    await buyer.goto(`/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`);
+    // the thanks page's 'view quotes' link carries the per-RFQ bearer token (QA-39)
+    await buyer.getByTestId('rfq-view-quotes').click();
     const emailInput = buyer.getByTestId('buyer-email');
     if (!(await emailInput.inputValue())) await emailInput.fill(BUYER_EMAIL);
     await buyer.getByTestId('buyer-load').click();

@@ -87,23 +87,32 @@ beforeEach(() => jar.clear());
 describe("POST /api/quotes/[id]/decline (buyer)", () => {
   it("declines a sent quote for its buyer; wrong email 403; replay 409", async () => {
     const repo = await getMemoryRepo();
-    const { quote, buyerEmail } = await fixture(repo);
+    const { quote, buyerEmail, rfq } = await fixture(repo);
 
-    const bad = await declineQuote(post({ buyerEmail: "nope@x.dev" }), params(quote.id));
+    const bad = await declineQuote(
+      post({ buyerEmail: "nope@x.dev", token: rfq.accessToken }),
+      params(quote.id),
+    );
     expect(bad.status).toBe(403);
 
-    const res = await declineQuote(post({ buyerEmail }), params(quote.id));
+    const res = await declineQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
     expect(res.status).toBe(200);
     expect(((await res.json()) as Quote).status).toBe("declined");
     expect((await repo.getQuote(quote.id))?.status).toBe("declined");
 
-    const again = await declineQuote(post({ buyerEmail }), params(quote.id));
+    const again = await declineQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
     expect(again.status).toBe(409);
   });
 
   it("404s on unknown quote", async () => {
     const res = await declineQuote(
-      post({ buyerEmail: "b@x.dev" }),
+      post({ buyerEmail: "b@x.dev", token: "t" }),
       params("quo_missing"),
     );
     expect(res.status).toBe(404);
@@ -165,10 +174,13 @@ describe("POST /api/quotes/[id]/withdraw (operator)", () => {
 describe("POST /api/admin/deals/[id]/paid (admin)", () => {
   it("marks an invoiced deal paid, preserving invoiceRef; admin-only", async () => {
     const repo = await getMemoryRepo();
-    const { opUser, quote, buyerEmail } = await fixture(repo);
+    const { opUser, quote, buyerEmail, rfq } = await fixture(repo);
 
     // Accept the quote to mint a deal; then force its invoice to invoiced.
-    const acc = await acceptQuote(post({ buyerEmail }), params(quote.id));
+    const acc = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
     expect(acc.status).toBe(200);
     const { deal } = (await acc.json()) as { deal: { id: string } };
     await repo.setDealInvoice(deal.id, "invoiced", "inv_test_ref");

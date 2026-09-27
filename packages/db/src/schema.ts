@@ -92,6 +92,9 @@ export const rfqs = pgTable(
       onDelete: "set null",
     }),
     buyerEmail: text("buyer_email").notNull(),
+    accessToken: text("access_token")
+      .notNull()
+      .default(sql`gen_random_uuid()::text`),
     fields: jsonb("fields")
       .$type<Record<string, unknown>>()
       .notNull()

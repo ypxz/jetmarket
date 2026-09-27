@@ -79,7 +79,7 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
       },
     });
     expect(rfq.status()).toBe(201);
-    return ((await rfq.json()) as { rfqId: string }).rfqId;
+    return (await rfq.json()) as { rfqId: string; accessToken: string };
   };
 
   const buyer = await login(BUYER_EMAIL, 'buyer');
@@ -88,13 +88,19 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
   // --- decline --------------------------------------------------------------
   // NB: quotes are unique on (rfq_id, operator_id) — an operator gets ONE
   // quote per rfq even after a decline/withdraw (QA-18). One rfq per action.
-  const qDeclined = await sendQuote(operator, await newRfq(), 11000);
+  const rDeclined = await newRfq();
+  const qDeclined = await sendQuote(operator, rDeclined.rfqId, 11000);
+  // wrong identity AND missing token both reject
   const wrongEmail = await publicCtx.post(`/api/quotes/${qDeclined}/decline`, {
-    data: { buyerEmail: `not-${BUYER_EMAIL}` },
+    data: { buyerEmail: `not-${BUYER_EMAIL}`, token: rDeclined.accessToken },
   });
   expect(wrongEmail.status()).toBe(403);
+  const noToken = await publicCtx.post(`/api/quotes/${qDeclined}/decline`, {
+    data: { buyerEmail: BUYER_EMAIL, token: 'bogus' },
+  });
+  expect(noToken.status()).toBe(403);
   const decline = await publicCtx.post(`/api/quotes/${qDeclined}/decline`, {
-    data: { buyerEmail: BUYER_EMAIL },
+    data: { buyerEmail: BUYER_EMAIL, token: rDeclined.accessToken },
   });
   expect(decline.ok()).toBeTruthy();
   expect((await decline.json()).status).toBe('declined');
@@ -102,20 +108,20 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
   expect(
     (
       await publicCtx.post(`/api/quotes/${qDeclined}/decline`, {
-        data: { buyerEmail: BUYER_EMAIL },
+        data: { buyerEmail: BUYER_EMAIL, token: rDeclined.accessToken },
       })
     ).status(),
   ).toBe(409);
   expect(
     (
       await publicCtx.post(`/api/quotes/${qDeclined}/accept`, {
-        data: { buyerEmail: BUYER_EMAIL },
+        data: { buyerEmail: BUYER_EMAIL, token: rDeclined.accessToken },
       })
     ).status(),
   ).toBe(409);
 
   // --- withdraw -------------------------------------------------------------
-  const rfq2 = await newRfq();
+  const rfq2 = (await newRfq()).rfqId;
   const qWithdrawn = await sendQuote(operator, rfq2, 12000);
   // a non-operator session can't withdraw (401); the operator can
   expect((await buyer.post(`/api/quotes/${qWithdrawn}/withdraw`)).status()).toBe(401);
@@ -136,9 +142,10 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
   expect(requote2.status()).toBe(409);
 
   // --- accept → invoiced → mark-paid ---------------------------------------
-  const qAccepted = await sendQuote(operator, await newRfq(), 30000);
+  const rAccepted = await newRfq();
+  const qAccepted = await sendQuote(operator, rAccepted.rfqId, 30000);
   const accept = await publicCtx.post(`/api/quotes/${qAccepted}/accept`, {
-    data: { buyerEmail: BUYER_EMAIL },
+    data: { buyerEmail: BUYER_EMAIL, token: rAccepted.accessToken },
   });
   expect(accept.ok()).toBeTruthy();
   const { deal } = (await accept.json()) as {

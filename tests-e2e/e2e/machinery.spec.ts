@@ -77,7 +77,8 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     await expect(item).toBeVisible();
     await item.locator(tidPrefix('quote-amount-')).fill('12000');
     await item.locator(tidPrefix('quote-send-')).click();
-    await buyer.goto(`/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`);
+    // the thanks page's 'view quotes' link carries the per-RFQ bearer token (QA-39)
+    await buyer.getByTestId('rfq-view-quotes').click();
     // fresh buyer has exactly one quote row; amounts render currency-formatted
     const quote = buyer.locator(tidPrefix('quote-')).first();
     await expect(quote).toBeVisible();

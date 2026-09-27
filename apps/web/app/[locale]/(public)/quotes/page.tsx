@@ -29,12 +29,24 @@ function QuotesInner() {
   const tc = useTranslations("common");
   const params = useSearchParams();
   const [email, setEmail] = useState(params.get("email") ?? "");
+  const [token] = useState(params.get("t") ?? "");
   const [rfqs, setRfqs] = useState<Rfq[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function load(e?: React.FormEvent) {
     e?.preventDefault();
-    const res = await fetch(`/api/buyer/quotes?email=${encodeURIComponent(email)}`);
+    if (!token) {
+      setMsg(t("needLink"));
+      return;
+    }
+    const res = await fetch(
+      `/api/buyer/quotes?email=${encodeURIComponent(email)}&t=${encodeURIComponent(token)}`,
+    );
+    if (!res.ok) {
+      const d = await readJson<{ error?: string }>(res);
+      setMsg(d.error ?? tc("error"));
+      return;
+    }
     setRfqs(await readJson<Rfq[]>(res));
   }
 
@@ -47,7 +59,7 @@ function QuotesInner() {
     const res = await fetch(`/api/quotes/${quoteId}/accept`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ buyerEmail: email }),
+      body: JSON.stringify({ buyerEmail: email, token }),
     });
     const data = await readJson<{ error?: string; deal: { id: string } }>(res);
     if (!res.ok) {
@@ -62,7 +74,7 @@ function QuotesInner() {
     const res = await fetch(`/api/quotes/${quoteId}/decline`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ buyerEmail: email }),
+      body: JSON.stringify({ buyerEmail: email, token }),
     });
     const data = await readJson<{ error?: string }>(res);
     if (!res.ok) {

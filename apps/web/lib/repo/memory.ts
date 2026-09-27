@@ -123,8 +123,14 @@ class MemoryRepo implements Repo {
     ).length;
   }
 
-  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Promise<Rfq> {
-    const rfq: Rfq = { ...r, id: uid("rfq"), status: "open", createdAt: now() };
+  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq> {
+    const rfq: Rfq = {
+      ...r,
+      id: uid("rfq"),
+      status: "open",
+      accessToken: crypto.randomUUID(),
+      createdAt: now(),
+    };
     this.rfqs.set(rfq.id, rfq);
     return rfq;
   }

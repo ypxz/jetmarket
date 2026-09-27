@@ -55,6 +55,8 @@ export interface Rfq {
   vertical: string;
   listingId: string;
   buyerEmail: string;
+  /** Bearer token in the buyer's email link — gates quote view/accept/decline. */
+  accessToken: string;
   fields: Record<string, unknown>;
   status: RfqStatus;
   createdAt: string;
@@ -123,7 +125,7 @@ export interface Repo {
   updateListingStatus(id: string, status: ListingStatus): Promise<void>;
   countOperatorListings(operatorId: string): Promise<number>;
 
-  createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Promise<Rfq>;
+  createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;
   setRfqStatus(id: string, status: RfqStatus): Promise<void>;
   listRfqs(filter?: {

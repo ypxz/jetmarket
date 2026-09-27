@@ -107,7 +107,9 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
     },
   });
   expect(rfq.status()).toBe(201);
-  const rfqId = ((await rfq.json()) as { rfqId: string }).rfqId;
+  const rfqJson = (await rfq.json()) as { rfqId: string; accessToken: string };
+  const rfqId = rfqJson.rfqId;
+  const rfqToken = rfqJson.accessToken;
 
   // honeypot submissions are silently dropped (still 201)
   const spam = await publicCtx.post('/api/rfqs', {
@@ -129,7 +131,7 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
 
   // --- buyer: sees quote, accepts → deal + fee ------------------------------
   const buyerQuotes = await publicCtx.get(
-    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}&t=${encodeURIComponent(rfqToken)}`,
   );
   expect(buyerQuotes.ok()).toBeTruthy();
   const buyerRfqs = (await buyerQuotes.json()) as {
@@ -138,7 +140,7 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   expect(buyerRfqs[0]?.quotes.map((q) => q.id)).toContain(quoteId);
 
   const accept = await publicCtx.post(`/api/quotes/${quoteId}/accept`, {
-    data: { buyerEmail: BUYER_EMAIL },
+    data: { buyerEmail: BUYER_EMAIL, token: rfqToken },
   });
   expect(accept.ok()).toBeTruthy();
   const { deal } = (await accept.json()) as {
@@ -151,7 +153,7 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
 
   // QA-1: accepting a quote closes the RFQ (dashboard stops counting it open)
   const afterAccept = await publicCtx.get(
-    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}&t=${encodeURIComponent(rfqToken)}`,
   );
   const rfqsAfter = (await afterAccept.json()) as { id: string; status: string }[];
   expect(rfqsAfter.find((r) => r.id === rfqId)?.status).toBe('closed');

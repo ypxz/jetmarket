@@ -9,8 +9,11 @@ export default async function RfqThanksPage({
 }) {
   const sp = await searchParams;
   const t = await getTranslations("rfq");
-  const id = Array.isArray(sp.id) ? sp.id[0] : (sp.id ?? "");
-  const email = Array.isArray(sp.email) ? sp.email[0] : (sp.email ?? "");
+  const pick = (v: string | string[] | undefined) =>
+    (Array.isArray(v) ? v[0] : v) ?? "";
+  const id = pick(sp.id);
+  const email = pick(sp.email);
+  const token = pick(sp.t);
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-16 sm:px-6">
@@ -26,7 +29,7 @@ export default async function RfqThanksPage({
             </p>
           ) : null}
           <Link
-            href={`/quotes${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+            href={`/quotes?email=${encodeURIComponent(email)}&t=${encodeURIComponent(token)}`}
             className={`${buttonVariants()} mt-6`}
             data-testid="rfq-view-quotes"
           >

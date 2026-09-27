@@ -85,6 +85,7 @@ export function RfqForm({
     });
     const data = (await res.json().catch(() => ({}))) as {
       rfqId?: string;
+      accessToken?: string;
       error?: string;
     };
     if (!res.ok) {
@@ -93,7 +94,8 @@ export function RfqForm({
       return;
     }
     const email = encodeURIComponent(String(fieldsObj[emailFieldKey] ?? ""));
-    router.push(`/rfq/thanks?id=${data.rfqId}&email=${email}`);
+    const t = data.accessToken ? `&t=${encodeURIComponent(data.accessToken)}` : "";
+    router.push(`/rfq/thanks?id=${data.rfqId}&email=${email}${t}`);
   }
 
   // Group contiguous fields by their groupKey for visual sections.

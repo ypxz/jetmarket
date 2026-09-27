@@ -66,6 +66,7 @@ export function repoContract(
         },
       });
       expect(rfq.status).toBe("open");
+      expect(rfq.accessToken).toBeTruthy();
       expect(await repo.listRfqs({ operatorId: op.id })).toHaveLength(1);
       expect(
         await repo.listRfqs({ buyerEmail: `buyer-${tag}@test.dev` }),

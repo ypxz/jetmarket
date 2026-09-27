@@ -5,7 +5,11 @@ import { logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { emailProvider, paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 
-const Body = z.object({ buyerEmail: z.string().email() });
+const Body = z.object({
+  buyerEmail: z.string().email(),
+  // Per-RFQ bearer token from the buyer's email link (QA-39).
+  token: z.string().min(1),
+});
 
 export async function POST(
   req: Request,
@@ -19,7 +23,11 @@ export async function POST(
   const quote = await repo.getQuote(id);
   if (!quote) return err("quote not found", 404);
   const rfq = await repo.getRfq(quote.rfqId);
-  if (!rfq || rfq.buyerEmail !== data!.buyerEmail) {
+  if (
+    !rfq ||
+    rfq.buyerEmail !== data!.buyerEmail ||
+    rfq.accessToken !== data!.token
+  ) {
     return err("not your quote", 403);
   }
   // The RFQ must still be live — a "sent" quote can outlive its RFQ when the

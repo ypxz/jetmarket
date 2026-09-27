@@ -77,5 +77,8 @@ export async function POST(req: Request) {
     name: "rfq_created",
     props: { rfqId: rfq.id, listingId, vertical: listing.vertical },
   });
-  return ok({ received: true, rfqId: rfq.id }, 201);
+  return ok(
+    { received: true, rfqId: rfq.id, accessToken: rfq.accessToken },
+    201,
+  );
 }

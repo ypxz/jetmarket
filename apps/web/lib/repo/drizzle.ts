@@ -73,6 +73,7 @@ function toRfq(r: typeof rfqs.$inferSelect): Rfq {
     vertical: r.vertical,
     listingId: r.listingId ?? "",
     buyerEmail: r.buyerEmail,
+    accessToken: r.accessToken,
     fields: r.fields,
     status: (r.status === "new" ? "open" : r.status) as RfqStatus,
     createdAt: iso(r.createdAt),
@@ -308,7 +309,7 @@ export class DrizzleRepo implements Repo {
     return r?.n ?? 0;
   }
 
-  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status">): Promise<Rfq> {
+  async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq> {
     const [row] = await this.db
       .insert(rfqs)
       .values({
