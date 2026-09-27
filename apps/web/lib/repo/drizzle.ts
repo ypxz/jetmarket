@@ -135,6 +135,7 @@ const UUID_RE =
 const isUuid = (v: string) => UUID_RE.test(v);
 
 interface ListingFilter {
+  ids?: string[];
   operatorId?: string;
   status?: ListingStatus;
   type?: ListingType;
@@ -149,6 +150,10 @@ interface ListingFilter {
  *  limit/offset to paginate the same set the filters describe. */
 function listingConds(filter?: ListingFilter) {
   const conds = [];
+  if (filter?.ids) {
+    if (filter.ids.length === 0) return sql`false`;
+    conds.push(inArray(listings.id, filter.ids));
+  }
   if (filter?.operatorId) conds.push(eq(listings.operatorId, filter.operatorId));
   if (filter?.status) conds.push(eq(listings.status, filter.status));
   if (filter?.type) conds.push(eq(listings.type, filter.type));
@@ -612,6 +617,7 @@ export class DrizzleRepo implements Repo {
     rfqId?: string;
     operatorId?: string;
     ids?: string[];
+    rfqIds?: string[];
   }): Promise<Quote[]> {
     const conds = [];
     if (filter?.rfqId) conds.push(eq(quotes.rfqId, filter.rfqId));
@@ -619,6 +625,10 @@ export class DrizzleRepo implements Repo {
     if (filter?.ids) {
       if (filter.ids.length === 0) return [];
       conds.push(inArray(quotes.id, filter.ids));
+    }
+    if (filter?.rfqIds) {
+      if (filter.rfqIds.length === 0) return [];
+      conds.push(inArray(quotes.rfqId, filter.rfqIds));
     }
     const rows = await this.db
       .select()

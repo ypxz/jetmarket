@@ -164,6 +164,8 @@ export interface Repo {
      * non-numeric values never match.
      */
     facetRanges?: { key: string; min?: number; max?: number }[];
+    /** Fetch these listing ids directly — batch-lookup for join-style pages. */
+    ids?: string[];
     /** Page slice applied after all other filters, newest-first. */
     limit?: number;
     offset?: number;
@@ -250,6 +252,8 @@ export interface Repo {
     rfqId?: string;
     operatorId?: string;
     ids?: string[];
+    /** Batch-lookup: quotes belonging to any of these RFQs. */
+    rfqIds?: string[];
   }): Promise<Quote[]>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent

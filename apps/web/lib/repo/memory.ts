@@ -111,6 +111,7 @@ class MemoryRepo implements Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    ids?: string[];
     limit?: number;
     offset?: number;
   }): Promise<Listing[]> {
@@ -130,6 +131,7 @@ class MemoryRepo implements Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    ids?: string[];
   }): Promise<number> {
     return this.filterListings(filter).length;
   }
@@ -141,8 +143,13 @@ class MemoryRepo implements Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    ids?: string[];
   }): Listing[] {
     let out = [...this.listings.values()];
+    if (filter?.ids) {
+      const want = new Set(filter.ids);
+      out = out.filter((l) => want.has(l.id));
+    }
     if (filter?.operatorId) out = out.filter((l) => l.operatorId === filter.operatorId);
     if (filter?.status) out = out.filter((l) => l.status === filter.status);
     if (filter?.type) out = out.filter((l) => l.type === filter.type);
@@ -308,13 +315,17 @@ class MemoryRepo implements Repo {
   async getQuote(id: string) {
     return this.quotes.get(id);
   }
-  async listQuotes(filter?: { rfqId?: string; operatorId?: string; ids?: string[] }): Promise<Quote[]> {
+  async listQuotes(filter?: { rfqId?: string; operatorId?: string; ids?: string[]; rfqIds?: string[] }): Promise<Quote[]> {
     let out = [...this.quotes.values()];
     if (filter?.rfqId) out = out.filter((q) => q.rfqId === filter.rfqId);
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
     if (filter?.ids) {
       const want = new Set(filter.ids);
       out = out.filter((q) => want.has(q.id));
+    }
+    if (filter?.rfqIds) {
+      const want = new Set(filter.rfqIds);
+      out = out.filter((q) => want.has(q.rfqId));
     }
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }

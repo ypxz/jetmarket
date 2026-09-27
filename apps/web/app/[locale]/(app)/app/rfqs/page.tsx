@@ -39,15 +39,27 @@ export default async function RfqInboxPage({
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
   });
-  const rfqRows = await Promise.all(
-    rfqsPage.map(async (r) => ({
-      rfq: r,
-      listing: (await repo.getListing(r.listingId)) ?? null,
-      // own quotes only — fan-out matches make other operators' RFQs visible
-      // here; their quote amounts must not leak to competitors (QA-73)
-      quotes: await repo.listQuotes({ rfqId: r.id, operatorId: operator.id }),
-    })),
-  );
+  // Batched: one listing lookup + one quotes lookup for the whole page —
+  // was 2 queries per row (QA-103). Quotes stay scoped to THIS operator —
+  // fan-out matches make other operators' RFQs visible here; their quote
+  // amounts must not leak to competitors (QA-73).
+  const rfqIds = rfqsPage.map((r) => r.id);
+  const [listingRows, quoteRows] = await Promise.all([
+    repo.listListings({ ids: [...new Set(rfqsPage.map((r) => r.listingId))] }),
+    repo.listQuotes({ rfqIds, operatorId: operator.id }),
+  ]);
+  const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
+  const quotesByRfq = new Map<string, typeof quoteRows>();
+  for (const q of quoteRows) {
+    const arr = quotesByRfq.get(q.rfqId) ?? [];
+    arr.push(q);
+    quotesByRfq.set(q.rfqId, arr);
+  }
+  const rfqRows = rfqsPage.map((r) => ({
+    rfq: r,
+    listing: listingById.get(r.listingId) ?? null,
+    quotes: quotesByRfq.get(r.id) ?? [],
+  }));
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
