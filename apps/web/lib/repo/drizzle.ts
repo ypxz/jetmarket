@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import type {
   Deal,
@@ -399,14 +399,22 @@ export class DrizzleRepo implements Repo {
       .limit(1);
     return r ? toRfq(r) : undefined;
   }
-  async setRfqStatus(id: string, status: RfqStatus): Promise<void> {
+  async setRfqStatus(
+    id: string,
+    status: RfqStatus,
+    expectedIn: RfqStatus[],
+  ): Promise<boolean> {
     // iface "open" -> db "new"; iface "expired" has no db state -> "closed".
-    const dbStatus =
-      status === "open" ? "new" : status === "expired" ? "closed" : status;
-    await this.db
+    const toDb = (s: RfqStatus) =>
+      s === "open" ? "new" : s === "expired" ? "closed" : s;
+    const rows = await this.db
       .update(rfqs)
-      .set({ status: dbStatus })
-      .where(eq(rfqs.id, id));
+      .set({ status: toDb(status) })
+      .where(
+        and(eq(rfqs.id, id), inArray(rfqs.status, expectedIn.map(toDb))),
+      )
+      .returning({ id: rfqs.id });
+    return rows.length > 0;
   }
   async listRfqs(filter?: {
     buyerEmail?: string;

@@ -174,7 +174,14 @@ export interface Repo {
 
   createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;
-  setRfqStatus(id: string, status: RfqStatus): Promise<void>;
+  /** Atomically transition an RFQ to `status` when its current status is in
+   * `expectedIn`; returns false otherwise. Lets accept() use the RFQ as the
+   * single-winner arbiter against concurrent sibling accepts (QA-99). */
+  setRfqStatus(
+    id: string,
+    status: RfqStatus,
+    expectedIn: RfqStatus[],
+  ): Promise<boolean>;
   listRfqs(filter?: {
     buyerEmail?: string;
     /** Listing owner OR an operator with a delivered (pending) rfq_match. */

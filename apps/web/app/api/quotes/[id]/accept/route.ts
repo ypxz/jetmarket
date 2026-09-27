@@ -40,10 +40,23 @@ export async function POST(
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
-  // CAS the transition: two accepts racing on sibling quotes (or an accept
-  // racing a decline/withdraw) both pass the read check above — only the
-  // atomic winner may proceed to close a deal (QA-99).
+  // Arbitration order matters: the RFQ flip is the single-winner gate.
+  // Two accepts on DIFFERENT quotes of this RFQ would both pass their own
+  // quote CAS — but only the first can flip the RFQ out of its live states,
+  // so at most one deal is ever created per RFQ (QA-99).
+  if (
+    !(await repo.setRfqStatus(rfq.id, "closed", [
+      "open",
+      "matched",
+      "quoted",
+    ]))
+  ) {
+    return err("rfq is no longer open", 409);
+  }
+  // Then the quote itself: an accept racing a decline/withdraw on the same
+  // quote loses here. Roll the RFQ back so the losing quote's RFQ stays live.
   if (!(await repo.setQuoteStatus(id, "accepted", "sent"))) {
+    await repo.setRfqStatus(rfq.id, "quoted", ["closed"]);
     return err("quote already transitioned", 409);
   }
   for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
@@ -73,7 +86,6 @@ export async function POST(
     }
     throw e;
   }
-  await repo.setRfqStatus(rfq.id, "closed");
 
   analyticsProvider().track({
     name: "quote_accepted",
