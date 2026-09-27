@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { err, ok, parseBody } from "@/lib/api";
+import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { applyPaymentEvent } from "@/lib/billing";
 import { PRO_PLAN_PRICE_USD } from "@/lib/fees";
@@ -20,6 +20,9 @@ const Body = z.object({ plan: z.literal("pro") });
 export async function POST(req: Request) {
   const user = await requireUser("operator");
   if (!user) return err("sign in as an operator first", 401);
+  if (!rateLimit(`billing-checkout:${clientIp(req)}`, 10, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const { data, error } = await parseBody(req, Body);
   if (error) return error;
 
