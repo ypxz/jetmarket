@@ -29,12 +29,15 @@ export type PaymentEvent =
       customerId: string;
       subscriptionId: string;
       metadata?: Record<string, string>;
+      /** Provider event time (unix s) — the repo's stale-event gate. */
+      created?: number;
     }
   | {
       kind: "subscription.canceled";
       customerId: string;
       subscriptionId: string;
       metadata?: Record<string, string>;
+      created?: number;
     }
   | { kind: "ignored"; type: string };
 

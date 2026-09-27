@@ -209,6 +209,8 @@ export const subscriptions = pgTable(
       .notNull()
       .default("incomplete"),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    /** unix seconds of the last applied provider event — stale-webhook gate. */
+    lastEventAt: bigint("last_event_at", { mode: "number" }),
     providerCustomerId: text("provider_customer_id"),
     providerSubscriptionId: text("provider_subscription_id"),
     createdAt: timestamp("created_at", { withTimezone: true })

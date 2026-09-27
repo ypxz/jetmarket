@@ -144,6 +144,46 @@ export function repoContract(
       expect((await repo.getOperator(op.id))?.verified).toBe(true);
     });
 
+    it("stale-webhook gate: older event stamps never clobber the sub", async () => {
+      const repo = await factory();
+      const tag = `stale${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Stale Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const fresh = await repo.upsertSubscription({
+        operatorId: op.id,
+        plan: "pro",
+        status: "active",
+        currentPeriodEnd: "2026-10-15T00:00:00.000Z",
+        lastEventAt: 2000,
+      });
+      expect(fresh.status).toBe("active");
+      // a stale stamped write (e.g. late "canceled") is a no-op
+      const stale = await repo.upsertSubscription({
+        operatorId: op.id,
+        plan: "free",
+        status: "canceled",
+        currentPeriodEnd: "2026-09-15T00:00:00.000Z",
+        lastEventAt: 1999,
+      });
+      expect(stale.status).toBe("active");
+      expect((await repo.getSubscription(op.id))?.status).toBe("active");
+      // unstamped writes (mock checkout) always apply
+      const unstamped = await repo.upsertSubscription({
+        operatorId: op.id,
+        plan: "pro",
+        status: "canceled",
+        currentPeriodEnd: "2026-09-20T00:00:00.000Z",
+      });
+      expect(unstamped.status).toBe("canceled");
+    });
+
     it("filters listings by status/vertical/type/facets/query", async () => {
       const repo = await factory();
       const tag = `flt${Date.now().toString(36)}`;

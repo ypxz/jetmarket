@@ -226,6 +226,14 @@ class MemoryRepo implements Repo {
 
   async upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription> {
     const prev = await this.getSubscription(s.operatorId);
+    // stale-webhook gate: stamped events only apply when newer
+    if (
+      s.lastEventAt != null &&
+      prev?.lastEventAt != null &&
+      s.lastEventAt <= prev.lastEventAt
+    ) {
+      return prev;
+    }
     const sub: Subscription = { ...s, id: prev?.id ?? uid("sub") };
     this.subscriptions.set(s.operatorId, sub);
     return sub;

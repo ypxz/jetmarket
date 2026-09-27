@@ -147,6 +147,7 @@ export class StripePaymentsProvider implements PaymentsProvider {
           customerId: String(sub.customer),
           subscriptionId: sub.id,
           metadata: sub.metadata,
+          created: event.created,
         };
       }
       case "customer.subscription.deleted": {
@@ -156,6 +157,7 @@ export class StripePaymentsProvider implements PaymentsProvider {
           customerId: String(sub.customer),
           subscriptionId: sub.id,
           metadata: sub.metadata,
+          created: event.created,
         };
       }
       default:

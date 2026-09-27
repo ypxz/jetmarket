@@ -94,6 +94,8 @@ export interface Subscription {
   plan: Plan;
   status: "active" | "canceled" | "past_due";
   currentPeriodEnd: string;
+  /** Provider event stamp (unix s); unstamped writes always apply. */
+  lastEventAt?: number;
 }
 
 export interface Repo {

@@ -14,6 +14,18 @@ export async function applyPaymentEvent(
   const operatorId = event.metadata?.operatorId ?? event.customerId;
   if (!operatorId) return false;
 
+  // Stale provider event (out-of-order webhook): skip the whole update, not
+  // just the sub row — otherwise a late "canceled" would still downgrade the
+  // operator plan while the newer subscription row stays active.
+  const prev = await repo.getSubscription(operatorId);
+  if (
+    event.created != null &&
+    prev?.lastEventAt != null &&
+    event.created <= prev.lastEventAt
+  ) {
+    return false;
+  }
+
   if (event.kind === "subscription.activated") {
     const plan = (event.metadata?.plan ?? "pro") as Plan;
     await repo.upsertSubscription({
@@ -21,6 +33,7 @@ export async function applyPaymentEvent(
       plan,
       status: "active",
       currentPeriodEnd: new Date(Date.now() + 30 * 86400e3).toISOString(),
+      lastEventAt: event.created,
     });
     await repo.setOperatorPlan(operatorId, plan);
     return true;
@@ -28,7 +41,13 @@ export async function applyPaymentEvent(
   // subscription.canceled
   const sub = await repo.getSubscription(operatorId);
   if (sub) {
-    await repo.upsertSubscription({ ...sub, status: "canceled" });
+    await repo.upsertSubscription({
+      ...sub,
+      status: "canceled",
+      // unstamped (undefined) always applies; a stale stamped cancel is
+      // dropped by the repo's last-event gate
+      lastEventAt: event.created,
+    });
   }
   await repo.setOperatorPlan(operatorId, "free");
   return true;

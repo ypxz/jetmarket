@@ -98,6 +98,7 @@ function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
     plan: r.plan as Plan,
     status: r.status as Subscription["status"],
     currentPeriodEnd: iso(r.currentPeriodEnd),
+    ...(r.lastEventAt != null ? { lastEventAt: r.lastEventAt } : {}),
   };
 }
 
@@ -474,19 +475,37 @@ export class DrizzleRepo implements Repo {
   async upsertSubscription(
     s: Omit<Subscription, "id">,
   ): Promise<Subscription> {
+    const eventStamp = s.lastEventAt ?? null;
     const values = {
       operatorId: s.operatorId,
       plan: s.plan,
       status: s.status,
       currentPeriodEnd: new Date(s.currentPeriodEnd),
+      lastEventAt: eventStamp,
       updatedAt: new Date(),
     };
     const [r] = await this.db
       .insert(subscriptions)
       .values(values)
-      .onConflictDoUpdate({ target: subscriptions.operatorId, set: values })
+      .onConflictDoUpdate({
+        target: subscriptions.operatorId,
+        set: values,
+        // Stale-webhook gate: out-of-order provider events must not clobber
+        // newer sub state. Stamped events only apply when newer than the
+        // stored stamp; unstamped callers (mock checkout) always apply.
+        setWhere: sql`excluded.last_event_at is null or excluded.last_event_at > coalesce(${subscriptions.lastEventAt}, 0)`,
+      })
       .returning();
-    return toSubscription(r!);
+    if (r) return toSubscription(r);
+    // A stale event lost the gate — return the current row as-is.
+    const [current] = await this.db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.operatorId, s.operatorId))
+      .limit(1);
+    if (!current)
+      throw new Error("upsertSubscription: row vanished after stale-event skip");
+    return toSubscription(current);
   }
   async getSubscription(
     operatorId: string,
