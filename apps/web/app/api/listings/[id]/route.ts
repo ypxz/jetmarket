@@ -1,6 +1,11 @@
-import { err, ok } from "@/lib/api";
+import { z } from "zod";
+import { err, ok, parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
+
+const PatchListing = z.object({
+  status: z.enum(["draft", "active", "paused", "archived"]).optional(),
+});
 
 export async function GET(
   _req: Request,
@@ -26,9 +31,10 @@ export async function PATCH(
   if (!listing || !operator || listing.operatorId !== operator.id) {
     return err("not found", 404);
   }
-  const body = (await req.json().catch(() => ({}))) as { status?: string };
-  if (body.status && ["draft", "active", "paused", "archived"].includes(body.status)) {
-    await repo.updateListingStatus(id, body.status as typeof listing.status);
+  const { data, error } = await parseBody(req, PatchListing);
+  if (error) return error;
+  if (data!.status) {
+    await repo.updateListingStatus(id, data!.status);
   }
   return ok(await repo.getListing(id));
 }
