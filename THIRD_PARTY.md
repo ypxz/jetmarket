@@ -21,6 +21,7 @@ GPL/AGPL/SSPL/fair-code projects are read for ideas only.
 | nodemailer | latest | MIT | smtp email adapter | tested vs Mailpit |
 | stripe-mock | latest | MIT (Docker image) | contract tests | |
 | Mailpit | latest | MIT (Docker image) | dev SMTP | |
+| tsx / eslint / typescript-eslint / @vitest/coverage-v8 / @types/* / @tailwindcss/postcss | latest | MIT / ISC | dev tooling only — not shipped to runtime | audited 2026-09-27 |
 | (template base) | — | — | apps/web + packages/ui scaffold | record starter + license once `buildApps/template` lands |
 
 Ideas-only (NOT reused — license or weight): `sharetribe/*` (Sharetribe Community
