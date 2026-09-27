@@ -171,6 +171,9 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 92 | ~01:30 | QA-102/103 | feature | /admin/jobs page + /api/admin/jobs[/{id}/retry] — worker queue visibility + failed→pending CAS retry; verified live on pg dev. /api/admin/deals per-row getQuote/getOperator batched via new ids filters |
 | 93 | ~23:35 | QA-104 | api-n+1 | batched admin/operators + buyer/quotes + operator/rfqs joins (listUsers/listListings{ids}/listQuotes{rfqIds}); e2e green after transient dev-compile stall |
 | 94 | ~23:45 | QA-105 | headers | CSP added (self-scoped; unsafe-inline scripts for Next hydration; unsafe-eval dev-only) — e2e green under it |
+| 95 | ~23:55 | QA-106 | rfqs | dedupe_key unique index + canonical-json sha256 → idempotent POST /api/rfqs (no token re-emit); isUniqueViolation via e.cause; accept-route catch fixed same way; contract test |
+| 96 | ~23:55 | QA-106 | e2e | machinery vertical GREEN: full loop under VERTICAL=machinery (2% fee, machinery attrs/facets) |
+| 97 | ~00:00 | QA-107 | listings-api | GET /api/listings rate-limited 240/hr IP + operator join batched |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
