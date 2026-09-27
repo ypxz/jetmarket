@@ -108,7 +108,10 @@ export const rfqs = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("rfqs_status_idx").on(t.status, t.createdAt)],
+  (t) => [
+    index("rfqs_status_idx").on(t.status, t.createdAt),
+    index("rfqs_buyer_idx").on(t.buyerEmail, t.createdAt),
+  ],
 );
 
 export const rfqMatches = pgTable(
