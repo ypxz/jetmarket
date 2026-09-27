@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { searchListings } from "@/lib/search";
+import { paginate, SEARCH_PAGE_SIZE, searchListings } from "@/lib/search";
 
 // Runs against the seeded in-memory repo (lib/repo/memory.ts).
 describe("searchListings (config-driven, jets)", () => {
@@ -54,5 +54,35 @@ describe("searchListings (config-driven, jets)", () => {
 
   it("unknown params are ignored", async () => {
     expect((await searchListings({ nonsense: "x" })).length).toBe(8);
+  });
+});
+
+describe("paginate", () => {
+  const many = Array.from({ length: SEARCH_PAGE_SIZE * 2 + 3 }, (_, i) => i);
+
+  it("slices page 1 and reports totals", () => {
+    const p = paginate(many, undefined);
+    expect(p.items).toEqual(many.slice(0, SEARCH_PAGE_SIZE));
+    expect(p).toMatchObject({ page: 1, pages: 3, total: many.length });
+  });
+
+  it("serves a middle page", () => {
+    const p = paginate(many, "2");
+    expect(p.page).toBe(2);
+    expect(p.items).toEqual(many.slice(SEARCH_PAGE_SIZE, SEARCH_PAGE_SIZE * 2));
+  });
+
+  it("clamps out-of-range and invalid input to valid pages", () => {
+    expect(paginate(many, "99").page).toBe(3);
+    expect(paginate(many, "0").page).toBe(1);
+    expect(paginate(many, "-2").page).toBe(1);
+    expect(paginate(many, "abc").page).toBe(1);
+    expect(paginate(many, "1.5").page).toBe(1);
+  });
+
+  it("handles the empty and exact-boundary cases", () => {
+    expect(paginate([], "3")).toMatchObject({ items: [], page: 1, pages: 1, total: 0 });
+    const exact = Array.from({ length: SEARCH_PAGE_SIZE }, (_, i) => i);
+    expect(paginate(exact, "2").page).toBe(1);
   });
 });

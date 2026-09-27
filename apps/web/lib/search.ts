@@ -82,3 +82,26 @@ export async function searchListings(params: SearchParams): Promise<Listing[]> {
 function str(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
+
+export const SEARCH_PAGE_SIZE = 24;
+
+export interface Page<T> {
+  items: T[];
+  /** 1-based, clamped into [1, pages]. */
+  page: number;
+  pages: number;
+  total: number;
+}
+
+export function paginate<T>(items: T[], rawPage: unknown): Page<T> {
+  const total = items.length;
+  const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
+  const n = Number(rawPage);
+  const page = Number.isInteger(n) && n >= 1 ? Math.min(n, pages) : 1;
+  return {
+    items: items.slice((page - 1) * SEARCH_PAGE_SIZE, page * SEARCH_PAGE_SIZE),
+    page,
+    pages,
+    total,
+  };
+}

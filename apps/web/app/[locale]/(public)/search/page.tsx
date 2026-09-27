@@ -2,8 +2,9 @@ import { EmptyState, Grid } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { FacetSidebar } from "@/components/facet-sidebar";
 import { ListingCard } from "@/components/listing-card";
+import { SearchPager } from "@/components/search-pager";
 import { getRepo } from "@/lib/repo";
-import { searchListings } from "@/lib/search";
+import { paginate, searchListings } from "@/lib/search";
 
 export default async function SearchPage({
   searchParams,
@@ -13,7 +14,11 @@ export default async function SearchPage({
   const params = await searchParams;
   const t = await getTranslations("search");
   const repo = await getRepo();
-  const listings = await searchListings(params);
+  const all = await searchListings(params);
+  const { items: listings, page, pages, total } = paginate(
+    all,
+    params.page,
+  );
   const ops = new Map(
     await Promise.all(
       [...new Set(listings.map((l) => l.operatorId))].map(
@@ -29,21 +34,24 @@ export default async function SearchPage({
         <FacetSidebar params={params} />
         <section className="min-w-0 flex-1">
           <p className="mb-3 text-sm text-muted" data-testid="search-results-count">
-            {t("results", { count: listings.length })}
+            {t("results", { count: total })}
           </p>
           {listings.length === 0 ? (
             <EmptyState title={t("emptyTitle")} body={t("emptyBody")} />
           ) : (
-            <Grid cols={2} data-testid="search-results">
-              {listings.map((l) => (
-                <div key={l.id} data-testid="search-result">
-                  <ListingCard
-                    listing={l}
-                    operator={ops.get(l.operatorId) ?? null}
-                  />
-                </div>
-              ))}
-            </Grid>
+            <>
+              <Grid cols={2} data-testid="search-results">
+                {listings.map((l) => (
+                  <div key={l.id} data-testid="search-result">
+                    <ListingCard
+                      listing={l}
+                      operator={ops.get(l.operatorId) ?? null}
+                    />
+                  </div>
+                ))}
+              </Grid>
+              <SearchPager params={params} page={page} pages={pages} />
+            </>
           )}
         </section>
       </div>

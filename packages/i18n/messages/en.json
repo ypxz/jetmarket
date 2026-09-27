@@ -54,7 +54,11 @@
     "emptyBody": "Loosen the filters or try a broader category — new listings go live daily.",
     "min": "Min",
     "max": "Max",
-    "typeFacet": "Type"
+    "typeFacet": "Type",
+    "pagination": "Pagination",
+    "prev": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages}"
   },
   "seo": {
     "listingsHeading": "Available listings",
