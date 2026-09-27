@@ -4,6 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { analyticsProvider } from "@jetmarket/providers";
@@ -33,7 +34,9 @@ export async function GET(req: Request) {
     await Promise.all(
       listings.map(async (l) => ({
         ...l,
-        operator: (await repo.getOperator(l.operatorId)) ?? null,
+        operator: await repo
+          .getOperator(l.operatorId)
+          .then((o) => (o ? publicOperator(o) : null)),
       })),
     ),
   );

@@ -4,6 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 import { verticalConfig } from "@/lib/vertical";
 
 const PatchListing = z.object({
@@ -21,7 +22,8 @@ export async function GET(
   const repo = await getRepo();
   const listing = await repo.getListing(id);
   if (!listing || listing.status !== "active") return err("not found", 404);
-  return ok({ ...listing, operator: await repo.getOperator(listing.operatorId) ?? null });
+  const op = await repo.getOperator(listing.operatorId);
+  return ok({ ...listing, operator: op ? publicOperator(op) : null });
 }
 
 export async function PATCH(

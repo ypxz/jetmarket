@@ -27,6 +27,24 @@ export interface Operator {
   createdAt: string;
 }
 
+/** Fields safe to expose on public/buyer-facing payloads — userId and plan
+ * are internal (auth linkage, billing tier) and never leave the server. */
+export interface PublicOperator {
+  name: string;
+  baseAirport: string;
+  fleetSummary: string;
+  verified: boolean;
+}
+
+export function publicOperator(o: Operator): PublicOperator {
+  return {
+    name: o.name,
+    baseAirport: o.baseAirport,
+    fleetSummary: o.fleetSummary,
+    verified: o.verified,
+  };
+}
+
 export interface Listing {
   id: string;
   operatorId: string;

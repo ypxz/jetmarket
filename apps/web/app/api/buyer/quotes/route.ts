@@ -1,5 +1,6 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 
 // Buyer-side view: quotes received for an RFQ. Gated by the per-RFQ bearer
 // token (`t`) issued in the post-submit redirect and the quote-notification
@@ -28,7 +29,9 @@ export async function GET(req: Request) {
         quotes: await Promise.all(
           (await repo.listQuotes({ rfqId: rfq.id })).map(async (q) => ({
             ...q,
-            operator: (await repo.getOperator(q.operatorId)) ?? null,
+            operator: await repo
+              .getOperator(q.operatorId)
+              .then((o) => (o ? publicOperator(o) : null)),
           })),
         ),
       })),
