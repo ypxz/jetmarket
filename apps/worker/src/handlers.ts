@@ -36,6 +36,10 @@ export async function rfqFanout(
   }
   const rfq = await deps.repo.loadRfq(rfqId);
   if (!rfq) throw new Error(`rfq ${rfqId} not found`);
+  // Fan-out is a one-shot transition off `new`: an RFQ that closed, expired,
+  // or was already matched between enqueue and tick must not re-fan-out (or
+  // re-notify operators for a dead request).
+  if (rfq.status !== "new") return;
 
   const now = at(deps);
   const candidates = await deps.repo.loadOperatorCandidates(rfq.vertical);

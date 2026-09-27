@@ -14,6 +14,7 @@ export interface WorkerRepo {
   loadRfq(rfqId: string): Promise<{
     id: string;
     vertical: string;
+    status: string;
     fields: Record<string, unknown>;
   } | null>;
   loadOperatorCandidates(vertical: string): Promise<OperatorCandidate[]>;
@@ -51,6 +52,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         .select({
           id: rfqs.id,
           vertical: rfqs.vertical,
+          status: rfqs.status,
           fields: rfqs.fields,
         })
         .from(rfqs)
@@ -123,10 +125,11 @@ export function createWorkerRepo(db: Db): WorkerRepo {
     },
 
     async markRfqMatched(rfqId) {
+      // Conditional: never resurrect a closed/spam RFQ back to matched.
       await db
         .update(rfqs)
         .set({ status: "matched" })
-        .where(eq(rfqs.id, rfqId));
+        .where(and(eq(rfqs.id, rfqId), eq(rfqs.status, "new")));
     },
 
     async deliverDueMatches(now) {

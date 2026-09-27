@@ -18,6 +18,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
       return {
         id,
         vertical: "jets",
+        status: "new",
         fields: {
           departure: "ZRH",
           arrival: "NCE",
@@ -131,6 +132,19 @@ describe("rfqFanout", () => {
     expect(enqueued).toEqual([
       { kind: "email.quote_notification", payload: { matchId: "m0" } },
     ]);
+  });
+
+  it("no-ops on a non-new rfq (closed/expired/already-matched)", async () => {
+    const repo = fakeRepo({ loadRfq: async (id) => ({
+      id,
+      vertical: "jets",
+      status: "closed",
+      fields: {},
+    }) });
+    const d = deps(repo);
+    await rfqFanout(d, { rfqId: "r1" });
+    expect(repo.calls["insertMatches"]).toBeUndefined();
+    expect(repo.calls["markRfqMatched"]).toBeUndefined();
   });
 
   it("rejects a malformed payload", async () => {
