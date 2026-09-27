@@ -642,6 +642,7 @@
       "upgrade": "Upgrade — ${price}/mo",
       "listings": "Listings ({count}/{limit})",
       "newListing": "New listing",
+      "edit": "Edit",
       "pause": "Pause",
       "publish": "Publish",
       "archive": "Archive",
@@ -718,6 +719,13 @@
       "feeNote": "Success fees are invoiced separately on closed deals: 3% charter / empty leg, 1.5% aircraft sale. Checkout runs in mock mode.",
       "manageSub": "Manage subscription",
       "opening": "Opening portal…"
+    },
+    "editListing": {
+      "title": "Edit listing",
+      "fieldTitle": "Title",
+      "fieldPrice": "Price (USD)",
+      "save": "Save",
+      "saving": "Saving…"
     }
   },
   "checkout": {

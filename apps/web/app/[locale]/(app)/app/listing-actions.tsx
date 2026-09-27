@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { Listing } from "@/lib/repo/types";
@@ -26,6 +26,15 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
     "rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50";
   return (
     <span className="flex gap-1">
+      {listing.status !== "archived" ? (
+        <Link
+          href={`/app/listings/${listing.id}/edit`}
+          className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface"
+          data-testid={`edit-listing-${listing.id}`}
+        >
+          {t("edit")}
+        </Link>
+      ) : null}
       {listing.status === "active" ? (
         <button
           className={btn}
