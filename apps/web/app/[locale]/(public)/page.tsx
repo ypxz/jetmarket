@@ -22,12 +22,11 @@ export default async function LandingPage() {
     limit: 6,
   });
   const featuredOps = new Map(
-    await Promise.all(
-      [...new Set(featured.map((l) => l.operatorId))].map(
-        async (id) =>
-          [id, (await repo.getOperator(id).then((o) => (o ? publicOperator(o) : null)))] as const,
-      ),
-    ),
+    (
+      await repo.listOperators({
+        ids: [...new Set(featured.map((l) => l.operatorId))],
+      })
+    ).map((o) => [o.id, publicOperator(o)] as const),
   );
 
   const steps = t.raw("howItWorks.steps") as FeatureItem[];

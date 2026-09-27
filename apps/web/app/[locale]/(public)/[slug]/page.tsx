@@ -81,12 +81,11 @@ export default async function SeoLandingPage({ params }: { params: Params }) {
   const listings = await searchListings(def.filters);
   const repo = await getRepo();
   const ops = new Map(
-    await Promise.all(
-      [...new Set(listings.map((l) => l.operatorId))].map(
-        async (id) =>
-          [id, (await repo.getOperator(id).then((o) => (o ? publicOperator(o) : null)))] as const,
-      ),
-    ),
+    (
+      await repo.listOperators({
+        ids: [...new Set(listings.map((l) => l.operatorId))],
+      })
+    ).map((o) => [o.id, publicOperator(o)] as const),
   );
 
   const listingType = def.filters.type ?? def.filters.listingType;
