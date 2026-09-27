@@ -46,12 +46,25 @@ export async function parseBody<T>(
 // globalThis so `next dev` recompiles/hot-reloads don't reset the buckets.
 const g = globalThis as unknown as { __jmRateBuckets?: Map<string, number[]> };
 const buckets = (g.__jmRateBuckets ??= new Map<string, number[]>());
+const MAX_BUCKETS = 10_000;
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
   const nowTs = Date.now();
   const arr = (buckets.get(key) ?? []).filter((t) => nowTs - t < windowMs);
-  if (arr.length >= limit) {
+  if (arr.length === 0) {
+    buckets.delete(key);
+  } else if (arr.length >= limit) {
     buckets.set(key, arr);
     return false;
+  }
+  if (buckets.size >= MAX_BUCKETS) {
+    // Rotating-IP floods would grow the map unboundedly — drop expired keys,
+    // and if still full clear it (a stale burst resets, limiter stays live).
+    for (const [k, v] of buckets) {
+      if (v.length === 0 || nowTs - (v[v.length - 1] ?? 0) >= windowMs * 4) {
+        buckets.delete(k);
+      }
+    }
+    if (buckets.size >= MAX_BUCKETS) buckets.clear();
   }
   arr.push(nowTs);
   buckets.set(key, arr);
