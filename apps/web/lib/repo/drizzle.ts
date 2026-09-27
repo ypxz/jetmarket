@@ -463,11 +463,12 @@ export class DrizzleRepo implements Repo {
       ? sql`${rfqs.status} NOT IN ${bannedDb}`
       : undefined;
     if (filter?.operatorId) {
+      // Same visibility window as listRfqs: delivered = any state but delayed.
       const matched = sql`exists (
         select 1 from rfq_matches m
         where m.rfq_id = ${rfqs.id}
           and m.operator_id = ${filter.operatorId}
-          and m.state = 'pending'
+          and m.state <> 'delayed'
       )`;
       const conds = [or(eq(listings.operatorId, filter.operatorId), matched)!];
       if (statusCond) conds.push(statusCond);
