@@ -10,5 +10,8 @@ import { getDrizzleRepo } from "./drizzle";
 export async function getRepo(): Promise<Repo> {
   const backend = process.env.REPO ?? (process.env.DATABASE_URL ? "postgres" : "memory");
   if (backend === "postgres") return getDrizzleRepo();
-  return getMemoryRepo();
+  if (backend === "memory") return getMemoryRepo();
+  // A typo'd REPO value must fail loudly — silently booting the in-memory
+  // repo in prod would drop every row at restart.
+  throw new Error(`unknown REPO backend: ${backend}`);
 }
