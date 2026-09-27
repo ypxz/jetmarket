@@ -123,6 +123,12 @@ export interface Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    /**
+     * Numeric ranges on attribute keys (or the built-in `price`): a row
+     * matches when its value is numeric and inside every bound. Missing or
+     * non-numeric values never match.
+     */
+    facetRanges?: { key: string; min?: number; max?: number }[];
     /** Page slice applied after all other filters, newest-first. */
     limit?: number;
     offset?: number;
@@ -135,6 +141,7 @@ export interface Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    facetRanges?: { key: string; min?: number; max?: number }[];
   }): Promise<number>;
   updateListingStatus(id: string, status: ListingStatus): Promise<void>;
   updateListing(

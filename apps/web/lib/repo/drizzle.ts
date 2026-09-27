@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import type {
   Deal,
@@ -131,6 +131,7 @@ interface ListingFilter {
   vertical?: string;
   query?: string;
   facets?: Record<string, string>;
+  facetRanges?: { key: string; min?: number; max?: number }[];
 }
 
 /** Shared WHERE builder so listListings/countListings never drift apart.
@@ -153,6 +154,22 @@ function listingConds(filter?: ListingFilter) {
     for (const [k, v] of Object.entries(filter.facets)) {
       if (!v) continue;
       conds.push(sql`${listings.attributes} ->> ${k} = ${v}`);
+    }
+  }
+  if (filter?.facetRanges) {
+    for (const r of filter.facetRanges) {
+      // `price` is a real column; everything else lives in attributes jsonb.
+      // The regex guard keeps non-numeric attribute strings from failing the
+      // ::numeric cast — they simply never satisfy a range (memory impl parity).
+      if (r.key === "price") {
+        // listListings exposes `price` in major units; the column stores minor.
+        if (r.min !== undefined) conds.push(gte(listings.priceMinor, Math.ceil(r.min * 100)));
+        if (r.max !== undefined) conds.push(lte(listings.priceMinor, Math.floor(r.max * 100)));
+        continue;
+      }
+      const num = sql`case when ${listings.attributes} ->> ${r.key} ~ '^-?[0-9]+(\\.[0-9]+)?$' then (${listings.attributes} ->> ${r.key})::numeric end`;
+      if (r.min !== undefined) conds.push(sql`${num} >= ${r.min}`);
+      if (r.max !== undefined) conds.push(sql`${num} <= ${r.max}`);
     }
   }
   return conds.length ? and(...conds) : undefined;

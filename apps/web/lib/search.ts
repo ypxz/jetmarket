@@ -5,22 +5,10 @@ import type { Listing, ListingType } from "./repo/types";
 
 /**
  * Config-driven public search: translates URL search params into a
- * Repo.listListings call. enum/text facets become exact filters (Postgres
- * jsonb-facet equivalents once @jetmarket/db lands); number-range facets
- * post-filter here until the db impl supports them natively — TODO(db).
+ * Repo.listListings call. enum/text facets become exact filters and
+ * number-range facets become facetRanges — both resolved inside the repo
+ * impls (SQL for postgres) so pagination counts and slices agree.
  */
-
-/** Facets with no attributeKey filter built-in Listing fields. */
-const BUILTIN_FIELDS: Record<string, "type" | "price"> = {
-  type: "type",
-  price: "price",
-};
-
-function facetListingValue(l: Listing, f: FacetConfig): unknown {
-  if (f.attributeKey) return l.attributes[f.attributeKey];
-  const field = BUILTIN_FIELDS[f.key];
-  return field ? l[field] : undefined;
-}
 
 function toNumber(v: string | undefined): number | undefined {
   if (v === undefined || v === "") return undefined;
@@ -73,35 +61,25 @@ function parseParams(params: SearchParams): ParsedParams {
 }
 
 function repoFilter(p: ParsedParams) {
+  const facetRanges = p.ranges.map(({ f, min, max }) => ({
+    key: f.attributeKey ?? f.key,
+    ...(min !== undefined ? { min } : {}),
+    ...(max !== undefined ? { max } : {}),
+  }));
   return {
     status: "active" as const,
     vertical: getVertical().slug,
     ...(p.query ? { query: p.query } : {}),
     ...(p.type ? { type: p.type } : {}),
     ...(Object.keys(p.exact).length ? { facets: p.exact } : {}),
+    ...(facetRanges.length ? { facetRanges } : {}),
   };
-}
-
-function applyRanges(listings: Listing[], p: ParsedParams): Listing[] {
-  if (!p.ranges.length) return listings;
-  return listings.filter((l) =>
-    p.ranges.every(({ f, min, max }) => {
-      const v = facetListingValue(l, f);
-      if (v === undefined || v === null || v === "") return false;
-      const n = Number(v);
-      if (!Number.isFinite(n)) return false;
-      if (min !== undefined && n < min) return false;
-      if (max !== undefined && n > max) return false;
-      return true;
-    }),
-  );
 }
 
 /** Full filtered set — used by SEO landing pages that render everything. */
 export async function searchListings(params: SearchParams): Promise<Listing[]> {
   const p = parseParams(params);
-  const listings = await (await getRepo()).listListings(repoFilter(p));
-  return applyRanges(listings, p);
+  return (await getRepo()).listListings(repoFilter(p));
 }
 
 export const SEARCH_PAGE_SIZE = 24;
@@ -128,9 +106,9 @@ export function paginate<T>(items: T[], rawPage: unknown): Page<T> {
 }
 
 /**
- * Search page one-shot: repo-level count + page slice when no number-range
- * facet is active (exact facets run in SQL). With a range active the page
- * still falls back to fetch-then-slice — ranges stay app-side TODO(db).
+ * Search page one-shot: repo-level count + page slice. Exact facets and
+ * number ranges both run in the repo filter, so count and slice always
+ * describe the same set.
  */
 export async function searchListingsPage(
   params: SearchParams,
@@ -138,10 +116,6 @@ export async function searchListingsPage(
   const p = parseParams(params);
   const repo = await getRepo();
   const n = Number(Array.isArray(params.page) ? params.page[0] : params.page);
-
-  if (p.ranges.length) {
-    return paginate(applyRanges(await repo.listListings(repoFilter(p)), p), params.page);
-  }
 
   const total = await repo.countListings(repoFilter(p));
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));

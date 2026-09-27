@@ -280,7 +280,11 @@ export function repoContract(
           price: 1000 + i,
           currency: "USD",
           photos: [],
-          attributes: { aircraftCategory: "light" },
+          attributes: {
+            aircraftCategory: "light",
+            seats: i < 2 ? "8" : "5",
+            model: "Phenom 300",
+          },
         });
         await new Promise((r) => setTimeout(r, 5));
       }
@@ -302,6 +306,30 @@ export function repoContract(
       expect(faceted).toHaveLength(0);
       expect(
         await repo.countListings({ ...base, facets: { aircraftCategory: "nope" } }),
+      ).toBe(0);
+      // facetRanges: attribute (seats) + builtin price, count + slice agree
+      const ranged = await repo.listListings({
+        ...base,
+        facetRanges: [{ key: "price", min: 1001, max: 1003 }],
+      });
+      expect(ranged.map((l) => l.price)).toEqual([1003, 1002, 1001]);
+      expect(
+        await repo.countListings({
+          ...base,
+          facetRanges: [{ key: "price", min: 1001, max: 1003 }],
+        }),
+      ).toBe(3);
+      const attrRange = await repo.listListings({
+        ...base,
+        facetRanges: [{ key: "seats", min: 7 }],
+      });
+      expect(attrRange).toHaveLength(2);
+      // non-numeric attribute value never satisfies a range
+      expect(
+        await repo.countListings({
+          ...base,
+          facetRanges: [{ key: "model", min: 0 }],
+        }),
       ).toBe(0);
     });
 

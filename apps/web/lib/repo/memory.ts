@@ -90,6 +90,7 @@ class MemoryRepo implements Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    facetRanges?: { key: string; min?: number; max?: number }[];
     limit?: number;
     offset?: number;
   }): Promise<Listing[]> {
@@ -108,6 +109,7 @@ class MemoryRepo implements Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    facetRanges?: { key: string; min?: number; max?: number }[];
   }): Promise<number> {
     return this.filterListings(filter).length;
   }
@@ -118,6 +120,7 @@ class MemoryRepo implements Repo {
     vertical?: string;
     query?: string;
     facets?: Record<string, string>;
+    facetRanges?: { key: string; min?: number; max?: number }[];
   }): Listing[] {
     let out = [...this.listings.values()];
     if (filter?.operatorId) out = out.filter((l) => l.operatorId === filter.operatorId);
@@ -137,6 +140,18 @@ class MemoryRepo implements Repo {
       for (const [k, v] of Object.entries(filter.facets)) {
         if (!v) continue;
         out = out.filter((l) => String(l.attributes[k] ?? "") === v);
+      }
+    }
+    if (filter?.facetRanges) {
+      for (const r of filter.facetRanges) {
+        out = out.filter((l) => {
+          const v = r.key === "price" ? l.price : l.attributes[r.key];
+          const n = typeof v === "number" ? v : Number(v);
+          if (!Number.isFinite(n)) return false;
+          if (r.min !== undefined && n < r.min) return false;
+          if (r.max !== undefined && n > r.max) return false;
+          return true;
+        });
       }
     }
     return out;
