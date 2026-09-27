@@ -18,7 +18,10 @@ export default function GlobalError({
         <main className="flex min-h-screen items-center justify-center p-6">
           <div className="w-full max-w-md rounded-lg border border-border p-8 text-center">
             <h1 className="text-xl font-semibold">Something went wrong</h1>
-            <p className="mt-2 text-sm text-muted">{error.message}</p>
+            <p className="mt-2 text-sm text-muted">
+              Please try again. If the problem persists, contact support
+              {error.digest ? ` (ref ${error.digest})` : ""}.
+            </p>
             <button
               onClick={reset}
               className="mt-6 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
