@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Field, Input, Textarea } from "@jetmarket/ui";
+import { Button, Field, Input, Select, Textarea } from "@jetmarket/ui";
 import { useRouter } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
 
@@ -129,11 +129,28 @@ export function RfqForm({
                       placeholder={f.placeholder}
                       data-testid={`rfq-field-${f.key}`}
                     />
+                  ) : f.type === "select" ? (
+                    <Select
+                      id={`rfq-${f.key}`}
+                      name={f.key}
+                      required={f.required}
+                      data-testid={`rfq-field-${f.key}`}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>
+                        {f.placeholder ?? "—"}
+                      </option>
+                      {(f.options ?? []).map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
                   ) : (
                     <Input
                       id={`rfq-${f.key}`}
                       name={f.key}
-                      type={f.type === "select" ? "text" : f.type}
+                      type={f.type}
                       required={f.required}
                       placeholder={f.placeholder}
                       data-testid={`rfq-field-${f.key}`}
