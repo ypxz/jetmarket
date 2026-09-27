@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { err, ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { storageProvider } from "@jetmarket/providers";
 
@@ -23,6 +23,9 @@ const EXT: Record<string, string> = {
 export async function POST(req: Request) {
   const user = await requireUser("operator");
   if (!user) return err("sign in as an operator first", 401);
+  if (!rateLimit(`upload:${clientIp(req)}`, 30, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
 
   let file: File;
   try {

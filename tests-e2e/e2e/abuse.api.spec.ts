@@ -45,3 +45,19 @@ test('rfq abuse: captcha force-fail → 403, honeypot → fake 201, rate limit �
   expect(statuses[statuses.length - 1]).toBe(429);
   await ctx.dispose();
 });
+
+test('magic-link abuse: per-inbox rate limit → 429', async () => {
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'x-forwarded-for': IP },
+  });
+  const email = `ml-flood-${run}@x.test`;
+  // Per-inbox cap is 10/hour — the IP bucket (30/hour) stays well clear.
+  const statuses: number[] = [];
+  for (let i = 0; i < 11; i++) {
+    const r = await ctx.post('/api/auth/magic-link', { data: { email } });
+    statuses.push(r.status());
+  }
+  expect(statuses.slice(0, 10)).not.toContain(429);
+  expect(statuses[10]).toBe(429);
+  await ctx.dispose();
+});

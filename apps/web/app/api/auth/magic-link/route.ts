@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { err, ok, parseBody } from "@/lib/api";
+import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { emailProvider } from "@jetmarket/providers";
 import { signSession } from "@/lib/auth";
@@ -13,6 +13,14 @@ export async function POST(req: Request) {
   const { data, error } = await parseBody(req, Body);
   if (error) return error;
   const { email, role } = data!;
+
+  // Per-IP + per-inbox: the link email is the spam vector.
+  if (
+    !rateLimit(`ml:${clientIp(req)}`, 30, 60 * 60 * 1000) ||
+    !rateLimit(`ml:${email.toLowerCase()}`, 10, 60 * 60 * 1000)
+  ) {
+    return err("rate limit exceeded — try again later", 429);
+  }
 
   const repo = await getRepo();
   const adminEmails = (process.env.ADMIN_EMAILS ?? "admin@jetmarket.local")

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { err, ok, parseBody } from "@/lib/api";
+import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { emailProvider, analyticsProvider } from "@jetmarket/providers";
@@ -13,6 +13,9 @@ const CreateQuote = z.object({
 export async function POST(req: Request) {
   const user = await requireUser("operator");
   if (!user) return err("unauthorized", 401);
+  if (!rateLimit(`quote:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
