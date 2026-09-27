@@ -416,13 +416,13 @@ export class DrizzleRepo implements Repo {
   }): Promise<Rfq[]> {
     if (filter?.operatorId) {
       // Owner sees the RFQ via its listing; a fan-out-matched operator sees it
-      // once the match is delivered (state pending — delayed matches are not
-      // inbox-visible until the sweep flips them).
+      // once the match is delivered — any state except 'delayed' counts (the
+      // notification job flips pending→sent and the RFQ must stay visible).
       const matched = sql`exists (
         select 1 from rfq_matches m
         where m.rfq_id = ${rfqs.id}
           and m.operator_id = ${filter.operatorId}
-          and m.state = 'pending'
+          and m.state <> 'delayed'
       )`;
       let q = this.db
         .select({ rfq: rfqs })
@@ -489,6 +489,9 @@ export class DrizzleRepo implements Repo {
   }
 
   async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
+    // 'delayed' is the only undelivered state — pending AND post-notification
+    // (sent/failed) both grant access, else the RFQ disappears from the inbox
+    // the moment its email is sent.
     const [r] = await this.db
       .select({ id: rfqMatches.id })
       .from(rfqMatches)
@@ -496,7 +499,7 @@ export class DrizzleRepo implements Repo {
         and(
           eq(rfqMatches.rfqId, rfqId),
           eq(rfqMatches.operatorId, operatorId),
-          eq(rfqMatches.state, "pending"),
+          sql`${rfqMatches.state} <> 'delayed'`,
         ),
       )
       .limit(1);
