@@ -125,6 +125,10 @@ export interface Repo {
     facets?: Record<string, string>;
   }): Promise<Listing[]>;
   updateListingStatus(id: string, status: ListingStatus): Promise<void>;
+  updateListing(
+    id: string,
+    patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
+  ): Promise<void>;
   countOperatorListings(operatorId: string): Promise<number>;
 
   createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq>;

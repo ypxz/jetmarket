@@ -199,4 +199,18 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
     data: { status: 'active' },
   });
   expect(((await reactivated.json()) as { status: string }).status).toBe('active');
+
+  // field edits: other operators stay 404; owner can rename + reprice.
+  expect(
+    (await otherOp.patch(`/api/listings/${listingId}`, { data: { title: 'hijack title' } }))
+      .status(),
+  ).toBe(404);
+  const edited = await operator.patch(`/api/listings/${listingId}`, {
+    data: { title: `E2E Listing ${run} — edited`, price: 12345 },
+  });
+  expect(edited.ok()).toBeTruthy();
+  expect(((await edited.json()) as { title: string; price: number }).price).toBe(12345);
+  expect(
+    ((await edited.json()) as { title: string }).title.endsWith('— edited'),
+  ).toBeTruthy();
 });

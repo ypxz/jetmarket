@@ -117,6 +117,13 @@ class MemoryRepo implements Repo {
     const l = this.listings.get(id);
     if (l) this.listings.set(id, { ...l, status });
   }
+  async updateListing(
+    id: string,
+    patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
+  ) {
+    const l = this.listings.get(id);
+    if (l) this.listings.set(id, { ...l, ...patch });
+  }
   async countOperatorListings(operatorId: string) {
     return [...this.listings.values()].filter(
       (l) => l.operatorId === operatorId && l.status !== "archived",

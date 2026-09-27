@@ -297,6 +297,16 @@ export class DrizzleRepo implements Repo {
       .set({ status, updatedAt: new Date() })
       .where(eq(listings.id, id));
   }
+  async updateListing(
+    id: string,
+    patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
+  ): Promise<void> {
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if (patch.title !== undefined) set.title = patch.title;
+    if (patch.price !== undefined) set.priceMinor = minor(patch.price);
+    if (patch.attributes !== undefined) set.attributes = patch.attributes;
+    await this.db.update(listings).set(set).where(eq(listings.id, id));
+  }
   async countOperatorListings(operatorId: string): Promise<number> {
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })

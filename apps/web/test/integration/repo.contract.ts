@@ -206,7 +206,7 @@ export function repoContract(
         photos: [],
         attributes: { aircraftCategory: "light", from: "ZRH", to: "NCE" },
       });
-      await repo.createListing({
+      const b = await repo.createListing({
         operatorId: op.id,
         vertical: "jets",
         type: "aircraft_sale",
@@ -231,19 +231,32 @@ export function repoContract(
       });
       expect(legs).toHaveLength(0); // the only leg is archived
 
+      await repo.updateListing(b.id, {
+        title: `${tag} G650 for sale — reduced`,
+        price: 38000000,
+        attributes: { aircraftCategory: "ultra_long", year: 2021 },
+      });
+      expect(await repo.getListing(b.id)).toMatchObject({
+        title: `${tag} G650 for sale — reduced`,
+        price: 38000000,
+        attributes: { aircraftCategory: "ultra_long", year: 2021 },
+      });
+
       const faceted = await repo.listListings({
         operatorId: op.id,
         facets: { aircraftCategory: "ultra_long" },
       });
       expect(faceted.map((l) => l.title)).toEqual([
-        `${tag} G650 for sale`,
+        `${tag} G650 for sale — reduced`,
       ]);
 
       const queried = await repo.listListings({
         operatorId: op.id,
         query: "g650",
       });
-      expect(queried.map((l) => l.title)).toEqual([`${tag} G650 for sale`]);
+      expect(queried.map((l) => l.title)).toEqual([
+        `${tag} G650 for sale — reduced`,
+      ]);
     });
 
     it("returns listings newest-first (memory matches drizzle order)", async () => {
