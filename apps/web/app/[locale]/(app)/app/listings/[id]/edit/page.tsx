@@ -23,7 +23,13 @@ export default async function EditListingPage({
     <main className="mx-auto max-w-xl px-4 py-10">
       <h1 className="text-xl font-semibold">{t("title")}</h1>
       <EditListingForm
-        listing={{ id: listing.id, title: listing.title, price: listing.price }}
+        listing={{
+          id: listing.id,
+          title: listing.title,
+          price: listing.price,
+          type: listing.type,
+          attributes: listing.attributes,
+        }}
       />
     </main>
   );
