@@ -22,6 +22,11 @@ export async function POST(
   if (!rfq || rfq.buyerEmail !== data!.buyerEmail) {
     return err("not your quote", 403);
   }
+  // The RFQ must still be live — a "sent" quote can outlive its RFQ when the
+  // expiry sweep has not ticked yet (or isn't running in this environment).
+  if (!["open", "matched", "quoted"].includes(rfq.status)) {
+    return err("rfq is no longer open", 409);
+  }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
   await repo.setQuoteStatus(id, "accepted");
