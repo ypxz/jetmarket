@@ -744,6 +744,8 @@
     "colClosed": "Closed",
     "noDeals": "No closed deals yet.",
     "markPaid": "Mark paid",
-    "markingPaid": "Marking…"
+    "markingPaid": "Marking…",
+    "voidInvoice": "Void",
+    "voiding": "Voiding…"
   }
 }

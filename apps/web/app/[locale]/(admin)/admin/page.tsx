@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { paginate } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
-import { MarkPaidButton } from "./mark-paid";
+import { MarkPaidButton, VoidInvoiceButton } from "./mark-paid";
 import { VerifyButton } from "./verify-button";
 
 export default async function AdminPage({
@@ -116,6 +116,9 @@ export default async function AdminPage({
                   ) : null}
                   {d.invoiceStatus === "invoiced" ? (
                     <MarkPaidButton dealId={d.id} />
+                  ) : null}
+                  {d.invoiceStatus === "pending" || d.invoiceStatus === "invoiced" ? (
+                    <VoidInvoiceButton dealId={d.id} />
                   ) : null}
                 </td>
                 <td className="py-2 text-muted">{new Date(d.closedAt).toLocaleDateString("en-US")}</td>
