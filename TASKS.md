@@ -152,6 +152,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 73 | ~02:45 | QA-82 | schema bounds | Lead-run: `photos: z.array(z.string())` unbounded — capped at 12 keys/300 chars each |
 | 74 | ~02:55 | QA-83 | authz lifecycle | Lead-run: `hasRfqMatch`/inbox required `state='pending'` but notify flips to `sent` — matched RFQs vanished post-email; `<> 'delayed'` keeps delivered access |
 | 75 | ~03:05 | QA-84 | info hygiene | Lead-run: `ListingCard` prop took the full `Operator` row (client-component overrides would serialize userId/plan) — narrowed to `PublicOperator`, callers project via `publicOperator()` |
+| 76 | ~03:15 | QA-85 | config safety | Lead-run: unknown `REPO` value silently booted in-memory repo — now throws |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
