@@ -51,21 +51,30 @@ export async function POST(req: Request) {
     fields: parsed.data,
   });
 
+  // The listing owner gets the direct notice in every mode — it must not
+  // depend on the worker being up.
+  const operator = await repo.getOperator(listing.operatorId);
+  const owner = operator ? await repo.getUser(operator.userId) : undefined;
+  if (owner) {
+    await emailProvider().send({
+      to: owner.email,
+      subject: `New RFQ on “${listing.title}”`,
+      text: `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
+    });
+  }
+
   if (process.env.DATABASE_URL) {
-    // Postgres mode: the worker fans the RFQ out to matched operators.
-    await enqueueJob(getDbSql(), "rfq.fanout", { rfqId: rfq.id });
-  } else {
-    // Memory mode has no worker — keep the direct single-operator notice.
-    const operator = await repo.getOperator(listing.operatorId);
-    if (operator) {
-      const owner = await repo.getUser(operator.userId);
-      if (owner) {
-        await emailProvider().send({
-          to: owner.email,
-          subject: `New RFQ on “${listing.title}”`,
-          text: `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
-        });
-      }
+    // Postgres mode: the worker fans the RFQ out to matched operators. A job
+    // enqueue failure must not 500 the buyer — the RFQ is already persisted
+    // and the owner was notified; the RFQ just stays `new` until a fan-out
+    // retry (logged for ops).
+    try {
+      await enqueueJob(getDbSql(), "rfq.fanout", { rfqId: rfq.id });
+    } catch (e) {
+      logWarn("rfq.fanout_enqueue_failed", {
+        rfqId: rfq.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
   logInfo("rfq.created", {

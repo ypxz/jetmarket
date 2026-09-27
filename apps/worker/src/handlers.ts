@@ -45,6 +45,11 @@ export async function rfqFanout(
   const candidates = await deps.repo.loadOperatorCandidates(rfq.vertical);
   const matches = matchOperators(rfq.fields, candidates, deps.plans, {
     limit: 10,
+    // The listing owner is notified directly by the web route — a self-match
+    // would double-notify and let them quote their own RFQ.
+    ...(rfq.ownerOperatorId
+      ? { excludeOperatorIds: new Set([rfq.ownerOperatorId]) }
+      : {}),
   });
 
   const inserted = await deps.repo.insertMatches(

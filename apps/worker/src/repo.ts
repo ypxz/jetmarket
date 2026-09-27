@@ -15,6 +15,9 @@ export interface WorkerRepo {
     id: string;
     vertical: string;
     status: string;
+    listingId: string | null;
+    /** The RFQ's listing owner — fan-out must not match them with themselves. */
+    ownerOperatorId: string | null;
     fields: Record<string, unknown>;
   } | null>;
   loadOperatorCandidates(vertical: string): Promise<OperatorCandidate[]>;
@@ -53,9 +56,12 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           id: rfqs.id,
           vertical: rfqs.vertical,
           status: rfqs.status,
+          listingId: rfqs.listingId,
+          ownerOperatorId: listings.operatorId,
           fields: rfqs.fields,
         })
         .from(rfqs)
+        .leftJoin(listings, eq(rfqs.listingId, listings.id))
         .where(eq(rfqs.id, rfqId))
         .limit(1);
       return rows[0] ?? null;

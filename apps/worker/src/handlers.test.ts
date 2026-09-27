@@ -19,6 +19,8 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         id,
         vertical: "jets",
         status: "new",
+        listingId: null,
+        ownerOperatorId: null,
         fields: {
           departure: "ZRH",
           arrival: "NCE",
@@ -139,6 +141,8 @@ describe("rfqFanout", () => {
       id,
       vertical: "jets",
       status: "closed",
+      listingId: null,
+      ownerOperatorId: null,
       fields: {},
     }) });
     const d = deps(repo);
