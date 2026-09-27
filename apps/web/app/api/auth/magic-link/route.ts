@@ -14,6 +14,12 @@ export async function POST(req: Request) {
   if (error) return error;
   const { email, role } = data!;
 
+  // Only mock auth exists — check before doing any work so a real-provider
+  // deploy doesn't rate-burn or mail a link for a request we then 501.
+  if ((process.env.AUTH_PROVIDER ?? "mock") !== "mock") {
+    return err("real auth provider not configured (TODO go-live)", 501);
+  }
+
   // Per-IP + per-inbox: the link email is the spam vector.
   if (
     !rateLimit(`ml:${clientIp(req)}`, 30, 60 * 60 * 1000) ||
@@ -38,8 +44,5 @@ export async function POST(req: Request) {
   });
 
   // Mock mode: also return the link so the flow is demoable without outbox access.
-  if ((process.env.AUTH_PROVIDER ?? "mock") !== "mock") {
-    return err("real auth provider not configured (TODO go-live)", 501);
-  }
   return ok({ sent: true, devLink: link, role: resolvedRole });
 }
