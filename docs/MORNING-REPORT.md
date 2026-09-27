@@ -20,10 +20,11 @@ offline in mock mode (`pnpm i && pnpm db:up && pnpm dev`).
 
 ## Tests
 
-- **unit**: 125 tests — `pnpm -r test` green (verticals 15, domain 42, db 9 incl. seed-vs-config validation, providers 15, worker 5, apps/web 39 incl. lifecycle-route + analytics assertions).
-- **integration**: 15 cases, 4 files (`repo.contract` shared suite executed against memory + drizzle backends, worker, db migrations, meilisearch) — green on CI; skipped locally here (Docker Hub pull rate-limited).
+- **unit**: 129 tests — `pnpm -r test` green (verticals 15, domain 42, db 9 incl. seed-vs-config validation, providers 15, worker 5, apps/web 39 incl. lifecycle-route + analytics assertions).
+- **integration**: 13 cases (memory+drizzle contract incl. ordering pin) (`repo.contract` shared suite executed against memory + drizzle backends, worker, db migrations, meilisearch) — green on CI; skipped locally here (Docker Hub pull rate-limited).
 - **contract**: 8 cases, 3 files (stripe-mock, Mailpit, provider env-selection) — green on CI; skipped locally here for the same reason.
-- **e2e**: 6 Playwright tests, 5 specs — jets chromium: core-loop UI + API + quote-decline UI + RFQ abuse; machinery project: vertical acceptance — green on CI (both legs). Repo smoke (`pnpm smoke`) green.
+- **e2e**: 8 Playwright tests — core-loop UI+API, search pagination, quote-decline UI, RFQ+magic-link abuse caps; machinery project: vertical acceptance — green on CI (both legs). Repo smoke (`pnpm smoke`) green.
+- **security wave (post-report, cycles 10-21)**: per-IP rate limits on all public POSTs, 64KB JSON cap, svg sandbox on /storage, security headers, auth open-redirect closed, quote state guards, extensionless-storage middleware fix. 26 cycles / 36 findings / 33 fixed.
 
 ## CI
 
