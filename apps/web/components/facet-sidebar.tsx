@@ -58,6 +58,7 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
                       name={`${f.key}Min`}
                       type="number"
                       placeholder={t("min")}
+                      aria-label={`${vt(f.labelKey)} ${t("min")}`}
                       defaultValue={get(`${f.key}Min`)}
                       data-testid={`facet-${f.key}-min`}
                     />
@@ -65,6 +66,7 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
                       name={`${f.key}Max`}
                       type="number"
                       placeholder={t("max")}
+                      aria-label={`${vt(f.labelKey)} ${t("max")}`}
                       defaultValue={get(`${f.key}Max`)}
                       data-testid={`facet-${f.key}-max`}
                     />
