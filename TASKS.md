@@ -112,6 +112,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 34 | ~17:00 | QA-43 (coverage) | PATCH listing e2e | Lead-run: lifecycle spec gains PATCH block — buyer 401, non-owner operator 404, owner pause→reactivate 200 |
 | 35 | ~17:10 | QA-44 (vuln, fixed same cycle) | session forgery | Lead-run: `SESSION_SECRET` fell back to a hardcoded string in every env — on any deploy missing the var, anyone could sign `userId.sig` for admin access. Now throws when NODE_ENV=production without it; also `timingSafeEqual` + sig-length check |
 | 36 | ~17:30 | QA-45 (verify) | fresh-DB migrate+seed | Lead-run: all 4 migrations apply clean on an empty database (access_token + last_event_at columns), jets seed green — fresh-clone path intact post-security wave |
+| 37 | ~18:25 | QA-46 (verify) | machinery e2e | Lead-run: machinery spec green on the new bearer-token buyer flow (2% for_sale fee asserted) — vertical parity intact |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
