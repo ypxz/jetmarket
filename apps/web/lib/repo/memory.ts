@@ -62,8 +62,13 @@ class MemoryRepo implements Repo {
   async listOperators(filter?: {
     limit?: number;
     offset?: number;
+    ids?: string[];
   }): Promise<Operator[]> {
     let out = [...this.operators.values()];
+    if (filter?.ids) {
+      const want = new Set(filter.ids);
+      out = out.filter((o) => want.has(o.id));
+    }
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
     return out;
@@ -185,6 +190,16 @@ class MemoryRepo implements Repo {
     return [...this.listings.values()].filter(
       (l) => l.operatorId === operatorId && l.status !== "archived",
     ).length;
+  }
+  async listListingCountsByOperator(operatorIds: string[]) {
+    const want = new Set(operatorIds);
+    const out: Record<string, number> = {};
+    for (const l of this.listings.values()) {
+      if (want.has(l.operatorId) && l.status !== "archived") {
+        out[l.operatorId] = (out[l.operatorId] ?? 0) + 1;
+      }
+    }
+    return out;
   }
 
   async createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq> {

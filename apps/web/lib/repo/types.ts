@@ -129,6 +129,7 @@ export interface Repo {
   listOperators(filter?: {
     limit?: number;
     offset?: number;
+    ids?: string[];
   }): Promise<Operator[]>;
   countOperators(): Promise<number>;
   setOperatorVerified(id: string, verified: boolean): Promise<void>;
@@ -171,6 +172,11 @@ export interface Repo {
     patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
   ): Promise<void>;
   countOperatorListings(operatorId: string): Promise<number>;
+  /** Non-archived listing counts keyed by operator id — one grouped query for
+   *  admin tables that would otherwise N+1 per row. */
+  listListingCountsByOperator(
+    operatorIds: string[],
+  ): Promise<Record<string, number>>;
 
   createRfq(r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken">): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;

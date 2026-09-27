@@ -274,8 +274,13 @@ export class DrizzleRepo implements Repo {
   async listOperators(filter?: {
     limit?: number;
     offset?: number;
+    ids?: string[];
   }): Promise<Operator[]> {
     let q = this.db.select().from(operators).$dynamic();
+    if (filter?.ids) {
+      if (filter.ids.length === 0) return [];
+      q = q.where(inArray(operators.id, filter.ids));
+    }
     if (filter?.limit !== undefined) q = q.limit(filter.limit);
     if (filter?.offset) q = q.offset(filter.offset);
     return (await q).map(toOperator);
@@ -363,6 +368,25 @@ export class DrizzleRepo implements Repo {
     if (patch.price !== undefined) set.priceMinor = minor(patch.price);
     if (patch.attributes !== undefined) set.attributes = patch.attributes;
     await this.db.update(listings).set(set).where(eq(listings.id, id));
+  }
+  async listListingCountsByOperator(
+    operatorIds: string[],
+  ): Promise<Record<string, number>> {
+    if (operatorIds.length === 0) return {};
+    const rows = await this.db
+      .select({
+        operatorId: listings.operatorId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(listings)
+      .where(
+        and(
+          inArray(listings.operatorId, operatorIds),
+          sql`${listings.status} <> 'archived'`,
+        ),
+      )
+      .groupBy(listings.operatorId);
+    return Object.fromEntries(rows.map((r) => [r.operatorId, r.n]));
   }
   async countOperatorListings(operatorId: string): Promise<number> {
     const [r] = await this.db

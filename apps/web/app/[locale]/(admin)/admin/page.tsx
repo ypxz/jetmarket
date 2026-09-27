@@ -34,15 +34,18 @@ export default async function AdminPage({
   // Cap the table render — count in the header already reflects the true total;
   // beyond 100 operators this page needs a pager, not a longer table.
   const operators = await repo.listOperators({ limit: 100 });
+  // One grouped query + one Map build — was 100 sequential counts (QA-100).
   const listingCounts = new Map(
-    await Promise.all(
-      operators.map(async (o) => [o.id, await repo.countOperatorListings(o.id)] as const),
-    ),
+    Object.entries(await repo.listListingCountsByOperator(operators.map((o) => o.id))),
   );
+  // Deal rows resolve operator names in ONE query — the first-100 table page
+  // doesn't necessarily contain a deal's operator (QA-100).
+  const dealOpRows = await repo.listOperators({
+    ids: [...new Set(deals.map((d) => d.operatorId))],
+  });
+  const operatorNames = new Map(dealOpRows.map((o) => [o.id, o.name] as const));
   const dealOps = new Map(
-    await Promise.all(
-      deals.map(async (d) => [d.id, (await repo.getOperator(d.operatorId))?.name ?? "?"] as const),
-    ),
+    deals.map((d) => [d.id, operatorNames.get(d.operatorId) ?? "?"] as const),
   );
   const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
 
