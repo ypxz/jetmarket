@@ -72,10 +72,13 @@ export async function POST(req: Request) {
     });
     logInfo("buyer.access_resent", { rfqs: rfqs.length });
   } catch (e) {
-    // Provider failure is non-fatal — nothing is persisted; the buyer retries.
+    // Nothing was delivered — report failure so the UI prompts a retry.
+    // Returning ok({sent:true}) here used to tell the buyer "check your
+    // inbox" for an email that never left (QA-353).
     logWarn("buyer.access_send_failed", {
       error: e instanceof Error ? e.message : String(e),
     });
+    return err("couldn't send the email — try again", 502);
   }
   return ok({ sent: true });
 }

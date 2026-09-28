@@ -3,6 +3,7 @@ import { site } from "@jetmarket/config";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
+import { logWarn } from "@/lib/log";
 import { signMagicLink } from "@/lib/auth";
 import { appOrigin } from "@/lib/origin";
 
@@ -57,17 +58,28 @@ export async function POST(req: Request) {
       : "/";
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}&next=${encodeURIComponent(next)}`;
   const subject = `Your ${site.name} sign-in link`;
-  await emailProvider().send({
-    to: email,
-    subject,
-    text: `Sign in: ${link}`,
-    html: brandedEmailHtml({
-      siteName: site.name,
-      title: "Sign in",
-      paragraphs: ["Use the link below to sign in — it expires in 15 minutes."],
-      cta: { url: link, label: "Sign in" },
-    }),
-  });
+  try {
+    await emailProvider().send({
+      to: email,
+      subject,
+      text: `Sign in: ${link}`,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: "Sign in",
+        paragraphs: [
+          "Use the link below to sign in — it expires in 15 minutes.",
+        ],
+        cta: { url: link, label: "Sign in" },
+      }),
+    });
+  } catch (e) {
+    // The email IS the deliverable — a provider blip must surface a clean
+    // retry prompt, not an unhandled 500 (QA-353).
+    logWarn("auth.magic_link_send_failed", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return err("couldn't send the sign-in email — try again", 502);
+  }
 
   // Dev/test only: also return the link so the flow is demoable without
   // outbox access. In production this must NEVER ship — the response is
