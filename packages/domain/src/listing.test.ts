@@ -107,6 +107,26 @@ describe("validateListingAttributes", () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect("smuggled" in r.value).toBe(false);
   });
+
+  it("reports a non-object attributes payload under the 'attributes' path", () => {
+    // zod emits a path-[] root issue here; the API contract names it
+    // "attributes" — callers (e.g. POST /api/listings) rely on that label.
+    const r = validateListingAttributes(jetsConfig, "charter", "junk");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.issues[0]?.path).toBe("attributes");
+    }
+  });
+
+  it("treats nullish attributes as an empty object (required attrs flagged)", () => {
+    for (const attributes of [undefined, null]) {
+      const r = validateListingAttributes(jetsConfig, "charter", attributes);
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.issues.some((i) => i.path === "aircraftCategory")).toBe(true);
+      }
+    }
+  });
 });
 
 describe("validateNewListing", () => {
