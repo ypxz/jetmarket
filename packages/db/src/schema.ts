@@ -182,6 +182,8 @@ export const quotes = pgTable(
       .on(t.rfqId, t.operatorId)
       .where(sql`status in ('sent', 'accepted')`),
     index("quotes_rfq_idx").on(t.rfqId),
+    // Dashboard stats + operator inbox filter standalone on operator_id.
+    index("quotes_operator_idx").on(t.operatorId),
   ],
 );
 
