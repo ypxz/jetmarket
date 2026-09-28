@@ -20,7 +20,7 @@ on company sites.
 >
 > The short version:
 > - **Free to start** — 3 live listings, RFQs from real buyers, no card.
-> - **Pro $199/mo** — unlimited listings, instant RFQs, analytics. For reference,
+> - **Pro $199/mo** — unlimited listings, instant RFQs, first-position placement in buyer search, analytics. For reference,
 >   Avinode's operator tier starts at $318/mo and never touches the retail side.
 > - **Success fee only when it closes** — 3 % on charter, 1.5 % on sales.
 >   A slow month costs you nothing extra.

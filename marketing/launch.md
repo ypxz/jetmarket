@@ -60,7 +60,7 @@ storefronts; buyers send one structured RFQ that fans out to matching operators;
 quotes come back comparable; deal closes → success fee invoice.
 
 **Monetization:** operator-first. Free tier (3 listings, delayed RFQs) →
-Pro $199/mo (unlimited, instant RFQs, analytics) → 3 % success fee on closed
+Pro $199/mo (unlimited, instant RFQs, priority placement, analytics) → 3 % success fee on closed
 charters, 1.5 % on aircraft sales. Benchmarked against Avinode's $318–2,119/mo
 fixed — we undercut AND align with results.
 
