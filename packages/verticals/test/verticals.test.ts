@@ -77,7 +77,7 @@ describe("VerticalConfig contract (jets)", () => {
     // field in scope (QA-246) — a vertical with zero or two would break
     // buyer inbox access.
     for (const v of [jetsVertical, machineryVertical]) {
-      const scopes = [undefined, ...v.listingTypes.map((t) => t.key)];
+      const scopes = [undefined, ...v.listingTypes.map((t) => t.slug)];
       for (const scope of scopes) {
         const emails = rfqFieldsFor(v, scope).filter((f) => f.type === "email");
         expect(

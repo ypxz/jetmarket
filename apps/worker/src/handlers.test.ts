@@ -376,7 +376,7 @@ describe("handleJob dispatch", () => {
     sent.length = 0;
     const labels = rfqFieldLabels(
       machineryVertical,
-      (en.vertical as Record<string, Record<string, unknown>>).machinery,
+      (en.vertical as { machinery: Record<string, unknown> }).machinery,
     );
     await handleJob({ ...deps(repo), fieldLabels: labels },
       "email.quote_notification",
