@@ -1,4 +1,5 @@
 import { Badge } from "@jetmarket/ui";
+import { plans } from "@jetmarket/config";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getVertical } from "@jetmarket/verticals";
@@ -128,7 +129,9 @@ export default async function OperatorDashboard() {
           </Link>
           {!isPro ? (
             <Link href="/app/billing" className="text-primary underline">
-              {t("upgrade", { price: PRO_PLAN_PRICE_USD })}
+              {t("upgrade", {
+                price: formatMoney(PRO_PLAN_PRICE_USD, plans.pro.currency),
+              })}
             </Link>
           ) : null}
         </div>

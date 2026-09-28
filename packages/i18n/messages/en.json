@@ -591,7 +591,7 @@
       "unverifiedDelay": "unverified — profile under review",
       "proPlan": "Pro plan",
       "freePlan": "Free plan",
-      "upgrade": "Upgrade — ${price}/mo",
+      "upgrade": "Upgrade — {price}/mo",
       "listings": "Listings ({count}/{limit})",
       "newListing": "New listing",
       "edit": "Edit",
@@ -679,7 +679,7 @@
       "processing": "Processing mock checkout…",
       "failed": "Failed — retry",
       "upgradeMock": "Upgrade with mock checkout",
-      "feeNote": "Success fees are invoiced separately on closed deals: 3% charter / empty leg, 1.5% aircraft sale. Checkout runs in mock mode.",
+      "feeNote": "Success fees are invoiced separately on closed deals: {fees}. Checkout runs in mock mode.",
       "manageSub": "Manage subscription",
       "opening": "Opening portal…",
       "needProfile": "Create an operator profile first"

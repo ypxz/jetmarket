@@ -1,8 +1,11 @@
 import { getTranslations } from "next-intl/server";
+import { plans } from "@jetmarket/config";
 import { currentUser } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
+import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { verticalConfig } from "@/lib/vertical";
 import { PortalButton } from "./portal-button";
 import { UpgradeButton } from "./upgrade-button";
 
@@ -13,6 +16,21 @@ export default async function BillingPage({
 }) {
   const t = await getTranslations("app.billing");
   const tc = await getTranslations("checkout");
+  const vertical = verticalConfig();
+  const vt = await getTranslations(vertical.copy.namespace);
+  // Success-fee blurb is built from config so a non-jets vertical can't
+  // render jets percentages; plans.pro.currency is the billing currency
+  // (a EUR marketplace may still bill Pro in USD).
+  const feeGroups = new Map<number, string[]>();
+  for (const [type, pct] of Object.entries(vertical.fees.successFeePct)) {
+    const key = `listingTypes.${type}`;
+    const label = vt.has(key) ? vt(key) : type;
+    feeGroups.set(pct, [...(feeGroups.get(pct) ?? []), label]);
+  }
+  const feeSummary = [...feeGroups.entries()]
+    .map(([pct, types]) => `${pct}% ${types.join(" / ")}`)
+    .join(" · ");
+  const billingCurrency = plans.pro.currency;
   const { checkout } = await searchParams;
   const user = await currentUser();
   const repo = await getRepo();
@@ -43,13 +61,16 @@ export default async function BillingPage({
           <p className="mt-1 text-sm text-muted">
             {t("freeLine", { limit: FREE_LISTING_LIMIT })}
           </p>
-          <p className="mt-4 text-2xl font-semibold">$0</p>
+          <p className="mt-4 text-2xl font-semibold">
+            {formatMoney(0, billingCurrency)}
+          </p>
         </div>
         <div className="rounded-md border-2 border-primary p-5">
           <h2 className="font-semibold">{t("pro")}</h2>
           <p className="mt-1 text-sm text-muted">{t("proLine")}</p>
           <p className="mt-4 text-2xl font-semibold">
-            ${PRO_PLAN_PRICE_USD}<span className="text-sm font-normal text-muted">{t("perMonth")}</span>
+            {formatMoney(PRO_PLAN_PRICE_USD, billingCurrency)}
+            <span className="text-sm font-normal text-muted">{t("perMonth")}</span>
           </p>
           {!operator ? (
             // Buyers can reach /app now (QA-267) — without an operator
@@ -76,7 +97,9 @@ export default async function BillingPage({
           )}
         </div>
       </div>
-      <p className="mt-6 text-xs text-muted">{t("feeNote")}</p>
+      <p className="mt-6 text-xs text-muted">
+        {t("feeNote", { fees: feeSummary })}
+      </p>
     </main>
   );
 }
