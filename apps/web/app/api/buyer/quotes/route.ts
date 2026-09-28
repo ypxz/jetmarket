@@ -13,7 +13,11 @@ export async function GET(req: Request) {
   }
   const url = new URL(req.url);
   const email = url.searchParams.get("email");
-  const token = url.searchParams.get("t");
+  // Prefer the header — bearer tokens in query strings persist in server
+  // logs, browser history and Referer headers (QA-156). `t` stays accepted
+  // for links issued before the header existed.
+  const token =
+    req.headers.get("x-rfq-token") ?? url.searchParams.get("t");
   if (!email) return err("email required", 400);
   if (!token) return err("use the link from your email", 401);
   const repo = await getRepo();

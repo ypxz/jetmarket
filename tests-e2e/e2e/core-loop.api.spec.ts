@@ -158,8 +158,10 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   expect(deal.invoiceStatus).toBe('invoiced');
 
   // QA-1: accepting a quote closes the RFQ (dashboard stops counting it open)
+  // QA-156: token via header — query-param bearer tokens persist in logs.
   const afterAccept = await publicCtx.get(
-    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}&t=${encodeURIComponent(rfqToken)}`,
+    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+    { headers: { "x-rfq-token": rfqToken } },
   );
   const rfqsAfter = (await afterAccept.json()) as { id: string; status: string }[];
   expect(rfqsAfter.find((r) => r.id === rfqId)?.status).toBe('closed');

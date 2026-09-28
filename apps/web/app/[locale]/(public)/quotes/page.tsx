@@ -39,8 +39,11 @@ function QuotesInner() {
       setMsg(t("needLink"));
       return;
     }
+    // Token rides a header, not the query string — bearer tokens in URLs
+    // persist in server logs, history and Referer (QA-156).
     const res = await fetch(
-      `/api/buyer/quotes?email=${encodeURIComponent(email)}&t=${encodeURIComponent(token)}`,
+      `/api/buyer/quotes?email=${encodeURIComponent(email)}`,
+      { headers: { "x-rfq-token": token } },
     );
     if (!res.ok) {
       const d = await readJson<{ error?: string }>(res);
@@ -50,8 +53,14 @@ function QuotesInner() {
     setRfqs(await readJson<Rfq[]>(res));
   }
 
-  // Auto-load when arriving with ?email= (magic-link/thank-you redirect).
+  // Auto-load when arriving with ?email= (magic-link/thank-you redirect),
+  // then drop `t` from the address bar so the token doesn't sit in history.
   useEffect(() => {
+    if (params.get("t")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("t");
+      window.history.replaceState(null, "", url.toString());
+    }
     if (email) void load();
   }, []); // mount-only: refresh via the search form
 
