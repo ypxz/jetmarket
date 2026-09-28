@@ -392,3 +392,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 293 | ~17:36 | QA-306 | REAL BUG: countPendingRfqs leaked foreign delayed matches into the free-plan teaser count — vertical param added, inbox scopes, contract pins jets≠machinery |
 | 294 | ~17:45 | QA-307 | REAL BUG: fan-out candidates included foreign-vertical-only dealers (empty-fleet wildcard spammed machinery dealers onto jets RFQs) — workers + memory fanout now exclude foreign-book-only ops; zero-listing brokers still match |
 | 295 | ~17:52 | QA-308 | LATENT LEAK: quote-notification contact mask was hardcoded name/email/phone — now contactFieldKeys(config) unions email/tel + groupKey:'contact'; a vertical renaming its contact fields can't leak them pre-deal |
+| 296 | ~17:56 | QA-309 | prod-boot fix: 'pnpm start' hardcoded -p 3000 (PORT env ignored — breaks non-Docker hosts); verified next build + start on :3210 + smoke 8/8 against the prod server |
