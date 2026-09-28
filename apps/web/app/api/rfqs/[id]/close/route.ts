@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { analyticsProvider } from "@jetmarket/providers";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { logInfo } from "@/lib/log";
 import { notifyQuoteDeclined } from "@/lib/notify";
@@ -48,5 +49,9 @@ export async function POST(
     }
   }
   logInfo("rfq.closed_by_buyer", { rfqId: rfq.id, declined });
+  analyticsProvider().track({
+    name: "rfq_closed",
+    props: { rfqId: rfq.id, declined },
+  });
   return ok({ id: rfq.id, status: "closed", declined });
 }
