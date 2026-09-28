@@ -5,14 +5,15 @@ import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
 
 /**
  * Tell the operator their quote was not selected — either the buyer declined
- * it explicitly, or the buyer accepted a competing quote on the same RFQ.
+ * it explicitly, the buyer accepted a competing quote on the same RFQ, or
+ * the buyer closed the request outright.
  * Email failures never fail the request; the status change already landed.
  */
 export async function notifyQuoteDeclined(
   repo: Repo,
   quote: Quote,
   rfq: Rfq,
-  reason: "declined" | "competing-accepted",
+  reason: "declined" | "competing-accepted" | "rfq-closed",
 ): Promise<void> {
   try {
     const operator = await repo.getOperator(quote.operatorId);
@@ -23,11 +24,15 @@ export async function notifyQuoteDeclined(
     const subject =
       reason === "competing-accepted"
         ? `The buyer accepted another quote for “${title}”`
-        : `Your quote for “${title}” was declined`;
+        : reason === "rfq-closed"
+          ? `The buyer closed their request for “${title}”`
+          : `Your quote for “${title}” was declined`;
     const body =
       reason === "competing-accepted"
         ? `The buyer accepted a different quote for "${title}" on ${site.name}, so your quote of ${quote.currency} ${quote.amount} was not selected this time.`
-        : `The buyer declined your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}.`;
+        : reason === "rfq-closed"
+          ? `The buyer closed their request for "${title}" on ${site.name}, so your quote of ${quote.currency} ${quote.amount} was not selected this time.`
+          : `The buyer declined your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}.`;
     await emailProvider().send({ to: owner.email, subject, text: body });
   } catch (e) {
     logWarn("email.quote_declined_failed", {

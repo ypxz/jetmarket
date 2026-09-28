@@ -134,6 +134,27 @@ function QuotesInner() {
     await load();
   }
 
+  async function closeRfq(rfqId: string) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/rfqs/${rfqId}/close`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(data.error ?? tc("error"));
+      return;
+    }
+    setMsg(t("closedMsg"));
+    await load();
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -169,7 +190,18 @@ function QuotesInner() {
               <li key={r.id} className="rounded-md border border-border p-4" data-testid={`buyer-rfq-${r.id}`}>
                 <div className="flex justify-between">
                   <div className="font-medium">{r.listing?.title}</div>
-                  <span className="text-xs text-muted">{r.status}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-xs text-muted">{r.status}</span>
+                    {["open", "matched", "quoted"].includes(r.status) ? (
+                      <button
+                        onClick={() => closeRfq(r.id)}
+                        data-testid={`close-rfq-${r.id}`}
+                        className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
+                      >
+                        {t("close")}
+                      </button>
+                    ) : null}
+                  </span>
                 </div>
                 {r.quotes.length === 0 ? (
                   <p className="mt-2 text-sm text-muted">{t("waiting")}</p>

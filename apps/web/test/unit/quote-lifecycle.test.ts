@@ -23,6 +23,7 @@ import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route"
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
 import { POST as moderateListing } from "../../app/api/admin/listings/[id]/status/route";
 import { POST as moderateRfq } from "../../app/api/admin/rfqs/[id]/status/route";
+import { POST as closeRfq } from "../../app/api/rfqs/[id]/close/route";
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (body?: unknown) =>
@@ -267,5 +268,45 @@ describe("POST /api/admin/rfqs/[id]/status (QA-181)", () => {
       params("00000000-0000-0000-0000-000000000000"),
     );
     expect(missing.status).toBe(404);
+  });
+});
+
+describe("POST /api/rfqs/[id]/close (QA-182)", () => {
+  it("buyer-token closes the RFQ and declines sent quotes; wrong token 404s", async () => {
+    const repo = await getMemoryRepo();
+    const { rfq, quote, buyerEmail } = await fixture(repo);
+
+    const bad = await closeRfq(
+      post({ buyerEmail, token: "wrong-token" }),
+      params(rfq.id),
+    );
+    expect(bad.status).toBe(404);
+    // fixture's createQuote already moved the RFQ open → quoted (live).
+    expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
+
+    const res = await closeRfq(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(rfq.id),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; declined: number };
+    expect(body.status).toBe("closed");
+    expect(body.declined).toBe(1);
+    expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+    expect((await repo.listQuotes({ rfqId: rfq.id }))[0]?.status).toBe(
+      "declined",
+    );
+
+    // Terminal now — replay 409s and a late accept can't mint a deal.
+    const again = await closeRfq(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(rfq.id),
+    );
+    expect(again.status).toBe(409);
+    const lateAccept = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(lateAccept.status).toBe(409);
   });
 });

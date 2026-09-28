@@ -124,7 +124,9 @@
     "needLink": "Open the link from your RFQ or quote email to view your quotes.",
     "needEmail": "Enter your email first.",
     "resend": "Email me my links",
-    "resendSent": "If that email has requests, the links are on the way."
+    "resendSent": "If that email has requests, the links are on the way.",
+    "close": "Close request",
+    "closedMsg": "Request closed — operators with open quotes were notified."
   },
   "design": {
     "title": "Design system",
