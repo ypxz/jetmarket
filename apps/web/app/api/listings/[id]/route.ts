@@ -6,7 +6,7 @@ import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { isExpiredListing } from "@/lib/search";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
-import { verticalConfig } from "@/lib/vertical";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 const PatchListing = z.object({
   status: z.enum(["draft", "active", "paused", "archived"]).optional(),
@@ -26,7 +26,14 @@ export async function GET(
   }
   const repo = await getRepo();
   const listing = await repo.getListing(id);
-  if (!listing || listing.status !== "active" || isExpiredListing(listing)) {
+  // Foreign-vertical rows are invisible — a machinery listing must not
+  // render on a jets deploy (wrong facet labels, wrong RFQ schema).
+  if (
+    !listing ||
+    listing.vertical !== verticalSlug() ||
+    listing.status !== "active" ||
+    isExpiredListing(listing)
+  ) {
     return err("not found", 404);
   }
   const op = await repo.getOperator(listing.operatorId);
@@ -46,6 +53,9 @@ export async function PATCH(
   if (!listing || !operator || listing.operatorId !== operator.id) {
     return err("not found", 404);
   }
+  // Cross-vertical writes on a shared DB would strip attributes — the
+  // active vertical's schema has no fields for a foreign listing type.
+  if (listing.vertical !== verticalSlug()) return err("not found", 404);
   if (!rateLimit(`listing-patch:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
     return err("rate limit exceeded — try again later", 429);
   }

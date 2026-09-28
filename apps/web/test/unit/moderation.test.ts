@@ -109,6 +109,33 @@ describe("listing moderation", () => {
     expect(res.status).toBe(200);
     expect((await repo.getListing(listing.id))?.status).toBe("active");
   });
+
+  it("foreign-vertical listings are invisible to owner PATCH (QA-293)", async () => {
+    // Shared-DB multi-vertical deploys: a machinery row must not be writable
+    // through a jets deploy — the active schema has no fields for a foreign
+    // listing type, so a PATCH would silently strip its attributes.
+    const repo = await getMemoryRepo();
+    const { opUser, op, listing } = await fixture(repo);
+    const foreign = await repo.createListing({
+      operatorId: op.id,
+      vertical: "machinery",
+      type: "for_sale",
+      title: "Lathe",
+      price: 50000,
+      currency: "EUR",
+      photos: [],
+      attributes: { serial: "S-1" },
+    });
+    expect(listing.vertical).toBe("jets");
+    signIn(opUser.id, opUser.sessionVersion);
+
+    const res = await patchListing(
+      patch({ title: "Rewritten" }),
+      params(foreign.id),
+    );
+    expect(res.status).toBe(404);
+    expect((await repo.getListing(foreign.id))?.title).toBe("Lathe");
+  });
 });
 
 describe("operator verification (QA-249)", () => {

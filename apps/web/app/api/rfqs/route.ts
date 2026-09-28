@@ -51,7 +51,15 @@ export async function POST(req: Request) {
 
   const repo = await getRepo();
   const listing = await repo.getListing(listingId);
-  if (!listing || listing.status !== "active" || isExpiredListing(listing)) {
+  // Foreign-vertical listings 404 here too — a shared-DB machinery row must
+  // not accept RFQs on a jets deploy (its fields would fail/mangle the
+  // active vertical's schema).
+  if (
+    !listing ||
+    listing.vertical !== getVertical().slug ||
+    listing.status !== "active" ||
+    isExpiredListing(listing)
+  ) {
     // Expired dated inventory is unbookable — same 404 as a withdrawn listing.
     return err("listing not found", 404);
   }

@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { browseExpiry, isExpiredListing } from "@/lib/search";
+import { verticalSlug } from "@/lib/vertical";
 import { siteUrl } from "@/lib/seo";
 
 // Escape </script> breakouts inside JSON-LD payloads.
@@ -23,8 +24,11 @@ const jsonLd = (data: object) =>
 const load = cache(async (id: string) => {
   const repo = await getRepo();
   const listing = await repo.getListing(id);
-  // Expired dated inventory is gone for buyers — 404 like a withdrawn one.
-  return listing?.status === "active" && !isExpiredListing(listing)
+  // Foreign-vertical rows 404 (shared-DB multi-vertical deploys) and expired
+  // dated inventory is gone for buyers — 404 like a withdrawn one.
+  return listing?.vertical === verticalSlug() &&
+    listing.status === "active" &&
+    !isExpiredListing(listing)
     ? listing
     : null;
 });

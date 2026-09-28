@@ -16,7 +16,12 @@ export default async function RfqPage({
   const vt = await getTranslations(vertical.copy.namespace);
   const repo = await getRepo();
   const listing = await repo.getListing(listingId);
-  if (!listing || listing.status !== "active" || isExpiredListing(listing)) {
+  if (
+    !listing ||
+    listing.vertical !== vertical.slug ||
+    listing.status !== "active" ||
+    isExpiredListing(listing)
+  ) {
     notFound();
   }
 
