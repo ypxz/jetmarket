@@ -174,6 +174,58 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   expect(deals.status()).toBe(200);
   expect(Array.isArray(await deals.json())).toBeTruthy();
 
+  // --- deals: invoice CAS transitions (QA-145) -----------------------------
+  // Drive a full deal on a second live RFQ: quote -> buyer accepts ->
+  // deal + pending invoice -> admin marks paid -> void is refused.
+  const rfq2 = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post('/api/rfqs', {
+    data: {
+      listingId,
+      buyerEmail: BUYER_EMAIL,
+      fields: {
+        departure: 'ZRH',
+        arrival: 'MXP',
+        dateFrom: '2026-10-10',
+        dateTo: '2026-10-11',
+        passengers: 3,
+        budgetUsd: 31001 + (run % 1000),
+        name: 'Adm Buyer',
+        email: BUYER_EMAIL,
+      },
+    },
+  });
+  expect(rfq2.status()).toBe(201);
+  const { rfqId: rfqId2, accessToken } = (await rfq2.json()) as {
+    rfqId: string;
+    accessToken: string;
+  };
+  const quote = await operator.post('/api/quotes', {
+    data: { rfqId: rfqId2, amount: 41000, currency: 'USD', message: 'adm' },
+  });
+  expect(quote.status()).toBe(201);
+  const quoteId = ((await quote.json()) as { id: string }).id;
+  const accept = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/quotes/${quoteId}/accept`, {
+    data: { buyerEmail: BUYER_EMAIL, token: accessToken },
+  });
+  expect(accept.status()).toBe(200);
+
+  const dealsAfter = await admin.get('/api/admin/deals');
+  const dealRows = (await dealsAfter.json()) as Array<{
+    id: string;
+    invoiceStatus: string;
+    quote: { id: string } | null;
+  }>;
+  const deal = dealRows.find((d) => d.quote?.id === quoteId);
+  expect(deal, 'accepted quote produced a deal').toBeTruthy();
+
+  const paid = await admin.post(`/api/admin/deals/${deal!.id}/paid`);
+  expect(paid.status()).toBe(200);
+  const voidPaid = await admin.post(`/api/admin/deals/${deal!.id}/void`);
+  expect(voidPaid.status()).toBe(409);
+
   // --- logout: server-side revocation kills the cookie --------------------
   const me1 = await buyer.get('/api/auth/me');
   expect(((await me1.json()) as { user: unknown }).user).toBeTruthy();
