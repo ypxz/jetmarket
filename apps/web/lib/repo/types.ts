@@ -319,7 +319,9 @@ export interface Repo {
    * operator can't see yet (the Pro "quote first" delay). Feeds inbox upsell
    * copy; terminal RFQs (closed/expired/spam) don't count.
    */
-  countPendingRfqs(operatorId: string): Promise<number>;
+  /** `vertical` scopes the count on a shared DB — a jets teaser must not
+   *  include machinery's delayed matches (QA-306). */
+  countPendingRfqs(operatorId: string, vertical?: string): Promise<number>;
   /**
    * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is
    * strictly before `cutoff` -> "expired"; their still-"sent" quotes ->

@@ -392,8 +392,38 @@ export function repoContract(
       expect(await repo.countPendingRfqs(delayedOp.id)).toBe(1);
       expect(await repo.countPendingRfqs(matched.id)).toBe(0);
       expect(await repo.countPendingRfqs(owner.id)).toBe(0);
+
+      // QA-306: a delayed match on a FOREIGN-vertical RFQ must not inflate
+      // this deploy's teaser (shared-DB isolation for the pending count).
+      const foreignListing = await repo.createListing({
+        operatorId: delayedOp.id,
+        vertical: "machinery",
+        type: "for_sale",
+        title: `Foreign Pending ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const foreignRfq = await repo.createRfq({
+        vertical: "machinery",
+        listingId: foreignListing.id,
+        buyerEmail: `fb-${tag}@test.dev`,
+        fields: {},
+      });
+      await repo.createRfqMatches([
+        {
+          rfqId: foreignRfq.id,
+          operatorId: delayedOp.id,
+          deliverAt: new Date(Date.now() + 60_000),
+        },
+      ]);
+      expect(await repo.countPendingRfqs(delayedOp.id)).toBe(2);
+      expect(await repo.countPendingRfqs(delayedOp.id, "jets")).toBe(1);
+      expect(await repo.countPendingRfqs(delayedOp.id, "machinery")).toBe(1);
+
       await repo.expireRfqs(new Date(Date.now() + 86400000).toISOString());
-      expect(await repo.countPendingRfqs(delayedOp.id)).toBe(0);
+      expect(await repo.countPendingRfqs(delayedOp.id)).toBe(1); // foreign rfq has no dateTo — survives expiry
     });
 
     it("enforces plan listing counts and subscription round-trips", async () => {

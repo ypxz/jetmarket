@@ -64,7 +64,9 @@ export default async function RfqInboxPage({
   const [listingRows, quoteRows, pendingRfqs] = await Promise.all([
     repo.listListings({ ids: [...new Set(rfqsPage.map((r) => r.listingId))] }),
     repo.listQuotes({ rfqIds, operatorId: operator.id }),
-    operator.plan === "free" ? repo.countPendingRfqs(operator.id) : 0,
+    operator.plan === "free"
+      ? repo.countPendingRfqs(operator.id, verticalSlug())
+      : 0,
   ]);
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();

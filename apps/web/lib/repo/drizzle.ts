@@ -757,7 +757,7 @@ export class DrizzleRepo implements Repo {
     return r?.n ?? 0;
   }
 
-  async countPendingRfqs(operatorId: string): Promise<number> {
+  async countPendingRfqs(operatorId: string, vertical?: string): Promise<number> {
     // 'delayed' state already encodes deliverAt > now — the worker sweep
     // promotes due rows. Terminal rfqs (closed covers iface 'expired',
     // plus spam) don't count toward the teaser.
@@ -770,6 +770,7 @@ export class DrizzleRepo implements Repo {
           eq(rfqMatches.operatorId, operatorId),
           eq(rfqMatches.state, "delayed"),
           sql`${rfqs.status} NOT IN ('closed', 'spam')`,
+          ...(vertical ? [eq(rfqs.vertical, vertical)] : []),
         ),
       );
     return r?.n ?? 0;
