@@ -598,8 +598,11 @@ class MemoryRepo implements Repo {
 
 export async function seedMemoryRepo(repo: MemoryRepo) {
   const vertical = process.env.VERTICAL ?? "jets";
-  await seedJets(repo);
+  // One deployment = one vertical: the pg CLI seeds exclusively; memory mode
+  // must mirror that or machinery demos show jets rows in vertical-
+  // unfiltered surfaces (admin moderation lists across the board, QA-230).
   if (vertical === "machinery") await seedMachinery(repo);
+  else await seedJets(repo);
 }
 
 // Tiny deterministic placeholder photo, stored via the storage provider so
