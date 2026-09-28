@@ -81,3 +81,33 @@ test('mobile: dark-mode toggle + operator pages keep no-overflow invariant', asy
     .toBe(!before);
   await expectNoHScroll(page, 'landing after theme toggle');
 });
+
+test('mobile: dark theme applies before first paint (no FOUC)', async ({
+  browser,
+  request,
+}) => {
+  // Mechanism pin: the served HTML must embed the inline pre-paint script —
+  // without it the class only appears post-hydration (the light flash).
+  const html = await (await request.get('/')).text();
+  expect(html).toContain("localStorage.getItem('jm-theme')");
+
+  // Behavior: emulated prefers-color-scheme + empty storage ends dark, and a
+  // stored 'light' wins over the OS preference on reload.
+  const ctx = await browser.newContext({ viewport: MOBILE, colorScheme: 'dark' });
+  const page = await ctx.newPage();
+  await page.goto('/');
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.classList.contains('dark')),
+    )
+    .toBe(true);
+
+  await page.evaluate(() => localStorage.setItem('jm-theme', 'light'));
+  await page.reload();
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.classList.contains('dark')),
+    )
+    .toBe(false);
+  await ctx.close();
+});

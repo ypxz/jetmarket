@@ -30,7 +30,19 @@ export default async function LocaleLayout({
   if (!routing.locales.includes(locale as "en")) notFound();
   const messages = await getMessages();
   return (
-    <html lang={locale}>
+    // suppressHydrationWarning: the theme script below mutates the `dark`
+    // class before hydration — without it React warns on the attr mismatch.
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Pre-paint dark mode: without this the effect-only toggle in
+            theme-toggle.tsx flashes light on every load for dark users
+            (and on cold SSR before hydration). Mirrors KEY = "jm-theme". */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('jm-theme');var on=s?s==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(on)document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body>
         <NextIntlClientProvider messages={messages}>
           <SiteHeader />
