@@ -204,6 +204,9 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 120 | ~04:10 | QA-134 | auth | ADMIN_EMAILS synced on login (promote+revoke); setUserRole on both repos |
 | 120 | ~01:35 | QA-135 | api/repo | closed plan-cap race: atomic count+insert under operator FOR UPDATE lock (createListing + reactivate), PlanCapError -> 402/403; also fixed QA-63 false block on paused reactivation |
 | 121 | ~01:50 | QA-136 | sweep | audit: quote message/photo/email XSS + HTML-escape audit across all mail bodies |
+| 122 | ~02:10 | QA-136 | providers | mock email CRLF sanitization (header injection in .eml); real transports already safe |
+| 123 | ~02:45 | QA-137 | auth | prefetch-safe magic links: GET=verify-only confirm page, POST=consume; Origin check kills login-CSRF; e2e prefetch spec |
+| 124 | ~03:00 | QA-138 | sweep | audit: session token timing-attack (HMAC compare) + zod schema bounds on all public inputs |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
