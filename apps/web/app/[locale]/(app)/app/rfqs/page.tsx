@@ -8,7 +8,7 @@ import { getRepo } from "@/lib/repo";
 import { operatorRfqView } from "@/lib/rfq-view";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { quoteStateVariant, rfqStateVariant } from "@/lib/state-variant";
-import { verticalConfig } from "@/lib/vertical";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 
@@ -41,12 +41,16 @@ export default async function RfqInboxPage({
       </main>
     );
   }
-  const total = await repo.countRfqs({ operatorId: operator.id });
+  const total = await repo.countRfqs({
+    operatorId: operator.id,
+    vertical: verticalSlug(),
+  });
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
   const n = Number(Array.isArray(params.page) ? params.page[0] : params.page);
   const page = Number.isInteger(n) && n >= 1 ? Math.min(n, pages) : 1;
   const rfqsPage = await repo.listRfqs({
     operatorId: operator.id,
+    vertical: verticalSlug(),
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
   });

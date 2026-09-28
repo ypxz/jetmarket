@@ -236,11 +236,19 @@ export interface Repo {
     id: string,
     patch: Partial<Pick<Listing, "title" | "price" | "attributes" | "photos">>,
   ): Promise<void>;
-  countOperatorListings(operatorId: string): Promise<number>;
+  /** Non-archived count used for the plan cap + dashboard header. `vertical`
+   *  scopes it on multi-vertical shared DBs — the per-plan cap is
+   *  per-deploy, so foreign-vertical rows must not consume it (QA-302). */
+  countOperatorListings(
+    operatorId: string,
+    vertical?: string,
+  ): Promise<number>;
   /** Non-archived listing counts keyed by operator id — one grouped query for
-   *  admin tables that would otherwise N+1 per row. */
+   *  admin tables that would otherwise N+1 per row. `vertical` scopes to the
+   *  deploy's rows on shared DBs (QA-302). */
   listListingCountsByOperator(
     operatorIds: string[],
+    vertical?: string,
   ): Promise<Record<string, number>>;
 
   createRfq(

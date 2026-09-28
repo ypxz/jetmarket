@@ -417,6 +417,7 @@ export class DrizzleRepo implements Repo {
           .where(
             and(
               eq(listings.operatorId, l.operatorId),
+              eq(listings.vertical, l.vertical),
               sql`${listings.status} <> 'archived'`,
             ),
           );
@@ -501,7 +502,11 @@ export class DrizzleRepo implements Repo {
     const cap = opts.cap;
     await this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ operatorId: listings.operatorId, status: listings.status })
+        .select({
+          operatorId: listings.operatorId,
+          status: listings.status,
+          vertical: listings.vertical,
+        })
         .from(listings)
         .where(eq(listings.id, id))
         .limit(1);
@@ -515,6 +520,7 @@ export class DrizzleRepo implements Repo {
         .where(
           and(
             eq(listings.operatorId, row.operatorId),
+            eq(listings.vertical, row.vertical),
             sql`${listings.status} <> 'archived'`,
           ),
         );
@@ -549,6 +555,7 @@ export class DrizzleRepo implements Repo {
   }
   async listListingCountsByOperator(
     operatorIds: string[],
+    vertical?: string,
   ): Promise<Record<string, number>> {
     if (operatorIds.length === 0) return {};
     const rows = await this.db
@@ -561,12 +568,16 @@ export class DrizzleRepo implements Repo {
         and(
           inArray(listings.operatorId, operatorIds.filter(isUuid)),
           sql`${listings.status} <> 'archived'`,
+          ...(vertical ? [eq(listings.vertical, vertical)] : []),
         ),
       )
       .groupBy(listings.operatorId);
     return Object.fromEntries(rows.map((r) => [r.operatorId, r.n]));
   }
-  async countOperatorListings(operatorId: string): Promise<number> {
+  async countOperatorListings(
+    operatorId: string,
+    vertical?: string,
+  ): Promise<number> {
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(listings)
@@ -574,6 +585,7 @@ export class DrizzleRepo implements Repo {
         and(
           eq(listings.operatorId, operatorId),
           sql`${listings.status} <> 'archived'`,
+          ...(vertical ? [eq(listings.vertical, vertical)] : []),
         ),
       );
     return r?.n ?? 0;

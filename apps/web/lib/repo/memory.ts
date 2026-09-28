@@ -142,7 +142,7 @@ class MemoryRepo implements Repo {
   ): Promise<Listing> {
     if (
       opts?.cap !== undefined &&
-      (await this.countOperatorListings(l.operatorId)) >= opts.cap
+      (await this.countOperatorListings(l.operatorId, l.vertical)) >= opts.cap
     ) {
       throw new PlanCapError();
     }
@@ -299,16 +299,23 @@ class MemoryRepo implements Repo {
     const l = this.listings.get(id);
     if (l) this.listings.set(id, { ...l, ...patch });
   }
-  async countOperatorListings(operatorId: string) {
+  async countOperatorListings(operatorId: string, vertical?: string) {
     return [...this.listings.values()].filter(
-      (l) => l.operatorId === operatorId && l.status !== "archived",
+      (l) =>
+        l.operatorId === operatorId &&
+        l.status !== "archived" &&
+        (vertical === undefined || l.vertical === vertical),
     ).length;
   }
-  async listListingCountsByOperator(operatorIds: string[]) {
+  async listListingCountsByOperator(operatorIds: string[], vertical?: string) {
     const want = new Set(operatorIds);
     const out: Record<string, number> = {};
     for (const l of this.listings.values()) {
-      if (want.has(l.operatorId) && l.status !== "archived") {
+      if (
+        want.has(l.operatorId) &&
+        l.status !== "archived" &&
+        (vertical === undefined || l.vertical === vertical)
+      ) {
         out[l.operatorId] = (out[l.operatorId] ?? 0) + 1;
       }
     }

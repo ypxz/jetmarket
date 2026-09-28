@@ -43,8 +43,12 @@ export default async function OperatorDashboard() {
   // 100 listings this page needs a pager, not a longer card wall.
   const [listings, listingCount, deals, dealCount, openRfqs, sub] =
     await Promise.all([
-      repo.listListings({ operatorId: operator.id, limit: 100 }),
-      repo.countOperatorListings(operator.id),
+      repo.listListings({
+        operatorId: operator.id,
+        vertical: getVertical().slug,
+        limit: 100,
+      }),
+      repo.countOperatorListings(operator.id, getVertical().slug),
       // Success-fee obligations are invisible to operators without this —
       // the admin ledger saw them, the party paying them did not (QA-118).
       repo.listDeals({ operatorId: operator.id, limit: 20 }),
@@ -52,6 +56,7 @@ export default async function OperatorDashboard() {
       repo.countDeals({ operatorId: operator.id }),
       repo.countRfqs({
         operatorId: operator.id,
+        vertical: getVertical().slug,
         // Repo impls disagree on the terminal-after-time label (drizzle
         // writes "closed", memory "expired") — exclude both + spam (QA-163).
         statusNot: ["closed", "expired", "spam"],
@@ -74,11 +79,15 @@ export default async function OperatorDashboard() {
     won30d,
   ] = isPro
     ? await Promise.all([
-        repo.countRfqs({ operatorId: operator.id }),
+        repo.countRfqs({ operatorId: operator.id, vertical: getVertical().slug }),
         repo.countQuotes({ operatorId: operator.id }),
         repo.countQuotes({ operatorId: operator.id, status: "accepted" }),
         repo.countQuotes({ operatorId: operator.id, status: "declined" }),
-        repo.countRfqs({ operatorId: operator.id, since: since30d }),
+        repo.countRfqs({
+          operatorId: operator.id,
+          vertical: getVertical().slug,
+          since: since30d,
+        }),
         repo.countQuotes({ operatorId: operator.id, since: since30d }),
         repo.countQuotes({
           operatorId: operator.id,

@@ -49,7 +49,10 @@ export default async function AdminPage({
         limit: SEARCH_PAGE_SIZE,
         offset: (page - 1) * SEARCH_PAGE_SIZE,
       }),
-      repo.listListingCountsByOperator(operators.map((o) => o.id)),
+      repo.listListingCountsByOperator(
+        operators.map((o) => o.id),
+        verticalSlug(),
+      ),
       repo.listOperators({
         ids: [...new Set(modListings.map((l) => l.operatorId))],
       }),
