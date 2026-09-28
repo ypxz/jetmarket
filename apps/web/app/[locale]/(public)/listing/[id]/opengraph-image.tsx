@@ -8,6 +8,9 @@ import { verticalSlug } from "@/lib/vertical";
 export const alt = `${site.name} listing`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+// Cache the rendered PNG per listing — without revalidate every unfurl runs
+// a DB read + satori/resvg render (~100ms CPU), an unbounded public burn.
+export const revalidate = 3600;
 
 // First-party OG card rendered with ImageResponse — hex values mirror
 // packages/ui/tokens.css (satori has no oklch/css-var support).

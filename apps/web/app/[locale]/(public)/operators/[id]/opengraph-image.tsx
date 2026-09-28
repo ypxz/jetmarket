@@ -7,6 +7,9 @@ import { verticalSlug } from "@/lib/vertical";
 export const alt = `${site.name} operator`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+// Same per-path cache as the listing card — unfurls otherwise re-render
+// (DB read + resvg) on every request.
+export const revalidate = 3600;
 
 // Operator OG card — same layout/tokens as the listing card so shared
 // links look consistent.
