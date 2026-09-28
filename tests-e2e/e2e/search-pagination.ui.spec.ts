@@ -152,6 +152,29 @@ test('listing back link restores the search filters', async ({ page }) => {
   await expect(page).toHaveURL(/aircraftCategory=light/);
 });
 
+// QA-222: the similar-listings rail keeps the search context alive — its
+// cards carry the same ?from, so a detour through a sibling still returns
+// to the buyer's filtered search.
+test('similar listings keep the search context in their links', async ({
+  page,
+}) => {
+  await page.goto('/search?type=empty_leg&aircraftCategory=super_mid');
+  await page.getByTestId('listing-card').first().click();
+  await expect(page).toHaveURL(/\/listing\//);
+  await expect(page.getByTestId('similar-listings')).toBeVisible();
+  const similarLinks = page
+    .getByTestId('similar-listings')
+    .getByTestId('listing-card');
+  const count = await similarLinks.count();
+  expect(count).toBeGreaterThan(0); // non-vacuous: the rail has siblings
+  for (let i = 0; i < count; i++) {
+    await expect(similarLinks.nth(i)).toHaveAttribute(
+      'href',
+      /from=type%3Dempty_leg%26aircraftCategory%3Dsuper_mid/,
+    );
+  }
+});
+
 // QA-218: RFQ opened from an empty leg prefills route + leg date via the
 // field's `prefillFrom` mapping; a charter (no from/to/date attrs) stays empty.
 test('rfq form prefills route and leg date from the listing', async ({ page }) => {

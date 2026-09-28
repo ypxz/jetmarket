@@ -212,6 +212,9 @@ export default async function ListingPage({
                 key={l.id}
                 listing={l}
                 operator={similarOps.get(l.operatorId) ?? null}
+                // Chain the buyer's search context through sibling listings —
+                // "Back to search" still restores their filters (QA-222).
+                {...(from ? { from } : {})}
               />
             ))}
           </div>
