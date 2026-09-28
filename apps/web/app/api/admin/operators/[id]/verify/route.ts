@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { notifyOperatorVerified } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 
 export async function POST(
@@ -17,6 +18,8 @@ export async function POST(
   const op = await repo.getOperator(id);
   if (!op) return err("not found", 404);
   await repo.setOperatorVerified(id, !op.verified);
+  // Trust-signal change must reach the owner (QA-249). Non-fatal.
+  await notifyOperatorVerified(repo, id, !op.verified);
   logInfo("admin.operator_verify_toggled", {
     adminId: user.id,
     operatorId: id,

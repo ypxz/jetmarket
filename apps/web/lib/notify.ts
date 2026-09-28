@@ -193,3 +193,40 @@ export async function notifyListingModerated(
     });
   }
 }
+
+/**
+ * Tell an operator their verified badge was granted or removed — a trust
+ * signal change that should never land silently (QA-249).
+ */
+export async function notifyOperatorVerified(
+  repo: Repo,
+  operatorId: string,
+  verified: boolean,
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (!operator || !owner) return;
+    const subject = verified
+      ? `Your operator profile was verified`
+      : `Your operator profile is no longer verified`;
+    const body = verified
+      ? `Our team verified your operator profile "${operator.name}" on ${site.name} — the verified badge now shows on your listings and public profile.`
+      : `Our team removed the verified badge from your operator profile "${operator.name}" on ${site.name}. Contact support if you believe this was a mistake.`;
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.operator_verified_failed", {
+      operatorId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}

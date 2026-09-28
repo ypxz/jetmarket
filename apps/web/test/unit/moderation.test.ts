@@ -22,7 +22,10 @@ vi.mock("next/headers", () => ({
 
 import { email } from "@jetmarket/providers";
 import { sessionCookie, signSession } from "../../lib/auth";
-import { notifyListingModerated } from "../../lib/notify";
+import {
+  notifyListingModerated,
+  notifyOperatorVerified,
+} from "../../lib/notify";
 import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Repo } from "../../lib/repo/types";
 import { PATCH as patchListing } from "../../app/api/listings/[id]/route";
@@ -104,5 +107,27 @@ describe("listing moderation", () => {
     const res = await patchListing(patch({ status: "active" }), params(listing.id));
     expect(res.status).toBe(200);
     expect((await repo.getListing(listing.id))?.status).toBe("active");
+  });
+});
+
+describe("operator verification (QA-249)", () => {
+  it("verify and unverify both email the owner", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, op } = await fixture(repo);
+
+    await notifyOperatorVerified(repo, op.id, true);
+    let box = email.readOutbox(process.env.EMAIL_OUTBOX_DIR);
+    let toOp = box.find(
+      (m) => m.to === opUser.email && m.subject.includes("verified"),
+    );
+    expect(toOp?.subject).toContain("verified");
+    expect(toOp?.text).toContain(op.name);
+
+    await notifyOperatorVerified(repo, op.id, false);
+    box = email.readOutbox(process.env.EMAIL_OUTBOX_DIR);
+    toOp = box.find(
+      (m) => m.to === opUser.email && m.subject.includes("no longer verified"),
+    );
+    expect(toOp?.text).toContain("badge");
   });
 });
