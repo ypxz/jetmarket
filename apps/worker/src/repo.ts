@@ -1,4 +1,4 @@
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, lte, sql } from "drizzle-orm";
 import {
   expireStaleRfqsDetailed,
   type Db,
@@ -44,6 +44,12 @@ export interface WorkerRepo {
    * terminal 'failed' job keep their row and are excluded on purpose:
    * they belong to admin retry, not an unbounded auto-resend loop. */
   unnotifiedPendingMatches(limit?: number): Promise<string[]>;
+  /** RFQs still 'new' past the grace window with NO rfq.fanout job row at
+   * all — the web route's enqueueJob can throw after the RFQ persisted
+   * (QA-168), or a job row can be lost to admin cleanup. RFQs whose fanout
+   * job exists in a terminal 'failed' state are excluded on purpose: they
+   * belong to admin retry, not an unbounded auto-refanout loop. */
+  unfanoutedRfqs(olderThan: Date, limit?: number): Promise<string[]>;
   /** Expiry sweep: stale open/quoted rfqs -> closed, their sent quotes ->
    * declined (shares the one-pass SQL with the web DrizzleRepo). Returns the
    * affected rows so the tick can notify buyers + operators. */
@@ -179,6 +185,25 @@ export function createWorkerRepo(db: Db): WorkerRepo {
               select 1 from jobs j
               where j.kind = 'email.quote_notification'
                 and j.payload ->> 'matchId' = ${rfqMatches.id}::text
+            )`,
+          ),
+        )
+        .limit(limit);
+      return rows.map((r) => r.id);
+    },
+
+    async unfanoutedRfqs(olderThan, limit = 100) {
+      const rows = await db
+        .select({ id: rfqs.id })
+        .from(rfqs)
+        .where(
+          and(
+            eq(rfqs.status, "new"),
+            lt(rfqs.createdAt, olderThan),
+            sql`not exists (
+              select 1 from jobs j
+              where j.kind = 'rfq.fanout'
+                and j.payload ->> 'rfqId' = ${rfqs.id}::text
             )`,
           ),
         )

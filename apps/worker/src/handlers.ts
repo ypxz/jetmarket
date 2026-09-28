@@ -90,6 +90,27 @@ export async function deliverDueMatches(deps: WorkerDeps): Promise<number> {
   return ids.length;
 }
 
+/** A persisted RFQ waits this long before we decide its fan-out job was
+ * never enqueued — shorter windows risk double-enqueue racing the web
+ * route's own persist→enqueue (harmless anyway: the second run hits the
+ * `new`-only status guard and early-returns). */
+const FANOUT_GRACE_MS = 2 * 60_000;
+
+/** Re-enqueue `rfq.fanout` for RFQs that persisted but never got a job —
+ * the route's enqueue can throw post-write (QA-168). One level up from the
+ * stranded-match sweep: no match rows exist yet at all. */
+export async function recoverUnfanoutedRfqs(
+  deps: WorkerDeps,
+): Promise<number> {
+  const ids = await deps.repo.unfanoutedRfqs(
+    new Date(at(deps).getTime() - FANOUT_GRACE_MS),
+  );
+  for (const rfqId of ids) {
+    await enqueueJob(deps.sql, "rfq.fanout", { rfqId });
+  }
+  return ids.length;
+}
+
 /**
  * Expiry notifications — run right after the sweep. Buyers are unauthenticated
  * so email is the only channel; an operator whose quote was silently declined

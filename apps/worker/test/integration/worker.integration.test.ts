@@ -23,7 +23,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MockEmailProvider, readOutbox } from "@jetmarket/providers/email/index";
 import { defaultPlans } from "@jetmarket/domain";
-import { deliverDueMatches, rfqFanout } from "../../src/handlers";
+import {
+  deliverDueMatches,
+  recoverUnfanoutedRfqs,
+  rfqFanout,
+} from "../../src/handlers";
 import { createWorkerRepo } from "../../src/repo";
 import { tick } from "../../src/index";
 
@@ -170,6 +174,31 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       select payload ->> 'matchId' as "matchId" from jobs
       where kind = 'email.quote_notification'`;
     expect(jobs.map((j) => j.matchId)).toContain(m!.id);
+  });
+
+  it("re-enqueues fan-out for a 'new' RFQ whose job never landed (QA-168)", async () => {
+    // Simulate the route's enqueueJob throwing post-write: RFQ persisted
+    // at 'new' long past the grace window, no jobs row exists.
+    const old = new Date(Date.now() - 10 * 60_000);
+    const [stranded] = await db
+      .insert(rfqs)
+      .values({
+        vertical: "jets",
+        buyerEmail: "stranded@x.com",
+        fields: { name: "Stranded" },
+        createdAt: old,
+      })
+      .returning({ id: rfqs.id });
+    // A fresh 'new' RFQ inside the grace window must NOT be touched.
+    const fresh = await insertRfq({ name: "Fresh", email: "f@x.com" });
+
+    const n = await recoverUnfanoutedRfqs(deps());
+    expect(n).toBeGreaterThanOrEqual(1);
+
+    const rows = await sql<{ rfqId: string }[]>`
+      select payload ->> 'rfqId' as "rfqId" from jobs where kind = 'rfq.fanout'`;
+    expect(rows.map((r) => r.rfqId)).toContain(stranded!.id);
+    expect(rows.map((r) => r.rfqId)).not.toContain(fresh);
   });
 
   it("expires stale rfqs and declines their sent quotes on tick", async () => {

@@ -13,6 +13,7 @@ import {
   deliverDueMatches,
   handleJob,
   notifyExpirations,
+  recoverUnfanoutedRfqs,
   type WorkerDeps,
 } from "./handlers";
 import { createWorkerRepo } from "./repo";
@@ -44,6 +45,13 @@ export async function tick(deps: WorkerDeps): Promise<number> {
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) console.log(`[worker] delivered ${delivered} delayed match(es)`);
+
+  // Persisted RFQs whose fan-out job never landed (route enqueue threw
+  // post-write, QA-168) — re-enqueue past the grace window.
+  const refanouted = await recoverUnfanoutedRfqs(deps);
+  if (refanouted) {
+    console.log(`[worker] re-enqueued fan-out for ${refanouted} stranded rfq(s)`);
+  }
 
   // Crash recovery: a worker that dies mid-claim leaves rows 'running'
   // forever — requeue anything untouched for >10 min so it retries.

@@ -4,6 +4,7 @@ import type { EmailMessage } from "@jetmarket/providers/email/index";
 import { defaultPlans } from "@jetmarket/domain";
 import {
   deliverDueMatches,
+  recoverUnfanoutedRfqs,
   handleJob,
   notifyExpirations,
   rfqFanout,
@@ -79,6 +80,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     unnotifiedPendingMatches: async () => {
       rec("unnotifiedPendingMatches", undefined);
+      return [];
+    },
+    unfanoutedRfqs: async (olderThan, limit) => {
+      rec("unfanoutedRfqs", { olderThan, limit });
       return [];
     },
     loadMatchContext: async (id) => {
@@ -200,6 +205,43 @@ describe("deliverDueMatches", () => {
     expect(
       enqueued.map((e) => (e.payload as { matchId: string }).matchId),
     ).toEqual(["m-due-1", "m-due-2", "m-stranded-9"]);
+  });
+});
+
+describe("recoverUnfanoutedRfqs", () => {
+  it("re-enqueues rfq.fanout for persisted RFQs whose job never landed (QA-168)", async () => {
+    const enqueued: { kind: string; payload: unknown }[] = [];
+    const repo = fakeRepo({
+      unfanoutedRfqs: async () => ["r-stuck-1", "r-stuck-2"],
+    });
+    const d = deps(repo);
+    d.sql = sqlStub(enqueued);
+    const n = await recoverUnfanoutedRfqs(d);
+    expect(n).toBe(2);
+    expect(enqueued.map((e) => e.kind)).toEqual([
+      "rfq.fanout",
+      "rfq.fanout",
+    ]);
+    expect(
+      enqueued.map((e) => (e.payload as { rfqId: string }).rfqId),
+    ).toEqual(["r-stuck-1", "r-stuck-2"]);
+  });
+
+  it("passes a grace window so an in-flight persist→enqueue isn't re-enqueued", async () => {
+    const seen: { olderThan?: Date } = {};
+    const repo = fakeRepo({
+      unfanoutedRfqs: async (olderThan) => {
+        seen.olderThan = olderThan;
+        return [];
+      },
+    });
+    // The stubbed clock sits at 2026-09-15T12:00:00Z (see deps()).
+    const now = new Date("2026-09-15T12:00:00Z").getTime();
+    const n = await recoverUnfanoutedRfqs(deps(repo));
+    expect(n).toBe(0);
+    // ~2 min grace — anything newer might still be inside the route's
+    // own persist→enqueue sequence.
+    expect(now - seen.olderThan!.getTime()).toBe(120_000);
   });
 });
 
