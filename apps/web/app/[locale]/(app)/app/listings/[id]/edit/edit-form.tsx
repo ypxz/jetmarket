@@ -160,7 +160,7 @@ export function EditListingForm({
         <div className="flex flex-wrap gap-3">
           {listing.photos.map((p) => (
             <label key={p.key} className="relative block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* Thumbnails come from our own storage; <img> suffices at this size. */}
               <img
                 src={p.url}
                 alt=""
