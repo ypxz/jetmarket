@@ -2,7 +2,7 @@
   "name": "jetmarket",
   "version": "0.1.0",
   "private": true,
-  "description": "JetMarket \u2014 modular high-ticket marketplace, jets first (charter / empty legs / aircraft sale)",
+  "description": "JetMarket — modular high-ticket marketplace, jets first (charter / empty legs / aircraft sale)",
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20"
@@ -24,7 +24,8 @@
     "db:seed": "pnpm -r --if-present seed",
     "smoke": "tsx scripts/smoke.ts",
     "check:design": "tsx scripts/check-design-literals.ts",
-    "check:i18n": "tsx scripts/check-i18n-keys.ts"
+    "check:i18n": "tsx scripts/check-i18n-keys.ts",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
     "tsx": "4.20.5"
