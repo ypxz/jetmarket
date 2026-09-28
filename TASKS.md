@@ -380,3 +380,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 281 | ~16:49 | QA-294 | REAL BUG: listRfqs/countRfqs gain vertical filter; operator inbox + admin mod queues scope to verticalSlug() (shared-DB contact-leak) |
 | 282 | ~17:01 | QA-295 | REAL BUG: jobs.vertical column + scoped claim; worker expiry/match/fanout sweeps + web lazy sweep filtered by vertical (shared-DB cross-contamination) |
 | 283 | ~17:04 | QA-296 | close remaining shared-DB seams: admin mod/deal/job routes + listing OG image now vertical-scoped (jobs list/retry + foreign-id 404s) |
+| 284 | ~17:05 | QA-297 | buyer /access + /quotes scope listRfqs by vertical — foreign RFQ tokens no longer resolve or ship in the wrong deploy's mail |
