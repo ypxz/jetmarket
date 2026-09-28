@@ -72,7 +72,7 @@ export default async function OperatorDashboard() {
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
       : null;
-  const limit = operator.plan === "pro" ? "∞" : String(FREE_LISTING_LIMIT);
+  const limit = isPro ? "∞" : String(FREE_LISTING_LIMIT);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -99,7 +99,7 @@ export default async function OperatorDashboard() {
         </div>
         <div className="text-right text-sm">
           <div data-testid="plan-badge" className="font-medium">
-            {operator.plan === "pro" ? t("proPlan") : t("freePlan")}
+            {isPro ? t("proPlan") : t("freePlan")}
           </div>
           <Link
             href="/app/onboarding"
@@ -108,7 +108,7 @@ export default async function OperatorDashboard() {
           >
             {t("editProfile")}
           </Link>
-          {operator.plan === "free" ? (
+          {!isPro ? (
             <Link href="/app/billing" className="text-primary underline">
               {t("upgrade", { price: PRO_PLAN_PRICE_USD })}
             </Link>
