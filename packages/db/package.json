@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "migrate": "tsx src/scripts/migrate.ts",
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "check:parity": "tsx src/scripts/check-parity.ts"
   },
   "dependencies": {
     "@jetmarket/domain": "workspace:*",

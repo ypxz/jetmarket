@@ -133,7 +133,9 @@ every per-vertical row carries `vertical` and every surface must scope by
 
 Append-only `packages/db/migrations/NNNN_*.sql` — never edit an applied one;
 the runner skips recorded files. Keep `schema.ts` and migrations in parity
-(indexes + columns). Scope data growth: pagination caps on every list read
+(indexes + columns) — `pnpm check:schema` diffs declared tables/columns/
+nullability against information_schema and runs inside `pnpm test:all`.
+Scope data growth: pagination caps on every list read
 (route-level `?limit` clamped ≤200), retention prune for terminal jobs,
 `updatedAt` bumped on every write.
 

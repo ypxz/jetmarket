@@ -51,6 +51,10 @@ for (const s of ['migrate', 'seed']) {
   }
 }
 
+// schema.ts ↔ live DB parity (needs the migrated compose db — optional so
+// `--no-docker`/fresh-clone runs keep passing).
+step('schema parity (schema.ts ↔ information_schema)', 'pnpm', ['check:schema'], { optional: true });
+
 step('lint (incl. design-literal check)', 'pnpm', ['lint']);
 step('typecheck', 'pnpm', ['typecheck']);
 step('unit tests', 'pnpm', ['test']);

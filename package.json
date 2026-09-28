@@ -26,6 +26,7 @@
     "smoke": "tsx scripts/smoke.ts",
     "check:design": "tsx scripts/check-design-literals.ts",
     "check:i18n": "tsx scripts/check-i18n-keys.ts",
+    "check:schema": "pnpm --filter @jetmarket/db check:parity",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
