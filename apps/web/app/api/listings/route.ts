@@ -4,7 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
-import { publicOperator } from "@/lib/repo/types";
+import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { analyticsProvider } from "@jetmarket/providers";
@@ -92,16 +92,8 @@ export async function POST(req: Request) {
     return err("invalid attributes", 422, attrs.error.issues);
   }
 
-  if (
-    operator.plan === "free" &&
-    await repo.countOperatorListings(operator.id) >= FREE_LISTING_LIMIT
-  ) {
-    return err(
-      `free plan allows ${FREE_LISTING_LIMIT} listings — upgrade to Pro`,
-      402,
-      { upgrade: true },
-    );
-  }
+  // The cap is enforced atomically inside createListing (operator row lock) —
+  // a check here would race a concurrent create.
 
   // Photos must point at this operator's own uploads — an arbitrary key
   // would render someone else's images (or a broken image) on the listing.
@@ -110,16 +102,31 @@ export async function POST(req: Request) {
     return err("photos must come from your own uploads", 422);
   }
 
-  const listing = await repo.createListing({
-    operatorId: operator.id,
-    vertical: verticalSlug(),
-    type: data!.type,
-    title: data!.title,
-    attributes: attrs.data,
-    price: data!.price,
-    currency: data!.currency ?? "USD",
-    photos: data!.photos ?? [],
-  });
+  let listing;
+  try {
+    listing = await repo.createListing(
+      {
+        operatorId: operator.id,
+        vertical: verticalSlug(),
+        type: data!.type,
+        title: data!.title,
+        attributes: attrs.data,
+        price: data!.price,
+        currency: data!.currency ?? "USD",
+        photos: data!.photos ?? [],
+      },
+      { cap: operator.plan === "free" ? FREE_LISTING_LIMIT : undefined },
+    );
+  } catch (e) {
+    if (e instanceof PlanCapError) {
+      return err(
+        `free plan allows ${FREE_LISTING_LIMIT} listings — upgrade to Pro`,
+        402,
+        { upgrade: true },
+      );
+    }
+    throw e;
+  }
   analyticsProvider().track({
     name: "listing_created",
     props: {

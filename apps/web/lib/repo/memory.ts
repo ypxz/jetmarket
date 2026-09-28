@@ -1,4 +1,5 @@
 import { storageProvider } from "@jetmarket/providers";
+import { PlanCapError } from "./types";
 import type {
   Deal,
   JobInfo,
@@ -113,7 +114,14 @@ class MemoryRepo implements Repo {
     l: Omit<Listing, "id" | "createdAt" | "status"> & {
       status?: Listing["status"];
     },
+    opts?: { cap?: number },
   ): Promise<Listing> {
+    if (
+      opts?.cap !== undefined &&
+      (await this.countOperatorListings(l.operatorId)) >= opts.cap
+    ) {
+      throw new PlanCapError();
+    }
     const listing: Listing = {
       ...l,
       id: uid("lst"),
@@ -206,8 +214,18 @@ class MemoryRepo implements Repo {
     }
     return out;
   }
-  async updateListingStatus(id: string, status: Listing["status"]) {
+  async updateListingStatus(
+    id: string,
+    status: Listing["status"],
+    opts?: { cap?: number },
+  ) {
     const l = this.listings.get(id);
+    if (l && status === "active" && opts?.cap !== undefined) {
+      const others = [...this.listings.values()].filter(
+        (x) => x.operatorId === l.operatorId && x.id !== id && x.status !== "archived",
+      ).length;
+      if (others >= opts.cap) throw new PlanCapError();
+    }
     if (l) this.listings.set(id, { ...l, status });
   }
   async updateListing(

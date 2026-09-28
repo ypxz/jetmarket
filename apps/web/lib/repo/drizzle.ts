@@ -25,6 +25,7 @@ import type {
   User,
   UserRole,
 } from "./types";
+import { PlanCapError } from "./types";
 
 const {
   users,
@@ -330,22 +331,42 @@ export class DrizzleRepo implements Repo {
     l: Omit<Listing, "id" | "createdAt" | "status"> & {
       status?: ListingStatus;
     },
+    opts?: { cap?: number },
   ): Promise<Listing> {
-    const [r] = await this.db
-      .insert(listings)
-      .values({
-        operatorId: l.operatorId,
-        vertical: l.vertical,
-        type: l.type,
-        title: l.title,
-        attributes: l.attributes,
-        priceMinor: minor(l.price),
-        currency: l.currency,
-        status: l.status ?? "active",
-        photos: l.photos,
-      })
-      .returning();
-    return toListing(r!);
+    return this.db.transaction(async (tx) => {
+      if (opts?.cap !== undefined) {
+        // Serialize per-operator writers — the FOR UPDATE row lock makes the
+        // count+insert atomic against parallel creates/reactivations.
+        await tx.execute(
+          sql`select id from operators where id = ${l.operatorId} for update`,
+        );
+        const [c] = await tx
+          .select({ n: sql<number>`count(*)::int` })
+          .from(listings)
+          .where(
+            and(
+              eq(listings.operatorId, l.operatorId),
+              sql`${listings.status} <> 'archived'`,
+            ),
+          );
+        if ((c?.n ?? 0) >= opts.cap) throw new PlanCapError();
+      }
+      const [r] = await tx
+        .insert(listings)
+        .values({
+          operatorId: l.operatorId,
+          vertical: l.vertical,
+          type: l.type,
+          title: l.title,
+          attributes: l.attributes,
+          priceMinor: minor(l.price),
+          currency: l.currency,
+          status: l.status ?? "active",
+          photos: l.photos,
+        })
+        .returning();
+      return toListing(r!);
+    });
   }
   async getListing(id: string): Promise<Listing | undefined> {
     if (!isUuid(id)) return undefined;
@@ -378,11 +399,48 @@ export class DrizzleRepo implements Repo {
       .where(listingConds(filter));
     return r?.n ?? 0;
   }
-  async updateListingStatus(id: string, status: ListingStatus): Promise<void> {
-    await this.db
-      .update(listings)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(listings.id, id));
+  async updateListingStatus(
+    id: string,
+    status: ListingStatus,
+    opts?: { cap?: number },
+  ): Promise<void> {
+    if (status !== "active" || opts?.cap === undefined) {
+      await this.db
+        .update(listings)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(listings.id, id));
+      return;
+    }
+    const cap = opts.cap;
+    await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ operatorId: listings.operatorId, status: listings.status })
+        .from(listings)
+        .where(eq(listings.id, id))
+        .limit(1);
+      if (!row) return;
+      await tx.execute(
+        sql`select id from operators where id = ${row.operatorId} for update`,
+      );
+      const [c] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.operatorId, row.operatorId),
+            sql`${listings.status} <> 'archived'`,
+          ),
+        );
+      // The listing itself already counts toward the cap unless archived —
+      // reactivating its own row is not an overage, so count the others.
+      const selfCounted = row.status === "archived" ? 0 : 1;
+      const others = Math.max(0, (c?.n ?? 0) - selfCounted);
+      if (others >= cap) throw new PlanCapError();
+      await tx
+        .update(listings)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(listings.id, id));
+    });
   }
   async updateListing(
     id: string,

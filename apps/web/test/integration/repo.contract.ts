@@ -255,6 +255,66 @@ export function repoContract(
       expect((await repo.getOperator(op.id))?.verified).toBe(true);
     });
 
+    it("enforces the listing cap atomically on create and reactivate", async () => {
+      const repo = await factory();
+      const user = await repo.createUser(
+        `cap-${Date.now().toString(36)}@test.dev`,
+        "operator",
+      );
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Cap Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const mk = (title: string) =>
+        repo.createListing(
+          {
+            operatorId: op.id,
+            vertical: "jets",
+            type: "charter",
+            title,
+            price: 1000,
+            currency: "USD",
+            photos: [],
+            attributes: {},
+          },
+          { cap: 3 },
+        );
+      const [a, b, c] = await Promise.all([mk("A"), mk("B"), mk("C")]);
+      // Fourth create under cap 3 must be rejected by the repo itself.
+      await expect(mk("D")).rejects.toMatchObject({ name: "PlanCapError" });
+      // Uncapped path still writes.
+      await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: "Pro",
+        price: 1000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      expect(await repo.countOperatorListings(op.id)).toBe(4);
+      void c;
+
+      // A paused listing already counts toward the cap, so reactivating it
+      // adds nothing: resolves while the other non-archived listings sit
+      // below the cap (archive B first -> others for A = C + Pro = 2).
+      await repo.updateListingStatus(a.id, "paused");
+      await repo.updateListingStatus(b.id, "archived");
+      await expect(
+        repo.updateListingStatus(a.id, "active", { cap: 3 }),
+      ).resolves.toBeUndefined();
+      // An archived listing is NOT counted, so reactivating it while the
+      // other non-archived listings fill the cap must be rejected.
+      await expect(
+        repo.updateListingStatus(b.id, "active", { cap: 3 }),
+      ).rejects.toMatchObject({ name: "PlanCapError" });
+    });
+
     it("stale-webhook gate: older event stamps never clobber the sub", async () => {
       const repo = await factory();
       const tag = `stale${Date.now().toString(36)}`;

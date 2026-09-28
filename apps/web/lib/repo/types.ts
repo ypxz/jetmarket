@@ -130,6 +130,14 @@ export interface Subscription {
   lastEventAt?: number;
 }
 
+/** Thrown when a write would exceed the caller's listing cap. */
+export class PlanCapError extends Error {
+  constructor() {
+    super("free plan listing cap reached");
+    this.name = "PlanCapError";
+  }
+}
+
 export interface Repo {
   createUser(email: string, role?: UserRole): Promise<User>;
   findUserByEmail(email: string): Promise<User | undefined>;
@@ -157,6 +165,9 @@ export interface Repo {
 
   createListing(
     l: Omit<Listing, "id" | "createdAt" | "status"> & { status?: ListingStatus },
+    /** Atomic non-archived-listing cap — throws PlanCapError instead of
+     *  inserting when the operator is already at the cap. */
+    opts?: { cap?: number },
   ): Promise<Listing>;
   getListing(id: string): Promise<Listing | undefined>;
   listListings(filter?: {
@@ -188,7 +199,13 @@ export interface Repo {
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
   }): Promise<number>;
-  updateListingStatus(id: string, status: ListingStatus): Promise<void>;
+  updateListingStatus(
+    id: string,
+    status: ListingStatus,
+    /** Same atomic cap for reactivation — throws PlanCapError when the
+     *  transition would put the operator over the limit. */
+    opts?: { cap?: number },
+  ): Promise<void>;
   updateListing(
     id: string,
     patch: Partial<Pick<Listing, "title" | "price" | "attributes" | "photos">>,

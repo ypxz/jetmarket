@@ -4,7 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
-import { publicOperator } from "@/lib/repo/types";
+import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig } from "@/lib/vertical";
 
 const PatchListing = z.object({
@@ -50,21 +50,14 @@ export async function PATCH(
   if (error) return error;
   // Validate EVERYTHING before writing — the status write used to run before
   // attribute/photo checks, so a rejected PATCH could still flip status.
-  if (data!.status) {
-    // Reactivating on the free plan still counts against the listing cap —
-    // the create route enforces it, PATCH must too (QA-63).
-    if (
-      data!.status === "active" &&
-      listing.status !== "active" &&
-      operator.plan === "free" &&
-      (await repo.countOperatorListings(operator.id)) >= FREE_LISTING_LIMIT
-    ) {
-      return err(
-        `free plan allows ${FREE_LISTING_LIMIT} listings — upgrade to Pro`,
-        403,
-      );
-    }
-  }
+  // Reactivating on the free plan still counts against the listing cap (QA-63);
+  // the cap is enforced atomically inside updateListingStatus, not checked here.
+  const cap =
+    data!.status === "active" &&
+    listing.status !== "active" &&
+    operator.plan === "free"
+      ? FREE_LISTING_LIMIT
+      : undefined;
   const patch: Parameters<typeof repo.updateListing>[1] = {};
   if (data!.photos !== undefined) {
     // Same ownership rule as POST — photos may only reference this
@@ -86,7 +79,21 @@ export async function PATCH(
     if (!attrs.success) return err("invalid attributes", 422, attrs.error.issues);
     patch.attributes = attrs.data;
   }
-  if (data!.status) await repo.updateListingStatus(id, data!.status);
+  if (data!.status) {
+    try {
+      // cap enforces atomically under an operator row lock (QA-63 made it
+      // check-then-act; concurrent creates could still slip past).
+      await repo.updateListingStatus(id, data!.status, { cap });
+    } catch (e) {
+      if (e instanceof PlanCapError) {
+        return err(
+          `free plan allows ${FREE_LISTING_LIMIT} listings — upgrade to Pro`,
+          403,
+        );
+      }
+      throw e;
+    }
+  }
   if (Object.keys(patch).length) await repo.updateListing(id, patch);
   return ok(await repo.getListing(id));
 }
