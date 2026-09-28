@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { brandedEmailHtml, captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
 import { site } from "@jetmarket/config";
 import { z } from "zod";
-import { buildRfqSchema, getVertical, nonContactFields } from "@jetmarket/verticals";
+import { buildRfqSchema, getVertical, nonContactFields, rfqFieldLabels } from "@jetmarket/verticals";
+import { verticalMessages } from "@/lib/vertical";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { fanoutRfq } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
@@ -121,19 +122,24 @@ export async function POST(req: Request) {
     const buyerName =
       typeof parsed.data["name"] === "string" ? parsed.data["name"] : "A buyer";
     const publicFields = nonContactFields(getVertical(), listing.type, parsed.data);
+    // Labeled detail lines (QA-235) — was a raw JSON.stringify of field keys.
+    const labels = rfqFieldLabels(getVertical(), verticalMessages());
+    const detailLines = Object.entries(publicFields).map(
+      ([k, v]) => `${labels.get(k) ?? k}: ${String(v)}`,
+    );
     // A provider blip must not 500 the buyer — the RFQ is already persisted
     // (a retry dedupes to 200 via dedupeKey, so the buyer never loses it).
     try {
       const subject = `New RFQ on “${listing.title}”`;
-      const body = `${buyerName} sent a request. Details: ${JSON.stringify(publicFields)}`;
+      const body = `${buyerName} sent a request.`;
       await emailProvider().send({
         to: owner.email,
         subject,
-        text: body,
+        text: `${body}\n\n${detailLines.join("\n")}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
-          paragraphs: [body],
+          paragraphs: [body, ...detailLines],
         }),
       });
     } catch (e) {
