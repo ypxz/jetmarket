@@ -39,12 +39,14 @@ export default async function OperatorDashboard() {
 
   // Cap the dashboard render — the header count uses the true total; beyond
   // 100 listings this page needs a pager, not a longer card wall.
-  const [listings, listingCount, deals] = await Promise.all([
+  const [listings, listingCount, deals, dealCount] = await Promise.all([
     repo.listListings({ operatorId: operator.id, limit: 100 }),
     repo.countOperatorListings(operator.id),
     // Success-fee obligations are invisible to operators without this —
     // the admin ledger saw them, the party paying them did not (QA-118).
     repo.listDeals({ operatorId: operator.id, limit: 20 }),
+    // Header shows the true total, not the capped page (QA-179).
+    repo.countDeals({ operatorId: operator.id }),
   ]);
   const openRfqs = await repo.countRfqs({
     operatorId: operator.id,
@@ -175,7 +177,7 @@ export default async function OperatorDashboard() {
       {deals.length > 0 ? (
         <section className="mt-10" data-testid="operator-deals">
           <h2 className="text-lg font-semibold">
-            {t("deals", { count: deals.length })}
+            {t("deals", { count: dealCount })}
           </h2>
           <ul className="mt-4 divide-y divide-border rounded-md border border-border">
             {deals.map((d) => (
