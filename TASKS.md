@@ -371,3 +371,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 272 | ~16:50 | QA-284+ | admin-api.spec extended: full deal chain -> admin paid -> void-on-paid 409 (invoice CAS covered e2e) |
 | 273 | ~17:00 | QA-286 | admin.ui.spec: /admin + /admin/jobs first browser render coverage incl. verify toggle + buyer redirect |
 | 274 | ~17:10 | QA-287 | seo-pages.ui.spec: landing page render + JSON-LD escaping + bogus-slug 404 |
+| 275 | ~17:15 | QA-288 | static-pages.ui.spec: legal entity-substitution, rfq/thanks card, /design noindex |
