@@ -36,8 +36,11 @@ export function EditListingForm({
   const [attrs, setAttrs] = useState<AttributeView[]>([]);
   const [vertical, setVertical] = useState("jets");
   const [currency, setCurrency] = useState("USD");
+  // Hydrated gate — pre-hydration submit posts natively (405). QA-245.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    setReady(true);
     const load = () =>
       fetch("/api/vertical").then((r) =>
         readJson<{ slug?: string; attributes?: AttributeView[]; currency?: string }>(r),
@@ -204,7 +207,7 @@ export function EditListingForm({
           {error}
         </p>
       ) : null}
-      <Button type="submit" disabled={pending} data-testid="edit-save">
+      <Button type="submit" disabled={pending || !ready} data-testid="edit-save">
         {pending ? t("saving") : t("save")}
       </Button>
     </form>

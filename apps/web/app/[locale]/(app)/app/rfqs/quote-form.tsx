@@ -3,13 +3,16 @@
 import { readJsonOr } from "@/lib/fetch-json";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function QuoteForm({ rfqId }: { rfqId: string }) {
   const t = useTranslations("app.rfqs");
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // Hydrated gate — pre-hydration submit posts natively (405). QA-245.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,7 +63,7 @@ export function QuoteForm({ rfqId }: { rfqId: string }) {
       />
       <button
         type="submit"
-        disabled={sending}
+        disabled={sending || !ready}
         data-testid={`quote-send-${rfqId}`}
         className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >

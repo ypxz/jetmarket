@@ -3,11 +3,15 @@
 import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function SignInPage() {
   const t = useTranslations("auth");
   const tc = useTranslations("common");
+  // Hydrated gate — a pre-hydration submit posts the uncontrolled form
+  // natively (405); same fix as /quotes and the RFQ form (QA-245).
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"buyer" | "operator">("buyer");
   const [devLink, setDevLink] = useState<string | null>(null);
@@ -96,8 +100,9 @@ export default function SignInPage() {
         </div>
         <button
           type="submit"
+          disabled={!ready}
           data-testid="signin-submit"
-          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
+          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-60"
         >
           {t("submit")}
         </button>

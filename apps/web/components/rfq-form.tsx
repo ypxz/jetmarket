@@ -49,9 +49,17 @@ export function RfqForm({
 }: RfqFormProps) {
   const router = useRouter();
 
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // A pre-hydration submit posts the uncontrolled form natively — the page
+  // route has no POST handler so a fast click 405s instead of creating the
+  // RFQ. Disabled-submit waits are also what e2e relies on (QA-245).
+  const [ready, setReady] = useState(false);
+
   // Load the Turnstile script only when a site key is configured; the widget
   // injects a hidden `cf-turnstile-response` input into the form on its own.
   useEffect(() => {
+    setReady(true);
     if (!turnstileSiteKey) return;
     if (document.querySelector("script[data-turnstile]")) return;
     const s = document.createElement("script");
@@ -60,8 +68,6 @@ export function RfqForm({
     s.dataset.turnstile = "1";
     document.head.appendChild(s);
   }, [turnstileSiteKey]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -203,7 +209,7 @@ export function RfqForm({
           {error}
         </p>
       ) : null}
-      <Button type="submit" disabled={busy} data-testid="rfq-submit">
+      <Button type="submit" disabled={busy || !ready} data-testid="rfq-submit">
         {busy ? sendingLabel : submitLabel}
       </Button>
     </form>
