@@ -52,12 +52,23 @@ function parseParams(params: SearchParams): ParsedParams {
     exact[facet.attributeKey] = facet.type === "text" ? raw.toUpperCase() : raw;
   }
 
+  const q = str(params.q)?.slice(0, 200);
   return {
     exact,
     ranges,
     ...(type ? { type } : {}),
-    ...(str(params.q) ? { query: str(params.q)! } : {}),
+    ...(q ? { query: q } : {}),
   };
+}
+
+/**
+ * Public listing filter from raw URL params — facets are whitelisted to the
+ * active vertical's declared set (extra `f_*`/unknown keys are ignored), so
+ * scrapers can't probe arbitrary jsonb paths. Used by the search pages and
+ * GET /api/listings (QA-143).
+ */
+export function listingFilterFor(params: SearchParams) {
+  return repoFilter(parseParams(params));
 }
 
 function repoFilter(p: ParsedParams) {

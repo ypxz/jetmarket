@@ -86,3 +86,34 @@ describe("paginate", () => {
     expect(paginate(exact, "2").page).toBe(1);
   });
 });
+
+/**
+ * QA-143 — GET /api/listings must whitelist facets to the active vertical's
+ * declared set. The old `f_*` passthrough let scrapers probe arbitrary
+ * attributes-jsonb paths (unbounded count, unindexed keys).
+ */
+import { GET as listListings } from "../../app/api/listings/route";
+
+describe("GET /api/listings facet whitelist (QA-143)", () => {
+  it("ignores undeclared facet keys; declared ones still filter", async () => {
+    // A bogus key alone must NOT narrow the result — 8 seeded jets listings.
+    const bogus = await listListings(
+      new Request("http://test.local/api/listings?f_sequel=anything&password=hunter2"),
+    );
+    expect(bogus.status).toBe(200);
+    const all = (await bogus.json()) as unknown[];
+    expect(all.length).toBe(8);
+
+    // Declared facet key filters as before.
+    const filtered = await listListings(
+      new Request("http://test.local/api/listings?aircraftCategory=light"),
+    );
+    const lights = (await filtered.json()) as {
+      attributes: Record<string, unknown>;
+    }[];
+    expect(lights.length).toBe(2);
+    expect(lights.every((l) => l.attributes.aircraftCategory === "light")).toBe(
+      true,
+    );
+  });
+});

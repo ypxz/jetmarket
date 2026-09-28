@@ -83,19 +83,25 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     });
     await buyer.getByTestId('rfq-field-departure').fill('ZRH');
     await expect(async () => {
-      // hydration can re-render inputs post-fill — refill inside the retry
-      await buyer.getByTestId('rfq-field-arrival').fill('NCE');
-      await buyer.getByTestId('rfq-field-dateFrom').fill('2026-10-01');
-      await buyer.getByTestId('rfq-field-dateTo').fill('2026-10-02');
-      await buyer.getByTestId('rfq-field-passengers').fill('4');
-      await buyer.getByTestId('rfq-field-budgetUsd').fill('45000');
-      await buyer.getByTestId('rfq-field-name').fill('E2E Buyer');
-      await buyer.getByTestId('rfq-field-email').fill(BUYER_EMAIL);
-      await buyer.getByTestId('rfq-submit').click();
+      if (!buyer.url().includes('/rfq/thanks')) {
+        // hydration can re-render inputs post-fill — refill inside the retry
+        await buyer.getByTestId('rfq-field-arrival').fill('NCE');
+        await buyer.getByTestId('rfq-field-dateFrom').fill('2026-10-01');
+        await buyer.getByTestId('rfq-field-dateTo').fill('2026-10-02');
+        await buyer.getByTestId('rfq-field-passengers').fill('4');
+        await buyer.getByTestId('rfq-field-budgetUsd').fill('45000');
+        await buyer.getByTestId('rfq-field-name').fill('E2E Buyer');
+        await buyer.getByTestId('rfq-field-email').fill(BUYER_EMAIL);
+        await buyer.getByTestId('rfq-submit').click();
+      }
+      // Wait on the redirect, not the element: under `next dev` cold-compile
+      // /rfq/thanks can take several seconds to render, and element-first
+      // asserts flake inside a short window (QA-144).
+      await buyer.waitForURL(/\/rfq\/thanks/, { timeout: 12_000 });
       await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       });
-    }).toPass({ timeout: 20_000 });
+    }).toPass({ timeout: 40_000 });
     await expect(buyer.getByTestId('rfq-reference')).toBeVisible();
   });
 

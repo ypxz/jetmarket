@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
-import { SEARCH_PAGE_SIZE } from "@/lib/search";
+import { listingFilterFor, SEARCH_PAGE_SIZE } from "@/lib/search";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { analyticsProvider } from "@jetmarket/providers";
 
@@ -16,26 +16,21 @@ export async function GET(req: Request) {
     return err("rate limit exceeded — try again later", 429);
   }
   const url = new URL(req.url);
-  const facets: Record<string, string> = {};
-  for (const [k, v] of url.searchParams.entries()) {
-    if (k.startsWith("f_")) facets[k.slice(2)] = v;
-  }
+  // Facets are whitelisted to the vertical's declared set (QA-143) — raw
+  // `f_*` keys used to hit `attributes ->> ?` with arbitrary paths.
+  const filter = listingFilterFor(
+    Object.fromEntries(url.searchParams.entries()),
+  );
   // Optional ?limit/&offset= cap the payload; default is one page (QA-66).
   const lim = Number(url.searchParams.get("limit"));
   const off = Number(url.searchParams.get("offset"));
-  const listings = await (await getRepo()).listListings({
-    status: "active",
-    vertical: verticalSlug(),
-    ...(url.searchParams.get("type")
-      ? { type: url.searchParams.get("type")! }
-      : {}),
-    ...(url.searchParams.get("q") ? { query: url.searchParams.get("q")! } : {}),
-    ...(Object.keys(facets).length ? { facets } : {}),
+  const repo = await getRepo();
+  const listings = await repo.listListings({
+    ...filter,
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : SEARCH_PAGE_SIZE,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });
   // Batched operator join — one inArray query for the whole page (QA-104).
-  const repo = await getRepo();
   const opById = new Map(
     (
       await repo.listOperators({
