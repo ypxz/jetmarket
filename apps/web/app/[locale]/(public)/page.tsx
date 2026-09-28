@@ -3,6 +3,7 @@ import { getVertical } from "@jetmarket/verticals";
 import { getTranslations } from "next-intl/server";
 import { ListingCard } from "@/components/listing-card";
 import { getRepo } from "@/lib/repo";
+import { browseExpiry } from "@/lib/search";
 import { publicOperator } from "@/lib/repo/types";
 import { site } from "@jetmarket/config";
 
@@ -20,6 +21,7 @@ export default async function LandingPage() {
     status: "active",
     vertical: vertical.slug,
     limit: 6,
+    ...browseExpiry(),
   });
   const featuredOps = new Map(
     (

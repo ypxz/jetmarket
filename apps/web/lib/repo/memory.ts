@@ -144,6 +144,7 @@ class MemoryRepo implements Repo {
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
     ids?: string[];
     sort?: ListingSort;
     limit?: number;
@@ -179,6 +180,7 @@ class MemoryRepo implements Repo {
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
     ids?: string[];
   }): Promise<number> {
     return this.filterListings(filter).length;
@@ -192,6 +194,7 @@ class MemoryRepo implements Repo {
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
     ids?: string[];
   }): Listing[] {
     let out = [...this.listings.values()];
@@ -241,6 +244,14 @@ class MemoryRepo implements Repo {
           return true;
         });
       }
+    }
+    if (filter?.notExpiredByAttr) {
+      const { type, attr, asOf } = filter.notExpiredByAttr;
+      out = out.filter((l) => {
+        if (l.type !== type) return true;
+        const v = l.attributes[attr];
+        return typeof v !== "string" || v >= asOf;
+      });
     }
     return out;
   }
@@ -631,6 +642,12 @@ async function seedJets(repo: MemoryRepo) {
   await mk(opIds[1]!, "empty_leg", "Empty leg Nice → Zurich · Challenger 350", 7400, {
     aircraftCategory: "super_mid", model: "Challenger 350", year: 2020,
     seats: 9, rangeNm: 3200, from: "NCE", to: "ZRH", date: inDays(2),
+  });
+  // Yesterday's leg — exercised by the expiry filter (QA-219): invisible on
+  // public surfaces, still on the operator dashboard.
+  await mk(opIds[1]!, "empty_leg", "Empty leg Zurich → Ibiza · Challenger 350", 9800, {
+    aircraftCategory: "super_mid", model: "Challenger 350", year: 2021,
+    seats: 9, rangeNm: 3200, from: "ZRH", to: "IBZ", date: inDays(-1),
   });
   await mk(opIds[2]!, "aircraft_sale", "Gulfstream G650 (2018) for sale", 38500000, {
     aircraftCategory: "ultra_long", model: "G650", year: 2018, seats: 14,

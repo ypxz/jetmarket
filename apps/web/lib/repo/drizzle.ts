@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lte, ne, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import type {
   Deal,
@@ -150,6 +150,7 @@ interface ListingFilter {
   facets?: Record<string, string>;
   facetRanges?: { key: string; min?: number; max?: number }[];
   facetDateRanges?: { key: string; from?: string; to?: string }[];
+  notExpiredByAttr?: { type: string; attr: string; asOf: string };
 }
 
 /** Shared WHERE builder so listListings/countListings never drift apart.
@@ -209,6 +210,19 @@ function listingConds(filter?: ListingFilter) {
       if (r.from !== undefined) conds.push(sql`${v} >= ${r.from}`);
       if (r.to !== undefined) conds.push(sql`${v} <= ${r.to}`);
     }
+  }
+  if (filter?.notExpiredByAttr) {
+    const { type, attr, asOf } = filter.notExpiredByAttr;
+    // Keep rows of other types, rows missing the attr, and non-past dates —
+    // NULL-safe: `NULL < x` would otherwise silently exclude undated legs.
+    const v = sql`${listings.attributes} ->> ${attr}`;
+    conds.push(
+      or(
+        ne(listings.type, type),
+        sql`${v} is null`,
+        sql`${v} >= ${asOf}`,
+      )!,
+    );
   }
   return conds.length ? and(...conds) : undefined;
 }

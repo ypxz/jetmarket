@@ -10,6 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
+import { browseExpiry } from "@/lib/search";
 import { siteUrl } from "@/lib/seo";
 
 // Escape </script> breakouts inside JSON-LD payloads.
@@ -89,6 +90,7 @@ export default async function ListingPage({
       type: listing.type,
       status: "active",
       limit: 5,
+      ...browseExpiry(),
     })
   )
     .filter((l) => l.id !== listing.id)

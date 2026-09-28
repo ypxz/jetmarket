@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { seoSlugs, siteUrl } from "@/lib/seo";
 import { getRepo } from "@/lib/repo";
+import { browseExpiry } from "@/lib/search";
 import { verticalSlug } from "@/lib/vertical";
 
 // Public routes only — app/admin/auth pages are excluded by intent.
@@ -17,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     vertical: verticalSlug(),
     status: "active",
     limit: 1000,
+    ...browseExpiry(),
   });
   // Operator profiles are indexable trust surfaces — one per operator that
   // has at least one active listing (capped alongside the listings cap).

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paginate, SEARCH_PAGE_SIZE, searchListings } from "@/lib/search";
+import { getRepo } from "@/lib/repo";
 
 // Runs against the seeded in-memory repo (lib/repo/memory.ts).
 describe("searchListings (config-driven, jets)", () => {
@@ -72,6 +73,16 @@ describe("searchListings (config-driven, jets)", () => {
       legDateTo: "20/10/2026",
     });
     expect(r.length).toBe(4);
+  });
+
+  it("past-dated empty legs are excluded from browse (QA-219)", async () => {
+    // The seed's ZRH→IBZ leg is yesterday — invisible on public surfaces…
+    expect((await searchListings({ to: "IBZ" })).length).toBe(0);
+    // …but raw listListings (operator dashboard) still returns it.
+    const raw = await (
+      await getRepo()
+    ).listListings({ type: "empty_leg" });
+    expect(raw.length).toBe(5);
   });
 
   it("combines query + facets + ranges", async () => {

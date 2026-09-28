@@ -266,6 +266,10 @@ export const jetsVertical: VerticalConfig = {
 
   copy: { namespace: "vertical.jets" },
 
+  // A leg that already flew is dead inventory — it leaves the browse surface
+  // automatically (operator dashboard keeps it for re-listing).
+  expiry: { type: "empty_leg", attributeKey: "date" },
+
   seo: {
     landingPages: [
       {

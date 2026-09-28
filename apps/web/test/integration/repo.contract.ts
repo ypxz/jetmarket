@@ -643,6 +643,43 @@ export function repoContract(
           facetDateRanges: [{ key: "date", from: "2026-11-01" }],
         }),
       ).toBe(0);
+
+      // notExpiredByAttr (QA-219): only the expiry type's past-dated rows
+      // drop out — same-type attr-less rows and other types stay visible.
+      const expiredLeg = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "empty_leg",
+        title: `${tag} flew-yesterday`,
+        price: 1,
+        currency: "USD",
+        photos: [],
+        attributes: { date: "2020-01-01" },
+      });
+      const undatedLeg = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "empty_leg",
+        title: `${tag} date-tbd`,
+        price: 1,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const notExpiredByAttr = {
+        type: "empty_leg",
+        attr: "date",
+        asOf: "2026-01-01",
+      };
+      const survivors = (
+        await repo.listListings({ ...base, notExpiredByAttr })
+      ).map((l) => l.id);
+      expect(survivors).not.toContain(expiredLeg.id);
+      expect(survivors).toContain(undatedLeg.id);
+      expect(survivors).toContain(withDate.id); // 2026-10-15 ≥ asOf
+      expect(
+        await repo.countListings({ ...base, notExpiredByAttr }),
+      ).toBeGreaterThanOrEqual(3);
     });
 
     it("returns listings newest-first (memory matches drizzle order)", async () => {

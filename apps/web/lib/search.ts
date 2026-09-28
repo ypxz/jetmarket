@@ -92,6 +92,23 @@ export function listingFilterFor(params: SearchParams) {
   return repoFilter(parseParams(params));
 }
 
+/**
+ * Dated-inventory expiry fragment for public browse reads — spreads into a
+ * `listListings`/`countListings` filter. Empty when the vertical declares no
+ * `expiry` (machinery has none — QA-219).
+ */
+export function browseExpiry() {
+  const expiry = getVertical().expiry;
+  if (!expiry) return {};
+  return {
+    notExpiredByAttr: {
+      type: expiry.type,
+      attr: expiry.attributeKey,
+      asOf: new Date().toISOString().slice(0, 10),
+    },
+  } as const;
+}
+
 function repoFilter(p: ParsedParams) {
   const facetRanges = p.ranges.map(({ f, min, max }) => ({
     key: f.attributeKey ?? f.key,
@@ -112,6 +129,7 @@ function repoFilter(p: ParsedParams) {
     ...(Object.keys(p.exact).length ? { facets: p.exact } : {}),
     ...(facetRanges.length ? { facetRanges } : {}),
     ...(facetDateRanges.length ? { facetDateRanges } : {}),
+    ...browseExpiry(),
   };
 }
 

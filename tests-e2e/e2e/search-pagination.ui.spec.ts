@@ -111,6 +111,20 @@ test('search filters empty legs by leg-date range', async ({ page }) => {
   await expect(page.getByTestId('facet-legDate-to')).toHaveValue(to);
 });
 
+// QA-219: a leg that already flew is dead inventory — the seed's GVA→IBZ
+// leg is dated yesterday and must not surface anywhere on public browse.
+test('past-dated empty legs are hidden from public browse', async ({ page }) => {
+  // Unfiltered type browse — the whole empty_leg rail must exclude it.
+  await page.goto('/search?type=empty_leg');
+  await expect(page.getByText('GVA → IBZ empty leg')).toHaveCount(0);
+  // Explicit airport facet reaching into the past doesn't resurrect it.
+  await page.goto('/search?type=empty_leg&to=IBZ');
+  await expect(page.getByText('GVA → IBZ empty leg')).toHaveCount(0);
+  // Featured rail on the home page is also a browse surface.
+  await page.goto('/');
+  await expect(page.getByText('GVA → IBZ empty leg')).toHaveCount(0);
+});
+
 // QA-217: a card opened from a filtered search carries the query — "Back to
 // search" restores the buyer's filters instead of landing on bare /search.
 test('listing back link restores the search filters', async ({ page }) => {

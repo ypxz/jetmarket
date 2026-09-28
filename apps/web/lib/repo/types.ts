@@ -192,6 +192,12 @@ export interface Repo {
      * attribute never matches a set bound (QA-215).
      */
     facetDateRanges?: { key: string; from?: string; to?: string }[];
+    /**
+     * Dated-inventory expiry (vertical.expiry): exclude rows where
+     * `type` matches AND `attributes[attr]` is a string strictly before
+     * `asOf` (ISO date). Missing attr keeps the row (QA-219).
+     */
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
     /** Result order — `newest` (createdAt desc) is the default. */
@@ -210,6 +216,7 @@ export interface Repo {
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
   }): Promise<number>;
   updateListingStatus(
     id: string,

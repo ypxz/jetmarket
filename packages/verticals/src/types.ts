@@ -131,4 +131,12 @@ export interface VerticalConfig {
   copy: { namespace: string };
   seo: { landingPages: SeoPageDef[] };
   components?: ComponentOverrides;
+  /**
+   * One-shot inventory expiry: listings of this `type` whose ISO
+   * `attributeKey` (e.g. an empty leg's `date`) is before today drop out of
+   * public browse surfaces (search, SEO landings, featured, operator profile,
+   * similar rail, sitemap). The operator still sees them on their dashboard.
+   * Rows missing the attribute stay visible — only dated-and-past expires.
+   */
+  expiry?: { type: string; attributeKey: string };
 }

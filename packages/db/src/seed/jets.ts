@@ -122,6 +122,8 @@ const EMPTY_LEGS: EmptyLegSeed[] = [
   { op: "idf-jets", aircraft: "challenger650", from: "LBG", to: "NCE", dayOffset: 1, priceUsd: 11400 },
   { op: "nordlicht", aircraft: "hawker900", from: "HAM", to: "LTN", dayOffset: 11, priceUsd: 7100 },
   { op: "iberia-charter", aircraft: "phenom300", from: "MAD", to: "NCE", dayOffset: 15, priceUsd: 8100 },
+  // Already flown — exercises the browse-expiry filter (QA-219 e2e pin).
+  { op: "alpine-jet", aircraft: "phenom300", from: "GVA", to: "IBZ", dayOffset: -2, priceUsd: 4800 },
 ];
 
 /** Aircraft-for-sale listings. */
@@ -288,7 +290,7 @@ export interface SeedResult {
   photos: number;
 }
 
-export const JETS_SEED_COUNTS = { operators: 15, listings: 60 } as const;
+export const JETS_SEED_COUNTS = { operators: 15, listings: 61 } as const;
 
 /**
  * Seed users + operators + listings + photo files. Idempotent via upserts on

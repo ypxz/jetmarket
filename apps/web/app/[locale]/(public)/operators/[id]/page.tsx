@@ -7,6 +7,7 @@ import { ListingCard } from "@/components/listing-card";
 import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
+import { browseExpiry } from "@/lib/search";
 import { siteUrl } from "@/lib/seo";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
@@ -25,6 +26,7 @@ async function load(id: string) {
     vertical: verticalSlug(),
     status: "active",
     limit: PAGE_SIZE,
+    ...browseExpiry(),
   });
   return { operator, listings };
 }
