@@ -34,8 +34,6 @@
 
 ## 🔲 Small additions to merged pages
 
-- `signin-role-buyer`, `signin-role-operator` on the role radios (`/sign-in`).
-  Specs fall back to `getByRole('radio', { name: /operator/i })` until then.
 - `plan-limit-banner` on `/app/listings/new` when the plan limit is hit
   (currently the 402 error + `upgrade-cta` plays this role — spec accepts both).
 

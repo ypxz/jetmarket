@@ -25,8 +25,7 @@ export async function signUpAndLogin(
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.getByTestId('signin-email').fill(email);
     if (role !== 'buyer') {
-      // role radios currently have no testid — see TESTIDS.md (signin-role-*)
-      const radio = page.getByRole('radio', { name: new RegExp(role, 'i') });
+      const radio = page.getByTestId(`signin-role-${role}`);
       await radio.check();
       await expect(radio).toBeChecked();
     }

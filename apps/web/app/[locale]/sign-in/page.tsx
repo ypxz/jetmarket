@@ -86,6 +86,7 @@ export default function SignInPage() {
               type="radio"
               checked={role === "buyer"}
               onChange={() => setRole("buyer")}
+              data-testid="signin-role-buyer"
             />
             {t("buyer")}
           </label>
@@ -94,6 +95,7 @@ export default function SignInPage() {
               type="radio"
               checked={role === "operator"}
               onChange={() => setRole("operator")}
+              data-testid="signin-role-operator"
             />
             {t("operator")}
           </label>
