@@ -23,6 +23,14 @@ export default async function RfqInboxPage({
   const params = await searchParams;
   const t = await getTranslations("app.rfqs");
   const tc = await getTranslations("common");
+  // Field labels come from the vertical's rfqFields labelKeys — machinery
+  // buyers write deliveryPostcode/budgetEur, and raw keys in the inbox are
+  // illegible (QA-233). Unknown keys fall back to the raw key.
+  const vertical = verticalConfig();
+  const vt = await getTranslations(vertical.copy.namespace);
+  const fieldLabels = new Map(
+    vertical.rfqFields.map((f) => [f.key, vt(f.labelKey)] as const),
+  );
   const user = await currentUser();
   const repo = await getRepo();
   const operator = user ? await repo.getOperatorByUserId(user.id) : undefined;
@@ -60,7 +68,6 @@ export default async function RfqInboxPage({
   }
   // Buyer contact fields stay masked pre-deal — the marketplace intro is
   // the fee (QA-152). The buyer's email reaches the winner via email only.
-  const vertical = verticalConfig();
   // Free-plan fan-out delay (QA-225): delayed matches are invisible until
   // due — surface the count so the delay becomes an upsell, not silence.
   const [pendingRfqs, rfqDelayHours] =
@@ -127,7 +134,7 @@ export default async function RfqInboxPage({
                 <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
                   {Object.entries(r.fields).map(([k, v]) => (
                     <div key={k} className="flex gap-2">
-                      <dt className="text-muted">{k}:</dt>
+                      <dt className="text-muted">{fieldLabels.get(k) ?? k}:</dt>
                       <dd>{String(v)}</dd>
                     </div>
                   ))}
