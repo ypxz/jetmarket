@@ -387,3 +387,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 288 | ~17:16 | QA-301 | magic-link response dropped resolvedRole echo — unauthenticated ADMIN_EMAILS enumeration oracle closed |
 | 289 | ~17:23 | QA-302 | operator dashboard/inbox + admin counts + plan caps scope by vertical; countOperatorListings/listListingCountsByOperator gained vertical param; full test:all green |
 | 290 | ~17:25 | QA-303 | AGENTS.md pins the shared-DB isolation convention (scope reads, 404 before CAS, NULL-job semantics, quote/deal join rule) |
+| 291 | ~17:27 | QA-304 | pruneJobs + requeueStaleJobs gained vertical scope — a deploy's worker no longer erases/churns foreign-vertical job rows on a shared DB |
