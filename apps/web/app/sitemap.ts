@@ -12,11 +12,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPaths = ["", "tos", "privacy", "imprint"];
   // Live listings are the indexable long tail — cap so a huge inventory
   // can't grow the sitemap unboundedly (search engines cap at 50k/50MB).
-  const listings = await (await getRepo()).listListings({
+  const repo = await getRepo();
+  const listings = await repo.listListings({
     vertical: verticalSlug(),
     status: "active",
     limit: 1000,
   });
+  // Operator profiles are indexable trust surfaces — one per operator that
+  // has at least one active listing (capped alongside the listings cap).
+  const operatorIds = [...new Set(listings.map((l) => l.operatorId))];
   return [
     ...staticPaths.map((p) => ({
       url: `${base}/${p}`,
@@ -29,6 +33,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...listings.map((l) => ({
       url: `${base}/listing/${l.id}`,
       lastModified: l.createdAt,
+    })),
+    ...operatorIds.map((id) => ({
+      url: `${base}/operators/${id}`,
+      lastModified: now,
     })),
   ];
 }

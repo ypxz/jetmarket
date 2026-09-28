@@ -140,7 +140,17 @@ export default async function ListingPage({
           </CardHeader>
           <CardBody>
             <Stack gap="sm">
-              <p className="font-medium">{operator?.name}</p>
+              {operator ? (
+                <Link
+                  href={`/operators/${listing.operatorId}`}
+                  className="font-medium hover:underline"
+                  data-testid="listing-operator-link"
+                >
+                  {operator.name}
+                </Link>
+              ) : (
+                <p className="font-medium">{t("operator")}</p>
+              )}
               <p className="text-sm text-muted">
                 {t("basedAt", { airport: operator?.baseAirport ?? "—" })} ·{" "}
                 {operator?.fleetSummary}

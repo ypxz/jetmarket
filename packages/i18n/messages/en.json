@@ -774,5 +774,12 @@
       "viewJobs": "Job queue →"
     },
     "viewJobs": "Job queue →"
+  },
+  "operator": {
+    "basedAt": "Based at {airport}",
+    "listingsTitle": "Active listings ({count})",
+    "emptyTitle": "No active listings",
+    "emptyBody": "This operator has no active listings right now.",
+    "metaDescription": "{name} — {count} active listings on {siteName}. Browse the fleet and request a quote."
   }
 }
