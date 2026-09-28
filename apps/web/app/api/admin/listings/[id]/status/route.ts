@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
 import { notifyListingModerated } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 const ModerateListing = z.object({
   // Down-moderation only — activation stays operator-owned (plan cap applies).
@@ -26,7 +27,9 @@ export async function POST(
   const { id } = await params;
   const repo = await getRepo();
   const listing = await repo.getListing(id);
-  if (!listing) return err("not found", 404);
+  // Per-vertical admin boundary (QA-296): same shared-DB rule as RFQs.
+  if (!listing || listing.vertical !== verticalSlug())
+    return err("not found", 404);
   await repo.updateListingStatus(id, data!.status);
   // Owner gets a moderation email — a listing silently vanishing from
   // search was the QA-247 gap. Fire-and-forget; never fails the request.

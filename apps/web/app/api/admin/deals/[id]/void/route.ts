@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
 import { notifyDealInvoiceVoided } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 // Admin voids a success-fee invoice (dispute/refund — keeps the row, kills the bill).
 export async function POST(
@@ -18,6 +19,11 @@ export async function POST(
   const repo = await getRepo();
   const deal = await repo.getDeal(id);
   if (!deal) return err("deal not found", 404);
+  // Per-vertical boundary via quote → rfq (QA-296).
+  const quote = await repo.getQuote(deal.quoteId);
+  const rfq = quote ? await repo.getRfq(quote.rfqId) : undefined;
+  if (rfq && rfq.vertical !== verticalSlug())
+    return err("deal not found", 404);
   // CAS: never void an invoice that raced to paid in between (QA-145).
   if (
     !(await repo.setDealInvoice(id, "void", undefined, [

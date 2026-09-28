@@ -3,6 +3,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 const ModerateRfq = z.object({
   // Spam is the only moderation action — the honeypot pretends success but
@@ -30,7 +31,9 @@ export async function POST(
   const { id } = await params;
   const repo = await getRepo();
   const rfq = await repo.getRfq(id);
-  if (!rfq) return err("not found", 404);
+  // Per-vertical admin boundary (QA-296): a shared DB hosts every vertical's
+  // rows — this deploy's admin must not moderate another vertical's RFQs.
+  if (!rfq || rfq.vertical !== verticalSlug()) return err("not found", 404);
   const flipped = await repo.setRfqStatus(id, "spam", [
     "open",
     "matched",

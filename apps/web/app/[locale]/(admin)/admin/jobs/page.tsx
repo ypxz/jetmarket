@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { jobStateVariant } from "@/lib/state-variant";
+import { verticalSlug } from "@/lib/vertical";
 import { RetryJobButton } from "./retry-button";
 
 export default async function AdminJobsPage() {
@@ -13,7 +14,7 @@ export default async function AdminJobsPage() {
   if (!user || user.role !== "admin") redirect("/sign-in");
 
   const repo = await getRepo();
-  const jobs = await repo.listJobs({ limit: 100 });
+  const jobs = await repo.listJobs({ limit: 100, vertical: verticalSlug() });
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">

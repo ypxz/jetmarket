@@ -540,13 +540,15 @@ class MemoryRepo implements Repo {
 
   async listJobs(_filter?: {
     status?: "pending" | "running" | "done" | "failed";
+    vertical?: string;
     limit?: number;
   }) {
     void _filter;
     return [] as JobInfo[];
   }
-  async retryJob(id: string) {
+  async retryJob(id: string, _vertical?: string) {
     void id;
+    void _vertical;
     return false;
   }
 

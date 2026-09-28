@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import {
   fromMinorUnits,
@@ -910,14 +910,22 @@ export class DrizzleRepo implements Repo {
 
   async listJobs(filter?: {
     status?: JobInfo["status"];
+    vertical?: string;
     limit?: number;
   }): Promise<JobInfo[]> {
+    const conds = [];
+    if (filter?.status) conds.push(eq(jobs.status, filter.status));
+    if (filter?.vertical)
+      // NULL jobs are unscoped/legacy — visible to every deploy.
+      conds.push(
+        or(eq(jobs.vertical, filter.vertical), isNull(jobs.vertical)),
+      );
     let q = this.db
       .select()
       .from(jobs)
+      .where(conds.length ? and(...conds) : undefined)
       .orderBy(desc(jobs.updatedAt))
       .$dynamic();
-    if (filter?.status) q = q.where(eq(jobs.status, filter.status));
     q = q.limit(Math.min(filter?.limit ?? 50, 200));
     return (await q).map((r) => ({
       id: r.id,
@@ -930,7 +938,7 @@ export class DrizzleRepo implements Repo {
       updatedAt: r.updatedAt.toISOString(),
     }));
   }
-  async retryJob(id: string): Promise<boolean> {
+  async retryJob(id: string, vertical?: string): Promise<boolean> {
     if (!isUuid(id)) return false;
     const rows = await this.db
       .update(jobs)
@@ -941,7 +949,15 @@ export class DrizzleRepo implements Repo {
         lastError: null,
         updatedAt: new Date(),
       })
-      .where(and(eq(jobs.id, id), eq(jobs.status, "failed")))
+      .where(
+        and(
+          eq(jobs.id, id),
+          eq(jobs.status, "failed"),
+          ...(vertical
+            ? [or(eq(jobs.vertical, vertical), isNull(jobs.vertical))!]
+            : []),
+        ),
+      )
       .returning({ id: jobs.id });
     return rows.length > 0;
   }

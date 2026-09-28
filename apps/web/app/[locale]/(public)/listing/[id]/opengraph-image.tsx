@@ -3,6 +3,7 @@ import { site } from "@jetmarket/config";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { isExpiredListing } from "@/lib/search";
+import { verticalSlug } from "@/lib/vertical";
 
 export const alt = `${site.name} listing`;
 export const size = { width: 1200, height: 630 };
@@ -19,9 +20,15 @@ export default async function OgImage({
   const repo = await getRepo();
   const raw = await repo.getListing(id);
   // Same public-visibility rule as the page — an expired leg's OG card would
-  // otherwise leak the title on a URL that 404s (QA-220).
+  // otherwise leak the title on a URL that 404s (QA-220); a foreign-vertical
+  // listing's card would leak it on a shared DB too (QA-296).
   const listing =
-    raw && raw.status === "active" && !isExpiredListing(raw) ? raw : null;
+    raw &&
+    raw.vertical === verticalSlug() &&
+    raw.status === "active" &&
+    !isExpiredListing(raw)
+      ? raw
+      : null;
   const title = listing?.title ?? site.name;
   const price = listing ? formatMoney(listing.price, listing.currency) : "";
   const kind = listing?.type.replace(/_/g, " ") ?? "";

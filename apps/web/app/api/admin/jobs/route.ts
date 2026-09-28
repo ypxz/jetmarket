@@ -2,6 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 const Status = z.enum(["pending", "running", "done", "failed"]);
 
@@ -19,6 +20,8 @@ export async function GET(req: Request) {
   const repo = await getRepo();
   const jobs = await repo.listJobs({
     ...(status?.success ? { status: status.data } : {}),
+    // Shared-DB queues are per-vertical; NULL jobs stay visible (QA-296).
+    vertical: verticalSlug(),
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : 50,
   });
   return ok(jobs);

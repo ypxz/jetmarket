@@ -355,11 +355,14 @@ export interface Repo {
    *  fan-out inline — it has no queue, so these are always empty/no-ops. */
   listJobs(filter?: {
     status?: JobInfo["status"];
+    /** Owning vertical — shared-DB queues are per-deploy (QA-296). */
+    vertical?: string;
     limit?: number;
   }): Promise<JobInfo[]>;
   /** CAS a failed job back to pending (attempts/lastError reset); false unless
-   *  the job exists and is currently failed. */
-  retryJob(id: string): Promise<boolean>;
+   *  the job exists and is currently failed. `vertical` additionally refuses
+   *  jobs owned by another vertical (QA-296). */
+  retryJob(id: string, vertical?: string): Promise<boolean>;
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
   getDeal(id: string): Promise<Deal | undefined>;

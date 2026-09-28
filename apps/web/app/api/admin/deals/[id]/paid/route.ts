@@ -4,6 +4,7 @@ import { logInfo, logWarn } from "@/lib/log";
 import { site } from "@jetmarket/config";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 // Admin marks a success-fee invoice paid (mock ledger settlement).
 export async function POST(
@@ -19,6 +20,12 @@ export async function POST(
   const repo = await getRepo();
   const deal = await repo.getDeal(id);
   if (!deal) return err("deal not found", 404);
+  // Per-vertical boundary — a shared DB hosts every vertical's deals;
+  // resolve the deal's vertical through quote → rfq (QA-296).
+  const quote = await repo.getQuote(deal.quoteId);
+  const rfq = quote ? await repo.getRfq(quote.rfqId) : undefined;
+  if (rfq && rfq.vertical !== verticalSlug())
+    return err("deal not found", 404);
   // CAS: a concurrent void must not be overwritten back to paid (QA-145).
   if (!(await repo.setDealInvoice(id, "paid", undefined, ["invoiced"]))) {
     const cur = (await repo.getDeal(id))?.invoiceStatus ?? "gone";
