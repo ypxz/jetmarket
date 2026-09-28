@@ -373,3 +373,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 274 | ~17:10 | QA-287 | seo-pages.ui.spec: landing page render + JSON-LD escaping + bogus-slug 404 |
 | 275 | ~17:15 | QA-288 | static-pages.ui.spec: legal entity-substitution, rfq/thanks card, /design noindex |
 | 276 | ~17:35 | QA-289 | e2e harness hardening: health backend probe + reuse guard, workers:1 pinned, per-file rate-limit IP buckets — kills a whole class of false failures |
+| 277 | ~18:20 | QA-290 | docker build verify at HEAD (web+worker images clean, container boots, health reports backend) |
