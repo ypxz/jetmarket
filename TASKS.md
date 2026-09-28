@@ -355,3 +355,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 256 | ~20:30 | QA-270 | /app/listings/new profile gate (same class as QA-269): fill-form→401 dead end → needProfile state + onboarding link; publish disabled until profile resolves |
 | 257 | ~20:40 | QA-271 | Operator nav link rendered only for operator/admin — buyers had no nav path to onboarding; now shown to any signed-in user (lands on becomeOperator CTA); e2e drives nav→/app→onboarding |
 | 258 | ~20:45 | QA-272 | GO_LIVE.md `docker build -f Dockerfile.web` pointed at a nonexistent file — the web image is repo-root `Dockerfile` (docs/deploy.md was already right) |
+| 259 | ~20:50 | QA-273 | seed/migrate CLIs hung forever if the seed threw mid-run (pool never ended) — try/finally around sql.end(); ported from the template fix |
