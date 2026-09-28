@@ -4,7 +4,7 @@ import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { verticalSlug } from "@/lib/vertical";
 
-export const alt = "JetMarket operator";
+export const alt = `${site.name} operator`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

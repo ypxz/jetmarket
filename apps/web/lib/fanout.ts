@@ -1,4 +1,5 @@
 import { defaultPlans, deliverAt, matchOperators } from "@jetmarket/domain";
+import { site } from "@jetmarket/config";
 import type { OperatorCandidate } from "@jetmarket/domain";
 import { emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
@@ -73,7 +74,7 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
         to: user.email,
         subject: `New RFQ ${route}${pax}`.trim(),
         text:
-          `You have a new request for quotation on JetMarket.\n\n` +
+          `You have a new request for quotation on ${site.name}.\n\n` +
           `Route: ${route || "n/a"}${pax}\n` +
           `Buyer: ${rfq.buyerEmail}\n\n` +
           `Open your operator inbox to send a quote.`,

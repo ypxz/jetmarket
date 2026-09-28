@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { siteUrl } from "@/lib/seo";
+import { verticalConfig } from "@/lib/vertical";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl()),
-  title: "JetMarket — charter, empty legs & aircraft for sale",
-  description:
-    "Request once, get quotes from vetted operators. JetMarket is a marketplace, not a broker.",
-};
+// Title/description come from the active vertical's seo namespace so each
+// deployment brands itself.
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations(`${verticalConfig().copy.namespace}.seo`);
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: t("siteTitle"),
+    description: t("siteDescription"),
+  };
+}
 
 export default async function LocaleLayout({
   children,

@@ -18,6 +18,7 @@ const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected ISO date");
 export const jetsVertical: VerticalConfig = {
   slug: "jets",
   name: "JetMarket",
+  tagline: "Charter, empty legs and aircraft for sale from vetted operators",
   currency: "USD",
 
   listingTypes: [

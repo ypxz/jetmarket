@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { site } from "@jetmarket/config";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { emailProvider } from "@jetmarket/providers";
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}`;
   await emailProvider().send({
     to: email,
-    subject: "Your JetMarket sign-in link",
+    subject: `Your ${site.name} sign-in link`,
     text: `Sign in: ${link}`,
   });
 

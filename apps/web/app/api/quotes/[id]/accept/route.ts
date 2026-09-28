@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { site } from "@jetmarket/config";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
@@ -108,7 +109,7 @@ export async function POST(
       customerId: quote.operatorId,
       amountMinor: Math.round(deal.feeAmount * 100),
       currency: quote.currency,
-      description: `JetMarket success fee — deal ${deal.id}`,
+      description: `${site.name} success fee — deal ${deal.id}`,
       idempotencyKey: deal.id,
       metadata: { dealId: deal.id, quoteId: quote.id },
     });

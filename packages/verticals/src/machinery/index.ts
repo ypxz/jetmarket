@@ -11,6 +11,7 @@ const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected ISO date");
 export const machineryVertical: VerticalConfig = {
   slug: "machinery",
   name: "MachineryMarket",
+  tagline: "Industrial equipment from verified dealers — one RFQ to every seller",
   currency: "EUR",
 
   listingTypes: [

@@ -109,6 +109,8 @@ export interface ComponentOverrides {
 export interface VerticalConfig {
   slug: VerticalSlug;
   name: string;
+  /** Public-facing tagline; defaults to a generic marketplace line. */
+  tagline?: string;
   currency: Currency;
   listingTypes: ListingType[];
   /** Zod-validated attribute schemas per listing type -> listings.attributes jsonb. */

@@ -323,7 +323,9 @@
             "title": "Empty legs Zurich → Ibiza",
             "intro": "Seasonal repositioning from Zurich to Ibiza."
           }
-        }
+        },
+        "siteTitle": "JetMarket — charter, empty legs & aircraft for sale",
+        "siteDescription": "Request once, get quotes from vetted operators. JetMarket is a marketplace, not a broker."
       },
       "home": {
         "eyebrow": "JetMarket",
@@ -492,7 +494,9 @@
             "title": "Industrial machinery auctions",
             "intro": "Timed auctions on used plant equipment — registered bidders only, inspection notes on every lot."
           }
-        }
+        },
+        "siteTitle": "MachineryMarket — industrial equipment marketplace",
+        "siteDescription": "Used machinery from verified dealers. One RFQ reaches every seller; pay a fee only when the deal closes."
       },
       "home": {
         "eyebrow": "MachineryMarket",
@@ -550,10 +554,6 @@
         "fleetLabel": "Inventory summary (makes, models)"
       }
     }
-  },
-  "meta": {
-    "title": "JetMarket — private aviation marketplace",
-    "description": "Charter, empty legs and aircraft for sale from vetted operators. Request once, get quotes, pay a fee only when it closes."
   },
   "landing": {
     "hero": {
