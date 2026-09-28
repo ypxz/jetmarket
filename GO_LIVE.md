@@ -33,6 +33,13 @@
 5. Non-Docker hosts (bare VM, PaaS without the Dockerfile): `pnpm build`
    then `PORT=<assigned> pnpm start` — the start script honors `$PORT`
    (default 3000); the platform injects it (QA-309).
+6. Rate limiting keys off `clientIp`, which trusts `fly-client-ip` →
+   `x-real-ip` → last `x-forwarded-for`. Fly.io overwrites `fly-client-ip`
+   at the edge so no config is needed there; behind nginx/Caddy/Vercel set
+   `x-real-ip` and **strip client-sent `fly-client-ip`** (e.g.
+   `proxy_set_header Fly-Client-Ip "";`), and behind any other proxy do the
+   same for the headers it doesn't overwrite — otherwise clients rotate a
+   spoofed header to mint unlimited rate-limit buckets (QA-140).
 
 ## Accounts to create (human-only — phone/card/identity required)
 
