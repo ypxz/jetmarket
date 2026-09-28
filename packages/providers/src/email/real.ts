@@ -13,12 +13,36 @@ import {
  * SMTP email via nodemailer — works against the compose Mailpit
  * (SMTP_URL=smtp://localhost:1025) or any real relay.
  */
+// nodemailer's URL shorthand can't carry connection options — translate it so
+// a hung relay fails fast instead of stalling the awaiting route/worker on
+// the multi-minute socket defaults (Resend's fetch already bounds at 15s).
+function smtpUrlToOptions(url: string) {
+  const u = new URL(url);
+  const secure = u.protocol === "smtps:";
+  return {
+    host: u.hostname,
+    port: u.port ? Number(u.port) : secure ? 465 : 587,
+    secure,
+    ...(u.username
+      ? {
+          auth: {
+            user: decodeURIComponent(u.username),
+            pass: decodeURIComponent(u.password),
+          },
+        }
+      : {}),
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 30_000,
+  };
+}
+
 export class SmtpEmailProvider implements EmailProvider {
   private readonly transport: Transporter;
   private readonly from: string;
 
   constructor(opts: { smtpUrl: string; from?: string }) {
-    this.transport = nodemailer.createTransport(opts.smtpUrl);
+    this.transport = nodemailer.createTransport(smtpUrlToOptions(opts.smtpUrl));
     // Default sender — Mailpit tolerates a missing From but real relays
     // reject it; EMAIL_FROM overrides, per-message `from` wins over both.
     this.from = opts.from ?? DEFAULT_FROM;
