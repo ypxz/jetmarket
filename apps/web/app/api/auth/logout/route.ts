@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/api";
 import { sessionCookie, verifySession } from "@/lib/auth";
+import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
 
 export async function POST(req: Request) {
@@ -14,7 +15,9 @@ export async function POST(req: Request) {
     const repo = await getRepo();
     await repo.bumpSessionVersion(sess.userId);
   }
-  const res = NextResponse.redirect(new URL("/", req.url));
+  // req.url derives from Host — never redirect to it. APP_URL is the only
+  // trusted origin in production (QA-292); dev keeps the request origin.
+  const res = NextResponse.redirect(new URL("/", appOrigin(req)));
   res.cookies.set(sessionCookie, "", { httpOnly: true, path: "/", maxAge: 0 });
   return res;
 }

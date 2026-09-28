@@ -6,6 +6,7 @@ import {
   signSession,
   verifyMagicLink,
 } from "@/lib/auth";
+import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
 import { site } from "@jetmarket/config";
 
@@ -48,9 +49,12 @@ function confirmPage(token: string, next: string): NextResponse {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  // Redirect targets use the canonical origin — req.url derives from Host
+  // (QA-292); dev falls back to the request origin for local flows.
+  const canonical = appOrigin(req);
   if (!rateLimit(`auth-callback:${clientIp(req)}`, 120, 60 * 60 * 1000)) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=rate-limited", url.origin),
+      new URL("/sign-in?error=rate-limited", canonical),
     );
   }
   const token = url.searchParams.get("token") ?? undefined;
@@ -61,7 +65,7 @@ export async function GET(req: Request) {
   const userId = verifyMagicLink(token);
   if (!userId || !token) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=invalid-token", url.origin),
+      new URL("/sign-in?error=invalid-token", canonical),
     );
   }
   const next = safeNext(url.searchParams.get("next"));
@@ -69,20 +73,22 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const url = new URL(req.url);
+  const canonical = appOrigin(req);
   // Login-CSRF guard: a cross-site form POST would sign the victim in as the
   // attacker (they'd consume the attacker's token and ride the attacker's
   // session). Browsers always send Origin on POST form submits; only a
   // matching Origin is accepted (absent = non-browser client, allowed).
+  // Compared against the canonical origin, not req.url — Host is
+  // attacker-controlled (QA-292).
   const origin = req.headers.get("origin");
-  if (origin && origin !== url.origin) {
+  if (origin && origin !== canonical) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=invalid-token", url.origin),
+      new URL("/sign-in?error=invalid-token", canonical),
     );
   }
   if (!rateLimit(`auth-callback:${clientIp(req)}`, 120, 60 * 60 * 1000)) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=rate-limited", url.origin),
+      new URL("/sign-in?error=rate-limited", canonical),
     );
   }
   let token: string | undefined;
@@ -103,20 +109,20 @@ export async function POST(req: Request) {
   const userId = await consumeMagicLink(token);
   if (!userId || !token) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=invalid-token", url.origin),
+      new URL("/sign-in?error=invalid-token", canonical),
     );
   }
   const user = await (await getRepo()).getUser(userId);
   if (!user) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=invalid-token", url.origin),
+      new URL("/sign-in?error=invalid-token", canonical),
     );
   }
-  const res = NextResponse.redirect(new URL(next, url.origin));
+  const res = NextResponse.redirect(new URL(next, canonical));
   res.cookies.set(sessionCookie, signSession(user.id, user.sessionVersion), {
     httpOnly: true,
     sameSite: "lax",
-    secure: url.protocol === "https:",
+    secure: canonical.startsWith("https:"),
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
