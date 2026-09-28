@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     token = form?.get("token")?.toString();
     next = safeNext(form?.get("next")?.toString() ?? null);
   }
-  const userId = consumeMagicLink(token);
+  const userId = await consumeMagicLink(token);
   if (!userId || !token) {
     return NextResponse.redirect(
       new URL("/sign-in?error=invalid-token", url.origin),

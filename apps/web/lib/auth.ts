@@ -97,32 +97,22 @@ export function verifyMagicLink(value: string | undefined): string | null {
   return userId!;
 }
 
-// One-shot enforcement: a magic link's signature is recorded on first
-// successful consume; replaying it (e.g. a link a bot/email scanner followed
-// or a leaked log) yields null. In-memory like rateLimit — correct for the
-// single web process this deploys as; a multi-instance fleet needs this in
-// the repo instead.
-const usedMagicLinks: Map<string, number> =
-  ((globalThis as { __jmUsedLinks?: Map<string, number> }).__jmUsedLinks ??=
-    new Map());
-const MAX_USED_LINKS = 10_000;
-
-/** Verify AND consume — returns the userId only for a fresh, valid link. */
-export function consumeMagicLink(value: string | undefined): string | null {
+/**
+ * Verify AND consume — returns the userId only for a fresh, valid link.
+ * One-shot enforcement lives in the repo (QA-250): the consumed signature is
+ * recorded atomically, so a restart can't re-arm a link a scanner followed
+ * and a multi-instance deploy keeps single-use semantics. The ledger row
+ * self-expires with the link's own TTL (pruned on write).
+ */
+export async function consumeMagicLink(
+  value: string | undefined,
+): Promise<string | null> {
   const userId = verifyMagicLink(value);
   if (!userId || !value) return null;
   const sig = value.split(".")[2]!;
-  if (usedMagicLinks.has(sig)) return null;
-  if (usedMagicLinks.size >= MAX_USED_LINKS) {
-    const now = Date.now();
-    for (const [k, exp] of usedMagicLinks) {
-      if (exp < now) usedMagicLinks.delete(k);
-    }
-    // Fail closed if still full — flood can't bypass single-use.
-    if (usedMagicLinks.size >= MAX_USED_LINKS) return null;
-  }
-  usedMagicLinks.set(sig, Date.now() + MAGIC_LINK_TTL_MS);
-  return userId;
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_TTL_MS).toISOString();
+  const fresh = await (await getRepo()).consumeMagicLinkSig(sig, expiresAt);
+  return fresh ? userId : null;
 }
 
 export async function currentUser(): Promise<User | null> {

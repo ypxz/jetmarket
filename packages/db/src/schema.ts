@@ -261,6 +261,11 @@ export const jobs = pgTable(
   (t) => [index("jobs_claim_idx").on(t.status, t.runAt)],
 );
 
+export const magicLinksUsed = pgTable("magic_links_used", {
+  sig: text("sig").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 export type UserRow = typeof users.$inferSelect;
 export type OperatorRow = typeof operators.$inferSelect;
 export type ListingRow = typeof listings.$inferSelect;
@@ -280,3 +285,4 @@ export type NewQuote = typeof quotes.$inferInsert;
 export type NewDeal = typeof deals.$inferInsert;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 export type NewJob = typeof jobs.$inferInsert;
+export type NewMagicLinkUsed = typeof magicLinksUsed.$inferInsert;

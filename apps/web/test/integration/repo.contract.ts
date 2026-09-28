@@ -507,6 +507,17 @@ export function repoContract(
       expect((await repo.getUser(user.id))?.role).toBe("operator");
     });
 
+    it("magic-link signatures are single-use, persisted in the repo (QA-250)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const exp = new Date(Date.now() + 60_000).toISOString();
+      expect(await repo.consumeMagicLinkSig(`sig-${tag}-a`, exp)).toBe(true);
+      // Replay loses — under postgres the ledger is a table, so a restart or
+      // a second instance can't re-arm a consumed link (QA-250).
+      expect(await repo.consumeMagicLinkSig(`sig-${tag}-a`, exp)).toBe(false);
+      expect(await repo.consumeMagicLinkSig(`sig-${tag}-b`, exp)).toBe(true);
+    });
+
     it("filters listings by status/vertical/type/facets/query", async () => {
       const repo = await factory();
       const tag = `flt${Date.now().toString(36)}`;

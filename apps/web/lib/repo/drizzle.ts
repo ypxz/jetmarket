@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import {
   fromMinorUnits,
@@ -43,6 +43,7 @@ const {
   deals,
   subscriptions,
   jobs,
+  magicLinksUsed,
 } = schema;
 
 const iso = (d: Date | null | undefined): string =>
@@ -284,6 +285,19 @@ export class DrizzleRepo implements Repo {
       .update(users)
       .set({ role })
       .where(eq(users.id, userId));
+  }
+  async consumeMagicLinkSig(sig: string, expiresAt: string): Promise<boolean> {
+    // Prune expired rows on write so the ledger stays bounded without a job.
+    await this.db
+      .delete(magicLinksUsed)
+      .where(lt(magicLinksUsed.expiresAt, new Date()));
+    // PK conflict = replay; ON CONFLICT DO NOTHING returns no row for it.
+    const rows = await this.db
+      .insert(magicLinksUsed)
+      .values({ sig, expiresAt: new Date(expiresAt) })
+      .onConflictDoNothing({ target: magicLinksUsed.sig })
+      .returning({ sig: magicLinksUsed.sig });
+    return rows.length === 1;
   }
   async getUser(id: string): Promise<User | undefined> {
     if (!isUuid(id)) return undefined;

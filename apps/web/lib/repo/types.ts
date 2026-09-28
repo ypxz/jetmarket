@@ -151,6 +151,13 @@ export interface Repo {
   bumpSessionVersion(userId: string): Promise<void>;
   /** ADMIN_EMAILS sync on login — promote listed users, revoke removed ones. */
   setUserRole(userId: string, role: UserRole): Promise<void>;
+  /**
+   * Magic-link single-use ledger (QA-250): atomically records a consumed
+   * signature, returning false when it was already used. Repo-backed (not
+   * process memory) so a restart can't re-arm a link and a multi-instance
+   * deploy keeps one-shot semantics.
+   */
+  consumeMagicLinkSig(sig: string, expiresAt: string): Promise<boolean>;
 
   upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },

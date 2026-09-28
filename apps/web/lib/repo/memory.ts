@@ -72,6 +72,22 @@ class MemoryRepo implements Repo {
     if (u) u.role = role;
   }
 
+  /** sig -> expiry ms; same bound + fail-closed as the old in-proc map. */
+  private usedMagicSigs = new Map<string, number>();
+
+  async consumeMagicLinkSig(sig: string, expiresAt: string) {
+    if (this.usedMagicSigs.has(sig)) return false;
+    if (this.usedMagicSigs.size >= 10_000) {
+      const now = Date.now();
+      for (const [k, exp] of this.usedMagicSigs) {
+        if (exp < now) this.usedMagicSigs.delete(k);
+      }
+      if (this.usedMagicSigs.size >= 10_000) return false;
+    }
+    this.usedMagicSigs.set(sig, Date.parse(expiresAt));
+    return true;
+  }
+
   async upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },
   ): Promise<Operator> {
