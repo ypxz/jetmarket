@@ -18,6 +18,7 @@ const run = Date.now();
 const OPERATOR_EMAIL = `e2e-mach-ops-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-mach-buyer-${run}@jetmarket.local`;
 const LISTING_TITLE = `E2E Machine ${run}`;
+const OTHER_TITLE = `E2E Other Machine ${run}`;
 const EXPECTED_QUOTE = '12,000';
 
 test('machinery vertical: placeholder taxonomy boots and the core loop passes', async ({
@@ -45,6 +46,40 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
         locationCountry: 'DE',
       },
     });
+    // a second listing in a different category, so the facet filter below
+    // actually has something to exclude
+    await createListing(operator, {
+      type: 'for_rent',
+      title: OTHER_TITLE,
+      price: '9000',
+      fields: {
+        machineryCategory: 'press',
+        make: 'SCHULER',
+        yearOfManufacture: '2015',
+        locationCountry: 'AT',
+      },
+    });
+  });
+
+  await step('machinery facets filter the search results', async () => {
+    await buyer.goto('/search');
+    // config-declared enum facet renders a select with the category options
+    const cat = buyer.getByTestId('facet-machineryCategory');
+    await expect(cat).toBeVisible();
+    await cat.selectOption('lathe');
+    await buyer.getByTestId('facet-apply').click();
+    await expect(buyer.getByTestId('search-result').filter({ hasText: LISTING_TITLE })).toBeVisible();
+    await expect(buyer.getByTestId('search-result').filter({ hasText: OTHER_TITLE })).toHaveCount(0);
+
+    // attribute-driven text facet narrows further (locationCountry=DE keeps the
+    // lathe, drops the AT press — the press was already excluded, so re-filter
+    // without the category to prove the text facet binds)
+    await cat.selectOption('');
+    const loc = buyer.getByTestId('facet-locationCountry');
+    await loc.fill('DE');
+    await buyer.getByTestId('facet-apply').click();
+    await expect(buyer.getByTestId('search-result').filter({ hasText: LISTING_TITLE })).toBeVisible();
+    await expect(buyer.getByTestId('search-result').filter({ hasText: OTHER_TITLE })).toHaveCount(0);
   });
 
   await step('buyer finds it and sends an RFQ', async () => {
