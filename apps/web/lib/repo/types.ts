@@ -241,6 +241,9 @@ export interface Repo {
       /** sha256 natural key — collides only with a LIVE twin (open/matched/
        * quoted); inserting over a terminal RFQ mints a fresh row (QA-228). */
       dedupeKey?: string;
+      /** Override the random bearer token — seeds use a known token so the
+       * demo buyer-inbox link is stable (QA-237). */
+      accessToken?: string;
     },
   ): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;

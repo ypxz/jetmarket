@@ -41,7 +41,10 @@ describe("memory repo (seeded)", async () => {
       buyerEmail: "b@x.example",
       fields: { pax: 2 },
     });
-    expect(await repo.listRfqs({ operatorId: listing.operatorId })).toHaveLength(1);
+    // The seeded demo trail (QA-237) already holds RFQs for this operator —
+    // assert membership, not an absolute count.
+    const seen = await repo.listRfqs({ operatorId: listing.operatorId });
+    expect(seen.map((r) => r.id)).toContain(rfq.id);
     const q = await repo.createQuote({
       rfqId: rfq.id,
       operatorId: listing.operatorId,

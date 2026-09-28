@@ -304,6 +304,7 @@ class MemoryRepo implements Repo {
   async createRfq(
     r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
       dedupeKey?: string;
+      accessToken?: string;
     },
   ): Promise<Rfq> {
     if (r.dedupeKey) {
@@ -316,13 +317,13 @@ class MemoryRepo implements Repo {
         throw new Error("duplicate key value violates unique constraint");
       }
     }
-    const { dedupeKey, ...rest } = r;
+    const { dedupeKey, accessToken, ...rest } = r;
     void dedupeKey;
     const rfq: Rfq = {
       ...rest,
       id: uid("rfq"),
       status: "open",
-      accessToken: crypto.randomUUID(),
+      accessToken: accessToken ?? crypto.randomUUID(),
       createdAt: now(),
     };
     this.rfqs.set(rfq.id, rfq);
@@ -701,6 +702,54 @@ async function seedJets(repo: MemoryRepo) {
     aircraftCategory: "mid", model: "Praetor 600", year: 2022, seats: 8,
     rangeNm: 4018, baseAirport: "LTN",
   });
+
+  // Demo trail mirroring the pg seed (QA-237): an RFQ on alpine's ZRH→NCE
+  // leg — delivered to thames (pro) with a live quote, delayed for the two
+  // free ops — so mock-mode demos show the whole inbox loop, not empty
+  // inboxes. Buyer link: /quotes?email=charter@geneva-pe.example
+  // &t=demo-buyer-token (known token, dev-only data).
+  const demoListing = (await repo.listListings({ operatorId: opIds[0]! })).find(
+    (l) => l.attributes?.["from"] === "ZRH" && l.attributes?.["to"] === "NCE",
+  )!;
+  const rfq = await repo.createRfq({
+    vertical: "jets",
+    listingId: demoListing.id,
+    buyerEmail: "charter@geneva-pe.example",
+    fields: {
+      departure: "ZRH",
+      arrival: "NCE",
+      dateFrom: inDays(3),
+      dateTo: inDays(4),
+      passengers: 4,
+      name: "Demo Buyer",
+      email: "charter@geneva-pe.example",
+    },
+    dedupeKey: "seed-rfq-zrh-nce",
+    accessToken: "demo-buyer-token",
+  });
+  const in23h = new Date(Date.now() + 23 * 3_600_000);
+  await repo.createRfqMatches([
+    { rfqId: rfq.id, operatorId: opIds[3]!, listingId: demoListing.id },
+    {
+      rfqId: rfq.id,
+      operatorId: opIds[1]!,
+      listingId: demoListing.id,
+      deliverAt: in23h,
+    },
+    {
+      rfqId: rfq.id,
+      operatorId: opIds[2]!,
+      listingId: demoListing.id,
+      deliverAt: in23h,
+    },
+  ]);
+  await repo.createQuote({
+    rfqId: rfq.id,
+    operatorId: opIds[3]!,
+    amount: 14_500,
+    currency: "USD",
+    message: "Phenom 300, ZRH → NCE, all-in incl. handling and catering.",
+  });
 }
 
 // Placeholder machinery inventory — proves the same repo/flow works for the
@@ -761,7 +810,7 @@ async function seedMachinery(repo: MemoryRepo) {
     machineryCategory: "press", make: "Schuler", yearOfManufacture: 2008,
     hoursUsed: 31000, condition: "decommissioned",
   });
-  await mk(dealerIds[2]!, "for_sale", "Okuma LB3000 lathe (2018)", 72000, {
+  const okuma = await mk(dealerIds[2]!, "for_sale", "Okuma LB3000 lathe (2018)", 72000, {
     machineryCategory: "lathe", make: "Okuma", yearOfManufacture: 2018,
     hoursUsed: 6800, condition: "used",
   }, [await seedPhoto(`uploads/${dealerIds[2]}/seed-okuma.svg`, "Okuma LB3000", 30)]);
@@ -772,6 +821,47 @@ async function seedMachinery(repo: MemoryRepo) {
   await mk(dealerIds[4]!, "for_rent", "Linde E39 electric forklift · monthly", 950, {
     machineryCategory: "forklift", make: "Linde", yearOfManufacture: 2019,
     hoursUsed: 4200, condition: "used",
+  });
+
+  // Demo trail mirroring the pg seed (QA-237): an RFQ on ibérica's Okuma
+  // lathe — delivered to alpine (pro) with a live quote, delayed for nord +
+  // lowlands (free) — so mock-mode demos show the whole inbox loop. Buyer
+  // link: /quotes?email=procurement@bavaria-werk.example&t=demo-buyer-token.
+  const rfq = await repo.createRfq({
+    vertical: "machinery",
+    listingId: okuma.id,
+    buyerEmail: "procurement@bavaria-werk.example",
+    fields: {
+      deliveryPostcode: "80331",
+      budgetEur: 400_000,
+      name: "Demo Buyer",
+      email: "procurement@bavaria-werk.example",
+    },
+    dedupeKey: "seed-rfq-okuma-lathe",
+    accessToken: "demo-buyer-token",
+  });
+  const in23h = new Date(Date.now() + 23 * 3_600_000);
+  await repo.createRfqMatches([
+    { rfqId: rfq.id, operatorId: dealerIds[0]!, listingId: okuma.id },
+    {
+      rfqId: rfq.id,
+      operatorId: dealerIds[3]!,
+      listingId: okuma.id,
+      deliverAt: in23h,
+    },
+    {
+      rfqId: rfq.id,
+      operatorId: dealerIds[4]!,
+      listingId: okuma.id,
+      deliverAt: in23h,
+    },
+  ]);
+  await repo.createQuote({
+    rfqId: rfq.id,
+    operatorId: dealerIds[0]!,
+    amount: 385_000,
+    currency: "EUR",
+    message: "Okuma LB3000, incl. transport to 80331 and commissioning.",
   });
 }
 

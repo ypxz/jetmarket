@@ -564,6 +564,7 @@ export class DrizzleRepo implements Repo {
   async createRfq(
     r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
       dedupeKey?: string;
+      accessToken?: string;
     },
   ): Promise<Rfq> {
     const [row] = await this.db
@@ -575,6 +576,7 @@ export class DrizzleRepo implements Repo {
         fields: r.fields,
         status: "new",
         dedupeKey: r.dedupeKey ?? null,
+        ...(r.accessToken ? { accessToken: r.accessToken } : {}),
       })
       .returning();
     return toRfq(row!);
