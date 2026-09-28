@@ -15,6 +15,7 @@ import {
   quotes,
   users,
   operators,
+  listings,
 } from "@jetmarket/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -98,6 +99,47 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     const jobs = await sql<{ kind: string }[]>`
       select kind from jobs where kind = 'email.quote_notification'`;
     expect(jobs.length).toBe(pending.length);
+  });
+
+  it("excludes foreign-vertical dealers, keeps zero-listing brokers (QA-307)", async () => {
+    // Shared-DB fan-out: a dealer whose whole book is machinery must NOT be
+    // matched into a jets RFQ; an operator with no listings anywhere stays
+    // eligible (the empty-fleet broker wildcard).
+    const mkOp = async (emailAddr: string, name: string) => {
+      const [u] = await db
+        .insert(users)
+        .values({ email: emailAddr })
+        .returning({ id: users.id });
+      const [o] = await db
+        .insert(operators)
+        .values({ userId: u!.id, name })
+        .returning({ id: operators.id });
+      return o!.id;
+    };
+    const machDealer = await mkOp(`mach-${randomUUID()}@x.com`, "Mach Dealer");
+    await db.insert(listings).values({
+      operatorId: machDealer,
+      vertical: "machinery",
+      type: "for_sale",
+      title: "Lathe",
+    });
+    const broker = await mkOp(`brk-${randomUUID()}@x.com`, "Global Broker");
+
+    // Assert on the candidate seam directly — matchOperators' top-10 cut
+    // would drop the score-0 broker behind the seeded fleet operators.
+    const cands = await createWorkerRepo(db).loadOperatorCandidates(
+      "jets",
+      undefined,
+    );
+    const ids = cands.map((c) => c.id);
+    expect(ids).not.toContain(machDealer);
+    expect(ids).toContain(broker);
+    // Dealer visible to its own deploy's scan.
+    const machCands = await createWorkerRepo(db).loadOperatorCandidates(
+      "machinery",
+      undefined,
+    );
+    expect(machCands.map((c) => c.id)).toContain(machDealer);
   });
 
   it("delivers delayed matches on sweep and sends notifications end-to-end", async () => {

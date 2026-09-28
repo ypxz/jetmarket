@@ -21,8 +21,26 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
   const catAttr = matching?.categoryAttribute ?? "aircraftCategory";
   const seatAttr = matching ? matching.seatsAttribute : "seats";
   const ops = await repo.listOperators();
+  // Same shared-DB rule as the worker's loadOperatorCandidates (QA-307):
+  // an operator whose whole book is foreign-vertical is a dealer there,
+  // not a broker here — zero-listing operators keep the wildcard.
+  const inScope = new Set<string>();
+  for (const o of ops) {
+    const anyListing = await repo.listListings({
+      operatorId: o.id,
+      limit: 1,
+    });
+    const sameVertical = await repo.listListings({
+      operatorId: o.id,
+      vertical: vertical.slug,
+      limit: 1,
+    });
+    if (anyListing.length === 0 || sameVertical.length > 0) inScope.add(o.id);
+  }
   const candidates: OperatorCandidate[] = await Promise.all(
-    ops.map(async (o) => ({
+    ops
+      .filter((o) => inScope.has(o.id))
+      .map(async (o) => ({
       id: o.id,
       verified: o.verified,
       planId: o.plan,
@@ -32,6 +50,7 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
         await repo.listListings({
           operatorId: o.id,
           status: "active",
+          vertical: vertical.slug,
           ...(matching?.fleetListingType
             ? { type: matching.fleetListingType }
             : {}),

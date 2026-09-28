@@ -108,6 +108,10 @@ export function createWorkerRepo(db: Db): WorkerRepo {
       // machineryCategory, seat-agnostic.
       const catAttr = matching?.categoryAttribute ?? "aircraftCategory";
       const seatAttr = matching ? matching.seatsAttribute : "seats";
+      // Shared-DB (QA-307): an operator whose entire book sits in a foreign
+      // vertical is a dealer there, not a broker here — exclude them from
+      // this deploy's fan-out. Zero-listing operators stay in: the
+      // empty-fleet wildcard is for true brokers who source on demand.
       const ops = await db
         .select({
           id: operators.id,
@@ -115,7 +119,15 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           plan: operators.plan,
           baseAirport: operators.baseAirport,
         })
-        .from(operators);
+        .from(operators)
+        .where(
+          sql`not exists (select 1 from listings lf
+                where lf.operator_id = ${operators.id}
+                  and lf.vertical <> ${vertical})
+           or exists (select 1 from listings ls
+                where ls.operator_id = ${operators.id}
+                  and ls.vertical = ${vertical})`,
+        );
       const charter = await db
         .select({
           operatorId: listings.operatorId,
