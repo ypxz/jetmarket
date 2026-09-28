@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { storageProvider } from "@jetmarket/providers";
+import { verticalSlug } from "@/lib/vertical";
 import { EditListingForm } from "./edit-form";
 
 export default async function EditListingPage({
@@ -18,7 +19,18 @@ export default async function EditListingPage({
   const repo = await getRepo();
   const listing = await repo.getListing(id);
   const operator = await repo.getOperatorByUserId(user.id);
-  if (!listing || !operator || listing.operatorId !== operator.id) notFound();
+  // Same policy as PATCH /api/listings/[id] (verticalSlug check): on a shared
+  // DB a foreign-vertical listing must 404 here too — otherwise the form
+  // renders foreign attributes through this vertical's schema and the PATCH
+  // is the only thing that 404s, after a wasted edit.
+  if (
+    !listing ||
+    !operator ||
+    listing.operatorId !== operator.id ||
+    listing.vertical !== verticalSlug()
+  ) {
+    notFound();
+  }
   const t = await getTranslations("app.editListing");
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
