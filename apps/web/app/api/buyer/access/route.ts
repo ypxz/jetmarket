@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     (r) =>
       `- ${listings.get(r.listingId) ?? `Request ${r.id}`}: ${appUrl}/quotes?email=${encodeURIComponent(
         email,
-      )}&t=${encodeURIComponent(r.accessToken)}`,
+      )}#t=${encodeURIComponent(r.accessToken)}`,
   );
   try {
     const subject = `Your ${site.name} quote links`;

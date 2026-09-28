@@ -6,7 +6,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 
-const port = Number(process.env.E2E_PORT ?? 3000);
+// Dedicated port by default (3100): :3000 is the dev server's port, and
+// reuseExistingServer would otherwise latch onto a stale dev process and
+// silently test old code — real failure seen: a memory-mode server running
+// a pre-QA-225 module graph crashed /app/rfqs mid-suite while CI stayed
+// green. The npm scripts pin distinct ports per project (3100/3101/3102).
+const port = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${port}`;
 
 // Database used by the e2e web server. Isolated from the dev database so e2e

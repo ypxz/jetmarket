@@ -158,7 +158,7 @@ export async function POST(req: Request) {
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
   const inboxUrl = `${appUrl}/quotes?email=${encodeURIComponent(
     rfq.buyerEmail,
-  )}&t=${encodeURIComponent(rfq.accessToken)}`;
+  )}#t=${encodeURIComponent(rfq.accessToken)}`;
   try {
     const subject = `Your request for “${listing.title}” was sent`;
     await emailProvider().send({

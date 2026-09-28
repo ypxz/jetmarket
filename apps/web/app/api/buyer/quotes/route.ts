@@ -4,9 +4,11 @@ import { publicOperator } from "@/lib/repo/types";
 import { sweepStaleRfqs } from "@/lib/sweep";
 
 // Buyer-side view: quotes received for an RFQ. Gated by the per-RFQ bearer
-// token (`t`) issued in the post-submit redirect and the quote-notification
-// email — possession of the link is proof of inbox (QA-39). Bare email lookup
-// is deliberately not offered.
+// token issued in the post-submit redirect and the quote-notification email —
+// possession of the link is proof of inbox (QA-39). New links carry it in the
+// URL fragment (`#t=` — never server-logged, QA-240); the page forwards it as
+// the x-rfq-token header. `?t=` stays accepted for links already emailed.
+// Bare email lookup is deliberately not offered.
 export async function GET(req: Request) {
   if (!rateLimit(`buyer-quotes:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
     return err("rate limit exceeded — try again later", 429);

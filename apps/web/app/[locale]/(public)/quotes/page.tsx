@@ -29,13 +29,21 @@ function QuotesInner() {
   const tc = useTranslations("common");
   const params = useSearchParams();
   const [email, setEmail] = useState(params.get("email") ?? "");
-  const [token] = useState(params.get("t") ?? "");
+  // Bearer token: URL fragment first (`#t=` never reaches server logs or
+  // Referer), legacy `?t=` fallback for links emailed before the fragment
+  // form shipped (QA-240).
+  const [token, setToken] = useState(params.get("t") ?? "");
   const [rfqs, setRfqs] = useState<Rfq[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // A pre-hydration submit posts the uncontrolled form natively (GET /quotes?
+  // — email and the fragment token both lost). Gate the submit control until
+  // effects have run so fast clicks can't outrun hydration (QA-240).
+  const [ready, setReady] = useState(false);
 
-  async function load(e?: React.FormEvent) {
+  async function load(e?: React.FormEvent, tok?: string) {
     e?.preventDefault();
-    if (!token) {
+    const tk = tok ?? token;
+    if (!tk) {
       setMsg(t("needLink"));
       return;
     }
@@ -45,7 +53,7 @@ function QuotesInner() {
     try {
       res = await fetch(
         `/api/buyer/quotes?email=${encodeURIComponent(email)}`,
-        { headers: { "x-rfq-token": token } },
+        { headers: { "x-rfq-token": tk } },
       );
     } catch {
       setMsg(tc("error"));
@@ -82,14 +90,22 @@ function QuotesInner() {
   }
 
   // Auto-load when arriving with ?email= (magic-link/thank-you redirect),
-  // then drop `t` from the address bar so the token doesn't sit in history.
+  // then drop any bearer token (query `t` or `#t=` fragment) from the
+  // address bar so it doesn't sit in history.
   useEffect(() => {
-    if (params.get("t")) {
+    const hashToken = new URLSearchParams(window.location.hash.slice(1)).get(
+      "t",
+    );
+    const effective = token || hashToken || "";
+    if (hashToken && !token) setToken(hashToken);
+    if (params.get("t") || hashToken) {
       const url = new URL(window.location.href);
       url.searchParams.delete("t");
+      url.hash = "";
       window.history.replaceState(null, "", url.toString());
     }
-    if (email) void load();
+    setReady(true);
+    if (email) void load(undefined, effective);
   }, []); // mount-only: refresh via the search form
 
   async function accept(quoteId: string) {
@@ -168,7 +184,11 @@ function QuotesInner() {
           data-testid="buyer-email"
           className="w-72 rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" data-testid="buyer-load">
+        <button
+          disabled={!ready}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          data-testid="buyer-load"
+        >
           {t("load")}
         </button>
         <button

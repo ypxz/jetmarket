@@ -1,6 +1,6 @@
-import { Card, CardBody, buttonVariants } from "@jetmarket/ui";
+import { Card, CardBody } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
+import { ThanksQuotesLink } from "./quotes-link";
 
 export default async function RfqThanksPage({
   searchParams,
@@ -13,7 +13,6 @@ export default async function RfqThanksPage({
     (Array.isArray(v) ? v[0] : v) ?? "";
   const id = pick(sp.id);
   const email = pick(sp.email);
-  const token = pick(sp.t);
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-16 sm:px-6">
@@ -28,13 +27,7 @@ export default async function RfqThanksPage({
               {t("thanksRef", { id })}
             </p>
           ) : null}
-          <Link
-            href={`/quotes?email=${encodeURIComponent(email)}&t=${encodeURIComponent(token)}`}
-            className={`${buttonVariants()} mt-6`}
-            data-testid="rfq-view-quotes"
-          >
-            {t("viewQuotes")}
-          </Link>
+          <ThanksQuotesLink email={email} label={t("viewQuotes")} />
         </CardBody>
       </Card>
     </main>

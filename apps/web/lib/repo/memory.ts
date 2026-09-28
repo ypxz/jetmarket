@@ -707,7 +707,7 @@ async function seedJets(repo: MemoryRepo) {
   // leg — delivered to thames (pro) with a live quote, delayed for the two
   // free ops — so mock-mode demos show the whole inbox loop, not empty
   // inboxes. Buyer link: /quotes?email=charter@geneva-pe.example
-  // &t=demo-buyer-token (known token, dev-only data).
+  // #t=demo-buyer-token (known token, dev-only data; `?t=` also still works).
   const demoListing = (await repo.listListings({ operatorId: opIds[0]! })).find(
     (l) => l.attributes?.["from"] === "ZRH" && l.attributes?.["to"] === "NCE",
   )!;
@@ -826,7 +826,7 @@ async function seedMachinery(repo: MemoryRepo) {
   // Demo trail mirroring the pg seed (QA-237): an RFQ on ibérica's Okuma
   // lathe — delivered to alpine (pro) with a live quote, delayed for nord +
   // lowlands (free) — so mock-mode demos show the whole inbox loop. Buyer
-  // link: /quotes?email=procurement@bavaria-werk.example&t=demo-buyer-token.
+  // link: /quotes?email=procurement@bavaria-werk.example#t=demo-buyer-token.
   const rfq = await repo.createRfq({
     vertical: "machinery",
     listingId: okuma.id,

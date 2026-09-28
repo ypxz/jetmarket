@@ -104,8 +104,11 @@ export function RfqForm({
       setError(res.status === 429 ? rateLimitedLabel : (data.error ?? errorLabel));
       return;
     }
+    // Bearer token rides the URL fragment — never reaches server access logs,
+    // Referer headers, or proxies (QA-156 extension). /rfq/thanks renders a
+    // client link that forwards the same fragment to /quotes.
     const email = encodeURIComponent(String(fieldsObj[emailFieldKey] ?? ""));
-    const t = data.accessToken ? `&t=${encodeURIComponent(data.accessToken)}` : "";
+    const t = data.accessToken ? `#t=${encodeURIComponent(data.accessToken)}` : "";
     router.push(`/rfq/thanks?id=${data.rfqId}&email=${email}${t}`);
   }
 
