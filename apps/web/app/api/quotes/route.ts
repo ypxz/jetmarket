@@ -2,6 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
+import { sweepStaleRfqs } from "@/lib/sweep";
 import { emailProvider, analyticsProvider } from "@jetmarket/providers";
 
 const CreateQuote = z.object({
@@ -23,6 +24,9 @@ export async function POST(req: Request) {
   const { data, error } = await parseBody(req, CreateQuote);
   if (error) return error;
 
+  // Memory mode has no worker sweep — expire stale RFQs lazily so a
+  // dateTo-past request can't keep taking quotes (QA-142).
+  await sweepStaleRfqs(repo);
   const rfq = await repo.getRfq(data!.rfqId);
   if (!rfq) return err("rfq not found", 404);
   const listing = await repo.getListing(rfq.listingId);

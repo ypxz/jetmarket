@@ -2,6 +2,7 @@ import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
+import { sweepStaleRfqs } from "@/lib/sweep";
 
 export async function GET(req: Request) {
   const user = await requireUser("operator");
@@ -12,6 +13,9 @@ export async function GET(req: Request) {
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
+  // Memory mode has no worker — lazy expiry keeps dead RFQs out of the
+  // operator inbox (QA-142).
+  await sweepStaleRfqs(repo);
   // Optional paging — ?limit=&offset= cap the payload; default is one page.
   const url = new URL(req.url);
   const lim = Number(url.searchParams.get("limit"));

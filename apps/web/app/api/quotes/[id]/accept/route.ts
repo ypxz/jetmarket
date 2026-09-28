@@ -5,6 +5,7 @@ import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
 import { notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
+import { sweepStaleRfqs } from "@/lib/sweep";
 import { emailProvider, paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 
 const Body = z.object({
@@ -27,6 +28,9 @@ export async function POST(
   const repo = await getRepo();
   const quote = await repo.getQuote(id);
   if (!quote) return err("quote not found", 404);
+  // Lazy expiry in memory mode (no worker): a stale-yet-'open' RFQ must not
+  // mint a deal on a dead request (QA-142).
+  await sweepStaleRfqs(repo);
   const rfq = await repo.getRfq(quote.rfqId);
   if (
     !rfq ||
@@ -36,7 +40,7 @@ export async function POST(
     return err("not your quote", 403);
   }
   // The RFQ must still be live — a "sent" quote can outlive its RFQ when the
-  // expiry sweep has not ticked yet (or isn't running in this environment).
+  // expiry sweep has not ticked yet (pg worker gap between ticks).
   if (!["open", "matched", "quoted"].includes(rfq.status)) {
     return err("rfq is no longer open", 409);
   }

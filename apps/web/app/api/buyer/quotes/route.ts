@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
+import { sweepStaleRfqs } from "@/lib/sweep";
 
 // Buyer-side view: quotes received for an RFQ. Gated by the per-RFQ bearer
 // token (`t`) issued in the post-submit redirect and the quote-notification
@@ -16,6 +17,9 @@ export async function GET(req: Request) {
   if (!email) return err("email required", 400);
   if (!token) return err("use the link from your email", 401);
   const repo = await getRepo();
+  // Memory mode has no worker — expire stale RFQs lazily so the buyer inbox
+  // shows closed state instead of dead RFQs forever (QA-142).
+  await sweepStaleRfqs(repo);
   // The token match happens post-fetch, so the cap must stay generous — a
   // buyer with >200 RFQs on older links loses the match. Still bounded.
   const rfqs = (await repo.listRfqs({ buyerEmail: email, limit: 200 })).filter(
