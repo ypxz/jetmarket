@@ -48,6 +48,7 @@ jobs:
           cache: pnpm
       - run: pnpm i --frozen-lockfile || pnpm i
       - run: pnpm -r --if-present migrate
+      - run: pnpm check:schema
       - run: pnpm -r --if-present test:integration
 
   contract:
