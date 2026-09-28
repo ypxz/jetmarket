@@ -38,6 +38,7 @@ export default function OnboardingPage() {
         <input
           name="name"
           required
+          aria-label={t("name")}
           placeholder={t("name")}
           data-testid="operator-name-input"
           className="w-full rounded-md border border-border bg-background px-3 py-2"
@@ -45,6 +46,7 @@ export default function OnboardingPage() {
         <input
           name="baseAirport"
           required
+          aria-label={t("baseAirport")}
           placeholder={t("baseAirport")}
           maxLength={8}
           data-testid="operator-base-input"
@@ -52,6 +54,7 @@ export default function OnboardingPage() {
         />
         <textarea
           name="fleetSummary"
+          aria-label={t("fleetSummary")}
           placeholder={t("fleetSummary")}
           data-testid="operator-fleet-input"
           className="w-full rounded-md border border-border bg-background px-3 py-2"

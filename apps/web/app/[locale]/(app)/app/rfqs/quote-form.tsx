@@ -40,12 +40,14 @@ export function QuoteForm({ rfqId }: { rfqId: string }) {
         type="number"
         required
         min={1}
+        aria-label={t("amountPh")}
         placeholder={t("amountPh")}
         data-testid={`quote-amount-${rfqId}`}
         className="w-40 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
       />
       <input
         name="message"
+        aria-label={t("messagePh")}
         placeholder={t("messagePh")}
         className="min-w-48 flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
       />

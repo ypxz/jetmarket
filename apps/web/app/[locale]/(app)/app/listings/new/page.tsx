@@ -131,6 +131,7 @@ export default function NewListingPage() {
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
+          aria-label={t("typeLabel")}
           data-testid="listing-type"
           className={input}
         >
@@ -143,6 +144,7 @@ export default function NewListingPage() {
         <input
           name="title"
           required
+          aria-label={t("titlePh")}
           placeholder={t("titlePh")}
           data-testid="listing-title"
           className={input}
@@ -160,6 +162,7 @@ export default function NewListingPage() {
                   name={`attr_${a.key}`}
                   required={a.required}
                   defaultValue=""
+                  aria-label={label}
                   data-testid={`listing-${a.key}`}
                   className={input}
                 >
@@ -183,6 +186,7 @@ export default function NewListingPage() {
                 }
                 min={a.input === "number" ? 0 : undefined}
                 required={a.required}
+                aria-label={`${label}${unit}`}
                 placeholder={`${label}${unit}`}
                 data-testid={`listing-${a.key}`}
                 className={input}

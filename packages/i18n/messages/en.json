@@ -691,7 +691,8 @@
       "photosLabel": "Photos (optional — JPG/PNG/SVG, up to 5 MB each)",
       "upgradeCta": "Upgrade to Pro — unlimited listings →",
       "failed": "failed",
-      "publishing": "Publishing…"
+      "publishing": "Publishing…",
+      "typeLabel": "Listing type"
     },
     "rfqs": {
       "needProfile": "Create an operator profile first.",
