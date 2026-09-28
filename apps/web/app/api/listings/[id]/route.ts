@@ -15,10 +15,13 @@ const PatchListing = z.object({
 });
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (!rateLimit(`listing-get:${clientIp(req)}`, 600, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const repo = await getRepo();
   const listing = await repo.getListing(id);
   if (!listing || listing.status !== "active") return err("not found", 404);

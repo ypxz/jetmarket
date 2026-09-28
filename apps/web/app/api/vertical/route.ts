@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 function stripSchema<T extends { schema: unknown }>(f: T): Omit<T, "schema"> {
@@ -62,7 +62,10 @@ function describeAttribute(a: {
 
 // Public, serializable view of the active vertical config (zod schemas stripped —
 // clients re-validate with buildRfqSchema/getAttributesSchema server-side).
-export async function GET() {
+export async function GET(req: Request) {
+  if (!rateLimit(`vertical:${clientIp(req)}`, 1200, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const c = verticalConfig();
   return ok({
     slug: verticalSlug(),

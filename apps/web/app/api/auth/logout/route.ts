@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/api";
 import { sessionCookie, verifySession } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
   const cookie = req.headers.get("cookie") ?? "";
   const m = new RegExp(`(?:^|;\\s*)${sessionCookie}=([^;]*)`).exec(cookie);
   const sess = verifySession(m?.[1]);
-  if (sess) {
+  if (sess && rateLimit(`auth-logout:${clientIp(req)}`, 120, 60 * 60 * 1000)) {
     const repo = await getRepo();
     await repo.bumpSessionVersion(sess.userId);
   }

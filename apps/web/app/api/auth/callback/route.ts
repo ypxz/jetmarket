@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/api";
 import { sessionCookie, signSession, verifyMagicLink } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  if (!rateLimit(`auth-callback:${clientIp(req)}`, 120, 60 * 60 * 1000)) {
+    return NextResponse.redirect(new URL("/sign-in?error=rate-limited", url.origin));
+  }
   const token = url.searchParams.get("token") ?? undefined;
   const userId = verifyMagicLink(token);
   if (!userId || !token) {
