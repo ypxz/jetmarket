@@ -4,6 +4,11 @@ import { requireUser } from "@/lib/auth";
 import { storageProvider } from "@jetmarket/providers";
 
 const MAX_BYTES = 5 * 1024 * 1024;
+// File cap + multipart framing overhead (boundaries, field names, the other
+// form fields). Enforced BEFORE parsing — req.formData() reads the whole
+// body to completion, so an oversized chunked body would otherwise land in
+// memory before the per-file size check ran (QA-318).
+const MAX_BODY_BYTES = MAX_BYTES + 256 * 1024;
 const ALLOWED = new Set([
   "image/jpeg",
   "image/png",
@@ -25,9 +30,37 @@ export async function POST(req: Request) {
     return err("rate limit exceeded — try again later", 429);
   }
 
+  const declared = Number(req.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY_BYTES) return err("payload too large", 413);
+
+  // Chunked bodies carry no content-length — read with a hard byte cap
+  // instead of letting formData() buffer to completion.
+  const reader = req.body?.getReader();
+  if (!reader) return err("expected multipart/form-data with a file field", 422);
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return err("payload too large", 413);
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(received);
+  let at = 0;
+  for (const c of chunks) {
+    body.set(c, at);
+    at += c.byteLength;
+  }
+
   let file: File;
   try {
-    const form = await req.formData();
+    const form = await new Response(body, {
+      headers: { "content-type": req.headers.get("content-type") ?? "" },
+    }).formData();
     const f = form.get("file");
     if (!(f instanceof File)) return err("missing file", 422);
     file = f;
