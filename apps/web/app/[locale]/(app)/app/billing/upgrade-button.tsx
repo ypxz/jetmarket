@@ -26,7 +26,21 @@ export function UpgradeButton() {
       setState("error");
       return;
     }
-    router.refresh();
+    const data = (await res.json()) as {
+      subscribed?: boolean;
+      checkoutUrl?: string;
+    };
+    // Mock providers auto-activate server-side — land on the success banner.
+    // Real providers hand back a hosted checkout URL the browser must follow.
+    if (data.subscribed) {
+      router.push("/app/billing?checkout=success");
+      return;
+    }
+    if (data.checkoutUrl) {
+      window.location.assign(data.checkoutUrl);
+      return;
+    }
+    setState("error");
   }
 
   return (

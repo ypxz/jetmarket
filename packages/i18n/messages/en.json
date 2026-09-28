@@ -3,13 +3,11 @@
     "marketplaceNotice": "JetMarket is a marketplace, not a broker or operator. Contracts are between buyer and operator.",
     "verified": "Verified operator",
     "unverified": "Unverified operator",
-    "onRequest": "On request",
     "loading": "Loading…",
     "error": "Something went wrong",
     "retry": "Retry",
     "backToSearch": "← Back to search",
     "currencyPerMonth": "/mo",
-    "from": "From {price}",
     "quoteState": {
       "sent": "sent",
       "accepted": "accepted",
@@ -37,14 +35,9 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "design": "Design",
-    "pricing": "Pricing",
-    "faq": "FAQ",
-    "login": "Sign in",
-    "app": "Open app",
     "theme": "Toggle dark mode"
   },
   "footer": {
-    "legal": "Legal",
     "tos": "Terms of service",
     "privacy": "Privacy",
     "imprint": "Imprint",
@@ -61,7 +54,6 @@
     "emptyBody": "Loosen the filters or try a broader category — new listings go live daily.",
     "min": "Min",
     "max": "Max",
-    "typeFacet": "Type",
     "sortLabel": "Sort by",
     "sortNewest": "Newest first",
     "sortPriceAsc": "Price: low to high",
@@ -82,7 +74,6 @@
     "operator": "Operator",
     "basedAt": "Based at {airport}",
     "rfqCta": "Request quotes for this listing",
-    "notFound": "Listing not found or no longer active.",
     "back": "← Back to search",
     "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator.",
     "similar": "Similar listings"
@@ -98,15 +89,13 @@
     },
     "submit": "Send request",
     "sending": "Sending…",
-    "success": "Request sent",
     "thanksTitle": "Request received",
     "thanksBody": "Your request was sent to the listing's operator and matching operators. Quotes appear on your quotes page and arrive by email.",
     "thanksRef": "Reference: {id}",
     "viewQuotes": "View my requests & quotes",
     "honeypotHint": "Leave this field empty",
     "error": "Could not send your request — check the fields and try again.",
-    "rateLimited": "Too many requests — try again later.",
-    "emailHint": "Quotes are sent to this address."
+    "rateLimited": "Too many requests — try again later."
   },
   "quotes": {
     "title": "My requests & quotes",
@@ -117,10 +106,8 @@
     "accept": "Accept",
     "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
     "by": "by {name}",
-    "status": "Status: {status}",
     "decline": "Decline",
     "declinedMsg": "Quote declined.",
-    "declining": "Declining…",
     "needLink": "Open the link from your RFQ or quote email to view your quotes.",
     "needEmail": "Enter your email first.",
     "resend": "Email me my links",
@@ -131,9 +118,7 @@
   "design": {
     "title": "Design system",
     "subtitle": "Every primitive and block, rendered from tokens.css",
-    "primitives": "Primitives",
-    "layoutSection": "Layout",
-    "blocksSection": "Blocks"
+    "primitives": "Primitives"
   },
   "legal": {
     "tos": {
@@ -206,8 +191,7 @@
       "addressLabel": "Registered address",
       "registrationLabel": "Commercial register",
       "contactLabel": "Contact"
-    },
-    "placeholder": "Placeholder text — replace before launch."
+    }
   },
   "errors": {
     "notFoundTitle": "Not found",
@@ -563,73 +547,6 @@
         "basedAt": "Located at {place}",
         "fleetLabel": "Inventory summary (makes, models)"
       }
-    }
-  },
-  "landing": {
-    "hero": {
-      "title": "Ship your SaaS this week, not this quarter",
-      "subtitle": "Auth, billing, i18n, a token-driven design system, and every external service behind a mockable provider — wired and tested.",
-      "cta": "Start building"
-    },
-    "cta": {
-      "title": "Ready to launch?",
-      "subtitle": "Fill in .env and go live. Everything already works with mocks."
-    }
-  },
-  "features": {
-    "0": {
-      "title": "Provider adapters",
-      "body": "Payments, LLM, email, auth, storage and analytics behind one interface — mock locally, real by env var."
-    },
-    "1": {
-      "title": "Billing built in",
-      "body": "Plans, quotas, checkout, portal and webhooks into a subscriptions table — tested end-to-end with stripe-mock."
-    },
-    "2": {
-      "title": "i18n from day one",
-      "body": "Every string in message catalogs, locale routing scaffolded, prices formatted per locale."
-    },
-    "3": {
-      "title": "Token design system",
-      "body": "Restyle the whole product from one tokens.css. Colors, radii and typography cascade through every primitive and block."
-    }
-  },
-  "pricing": {
-    "title": "Pricing",
-    "subtitle": "Start free, upgrade when you outgrow it.",
-    "monthly": "/month",
-    "currentPlan": "Current plan",
-    "upgrade": "Upgrade to Pro",
-    "selectFree": "Start free",
-    "plans": {
-      "free": {
-        "name": "Free",
-        "description": "For trying things out"
-      },
-      "pro": {
-        "name": "Pro",
-        "description": "For production workloads"
-      }
-    },
-    "features": {
-      "core": "Core features",
-      "community-support": "Community support",
-      "unlimited-renders": "Unlimited renders",
-      "priority-support": "Priority support"
-    }
-  },
-  "faq": {
-    "0": {
-      "q": "Do I need any API keys to run this?",
-      "a": "No. Every provider ships a mock implementation — the app runs and is fully demoable offline."
-    },
-    "1": {
-      "q": "How do I go live?",
-      "a": "Fill the real keys into your env file and switch the *_PROVIDER variables from mock. See GO_LIVE.template.md."
-    },
-    "2": {
-      "q": "Can I change the design?",
-      "a": "Yes — edit packages/ui/tokens.css. Colors, radii and typography cascade through every primitive and block."
     }
   },
   "auth": {
