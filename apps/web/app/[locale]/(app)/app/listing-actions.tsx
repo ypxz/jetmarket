@@ -9,16 +9,28 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
   const t = useTranslations("app.dashboard");
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const tc = useTranslations("common");
 
   async function patch(status: "active" | "paused" | "archived") {
     if (pending) return;
     setPending(true);
     try {
-      await fetch(`/api/listings/${listing.id}`, {
+      const res = await fetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      if (!res.ok) {
+        // Surface the server's reason — e.g. the 403 plan-cap message is the
+        // Pro upsell and must not fail silently (QA-211).
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(body?.error ?? tc("error"));
+        return;
+      }
+      setError(null);
       router.refresh();
     } finally {
       setPending(false);
@@ -28,7 +40,7 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
   const btn =
     "rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50";
   return (
-    <span className="flex gap-1">
+    <span className="flex flex-wrap items-center gap-1">
       {listing.status !== "archived" ? (
         <Link
           href={`/app/listings/${listing.id}/edit`}
@@ -67,6 +79,15 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
         >
           {t("archive")}
         </button>
+      ) : null}
+      {error ? (
+        <p
+          role="alert"
+          className="w-full text-xs text-danger"
+          data-testid={`listing-action-error-${listing.id}`}
+        >
+          {error}
+        </p>
       ) : null}
     </span>
   );
