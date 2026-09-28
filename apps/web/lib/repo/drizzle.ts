@@ -6,12 +6,13 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import type {
   Deal,
   JobInfo,
   Listing,
+  ListingSort,
   ListingStatus,
   ListingType,
   Operator,
@@ -387,12 +388,21 @@ export class DrizzleRepo implements Repo {
   async listListings(filter?: ListingFilter & {
     limit?: number;
     offset?: number;
+    sort?: ListingSort;
   }): Promise<Listing[]> {
     let q = this.db
       .select()
       .from(listings)
       .where(listingConds(filter))
-      .orderBy(desc(listings.createdAt))
+      .orderBy(
+        // createdAt desc always trails: deterministic pagination even when
+        // prices tie (QA-178).
+        ...(filter?.sort === "price_asc"
+          ? [asc(listings.priceMinor), desc(listings.createdAt)]
+          : filter?.sort === "price_desc"
+            ? [desc(listings.priceMinor), desc(listings.createdAt)]
+            : [desc(listings.createdAt)]),
+      )
       .$dynamic();
     if (filter?.limit !== undefined) q = q.limit(filter.limit);
     if (filter?.offset) q = q.offset(filter.offset);

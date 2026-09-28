@@ -560,6 +560,18 @@ export function repoContract(
       expect(
         await repo.countListings({ ...base, facets: { aircraftCategory: "nope" } }),
       ).toBe(0);
+      // sort (QA-178): distinct prices make the order fully deterministic;
+      // newest-first default stays creation order.
+      const byPriceAsc = await repo.listListings({ ...base, sort: "price_asc" });
+      expect(byPriceAsc.map((l) => l.price)).toEqual([1000, 1001, 1002, 1003, 1004]);
+      const byPriceDesc = await repo.listListings({ ...base, sort: "price_desc" });
+      expect(byPriceDesc.map((l) => l.price)).toEqual([1004, 1003, 1002, 1001, 1000]);
+      const sortedPage = await repo.listListings({
+        ...base,
+        sort: "price_desc",
+        limit: 2,
+      });
+      expect(sortedPage.map((l) => l.price)).toEqual([1004, 1003]);
       // facetRanges: attribute (seats) + builtin price, count + slice agree
       const ranged = await repo.listListings({
         ...base,

@@ -6,6 +6,7 @@
 // jets: charter|empty_leg|aircraft_sale, machinery: for_sale|for_rent|auction.
 export type ListingType = string;
 export type ListingStatus = "draft" | "active" | "paused" | "archived";
+export type ListingSort = "newest" | "price_asc" | "price_desc";
 export type UserRole = "buyer" | "operator" | "admin";
 export type Plan = "free" | "pro";
 
@@ -187,7 +188,9 @@ export interface Repo {
     facetRanges?: { key: string; min?: number; max?: number }[];
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
-    /** Page slice applied after all other filters, newest-first. */
+    /** Result order — `newest` (createdAt desc) is the default. */
+    sort?: ListingSort;
+    /** Page slice applied after all other filters. */
     limit?: number;
     offset?: number;
   }): Promise<Listing[]>;

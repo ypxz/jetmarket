@@ -28,6 +28,19 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
             <Label htmlFor="q">{t("placeholder")}</Label>
             <Input id="q" name="q" defaultValue={get("q")} data-testid="facet-q" />
           </div>
+          <div>
+            <Label htmlFor="sort">{t("sortLabel")}</Label>
+            <Select
+              id="sort"
+              name="sort"
+              defaultValue={get("sort") || "newest"}
+              data-testid="facet-sort"
+            >
+              <option value="newest">{t("sortNewest")}</option>
+              <option value="price_asc">{t("sortPriceAsc")}</option>
+              <option value="price_desc">{t("sortPriceDesc")}</option>
+            </Select>
+          </div>
           {vertical.facets.map((f) => {
             if (f.type === "enum") {
               return (

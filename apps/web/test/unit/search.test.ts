@@ -55,6 +55,17 @@ describe("searchListings (config-driven, jets)", () => {
   it("unknown params are ignored", async () => {
     expect((await searchListings({ nonsense: "x" })).length).toBe(8);
   });
+
+  it("sorts by price asc/desc; unknown sort falls back to newest", async () => {
+    const asc = (await searchListings({ sort: "price_asc" })).map((l) => l.price);
+    expect(asc).toEqual([...asc].sort((a, b) => a - b));
+    const desc = (await searchListings({ sort: "price_desc" })).map((l) => l.price);
+    expect(desc).toEqual([...desc].sort((a, b) => b - a));
+    // QA-178: bogus values degrade to the default order, not an error.
+    const bogus = (await searchListings({ sort: "nonsense" })).map((l) => l.id);
+    const dflt = (await searchListings({})).map((l) => l.id);
+    expect(bogus).toEqual(dflt);
+  });
 });
 
 describe("paginate", () => {

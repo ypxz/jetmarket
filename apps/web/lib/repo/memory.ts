@@ -4,6 +4,7 @@ import type {
   Deal,
   JobInfo,
   Listing,
+  ListingSort,
   Operator,
   Plan,
   Quote,
@@ -143,12 +144,20 @@ class MemoryRepo implements Repo {
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
     ids?: string[];
+    sort?: ListingSort;
     limit?: number;
     offset?: number;
   }): Promise<Listing[]> {
-    const out = this.filterListings(filter).sort(
-      (a, b) => b.createdAt.localeCompare(a.createdAt),
-    );
+    // createdAt desc trails every sort for stable paging (QA-178).
+    const byNewest = (a: Listing, b: Listing) =>
+      b.createdAt.localeCompare(a.createdAt);
+    const cmp =
+      filter?.sort === "price_asc"
+        ? (a: Listing, b: Listing) => a.price - b.price || byNewest(a, b)
+        : filter?.sort === "price_desc"
+          ? (a: Listing, b: Listing) => b.price - a.price || byNewest(a, b)
+          : byNewest;
+    const out = this.filterListings(filter).sort(cmp);
     const start = filter?.offset ?? 0;
     return filter?.limit !== undefined
       ? out.slice(start, start + filter.limit)

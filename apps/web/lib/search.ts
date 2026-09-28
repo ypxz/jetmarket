@@ -1,7 +1,7 @@
 import { getVertical } from "@jetmarket/verticals";
 import type { FacetConfig } from "@jetmarket/verticals";
 import { getRepo } from "./repo";
-import type { Listing, ListingType } from "./repo/types";
+import type { Listing, ListingSort, ListingType } from "./repo/types";
 
 /**
  * Config-driven public search: translates URL search params into a
@@ -25,7 +25,10 @@ interface ParsedParams {
   ranges: { f: FacetConfig; min?: number; max?: number }[];
   type?: ListingType;
   query?: string;
+  sort?: ListingSort;
 }
+
+const SORTS: ListingSort[] = ["newest", "price_asc", "price_desc"];
 
 function parseParams(params: SearchParams): ParsedParams {
   const vertical = getVertical();
@@ -53,11 +56,16 @@ function parseParams(params: SearchParams): ParsedParams {
   }
 
   const q = str(params.q)?.slice(0, 200);
+  const sortRaw = str(params.sort);
   return {
     exact,
     ranges,
     ...(type ? { type } : {}),
     ...(q ? { query: q } : {}),
+    // Unknown sort values degrade to the newest-first default, not a 400.
+    ...(SORTS.includes(sortRaw as ListingSort)
+      ? { sort: sortRaw as ListingSort }
+      : {}),
   };
 }
 
@@ -82,6 +90,7 @@ function repoFilter(p: ParsedParams) {
     vertical: getVertical().slug,
     ...(p.query ? { query: p.query } : {}),
     ...(p.type ? { type: p.type } : {}),
+    ...(p.sort ? { sort: p.sort } : {}),
     ...(Object.keys(p.exact).length ? { facets: p.exact } : {}),
     ...(facetRanges.length ? { facetRanges } : {}),
   };
