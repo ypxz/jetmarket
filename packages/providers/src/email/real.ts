@@ -74,8 +74,11 @@ export class ResendEmailProvider implements EmailProvider {
         "https://resend.com/docs/api-reference/emails/send-email",
       );
     }
+    // Bounded wait — a hung resend connection would stall the worker job
+    // indefinitely otherwise (same reasoning as the captcha fetch, QA-170).
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${this.opts.apiKey}`,
         "Content-Type": "application/json",

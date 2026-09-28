@@ -242,6 +242,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 158 | ~07:45 | QA-172 | every client submit button hung on a thrown fetch (network error = permanently disabled spinner) — try/finally reset on rfq-form + withdraw/listing-actions/retry/mark-paid buttons |
 | 159 | ~08:00 | QA-173 | rest of the unguarded-fetch family: quote-form/onboarding stuck/silent on throw; upgrade/portal buttons, sign-in, public quotes load/resend/accept/decline, admin mod+verify — all now surface the error and re-enable |
 | 160 | ~08:15 | QA-174 | non-JSON error bodies (proxy 502/HTML) re-threw inside !res.ok handlers — readJsonOr() for error paths; sign-in also stopped claiming 'link sent' on 429/500 |
+| 161 | ~08:45 | QA-175 | resend send fetch had no timeout — a hung connection stalled worker jobs forever; AbortSignal.timeout(15s) |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
