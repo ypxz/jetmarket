@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @jetmarket/web dev",
     "build": "pnpm -r --if-present build",
-    "lint": "pnpm -r --if-present lint && pnpm check:design",
+    "lint": "pnpm -r --if-present lint && pnpm check:design && pnpm check:i18n",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "test:integration": "pnpm -r --if-present test:integration",
@@ -23,7 +23,8 @@
     "db:migrate": "pnpm -r --if-present migrate",
     "db:seed": "pnpm -r --if-present seed",
     "smoke": "tsx scripts/smoke.ts",
-    "check:design": "tsx scripts/check-design-literals.ts"
+    "check:design": "tsx scripts/check-design-literals.ts",
+    "check:i18n": "tsx scripts/check-i18n-keys.ts"
   },
   "devDependencies": {
     "tsx": "4.20.5"
