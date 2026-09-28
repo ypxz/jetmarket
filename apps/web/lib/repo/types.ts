@@ -238,12 +238,14 @@ export interface Repo {
 
   createRfq(
     r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
-      /** sha256 natural key — unique column; duplicate insert must throw. */
+      /** sha256 natural key — collides only with a LIVE twin (open/matched/
+       * quoted); inserting over a terminal RFQ mints a fresh row (QA-228). */
       dedupeKey?: string;
     },
   ): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;
-  /** Lookup by dedupe key — the idempotent path after a duplicate insert. */
+  /** Lookup by dedupe key — the idempotent path after a duplicate insert.
+   * Returns only the live twin; terminal RFQs don't count (QA-228). */
   getRfqByDedupeKey(key: string): Promise<Rfq | undefined>;
   /** Atomically transition an RFQ to `status` when its current status is in
    * `expectedIn`; returns false otherwise. Lets accept() use the RFQ as the

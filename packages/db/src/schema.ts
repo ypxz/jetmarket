@@ -114,7 +114,9 @@ export const rfqs = pgTable(
     index("rfqs_buyer_idx").on(t.buyerEmail, t.createdAt),
     uniqueIndex("rfqs_dedupe_key")
       .on(t.dedupeKey)
-      .where(sql`${t.dedupeKey} is not null`),
+      .where(
+        sql`${t.dedupeKey} is not null and ${t.status} in ('new', 'matched', 'quoted')`,
+      ),
   ],
 );
 

@@ -185,6 +185,55 @@ export function repoContract(
       expect(await repo.listDeals({ operatorId: op.id })).toHaveLength(1);
     });
 
+    it("dedupe replays only against a live twin; terminal RFQs re-mint", async () => {
+      const repo = await factory();
+      const tag = `rl-${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Dedupe Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `${tag} charter`,
+        price: 9000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const key = `live-${tag}`;
+      const mk = () =>
+        ({
+          vertical: "jets" as const,
+          listingId: listing.id,
+          buyerEmail: `dup-${tag}@test.dev`,
+          fields: { ref: key },
+          dedupeKey: key,
+        });
+      const first = await repo.createRfq(mk());
+      // Live twin: insert collides, read resolves the original (QA-228).
+      await expect(repo.createRfq(mk())).rejects.toThrow();
+      expect((await repo.getRfqByDedupeKey(key))!.id).toBe(first.id);
+
+      // Close it — a resubmit now mints a fresh RFQ instead of replaying.
+      expect(
+        await repo.setRfqStatus(first.id, "closed", [
+          "open",
+          "matched",
+          "quoted",
+        ]),
+      ).toBe(true);
+      const second = await repo.createRfq(mk());
+      expect(second.id).not.toBe(first.id);
+      expect((await repo.getRfqByDedupeKey(key))!.id).toBe(second.id);
+    });
+
     it("createQuote never resurrects a closed RFQ (QA-165)", async () => {
       const repo = await factory();
       const tag = `res-${Date.now()}`;

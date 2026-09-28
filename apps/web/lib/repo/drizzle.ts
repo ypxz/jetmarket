@@ -580,10 +580,17 @@ export class DrizzleRepo implements Repo {
     return toRfq(row!);
   }
   async getRfqByDedupeKey(key: string): Promise<Rfq | undefined> {
+    // Only a LIVE twin counts — the partial unique index guarantees at most
+    // one. A resubmit over a closed/spam RFQ mints a fresh row (QA-228).
     const [r] = await this.db
       .select()
       .from(rfqs)
-      .where(eq(rfqs.dedupeKey, key))
+      .where(
+        and(
+          eq(rfqs.dedupeKey, key),
+          inArray(rfqs.status, ["new", "matched", "quoted"]),
+        ),
+      )
       .limit(1);
     return r ? toRfq(r) : undefined;
   }

@@ -63,6 +63,8 @@ export async function POST(req: Request) {
   // Idempotent submit: dedupe key = sha256(listing|email|canonical fields).
   // Double-click, refresh-resubmit, or retried concurrent POSTs all collide
   // on the unique index instead of minting duplicate RFQs/owner emails.
+  // Dedupe is live-scoped — once the earlier RFQ closes, the same payload
+  // mints a fresh request rather than replaying the dead one (QA-228).
   // Email is normalized at write — inbox lookup + accept/decline compare
   // case-insensitively (QA-153). The dedupe read runs BEFORE captcha:
   // turnstile tokens are single-use, so a retry of an already-persisted

@@ -18,6 +18,13 @@ import type {
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 const now = () => new Date().toISOString();
 
+/** Iface statuses that count as live for dedupe/fan-out reads. */
+const LIVE_RFQ_STATUSES: ReadonlySet<Rfq["status"]> = new Set([
+  "open",
+  "matched",
+  "quoted",
+]);
+
 class MemoryRepo implements Repo {
   users = new Map<string, User>();
   operators = new Map<string, Operator>();
@@ -300,8 +307,14 @@ class MemoryRepo implements Repo {
     },
   ): Promise<Rfq> {
     if (r.dedupeKey) {
-      const hit = this.rfqDedupe.get(r.dedupeKey);
-      if (hit) throw new Error("duplicate key value violates unique constraint");
+      // Dedupe mirrors the db's partial unique index: it collides only with a
+      // LIVE twin — a resubmit over a closed/spam RFQ mints a fresh one
+      // (QA-228).
+      const hitId = this.rfqDedupe.get(r.dedupeKey);
+      const hit = hitId ? this.rfqs.get(hitId) : undefined;
+      if (hit && LIVE_RFQ_STATUSES.has(hit.status)) {
+        throw new Error("duplicate key value violates unique constraint");
+      }
     }
     const { dedupeKey, ...rest } = r;
     void dedupeKey;
@@ -318,7 +331,8 @@ class MemoryRepo implements Repo {
   }
   async getRfqByDedupeKey(key: string) {
     const id = this.rfqDedupe.get(key);
-    return id ? this.rfqs.get(id) : undefined;
+    const rfq = id ? this.rfqs.get(id) : undefined;
+    return rfq && LIVE_RFQ_STATUSES.has(rfq.status) ? rfq : undefined;
   }
   async getRfq(id: string) {
     return this.rfqs.get(id);
