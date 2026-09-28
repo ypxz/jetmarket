@@ -76,6 +76,14 @@ export function repoContract(
       expect(
         await repo.countRfqs({ buyerEmail: `buyer-${tag}@test.dev` }),
       ).toBe(1);
+      // buyerEmail lookup is case-insensitive — stored lowercase at create,
+      // buyer re-entry may differ in case (QA-153).
+      expect(
+        await repo.listRfqs({ buyerEmail: `BUYER-${tag}@TEST.DEV` }),
+      ).toHaveLength(1);
+      expect(
+        await repo.countRfqs({ buyerEmail: `BUYER-${tag}@TEST.DEV` }),
+      ).toBe(1);
       // limit/offset slice, newest-first ordering preserved.
       expect(
         await repo.listRfqs({ operatorId: op.id, limit: 1, offset: 0 }),

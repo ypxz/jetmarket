@@ -32,9 +32,11 @@ export async function POST(
   // mint a deal on a dead request (QA-142).
   await sweepStaleRfqs(repo);
   const rfq = await repo.getRfq(quote.rfqId);
+  // Buyer email compares case-insensitively — stored lowercase at create
+  // (QA-153), so lowercase the inbound side the same way.
   if (
     !rfq ||
-    rfq.buyerEmail !== data!.buyerEmail ||
+    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
     rfq.accessToken !== data!.token
   ) {
     return err("not your quote", 403);

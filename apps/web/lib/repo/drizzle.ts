@@ -567,7 +567,8 @@ export class DrizzleRepo implements Repo {
       return (await q).map((r) => toRfq(r.rfq));
     }
     const conds = [];
-    if (filter?.buyerEmail) conds.push(eq(rfqs.buyerEmail, filter.buyerEmail));
+    if (filter?.buyerEmail)
+      conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
     let q = this.db
       .select()
       .from(rfqs)
@@ -609,7 +610,8 @@ export class DrizzleRepo implements Repo {
       return r?.n ?? 0;
     }
     const conds = [];
-    if (filter?.buyerEmail) conds.push(eq(rfqs.buyerEmail, filter.buyerEmail));
+    if (filter?.buyerEmail)
+      conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
     if (statusCond) conds.push(statusCond);
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })

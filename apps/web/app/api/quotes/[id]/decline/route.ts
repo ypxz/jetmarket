@@ -27,9 +27,10 @@ export async function POST(
   const quote = await repo.getQuote(id);
   if (!quote) return err("quote not found", 404);
   const rfq = await repo.getRfq(quote.rfqId);
+  // Case-insensitive buyer email match — see accept (QA-153).
   if (
     !rfq ||
-    rfq.buyerEmail !== data!.buyerEmail ||
+    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
     rfq.accessToken !== data!.token
   ) {
     return err("not your quote", 403);

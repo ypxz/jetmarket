@@ -64,6 +64,8 @@ export async function POST(req: Request) {
   // Idempotent submit: dedupe key = sha256(listing|email|canonical fields).
   // Double-click, refresh-resubmit, or retried concurrent POSTs all collide
   // on the unique index instead of minting duplicate RFQs/owner emails.
+  // Email is normalized at write — inbox lookup + accept/decline compare
+  // case-insensitively (QA-153).
   const dedupeKey = createHash("sha256")
     .update(`${listingId}|${buyerEmail.toLowerCase()}|${canonicalize(parsed.data)}`)
     .digest("hex");
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
     rfq = await repo.createRfq({
       vertical: listing.vertical,
       listingId,
-      buyerEmail,
+      buyerEmail: buyerEmail.toLowerCase(),
       fields: parsed.data,
       dedupeKey,
     });

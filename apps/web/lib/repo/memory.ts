@@ -295,7 +295,12 @@ class MemoryRepo implements Repo {
     offset?: number;
   }): Promise<Rfq[]> {
     let out = [...this.rfqs.values()];
-    if (filter?.buyerEmail) out = out.filter((r) => r.buyerEmail === filter.buyerEmail);
+    // buyerEmail is stored lowercase at create (QA-153); normalize the
+    // lookup side so case re-entry still finds the inbox.
+    if (filter?.buyerEmail)
+      out = out.filter(
+        (r) => r.buyerEmail === filter.buyerEmail!.toLowerCase(),
+      );
     if (filter?.operatorId) {
       const opListingIds = new Set(
         [...this.listings.values()]
