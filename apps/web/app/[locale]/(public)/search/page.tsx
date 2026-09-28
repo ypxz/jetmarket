@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { EmptyState, Grid } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { FacetSidebar } from "@/components/facet-sidebar";
@@ -6,6 +7,12 @@ import { Pager } from "@/components/pager";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { searchListingsPage } from "@/lib/search";
+
+// Parameterized results are disallowed in robots.txt; noindex keeps the
+// crawl surface to the curated SEO landing slugs + listing pages.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function SearchPage({
   searchParams,
