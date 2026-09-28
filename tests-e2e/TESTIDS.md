@@ -16,7 +16,7 @@
 | sign-in | `signin-email`, `signin-submit`, `signin-devlink`, `signin-role-<buyer|operator>` radios, `confirm-signin` on the callback page |
 | operator dashboard | `onboarding-cta`, `operator-name`, `plan-badge`, `new-listing-cta`, `operator-stats` (pro) / `stats-pro-gate` (free), `operator-listings`, `operator-deals`, `edit-profile` |
 | onboarding form | `operator-name-input`, `operator-base-input`, `operator-fleet-input`, `operator-save` |
-| listing form | `listing-type`, `listing-title`, `listing-category`, `listing-model`, `listing-seats`, `listing-price`, `listing-from`, `listing-to`, `listing-date`, `listing-save`, `upgrade-cta` (402 surface) |
+| listing form | `listing-type`, `listing-title`, `listing-category`, `listing-model`, `listing-seats`, `listing-price`, `listing-from`, `listing-to`, `listing-date`, `listing-save`, `listing-photos` (file input, `accept="image/*"`), `upgrade-cta` (402 surface) |
 | edit listing (`/app/listings/[id]/edit`) | `edit-title`, `edit-price`, `edit-attr-<key>` per dynamic field, `edit-save`, `edit-error`; dashboard CTA is `edit-listing-<id>` |
 | RFQ inbox (`/app/rfqs`) | `rfq-<id>` per row, `quote-amount-<rfqId>`, `quote-send-<rfqId>`, `op-quote-<id>` (own quote row), `withdraw-<id>`, `rfq-empty`, `delayed-rfq-teaser` (free plan) |
 | buyer quotes (`/quotes`) | `buyer-email`, `buyer-load`, `buyer-rfq-<id>`, `quote-<id>`, `quote-state-<id>`, `accept-<id>`, `decline-<id>`, `close-rfq-<id>`, `accept-msg` |
@@ -24,7 +24,7 @@
 | billing | `checkout-pro`, `pro-active`, `upgrade-cta`, `billing-portal`, `checkout-success` / `checkout-cancel` banners |
 | landing (`/`) | `hero-search` (GET form → `/search?q=`) |
 | search (`/search`) | `facet-sidebar`, `facet-q` (query input), `facet-<key>` (enum select) / `facet-<key>-option-<value>` (multi), `facet-<key>-min` + `facet-<key>-max` (number-range), `facet-<key>-from` + `facet-<key>-to` (date-range), `facet-sort`, `facet-apply` (submit), `search-results`, `search-result` (per card), `search-results-count` |
-| listing (`/listing/[id]`) | `listing-title`, `listing-price`, `attribute-table`, `listing-card`, `similar-listings`, `listing-rfq-cta` (→ `/rfq/[id]`), `back-to-search`, `listing-operator-link` |
+| listing (`/listing/[id]`) | `listing-title`, `listing-price`, `attribute-table`, `listing-card`, `similar-listings`, `listing-rfq-cta` (→ `/rfq/[id]`), `back-to-search`, `listing-operator-link`, `gallery` / `gallery-photo-<i>` (photos) |
 | RFQ (`/rfq/[listingId]`) | `rfq-form`, `rfq-field-<key>` per `vertical.rfqFields[].key` (buyer email is `rfq-field-email`), `rfq-honeypot`, `rfq-submit`, `rfq-error` |
 | RFQ thanks (`/rfq/thanks`) | `rfq-confirmation`, `rfq-reference` (rfqId), `rfq-view-quotes` |
 | misc | `design-gallery` (`/design`), `legal-imprint`, `legal-privacy`, `legal-tos` |
