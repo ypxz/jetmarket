@@ -63,4 +63,29 @@ await check("GET /api/listings returns seeded listings", async () => {
     throw new Error("no listings");
 });
 
+await check("GET /robots.txt + /sitemap.xml", async () => {
+  const robots = await get("/robots.txt");
+  if (!robots.ok) throw new Error(`robots status ${robots.status}`);
+  if (!(await robots.text()).includes("Sitemap:"))
+    throw new Error("robots has no sitemap line");
+  const map = await get("/sitemap.xml");
+  if (!map.ok) throw new Error(`sitemap status ${map.status}`);
+  if (!(await map.text()).includes("<url>"))
+    throw new Error("empty sitemap");
+});
+
+// First config-declared SEO landing slug renders — catches a broken
+// [slug] route or a slug whose i18n keys went missing on the active vertical.
+await check("GET first SEO landing slug renders", async () => {
+  const cfg = (await (await get("/api/vertical")).json()) as {
+    seo?: { landingPages?: { slug: string }[] };
+  };
+  const slug = cfg.seo?.landingPages?.[0]?.slug;
+  if (!slug) throw new Error("vertical declares no landing pages");
+  const res = await get(`/${slug}`);
+  if (!res.ok) throw new Error(`/${slug} -> ${res.status}`);
+  if (!(await res.text()).includes("<h1"))
+    throw new Error(`/${slug} rendered without h1`);
+});
+
 console.log(`smoke done against ${base}`);
