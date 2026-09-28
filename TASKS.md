@@ -369,3 +369,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 270 | ~16:25 | QA-284 | admin-api.spec: admin guard matrix, jobs list/retry, verify toggle, uploads 401/415/201, rfq spam+409, deals list, logout revocation — first coverage on all of them |
 | 271 | ~16:35 | QA-285 | billing-ops.api.spec: mock webhook stays sealed without MOCK_WEBHOOK_SECRET; portal enforces auth+role+profile chain |
 | 272 | ~16:50 | QA-284+ | admin-api.spec extended: full deal chain -> admin paid -> void-on-paid 409 (invoice CAS covered e2e) |
+| 273 | ~17:00 | QA-286 | admin.ui.spec: /admin + /admin/jobs first browser render coverage incl. verify toggle + buyer redirect |
