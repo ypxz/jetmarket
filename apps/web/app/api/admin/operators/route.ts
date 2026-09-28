@@ -1,10 +1,13 @@
-import { err, ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
 export async function GET(req: Request) {
   const user = await requireUser("admin");
   if (!user) return err("admin only", 403);
+  if (!rateLimit(`admin-operators:${clientIp(req)}`, 600, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const repo = await getRepo();
   // Optional ?limit/&offset= cap the payload; default is one page (QA-67).
   const url = new URL(req.url);

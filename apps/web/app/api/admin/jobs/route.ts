@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { err, ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
@@ -8,6 +8,9 @@ const Status = z.enum(["pending", "running", "done", "failed"]);
 export async function GET(req: Request) {
   const user = await requireUser("admin");
   if (!user) return err("admin only", 403);
+  if (!rateLimit(`admin-jobs:${clientIp(req)}`, 600, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const url = new URL(req.url);
   const lim = Number(url.searchParams.get("limit"));
   const statusParam = url.searchParams.get("status");

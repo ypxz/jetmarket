@@ -1,4 +1,4 @@
-import { err, ok } from "@/lib/api";
+import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
@@ -6,6 +6,9 @@ import { SEARCH_PAGE_SIZE } from "@/lib/search";
 export async function GET(req: Request) {
   const user = await requireUser("operator");
   if (!user) return err("unauthorized", 401);
+  if (!rateLimit(`operator-rfqs:${clientIp(req)}`, 600, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
