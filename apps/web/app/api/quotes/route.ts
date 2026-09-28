@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
+import { logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { emailProvider, analyticsProvider } from "@jetmarket/providers";
@@ -71,11 +72,21 @@ export async function POST(req: Request) {
     throw e;
   }
 
-  await emailProvider().send({
-    to: rfq.buyerEmail,
-    subject: `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
-    text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? new URL(req.url).origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}&t=${encodeURIComponent(rfq.accessToken)}`,
-  });
+  // The quote is persisted — a mail provider blip must not 500 the operator
+  // (their retry would 409 on the live-quote guard). Operator sees the quote
+  // in their inbox; the buyer's email can be resent later (QA-155).
+  try {
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject: `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
+      text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? new URL(req.url).origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}&t=${encodeURIComponent(rfq.accessToken)}`,
+    });
+  } catch (e) {
+    logWarn("quote.buyer_notify_failed", {
+      quoteId: quote.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
   analyticsProvider().track({
     name: "quote_sent",
     props: {

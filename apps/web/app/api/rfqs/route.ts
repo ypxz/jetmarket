@@ -105,11 +105,20 @@ export async function POST(req: Request) {
     const buyerName =
       typeof parsed.data["name"] === "string" ? parsed.data["name"] : "A buyer";
     const publicFields = nonContactFields(getVertical(), listing.type, parsed.data);
-    await emailProvider().send({
-      to: owner.email,
-      subject: `New RFQ on “${listing.title}”`,
-      text: `${buyerName} sent a request. Details: ${JSON.stringify(publicFields)}`,
-    });
+    // A provider blip must not 500 the buyer — the RFQ is already persisted
+    // (a retry dedupes to 200 via dedupeKey, so the buyer never loses it).
+    try {
+      await emailProvider().send({
+        to: owner.email,
+        subject: `New RFQ on “${listing.title}”`,
+        text: `${buyerName} sent a request. Details: ${JSON.stringify(publicFields)}`,
+      });
+    } catch (e) {
+      logWarn("rfq.owner_notify_failed", {
+        rfqId: rfq.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   if (process.env.DATABASE_URL) {
@@ -127,8 +136,16 @@ export async function POST(req: Request) {
     }
   } else {
     // Memory mode has no worker — fan out inline so mock demos exercise the
-    // multi-operator loop (QA-89).
-    await fanoutRfq(repo, rfq, listing);
+    // multi-operator loop (QA-89). Same resilience as the enqueue path: the
+    // RFQ is persisted, so a match failure must not 500 the buyer (QA-155).
+    try {
+      await fanoutRfq(repo, rfq, listing);
+    } catch (e) {
+      logWarn("rfq.fanout_failed", {
+        rfqId: rfq.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
   logInfo("rfq.created", {
     rfqId: rfq.id,
