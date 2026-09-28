@@ -55,9 +55,9 @@ export interface ResendEmailOptions {
 }
 
 /**
- * Resend API email. TODO(go-live): typed skeleton — verify request/response
- * shapes against https://resend.com/docs/api-reference/emails/send-email
- * once a key exists; the fetch call is standard REST so this should drop in.
+ * Resend API email. Request/response verified against the OpenAPI spec
+ * (resendlabs/resend-openapi SendEmailRequest: from, to[], subject, text,
+ * html, reply_to, tags[{name,value}]) — drops in once RESEND_API_KEY exists.
  */
 export class ResendEmailProvider implements EmailProvider {
   constructor(readonly opts: ResendEmailOptions) {}
