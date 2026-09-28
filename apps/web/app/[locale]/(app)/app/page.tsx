@@ -80,6 +80,13 @@ export default async function OperatorDashboard() {
           <div data-testid="plan-badge" className="font-medium">
             {operator.plan === "pro" ? t("proPlan") : t("freePlan")}
           </div>
+          <Link
+            href="/app/onboarding"
+            className="mt-1 inline-block text-primary underline"
+            data-testid="edit-profile"
+          >
+            {t("editProfile")}
+          </Link>
           {operator.plan === "free" ? (
             <Link href="/app/billing" className="text-primary underline">
               {t("upgrade", { price: PRO_PLAN_PRICE_USD })}

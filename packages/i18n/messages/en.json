@@ -655,7 +655,8 @@
       "openInbox": "Open inbox →",
       "subActive": "Subscription active until {date}",
       "deals": "Deals ({count})",
-      "dealFee": "fee {fee}"
+      "dealFee": "fee {fee}",
+      "editProfile": "Edit profile"
     },
     "welcome": "Welcome back",
     "plan": "Plan",
