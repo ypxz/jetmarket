@@ -888,6 +888,17 @@ export class DrizzleRepo implements Repo {
       .where(conds.length ? and(...conds) : undefined);
     return r?.n ?? 0;
   }
+  async sumDealFees(filter?: { operatorId?: string }): Promise<number> {
+    const conds = filter?.operatorId
+      ? [eq(quotes.operatorId, filter.operatorId)]
+      : [];
+    const [r] = await this.db
+      .select({ s: sql<string>`coalesce(sum(${deals.feeAmountMinor}), 0)::text` })
+      .from(deals)
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .where(conds.length ? and(...conds) : undefined);
+    return Number(r?.s ?? 0) / 100;
+  }
 
   async upsertSubscription(
     s: Omit<Subscription, "id">,

@@ -768,6 +768,38 @@ export function repoContract(
           invoiceStatus: "pending",
         }),
       ).rejects.toThrow();
+
+      // QA-171: the fee aggregate is ALL deals, not a page's worth — a
+      // limited listDeals must not affect it.
+      const rfq2 = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `b2-${tag}@test.dev`,
+        fields: {},
+      });
+      const quote2 = await repo.createQuote({
+        rfqId: rfq2.id,
+        operatorId: op.id,
+        amount: 10000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.createDeal({
+        quoteId: quote2.id,
+        operatorId: op.id,
+        amount: 10000,
+        currency: "USD",
+        feePct: 0.02,
+        feeAmount: 200,
+        invoiceStatus: "pending",
+      });
+      expect(await repo.sumDealFees()).toBeGreaterThanOrEqual(350);
+      expect(
+        await repo.sumDealFees({ operatorId: op.id }),
+      ).toBe(350);
+      expect(
+        (await repo.listDeals({ operatorId: op.id, limit: 1 })).length,
+      ).toBe(1);
     });
   });
 }

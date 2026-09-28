@@ -322,6 +322,9 @@ export interface Repo {
     offset?: number;
   }): Promise<Deal[]>;
   countDeals(filter?: { operatorId?: string }): Promise<number>;
+  /** All-deals fee aggregate in major units — page-scoped reduces lie once
+   * the ledger paginates (QA-171). */
+  sumDealFees(filter?: { operatorId?: string }): Promise<number>;
   /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid).
    * `expectedIn` makes the write conditional on the current invoiceStatus —
    * returns false when the deal is already past it (admin void vs provider

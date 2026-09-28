@@ -497,6 +497,10 @@ class MemoryRepo implements Repo {
     return (await this.listDeals({ ...filter, limit: undefined, offset: undefined }))
       .length;
   }
+  async sumDealFees(filter?: { operatorId?: string }): Promise<number> {
+    return (await this.listDeals({ ...filter, limit: undefined, offset: undefined }))
+      .reduce((s, d) => s + d.feeAmount, 0);
+  }
 
   async upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription> {
     const prev = await this.getSubscription(s.operatorId);

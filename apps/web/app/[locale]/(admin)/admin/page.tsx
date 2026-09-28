@@ -52,8 +52,10 @@ export default async function AdminPage({
   );
   // One deployment = one vertical = one currency; the aggregate is honest
   // only in that currency (rows still print their own d.currency).
+  // sumDealFees is a real all-deals aggregate — a page-scoped reduce would
+  // understate "fees" once the ledger paginates (QA-171).
   const siteCurrency = verticalConfig().currency;
-  const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
+  const feeTotal = await repo.sumDealFees();
 
   // Listing moderation (QA-157): newest 50 across live states — the takedown
   // targets are active/paused listings, not drafts or already-archived rows.
