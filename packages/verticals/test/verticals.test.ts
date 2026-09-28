@@ -8,6 +8,7 @@ import {
   jetsVertical,
   machineryVertical,
   nonContactFields,
+  rfqFieldsFor,
 } from "../src";
 
 describe("getVertical / getVerticalSlug", () => {
@@ -67,6 +68,22 @@ describe("VerticalConfig contract (jets)", () => {
       for (const o of f.options ?? []) {
         expect(o.value).toBeTruthy();
         expect(o.labelKey).toBeTruthy();
+      }
+    }
+  });
+
+  it("each listing-type scope has exactly one email-typed RFQ field", () => {
+    // RfqForm derives the buyer-contact field as the single email-typed
+    // field in scope (QA-246) — a vertical with zero or two would break
+    // buyer inbox access.
+    for (const v of [jetsVertical, machineryVertical]) {
+      const scopes = [undefined, ...v.listingTypes.map((t) => t.key)];
+      for (const scope of scopes) {
+        const emails = rfqFieldsFor(v, scope).filter((f) => f.type === "email");
+        expect(
+          emails,
+          `${v.slug}/${scope ?? "all"} should declare one email field`,
+        ).toHaveLength(1);
       }
     }
   });

@@ -23,7 +23,6 @@ interface RfqFormProps {
   errorLabel: string;
   rateLimitedLabel: string;
   honeypotHint: string;
-  emailFieldKey: string;
   /** Field-key → default value from the source listing's attributes. */
   prefill?: Record<string, string>;
   /** Turnstile site key — renders the widget; empty = captcha provider mock/dev. */
@@ -43,7 +42,6 @@ export function RfqForm({
   errorLabel,
   rateLimitedLabel,
   honeypotHint,
-  emailFieldKey,
   prefill,
   turnstileSiteKey,
 }: RfqFormProps) {
@@ -79,6 +77,10 @@ export function RfqForm({
       const v = fd.get(f.key);
       fieldsObj[f.key] = v === null || v === "" ? "" : String(v);
     }
+    // The buyer's contact field is whichever field the vertical declares as
+    // email-typed — pinned at exactly one per (vertical, listing type) by the
+    // verticals test, not hard-coded to a key name (QA-246).
+    const emailFieldKey = fields.find((f) => f.type === "email")?.key ?? "email";
     let res: Response;
     try {
       res = await fetch("/api/rfqs", {
