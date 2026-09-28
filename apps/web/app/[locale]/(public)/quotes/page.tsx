@@ -21,6 +21,9 @@ interface Rfq {
   buyerEmail: string;
   createdAt: string;
   listing: { title: string; currency: string } | null;
+  // Echo of the request's own spec fields ("Departure: TEB"), built
+  // server-side in vertical field order — contact fields excluded.
+  requestFields: { label: string; value: string }[];
   quotes: Quote[];
 }
 
@@ -223,6 +226,11 @@ function QuotesInner() {
                     ) : null}
                   </span>
                 </div>
+                {r.requestFields?.length ? (
+                  <p className="mt-1 text-xs text-muted" data-testid={`rfq-echo-${r.id}`}>
+                    {r.requestFields.map((f) => `${f.label}: ${f.value}`).join(" · ")}
+                  </p>
+                ) : null}
                 {r.quotes.length === 0 ? (
                   <p className="mt-2 text-sm text-muted">{t("waiting")}</p>
                 ) : (

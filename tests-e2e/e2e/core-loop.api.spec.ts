@@ -142,8 +142,14 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   expect(buyerQuotes.ok()).toBeTruthy();
   const buyerRfqs = (await buyerQuotes.json()) as {
     quotes: { id: string; status: string }[];
+    requestFields?: { label: string; value: string }[];
   }[];
   expect(buyerRfqs[0]?.quotes.map((q) => q.id)).toContain(quoteId);
+  // Inbox echoes the request's own spec fields (QA-241) — labels resolved
+  // from the vertical config, contact fields excluded.
+  const echo = buyerRfqs[0]?.requestFields ?? [];
+  expect(echo.some((f) => f.label === "Departure")).toBeTruthy();
+  expect(echo.some((f) => /email|phone/i.test(f.label))).toBeFalsy();
 
   const accept = await publicCtx.post(`/api/quotes/${quoteId}/accept`, {
     data: { buyerEmail: BUYER_EMAIL, token: rfqToken },
