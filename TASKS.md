@@ -360,3 +360,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 261 | ~21:10 | QA-275 | /design component gallery had no robots noindex — a dev showcase page was indexable; metadata robots added |
 | 262 | ~16:20 | QA-276 | compose: first-boot race — web served 500s until worker's inline migrate finished; dedicated `migrate` one-shot + service_completed_successfully gates |
 | 263 | ~17:05 | QA-277 | unit tests non-hermetic: ambient DATABASE_URL flipped repo to drizzle (test:all failed 32/88); REPO=memory pin + sweep/rfqs/health now key off resolved repoBackend() not raw env |
+| 264 | ~17:35 | QA-278 | providers integration stale pins: QA-219's past-dated leg made totals 60→61 / 27→28; updated + comment tying expiry filtering to app layer |

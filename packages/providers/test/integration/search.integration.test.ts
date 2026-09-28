@@ -33,14 +33,16 @@ describe("PostgresSearchProvider vs compose postgres + jets seed", () => {
 
   it("returns seeded active listings with a total count", async () => {
     const r = await search.search({ vertical: "jets" });
-    expect(r.total).toBe(60);
+    // 61 seeded actives — includes the QA-219 past-dated empty leg: expiry is
+    // filtered in app code (isExpiredListing), the provider returns raw rows.
+    expect(r.total).toBe(61);
     expect(r.hits.length).toBeLessThanOrEqual(24);
     expect(r.hits[0]!.priceMinor).toBeGreaterThan(0);
   });
 
   it("filters by type, text, attribute equality and ranges", async () => {
     const legs = await search.search({ vertical: "jets", type: "empty_leg" });
-    expect(legs.total).toBe(27);
+    expect(legs.total).toBe(28);
 
     const gva = await search.search({
       vertical: "jets",
