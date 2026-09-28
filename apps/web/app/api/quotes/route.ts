@@ -45,6 +45,9 @@ export async function POST(req: Request) {
   // A matched RFQ still references the originating listing for context —
   // if it was deleted there is nothing to quote against.
   if (!listing) return err("rfq not found", 404);
+  // Archiving is terminal (QA-247): a delisted item must stop minting new
+  // quotes — its still-open RFQs now expire out instead (QA-300).
+  if (listing.status === "archived") return err("rfq is no longer open", 409);
   const allowed =
     listing.operatorId === operator.id ||
     (await repo.hasRfqMatch(rfq.id, operator.id));

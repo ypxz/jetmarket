@@ -51,6 +51,15 @@ export async function POST(
     return err("rfq is no longer open", 409);
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
+  // The RFQ's listing being archived since the quote was sent must not mint
+  // a deal — archiving is terminal and the row is gone from the market
+  // (QA-300). Check BEFORE the CAS so the 409 doesn't flip anything.
+  const parentListing = rfq.listingId
+    ? await repo.getListing(rfq.listingId)
+    : undefined;
+  if (parentListing?.status === "archived") {
+    return err("listing is no longer available", 409);
+  }
 
   // Arbitration order matters: the RFQ flip is the single-winner gate.
   // Two accepts on DIFFERENT quotes of this RFQ would both pass their own
@@ -79,7 +88,7 @@ export async function POST(
     }
   }
 
-  const listing = await repo.getListing(rfq.listingId);
+  const listing = parentListing;
   const feePct = listing ? successFeePctFor(listing.type) : 0.03;
   // Fee in integer minor units — float math on majors loses cents at edges,
   // and a hardcoded ×100 invoices a 0-decimal currency at 100× (QA-258).
