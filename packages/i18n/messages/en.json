@@ -626,7 +626,11 @@
     "operator": "I'm an operator",
     "sentLine": "Link sent. In mock mode it is also right here:",
     "continue": "Continue to JetMarket →",
-    "adminTip": "Tip: sign in as {email} for the admin area."
+    "adminTip": "Tip: sign in as {email} for the admin area.",
+    "errors": {
+      "invalidToken": "That sign-in link is invalid or has expired — request a new one below.",
+      "rateLimited": "Too many sign-in attempts — wait a few minutes and try again."
+    }
   },
   "app": {
     "dashboard": {

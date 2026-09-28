@@ -1,6 +1,7 @@
 "use client";
 
 import { readJson } from "@/lib/fetch-json";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -10,6 +11,13 @@ export default function SignInPage() {
   const [role, setRole] = useState<"buyer" | "operator">("buyer");
   const [devLink, setDevLink] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const error = useSearchParams().get("error");
+  const errorMsg =
+    error === "invalid-token"
+      ? t("errors.invalidToken")
+      : error === "rate-limited"
+        ? t("errors.rateLimited")
+        : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,6 +35,15 @@ export default function SignInPage() {
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold">{t("loginTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{t("noPassword")}</p>
+      {errorMsg ? (
+        <p
+          className="mt-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
+          role="alert"
+          data-testid="signin-error"
+        >
+          {errorMsg}
+        </p>
+      ) : null}
       <form onSubmit={submit} className="mt-6 space-y-4">
         <input
           type="email"
