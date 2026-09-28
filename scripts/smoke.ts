@@ -94,6 +94,27 @@ await check("GET /robots.txt + /sitemap.xml", async () => {
     throw new Error("empty sitemap");
 });
 
+// The unfurler path: extract og:image from the listing page and fetch it —
+// a broken ImageResponse route only fails when a crawler actually asks.
+// The meta URL is absolute (metadataBase); rewrite onto the tested base.
+await check("listing og:image renders a PNG", async () => {
+  const listings = (await (await get("/api/listings?limit=1")).json()) as {
+    id: string;
+  }[];
+  const id = listings[0]?.id;
+  if (!id) throw new Error("no listings");
+  const html = await (await get(`/listing/${id}`)).text();
+  const ogUrl = /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/.exec(
+    html,
+  )?.[1];
+  if (!ogUrl) throw new Error("no og:image meta");
+  const u = new URL(ogUrl);
+  const res = await fetch(`${base}${u.pathname}${u.search}`);
+  if (!res.ok) throw new Error(`og:image -> ${res.status}`);
+  if (!(res.headers.get("content-type") ?? "").includes("image/png"))
+    throw new Error("og:image is not a PNG");
+});
+
 // First config-declared SEO landing slug renders — catches a broken
 // [slug] route or a slug whose i18n keys went missing on the active vertical.
 await check("GET first SEO landing slug renders", async () => {
