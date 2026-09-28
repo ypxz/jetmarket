@@ -1,6 +1,6 @@
 "use client";
 
-import { readJson } from "@/lib/fetch-json";
+import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -35,7 +35,11 @@ export default function SignInPage() {
       setFailed(true);
       return;
     }
-    const data = await readJson<{ devLink?: string }>(res);
+    const data = await readJsonOr<{ devLink?: string }>(res, {});
+    if (!res.ok) {
+      setFailed(true);
+      return;
+    }
     setDevLink(data.devLink ?? null);
     setSent(true);
   }

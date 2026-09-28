@@ -27,3 +27,17 @@ export async function fetchJson<T>(
   const res = await fetch(input, init);
   return { data: await readJson<T>(res), res };
 }
+
+/**
+ * Best-effort body read for error paths: a proxy/gateway failure answers
+ * HTML, not JSON, and a caller that only wants `error?` must not inherit
+ * readJson's throw (QA-174 — the descriptive throw stays for success paths
+ * where a malformed body really is exceptional).
+ */
+export async function readJsonOr<T>(res: Response, fallback: T): Promise<T> {
+  try {
+    return await readJson<T>(res);
+  } catch {
+    return fallback;
+  }
+}

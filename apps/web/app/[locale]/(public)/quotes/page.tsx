@@ -1,6 +1,6 @@
 "use client";
 
-import { readJson } from "@/lib/fetch-json";
+import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -52,11 +52,11 @@ function QuotesInner() {
       return;
     }
     if (!res.ok) {
-      const d = await readJson<{ error?: string }>(res);
+      const d = await readJsonOr<{ error?: string }>(res, {});
       setMsg(d.error ?? tc("error"));
       return;
     }
-    setRfqs(await readJson<Rfq[]>(res));
+    setRfqs(await readJsonOr<Rfq[]>(res, []));
   }
 
   // "Lost your link?" — re-emails every request's bearer link to the claimed
@@ -77,7 +77,7 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const d = await readJson<{ error?: string }>(res);
+    const d = await readJsonOr<{ error?: string }>(res, {});
     setMsg(res.ok ? t("resendSent") : (d.error ?? tc("error")));
   }
 
@@ -104,8 +104,8 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJson<{ error?: string; deal: { id: string } }>(res);
-    if (!res.ok) {
+    const data = await readJsonOr<{ error?: string; deal?: { id: string } }>(res, {});
+    if (!res.ok || !data.deal) {
       setMsg(data.error ?? tc("error"));
       return;
     }
@@ -125,7 +125,7 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJson<{ error?: string }>(res);
+    const data = await readJsonOr<{ error?: string }>(res, {});
     if (!res.ok) {
       setMsg(data.error ?? tc("error"));
       return;

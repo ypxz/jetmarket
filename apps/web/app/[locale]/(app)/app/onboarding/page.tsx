@@ -1,6 +1,6 @@
 "use client";
 
-import { readJson } from "@/lib/fetch-json";
+import { readJsonOr } from "@/lib/fetch-json";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -57,7 +57,7 @@ export default function OnboardingPage() {
       return;
     }
     if (!res.ok) {
-      setError((await readJson<{ error?: string }>(res)).error ?? t("failed"));
+      setError((await readJsonOr<{ error?: string }>(res, {})).error ?? t("failed"));
       return;
     }
     router.push("/app");

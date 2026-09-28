@@ -1,6 +1,6 @@
 "use client";
 
-import { readJson } from "@/lib/fetch-json";
+import { readJsonOr } from "@/lib/fetch-json";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -17,7 +17,7 @@ export function PortalButton() {
       setState("error");
       return;
     }
-    const data = await readJson<{ url?: string }>(res);
+    const data = await readJsonOr<{ url?: string }>(res, {});
     if (!res.ok || !data.url) {
       setState("error");
       return;
