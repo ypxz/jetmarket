@@ -191,7 +191,7 @@ function QuotesInner() {
                 <div className="flex justify-between">
                   <div className="font-medium">{r.listing?.title}</div>
                   <span className="flex items-center gap-3">
-                    <span className="text-xs text-muted">{r.status}</span>
+                    <span className="text-xs text-muted" data-testid={`rfq-state-${r.id}`}>{tc(`rfqState.${r.status}`)}</span>
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button
                         onClick={() => closeRfq(r.id)}
@@ -215,7 +215,7 @@ function QuotesInner() {
                           </span>{" "}
                           <span className="text-sm text-muted">
                             {t("by", { name: q.operator?.name ?? "" })}
-                            {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {q.status}
+                            {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {tc(`quoteState.${q.status}`)}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                         </div>

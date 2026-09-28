@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { operatorRfqView } from "@/lib/rfq-view";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
-import { quoteStateVariant } from "@/lib/state-variant";
+import { quoteStateVariant, rfqStateVariant } from "@/lib/state-variant";
 import { verticalConfig } from "@/lib/vertical";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
@@ -121,9 +121,12 @@ export default async function RfqInboxPage({
               >
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{listing?.title ?? t("listingFallback")}</div>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">
-                    {r.status}
-                  </span>
+                  <Badge
+                    variant={rfqStateVariant(r.status)}
+                    data-testid={`rfq-state-${r.id}`}
+                  >
+                    {tc(`rfqState.${r.status}`)}
+                  </Badge>
                 </div>
                 <p className="mt-1 text-sm text-muted">
                   {t("from", {
@@ -168,7 +171,7 @@ export default async function RfqInboxPage({
                   <QuoteForm rfqId={r.id} />
                 ) : (
                   <p className="mt-3 text-sm text-muted" data-testid={`rfq-closed-${r.id}`}>
-                    {t("notOpen", { status: r.status })}
+                    {t("notOpen", { status: tc(`rfqState.${r.status}`) })}
                   </p>
                 )}
               </li>

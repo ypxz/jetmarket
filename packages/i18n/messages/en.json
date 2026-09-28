@@ -14,6 +14,14 @@
       "declined": "declined",
       "withdrawn": "withdrawn"
     },
+    "rfqState": {
+      "open": "open",
+      "matched": "matching",
+      "quoted": "quoted",
+      "closed": "closed",
+      "expired": "expired",
+      "spam": "closed"
+    },
     "invoiceState": {
       "pending": "pending",
       "invoiced": "invoiced",

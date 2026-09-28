@@ -1,5 +1,5 @@
 import type { BadgeVariant } from "@jetmarket/ui";
-import type { Deal, JobInfo, Quote } from "@/lib/repo/types";
+import type { Deal, JobInfo, Quote, Rfq } from "@/lib/repo/types";
 
 export function quoteStateVariant(status: Quote["status"]): BadgeVariant {
   switch (status) {
@@ -11,6 +11,23 @@ export function quoteStateVariant(status: Quote["status"]): BadgeVariant {
       return "danger";
     case "withdrawn":
       return "outline";
+  }
+}
+
+export function rfqStateVariant(status: Rfq["status"]): BadgeVariant {
+  switch (status) {
+    case "open":
+      return "outline";
+    case "matched":
+      return "warning";
+    case "quoted":
+      return "success";
+    case "closed":
+      return "default";
+    case "expired":
+      return "outline";
+    case "spam":
+      return "danger";
   }
 }
 
