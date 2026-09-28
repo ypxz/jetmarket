@@ -303,6 +303,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 219 | ~11:35 | QA-234 | operator RFQ email vertical-shaped: label-driven detail lines (rfqFieldLabels, en messages) + subject "New RFQ — <listing title>"; machinery dealers no longer get "Route: n/a"; worker+memory paths + 1 machinery pin |
 | 220 | ~11:40 | QA-235 | owner notification email dumps JSON → labeled detail lines via rfqFieldLabels (same helper as QA-234) |
 | 221 | ~11:15 | QA-236 | seeds grow one 'sent' quote on the demo RFQ (jets $14.5k USD / machinery €385k EUR) + accessToken demo-buyer-token; buyer inbox demo path now shows a payable quote (pg seeds only — memory seed has no demo trail) |
+| 222 | ~11:30 | QA-237 | memory-mode seeds gain the demo trail (rfq+matches+quote, accessToken demo-buyer-token) — mock-mode demos were empty inboxes; createRfq accepts accessToken override; listRfqs test asserts membership not count |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
