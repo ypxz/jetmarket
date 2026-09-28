@@ -193,3 +193,77 @@ describe.skipIf(!reachable)("fan-out match inbox visibility (QA-65)", () => {
     expect(inbox3.map((r) => r.id)).not.toContain(rfq!.id);
   });
 });
+
+// QA-159: rfqs.listing_id is `set null` on listing delete — an inner join to
+// listings used to silently drop those RFQs from a matched operator's inbox
+// (memory impl kept them: contract divergence). Left-joined now.
+describe.skipIf(!reachable)("rfq survives listing delete (QA-159)", () => {
+  const { rfqs, rfqMatches, operators, users, listings } = schema;
+
+  it("matched operator still sees the rfq after its listing is deleted", async () => {
+    const db = client!.db;
+    const repo = new DrizzleRepo(db);
+    const tag = Date.now().toString(36);
+
+    const [u] = await db
+      .insert(users)
+      .values({ email: `q159-${tag}@test.dev`, role: "operator" })
+      .returning();
+    const [op] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Q159 Air", plan: "pro" })
+      .returning();
+    const [l] = await db
+      .insert(listings)
+      .values({
+        operatorId: op!.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Q159 ${tag}`,
+        priceMinor: 100,
+        status: "active",
+      })
+      .returning();
+    const [rfq] = await db
+      .insert(rfqs)
+      .values({
+        vertical: "jets",
+        listingId: l!.id,
+        buyerEmail: `b-${tag}@test.dev`,
+        fields: {},
+        status: "new",
+      })
+      .returning();
+
+    const [u2] = await db
+      .insert(users)
+      .values({ email: `q159b-${tag}@test.dev`, role: "operator" })
+      .returning();
+    const [op2] = await db
+      .insert(operators)
+      .values({ userId: u2!.id, name: "Q159 B Air", plan: "pro" })
+      .returning();
+    await db.insert(rfqMatches).values({
+      rfqId: rfq!.id,
+      operatorId: op2!.id,
+      listingId: l!.id,
+      state: "pending",
+    });
+
+    await db.delete(listings).where(eq(listings.id, l!.id));
+    // FK fired: rfqs.listing_id is now NULL.
+    const [orphan] = await db
+      .select({ listingId: rfqs.listingId })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfq!.id));
+    expect(orphan!.listingId).toBeNull();
+
+    const inbox = await repo.listRfqs({ operatorId: op2!.id });
+    expect(inbox.map((r) => r.id)).toContain(rfq!.id);
+    expect(await repo.countRfqs({ operatorId: op2!.id })).toBe(1);
+    // And the buyer side still reads it (buyerEmail path has no join).
+    expect(
+      (await repo.listRfqs({ buyerEmail: `b-${tag}@test.dev` })).map((r) => r.id),
+    ).toContain(rfq!.id);
+  });
+});

@@ -557,10 +557,13 @@ export class DrizzleRepo implements Repo {
           and m.operator_id = ${filter.operatorId}
           and m.state <> 'delayed'
       )`;
+      // leftJoin, not inner: rfqs.listing_id goes NULL on listing delete
+      // (set null) — an inner join would silently drop those RFQs from the
+      // matched operator's inbox, diverging from the memory impl (QA-159).
       let q = this.db
         .select({ rfq: rfqs })
         .from(rfqs)
-        .innerJoin(listings, eq(rfqs.listingId, listings.id))
+        .leftJoin(listings, eq(rfqs.listingId, listings.id))
         .where(
           or(eq(listings.operatorId, filter.operatorId), matched),
         )
@@ -609,7 +612,7 @@ export class DrizzleRepo implements Repo {
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(rfqs)
-        .innerJoin(listings, eq(rfqs.listingId, listings.id))
+        .leftJoin(listings, eq(rfqs.listingId, listings.id))
         .where(and(...conds));
       return r?.n ?? 0;
     }
