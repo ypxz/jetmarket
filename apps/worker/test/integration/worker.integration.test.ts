@@ -201,6 +201,35 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(rows.map((r) => r.rfqId)).not.toContain(fresh);
   });
 
+  it("never delivers a delayed match whose RFQ already closed (QA-169)", async () => {
+    // RFQ dies (accept/expiry/spam) while a delayed match still waits — the
+    // flip must skip it so no operator gets a "new RFQ" email for a dead
+    // request.
+    const rfqId = await insertRfq({ name: "Dead", email: "d@x.com" });
+    await db.update(rfqs).set({ status: "closed" }).where(eq(rfqs.id, rfqId));
+    const [op] = await db
+      .select({ id: operators.id })
+      .from(operators)
+      .limit(1);
+    const [m] = await db
+      .insert(rfqMatches)
+      .values({
+        rfqId,
+        operatorId: op!.id,
+        state: "delayed",
+        deliverAt: new Date(Date.now() - 60_000), // already due
+      })
+      .returning({ id: rfqMatches.id });
+
+    await deliverDueMatches(deps());
+
+    const [after] = await db
+      .select({ state: rfqMatches.state })
+      .from(rfqMatches)
+      .where(eq(rfqMatches.id, m!.id));
+    expect(after!.state).toBe("delayed");
+  });
+
   it("expires stale rfqs and declines their sent quotes on tick", async () => {
     const rfqId = await insertRfq({
       departure: "ZRH",

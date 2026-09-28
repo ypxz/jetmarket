@@ -188,6 +188,16 @@ export async function quoteNotification(
   // the job and would re-mail the operator. Already-sent means this attempt
   // is a replay of a completed send; skip it (QA-161).
   if (ctx.state === "sent") return;
+  // The RFQ can die between match-delivery and this send (accept close,
+  // expiry sweep, spam-mark). Notifying operators about a dead request just
+  // 409s their quote attempt — skip (QA-169); complete the job, the match
+  // stays 'pending' as a delivered-but-dead record.
+  if (!["new", "matched", "quoted"].includes(ctx.rfqStatus)) {
+    console.warn(
+      `[worker] quote_notification: rfq ${ctx.rfqId} is ${ctx.rfqStatus} — skipping`,
+    );
+    return;
+  }
 
   const f = ctx.rfqFields;
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]

@@ -92,6 +92,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         matchId: id,
         rfqId: "r1",
         state: "pending",
+        rfqStatus: "new",
         operatorEmail: "ops@alpinejet.example",
         operatorName: "Alpine Jet",
         rfqFields: { departure: "ZRH", arrival: "NCE", passengers: 6 },
@@ -264,6 +265,7 @@ describe("handleJob dispatch", () => {
         matchId: id,
         rfqId: "r1",
         state: "sent",
+        rfqStatus: "new",
         operatorEmail: "ops@alpinejet.example",
         operatorName: "Alpine Jet",
         rfqFields: {},
@@ -271,6 +273,28 @@ describe("handleJob dispatch", () => {
       }),
     });
     sent.length = 0;
+    await handleJob(deps(repo), "email.quote_notification", {
+      matchId: "m9",
+    });
+    expect(sent).toHaveLength(0);
+    expect(repo.calls["markMatchState"]).toBeUndefined();
+  });
+
+  it("skips the send when the parent RFQ closed after delivery (QA-169)", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "pending",
+        rfqStatus: "closed",
+        operatorEmail: "ops@alpinejet.example",
+        operatorName: "Alpine Jet",
+        rfqFields: {},
+        buyerEmail: "buyer@x.com",
+      }),
+    });
+    sent.length = 0;
+    // Completes without throwing — the job is done, not retryable.
     await handleJob(deps(repo), "email.quote_notification", {
       matchId: "m9",
     });

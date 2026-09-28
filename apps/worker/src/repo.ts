@@ -62,6 +62,7 @@ export interface WorkerRepo {
     matchId: string;
     rfqId: string;
     state: string;
+    rfqStatus: string;
     operatorEmail: string;
     operatorName: string;
     rfqFields: Record<string, unknown>;
@@ -168,6 +169,14 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           and(
             eq(rfqMatches.state, "delayed"),
             lte(rfqMatches.deliverAt, now),
+            // Dead RFQs never deliver: a delayed match that comes due after
+            // the parent closed/expired stays 'delayed' (and invisible)
+            // instead of notifying operators about a dead request (QA-169).
+            sql`exists (
+              select 1 from rfqs r
+              where r.id = ${rfqMatches.rfqId}
+                and r.status in ('new', 'matched', 'quoted')
+            )`,
           ),
         )
         .returning({ id: rfqMatches.id });
@@ -220,6 +229,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           operatorEmail: users.email,
           operatorName: operators.name,
           rfqFields: rfqs.fields,
+          rfqStatus: rfqs.status,
           buyerEmail: rfqs.buyerEmail,
         })
         .from(rfqMatches)
