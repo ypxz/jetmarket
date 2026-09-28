@@ -176,7 +176,7 @@ function listingConds(filter?: ListingFilter) {
     // Orphaned RFQs surface listingId "" (rfqs.listing_id is set null on
     // listing delete) — drop empty ids or Postgres rejects the in-list with
     // invalid uuid syntax and the whole inbox 500s (QA-154).
-    const ids = filter.ids.filter(Boolean);
+    const ids = filter.ids.filter(isUuid);
     if (ids.length === 0) return sql`false`;
     conds.push(inArray(listings.id, ids));
   }
@@ -309,11 +309,14 @@ export class DrizzleRepo implements Repo {
     return r ? toUser(r) : undefined;
   }
   async listUsers(ids: string[]): Promise<User[]> {
-    if (ids.length === 0) return [];
+    // Same isUuid guard as the single-id lookups (QA-154): a non-uuid entry
+    // would 22P02 the whole batch — miss it instead.
+    const valid = ids.filter(isUuid);
+    if (valid.length === 0) return [];
     const rows = await this.db
       .select()
       .from(users)
-      .where(inArray(users.id, ids));
+      .where(inArray(users.id, valid));
     return rows.map(toUser);
   }
 
@@ -371,8 +374,9 @@ export class DrizzleRepo implements Repo {
   }): Promise<Operator[]> {
     let q = this.db.select().from(operators).$dynamic();
     if (filter?.ids) {
-      if (filter.ids.length === 0) return [];
-      q = q.where(inArray(operators.id, filter.ids));
+      const ids = filter.ids.filter(isUuid);
+      if (ids.length === 0) return [];
+      q = q.where(inArray(operators.id, ids));
     }
     if (filter?.limit !== undefined) q = q.limit(filter.limit);
     if (filter?.offset) q = q.offset(filter.offset);
@@ -555,7 +559,7 @@ export class DrizzleRepo implements Repo {
       .from(listings)
       .where(
         and(
-          inArray(listings.operatorId, operatorIds),
+          inArray(listings.operatorId, operatorIds.filter(isUuid)),
           sql`${listings.status} <> 'archived'`,
         ),
       )
@@ -846,12 +850,14 @@ export class DrizzleRepo implements Repo {
     if (filter?.rfqId) conds.push(eq(quotes.rfqId, filter.rfqId));
     if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
     if (filter?.ids) {
-      if (filter.ids.length === 0) return [];
-      conds.push(inArray(quotes.id, filter.ids));
+      const ids = filter.ids.filter(isUuid);
+      if (ids.length === 0) return [];
+      conds.push(inArray(quotes.id, ids));
     }
     if (filter?.rfqIds) {
-      if (filter.rfqIds.length === 0) return [];
-      conds.push(inArray(quotes.rfqId, filter.rfqIds));
+      const ids = filter.rfqIds.filter(isUuid);
+      if (ids.length === 0) return [];
+      conds.push(inArray(quotes.rfqId, ids));
     }
     const rows = await this.db
       .select()
@@ -912,6 +918,7 @@ export class DrizzleRepo implements Repo {
     }));
   }
   async retryJob(id: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
     const rows = await this.db
       .update(jobs)
       .set({

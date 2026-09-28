@@ -1065,5 +1065,113 @@ export function repoContract(
         (await repo.listDeals({ operatorId: op.id, limit: 1 })).length,
       ).toBe(1);
     });
+
+    it("covers the admin/listing aggregate helpers (QA-274)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u1 = await repo.createUser(`agg1-${tag}@test.dev`, "operator");
+      const u2 = await repo.createUser(`agg2-${tag}@test.dev`, "buyer");
+
+      // listUsers batch-lookup; empty input must not degenerate to "all".
+      const users = await repo.listUsers([u1.id, u2.id]);
+      expect(users.map((u) => u.id).sort()).toEqual([u1.id, u2.id].sort());
+      expect(await repo.listUsers([])).toEqual([]);
+      expect(await repo.listUsers(["missing"])).toEqual([]);
+
+      const op = await repo.upsertOperator({
+        userId: u1.id,
+        name: `Agg Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "pro",
+      });
+      // listOperators / countOperators consistency + ids filter.
+      const allOps = await repo.listOperators();
+      expect(await repo.countOperators()).toBe(allOps.length);
+      expect(allOps.some((o) => o.id === op.id)).toBe(true);
+      expect(await repo.listOperators({ ids: [op.id] })).toHaveLength(1);
+      expect(await repo.listOperators({ ids: [] })).toEqual([]);
+      expect(await repo.listOperators({ limit: 1 })).toHaveLength(1);
+
+      // listListingCountsByOperator: non-archived counts keyed by operator.
+      const l1 = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Agg one ${tag}`,
+        price: 1000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Agg two ${tag}`,
+        price: 2000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const archived = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Agg old ${tag}`,
+        price: 500,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      await repo.updateListingStatus(archived.id, "archived");
+      const counts = await repo.listListingCountsByOperator([op.id]);
+      expect(counts[op.id]).toBe(2);
+      // An unknown operator id yields no key (or zero) — never a phantom row.
+      expect(counts["missing"] ?? 0).toBe(0);
+
+      // countDeals agrees with listDeals (scoped + unscoped).
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: l1.id,
+        buyerEmail: `agg-b-${tag}@test.dev`,
+        fields: {},
+      });
+      const q = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 4000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.createDeal({
+        quoteId: q.id,
+        operatorId: op.id,
+        amount: 4000,
+        currency: "USD",
+        feePct: 0.03,
+        feeAmount: 120,
+        invoiceStatus: "pending",
+      });
+      const allDeals = await repo.listDeals({ limit: 1000 });
+      expect(await repo.countDeals()).toBe(allDeals.length);
+      const scopedDeals = await repo.listDeals({
+        operatorId: op.id,
+        limit: 1000,
+      });
+      expect(await repo.countDeals({ operatorId: op.id })).toBe(
+        scopedDeals.length,
+      );
+      expect(scopedDeals.length).toBeGreaterThanOrEqual(1);
+
+      // Jobs queue: memory mode has no queue (always empty/no-op by design);
+      // the shared assertion is shape-only — an array and false on unknown id.
+      expect(Array.isArray(await repo.listJobs())).toBe(true);
+      expect(Array.isArray(await repo.listJobs({ status: "failed" }))).toBe(
+        true,
+      );
+      expect(await repo.retryJob(`missing-${tag}`)).toBe(false);
+    });
   });
 }
