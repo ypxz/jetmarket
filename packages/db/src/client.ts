@@ -17,8 +17,13 @@ export function createDb(
   url: string = databaseUrl(),
   env: NodeJS.ProcessEnv = process.env,
 ) {
+  // Serverless deploys spawn a pool per function instance — 10 conns each
+  // can overrun a small managed pool (Supabase free ~60). DB_POOL_MAX caps it.
+  const poolMax = Number(env.DB_POOL_MAX);
   const sql = postgres(url, {
-    max: 10,
+    max: Number.isInteger(poolMax) && poolMax >= 1 && poolMax <= 100
+      ? poolMax
+      : 10,
     // Prepared statements break on transaction-mode poolers (PgBouncer,
     // Supabase :6543). DB_PREPARED_STATEMENTS=0 is the documented escape
     // hatch — see GO_LIVE.md.

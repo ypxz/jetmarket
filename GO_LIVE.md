@@ -26,7 +26,8 @@
    `pnpm --filter @jetmarket/db migrate` + `seed` once. On a
    transaction-mode pooler (PgBouncer, Supabase `:6543`) also set
    `DB_PREPARED_STATEMENTS=0` — postgres.js prepares by default and the
-   pooler drops them.
+   pooler drops them. On serverless (Vercel) also shrink `DB_POOL_MAX`
+   (default 10/process) — each function instance opens its own pool.
 3. `VERTICAL=jets` (or your config folder), `APP_URL` to the public origin,
    `SESSION_SECRET` to a real random value, `ADMIN_EMAILS` to yours.
 4. `WORKER_POLL_MS` optional; the worker only needs `DATABASE_URL` — no web env.
