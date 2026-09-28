@@ -341,3 +341,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 242 | ~18:00 | QA-256 | notifyQuoteDeclined/notifyBuyerQuoteWithdrawn unit-pinned (3 decline reasons → operator; withdraw → buyer); 86→88 unit |
 | 243 | ~18:15 | QA-257 | AGENTS.md — all accumulated QA rules encoded as repo conventions (gates, repo contract, auth, notify, hydration, vertical, migrations, seo, providers) |
 | 244 | ~18:30 | QA-258 | accept route fee math → integer minor units (percentOf/toMinorUnits/fromMinorUnits); invoice uses feeMinor not feeAmount*100 |
+| 245 | ~18:45 | QA-259 | checkout amountMinor → toMinorUnits(price, plans.pro.currency) — future-proof for 0-decimal billing currencies |
