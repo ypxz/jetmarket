@@ -8,6 +8,7 @@ import { notifyDealClosed, notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { paymentsProvider, analyticsProvider } from "@jetmarket/providers";
+import { verticalSlug } from "@/lib/vertical";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
@@ -34,9 +35,11 @@ export async function POST(
   await sweepStaleRfqs(repo);
   const rfq = await repo.getRfq(quote.rfqId);
   // Buyer email compares case-insensitively — stored lowercase at create
-  // (QA-153), so lowercase the inbound side the same way.
+  // (QA-153), so lowercase the inbound side the same way. Vertical guard
+  // keeps shared-DB foreign RFQs from being dealt on this deploy (QA-298).
   if (
     !rfq ||
+    rfq.vertical !== verticalSlug() ||
     rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
     rfq.accessToken !== data!.token
   ) {

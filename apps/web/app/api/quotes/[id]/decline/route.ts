@@ -3,6 +3,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { notifyQuoteDeclined } from "@/lib/notify";
 import { analyticsProvider } from "@jetmarket/providers";
+import { verticalSlug } from "@/lib/vertical";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
@@ -27,9 +28,11 @@ export async function POST(
   const quote = await repo.getQuote(id);
   if (!quote) return err("quote not found", 404);
   const rfq = await repo.getRfq(quote.rfqId);
-  // Case-insensitive buyer email match — see accept (QA-153).
+  // Case-insensitive buyer email match — see accept (QA-153). Vertical
+  // guard as on accept (QA-298).
   if (
     !rfq ||
+    rfq.vertical !== verticalSlug() ||
     rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
     rfq.accessToken !== data!.token
   ) {

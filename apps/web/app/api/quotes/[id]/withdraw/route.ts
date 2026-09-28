@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { notifyBuyerQuoteWithdrawn } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { analyticsProvider } from "@jetmarket/providers";
+import { verticalSlug } from "@/lib/vertical";
 
 // Operator withdraws their own still-open quote.
 export async function POST(
@@ -24,10 +25,12 @@ export async function POST(
   if (quote.operatorId !== operator.id) return err("not your quote", 403);
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
+  const rfq = await repo.getRfq(quote.rfqId);
+  if (rfq && rfq.vertical !== verticalSlug())
+    return err("quote not found", 404);
   if (!(await repo.setQuoteStatus(id, "withdrawn", "sent"))) {
     return err("quote already transitioned", 409);
   }
-  const rfq = await repo.getRfq(quote.rfqId);
   if (rfq) await notifyBuyerQuoteWithdrawn(repo, quote, rfq);
   analyticsProvider().track({
     name: "quote_withdrawn",

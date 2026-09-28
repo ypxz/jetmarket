@@ -11,6 +11,7 @@ import {
   analyticsProvider,
 } from "@jetmarket/providers";
 import { appOrigin } from "@/lib/origin";
+import { verticalSlug } from "@/lib/vertical";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1).max(64),
@@ -35,7 +36,10 @@ export async function POST(req: Request) {
   // dateTo-past request can't keep taking quotes (QA-142).
   await sweepStaleRfqs(repo);
   const rfq = await repo.getRfq(data!.rfqId);
-  if (!rfq) return err("rfq not found", 404);
+  // Foreign-vertical RFQs 404 here — on a shared DB an operator with a
+  // machinery match could otherwise quote through the wrong deploy
+  // (QA-298).
+  if (!rfq || rfq.vertical !== verticalSlug()) return err("rfq not found", 404);
   const listing = await repo.getListing(rfq.listingId);
   // Bearer paths: own the RFQ's listing, or hold a delivered fan-out match.
   // A matched RFQ still references the originating listing for context —
