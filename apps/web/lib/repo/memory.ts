@@ -653,7 +653,10 @@ class MemoryRepo implements Repo {
   }
 
   async upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription> {
-    const prev = await this.getSubscription(s.operatorId);
+    // Read synchronously — an await before the stale-webhook gate would let
+    // a raced stale event pass on a pre-write snapshot and clobber the
+    // newer sub (QA-333). Drizzle gates inside the UPDATE.
+    const prev = this.subscriptions.get(s.operatorId);
     // stale-webhook gate: stamped events only apply when newer
     if (
       s.lastEventAt != null &&
