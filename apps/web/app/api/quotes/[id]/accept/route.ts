@@ -3,6 +3,7 @@ import { site } from "@jetmarket/config";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
+import { notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { emailProvider, paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 
@@ -62,7 +63,9 @@ export async function POST(
   }
   for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
     if (q.id !== id && q.status === "sent") {
-      await repo.setQuoteStatus(q.id, "declined", "sent");
+      if (await repo.setQuoteStatus(q.id, "declined", "sent")) {
+        await notifyQuoteDeclined(repo, q, rfq, "competing-accepted");
+      }
     }
   }
 

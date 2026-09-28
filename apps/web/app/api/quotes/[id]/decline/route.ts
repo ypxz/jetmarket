@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
+import { notifyQuoteDeclined } from "@/lib/notify";
 import { analyticsProvider } from "@jetmarket/providers";
 
 const Body = z.object({
@@ -42,5 +43,6 @@ export async function POST(
     name: "quote_declined",
     props: { quoteId: quote.id, rfqId: rfq.id },
   });
+  await notifyQuoteDeclined(repo, quote, rfq, "declined");
   return ok(await repo.getQuote(id));
 }
