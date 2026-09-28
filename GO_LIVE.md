@@ -19,7 +19,7 @@
 
 ## Deploy path (cheapest first)
 
-1. `docker build -f Dockerfile.web -t jetmarket-web .` and
+1. `docker build -f Dockerfile -t jetmarket-web .` and
    `docker build -f Dockerfile.worker -t jetmarket-worker .` (or Fly.io
    `fly launch` per service). Verified: web image boots + serves `/en` + `/api/health`.
 2. Point `DATABASE_URL`/`TEST_DATABASE_URL` at managed Postgres; run
