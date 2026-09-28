@@ -128,10 +128,16 @@ export async function notifyDealClosed(
   }
   try {
     const operator = await repo.getOperator(quote.operatorId);
+    // The winning operator gets the buyer's email — the buyer needs the same
+    // reach-back path or a silent operator leaves the deal stranded (QA-243).
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
     const subject = `You accepted a quote for “${title}”`;
+    const contact = owner
+      ? `Reach them directly at ${owner.email} — they have also been notified.`
+      : "The operator has been notified and will contact you to arrange fulfilment.";
     const body =
       `You accepted ${operator?.name ?? "the operator"}'s quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
-      `The operator has been notified and will contact you to arrange fulfilment.`;
+      contact;
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,

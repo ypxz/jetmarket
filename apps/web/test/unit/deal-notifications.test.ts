@@ -92,5 +92,8 @@ describe("POST /api/quotes/[id]/accept notifications (QA-149)", () => {
     expect(toOp?.text).toContain("9000");
     expect(toBuyer?.subject).toContain("accepted");
     expect(toBuyer?.text).toContain("Ops");
+    // Symmetric handoff (QA-243): the buyer gets the operator's email too —
+    // a silent operator must not leave a paid deal stranded.
+    expect(toBuyer?.text).toContain(opUser.email);
   });
 });
