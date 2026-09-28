@@ -233,6 +233,11 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
 test('buyer-role account is promoted to operator on first profile create', async () => {
   const buyer = await login(`e2e-lc-switch-${run}@jetmarket.local`, 'buyer');
 
+  // The onboarding page itself is reachable pre-promotion (the (app) layout
+  // used to bounce non-operators to /sign-in before the form could render).
+  const onboardingPage = await buyer.get('/app/onboarding');
+  expect(onboardingPage.url()).toContain('/app/onboarding');
+
   // Before onboarding the operator-gated routes reject them.
   expect(
     (

@@ -44,7 +44,17 @@ export async function POST(req: Request) {
   }
 
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
-  const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}`;
+  // Operator intent lands on onboarding (no profile yet) or the dashboard;
+  // buyer intent on the home page. An existing buyer choosing "I operate"
+  // still lands on onboarding — the role upgrade happens at the first
+  // profile POST (QA-267).
+  const next =
+    resolvedRole === "operator"
+      ? (await repo.getOperatorByUserId(user.id))
+        ? "/app"
+        : "/app/onboarding"
+      : "/";
+  const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}&next=${encodeURIComponent(next)}`;
   const subject = `Your ${site.name} sign-in link`;
   await emailProvider().send({
     to: email,
