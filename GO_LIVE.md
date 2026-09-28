@@ -41,9 +41,10 @@
    `proxy_set_header Fly-Client-Ip "";`), and behind any other proxy do the
    same for the headers it doesn't overwrite — otherwise clients rotate a
    spoofed header to mint unlimited rate-limit buckets (QA-140).
-7. Post-deploy sanity: `pnpm smoke --url=https://<deploy>` — 9 checks
+7. Post-deploy sanity: `pnpm smoke --url=https://<deploy>` — 10 checks
    (health, landing, auth pages, vertical config, listings, listing+operator
-   detail, robots/sitemap, one SEO slug). Vertical-agnostic — run it against
+   detail, robots/sitemap, the og:image unfurler path, one SEO slug).
+   Vertical-agnostic — run it against
    a `VERTICAL=machinery` deploy too (verified).
 
 ## Accounts to create (human-only — phone/card/identity required)
