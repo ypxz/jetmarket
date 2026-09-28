@@ -23,7 +23,7 @@
 | admin (`/admin`) | `fee-ledger`, `deal-<id>`, `admin-op-<id>`, `admin-verified-<id>`, `verify-<operatorId>` |
 | RFQ inbox (`/app/rfqs`) | `rfq-<id>` per row, `quote-amount-<rfqId>`, `quote-send-<rfqId>`, `op-quote-<id>`, `withdraw-<id>`, `rfq-empty` |
 | buyer quotes (`/quotes`) | `buyer-email`, `buyer-load`, `buyer-rfq-<id>`, `quote-<id>`, `quote-state-<id>`, `accept-<id>`, `decline-<id>`, `accept-msg` |
-| admin (`/admin`) | `fee-ledger`, `deal-<id>`, `admin-op-<id>`, `admin-verified-<id>`, `verify-<operatorId>`, `deal-invoice-<id>`, `mark-paid-<id>` |
+| admin (`/admin`) | `fee-ledger`, `deal-<id>`, `admin-op-<id>`, `admin-verified-<id>`, `verify-<operatorId>`, `deal-invoice-<id>`, `mark-paid-<id>`, `admin-rfq-<id>`, `admin-rfq-status-<id>`, `mod-rfq-spam-<id>` |
 | billing | `checkout-pro`, `pro-active`, `upgrade-cta`, `billing-portal` |
 | landing (`/`) | `hero-search` (GET form → `/search?q=`) |
 | search (`/search`) | `facet-sidebar`, `facet-q` (query input), `facet-<key>` (enum select) / `facet-<key>-min` + `facet-<key>-max` (number-range), `facet-apply` (submit), `search-results`, `search-result` (per card), `search-results-count` |

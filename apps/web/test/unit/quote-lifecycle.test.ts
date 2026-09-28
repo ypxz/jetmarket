@@ -22,6 +22,7 @@ import { POST as declineQuote } from "../../app/api/quotes/[id]/decline/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
 import { POST as moderateListing } from "../../app/api/admin/listings/[id]/status/route";
+import { POST as moderateRfq } from "../../app/api/admin/rfqs/[id]/status/route";
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (body?: unknown) =>
@@ -232,5 +233,39 @@ describe("POST /api/admin/listings/[id]/status (QA-157)", () => {
     const body = (await res.json()) as { status: string };
     expect(body.status).toBe("archived");
     expect((await repo.getListing(listing.id))?.status).toBe("archived");
+  });
+});
+
+describe("POST /api/admin/rfqs/[id]/status (QA-181)", () => {
+  it("is admin-only, spam-only, and refuses terminal RFQs", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, rfq } = await fixture(repo);
+
+    asUser(opUser.id); // operator, not admin
+    const denied = await moderateRfq(post({ status: "spam" }), params(rfq.id));
+    expect(denied.status).toBe(403);
+
+    const admin = await repo.createUser(`admin-rfq-${rfq.id.slice(0, 6)}@test.dev`, "admin");
+    asUser(admin.id);
+    // Only 'spam' is a valid moderation target.
+    const invalid = await moderateRfq(
+      post({ status: "closed" }),
+      params(rfq.id),
+    );
+    expect(invalid.status).toBe(422);
+
+    const res = await moderateRfq(post({ status: "spam" }), params(rfq.id));
+    expect(res.status).toBe(200);
+    expect((await repo.getRfq(rfq.id))?.status).toBe("spam");
+
+    // Terminal rows refuse the flip — spam is terminal too.
+    const again = await moderateRfq(post({ status: "spam" }), params(rfq.id));
+    expect(again.status).toBe(409);
+    // Missing id -> 404.
+    const missing = await moderateRfq(
+      post({ status: "spam" }),
+      params("00000000-0000-0000-0000-000000000000"),
+    );
+    expect(missing.status).toBe(404);
   });
 });

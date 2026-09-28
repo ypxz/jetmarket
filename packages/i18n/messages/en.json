@@ -812,7 +812,13 @@
       "retrying": "Retrying…",
       "viewJobs": "Job queue →"
     },
-    "viewJobs": "Job queue →"
+    "viewJobs": "Job queue →",
+    "rfqs": "RFQs ({count})",
+    "colBuyer": "Buyer",
+    "colListing": "Listing",
+    "colCreated": "Created",
+    "markSpam": "Mark spam",
+    "noRfqs": "No RFQs yet."
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",
