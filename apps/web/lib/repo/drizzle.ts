@@ -122,6 +122,9 @@ function toDeal(d: DealRow, q: QuoteRow): Deal {
     quoteId: d.quoteId,
     operatorId: q.operatorId,
     amount: q.amountMinor / 100,
+    // The quote carries the authoritative currency; the deal column mirrors
+    // it for ledger reads that don't join (QA-167).
+    currency: q.currency,
     feePct: d.feePct,
     feeAmount: d.feeAmountMinor / 100,
     invoiceStatus: d.invoiceStatus as Deal["invoiceStatus"],
@@ -812,7 +815,7 @@ export class DrizzleRepo implements Repo {
         closedAt: new Date(),
         feePct: d.feePct,
         feeAmountMinor: minor(d.feeAmount),
-        currency: "USD",
+        currency: d.currency,
         invoiceStatus: d.invoiceStatus,
       })
       .returning();

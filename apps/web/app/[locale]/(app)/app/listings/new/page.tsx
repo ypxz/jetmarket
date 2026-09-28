@@ -33,6 +33,8 @@ export default function NewListingPage() {
   const [attrs, setAttrs] = useState<AttributeView[]>([]);
   const [type, setType] = useState<string>("charter");
   const [vertical, setVertical] = useState<string>("jets");
+  // Posted with the listing — machinery deployments price in EUR (QA-167).
+  const [currency, setCurrency] = useState<string>("USD");
   const [error, setError] = useState<string | null>(null);
   const [limitHit, setLimitHit] = useState(false);
   const [pending, setPending] = useState(false);
@@ -47,12 +49,14 @@ export default function NewListingPage() {
           slug?: string;
           listingTypes?: ListingTypeOpt[];
           attributes?: AttributeView[];
+          currency?: string;
         }>(r),
       );
     load()
       .catch(() => new Promise((r) => setTimeout(r, 400)).then(load))
       .then((c) => {
         if (c.slug) setVertical(c.slug);
+        if (c.currency) setCurrency(c.currency);
         if (c.listingTypes?.length) {
           setTypes(c.listingTypes);
           setType((cur) =>
@@ -101,7 +105,7 @@ export default function NewListingPage() {
           title: f.get("title"),
           attributes,
           price: Number(f.get("price") || 0),
-          currency: "USD",
+          currency,
           photos,
         }),
       });

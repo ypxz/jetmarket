@@ -3,6 +3,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { applyPaymentEvent } from "@/lib/billing";
 import { PRO_PLAN_PRICE_USD } from "@/lib/fees";
+import { plans } from "@jetmarket/config";
 import { getRepo } from "@/lib/repo";
 import {
   paymentsProvider,
@@ -35,7 +36,9 @@ export async function POST(req: Request) {
     operatorId: operator.id,
     plan: data!.plan,
     amountMinor: Math.round(PRO_PLAN_PRICE_USD * 100),
-    currency: "USD",
+    // Plan-declared currency (plans.pro.currency) — not the vertical's
+    // listing currency: a EUR marketplace can still price Pro in USD.
+    currency: plans.pro.currency,
     email: user.email,
     successUrl: `${origin}/app/billing?checkout=success`,
     cancelUrl: `${origin}/app/billing?checkout=cancel`,

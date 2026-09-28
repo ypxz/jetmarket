@@ -112,6 +112,8 @@ export interface Deal {
   quoteId: string;
   operatorId: string;
   amount: number;
+  /** Quote's currency — machinery runs EUR; never hardcode a display one. */
+  currency: string;
   feePct: number;
   feeAmount: number;
   invoiceStatus: "pending" | "invoiced" | "paid" | "void";

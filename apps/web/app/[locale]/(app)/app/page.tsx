@@ -185,7 +185,7 @@ export default async function OperatorDashboard() {
               >
                 <div>
                   <div className="font-medium">
-                    {formatMoney(d.amount, "USD")} · {t("dealFee", { fee: formatMoney(d.feeAmount, "USD") })}
+                    {formatMoney(d.amount, d.currency)} · {t("dealFee", { fee: formatMoney(d.feeAmount, d.currency) })}
                   </div>
                   <div className="text-xs text-muted">
                     {new Date(d.closedAt).toDateString()}

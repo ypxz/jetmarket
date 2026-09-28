@@ -75,6 +75,7 @@ describe("memory repo (seeded)", async () => {
       quoteId: q.id,
       operatorId: q.operatorId,
       amount: q.amount,
+      currency: q.currency,
       feePct: 0.03,
       feeAmount: Math.round(q.amount * 3) / 100,
       invoiceStatus: "pending",

@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
+import { verticalConfig } from "@/lib/vertical";
 import { ListingModButton } from "./listing-mod-button";
 import { MarkPaidButton, VoidInvoiceButton } from "./mark-paid";
 import { VerifyButton } from "./verify-button";
@@ -49,6 +50,9 @@ export default async function AdminPage({
   const dealOps = new Map(
     deals.map((d) => [d.id, operatorNames.get(d.operatorId) ?? "?"] as const),
   );
+  // One deployment = one vertical = one currency; the aggregate is honest
+  // only in that currency (rows still print their own d.currency).
+  const siteCurrency = verticalConfig().currency;
   const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
 
   // Listing moderation (QA-157): newest 50 across live states — the takedown
@@ -106,7 +110,7 @@ export default async function AdminPage({
         <h2 className="text-lg font-semibold">
           {t("ledger", {
             count: dealTotal,
-            total: formatMoney(feeTotal, "USD"),
+            total: formatMoney(feeTotal, siteCurrency),
           })}
         </h2>
         <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm" data-testid="fee-ledger">
@@ -126,9 +130,9 @@ export default async function AdminPage({
               <tr key={d.id} data-testid={`deal-${d.id}`}>
                 <td className="py-2 pr-4 font-mono text-xs">{d.id}</td>
                 <td className="py-2 pr-4">{dealOps.get(d.id)}</td>
-                <td className="py-2 pr-4">{formatMoney(d.amount, "USD")}</td>
+                <td className="py-2 pr-4">{formatMoney(d.amount, d.currency)}</td>
                 <td className="py-2 pr-4">{(d.feePct * 100).toFixed(1)}%</td>
-                <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, "USD")}</td>
+                <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, d.currency)}</td>
                 <td className="py-2 pr-4" data-testid={`deal-invoice-${d.id}`}>
                   <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
                     {tc(`invoiceState.${d.invoiceStatus}`)}

@@ -51,7 +51,9 @@ const CreateListing = z.object({
   title: z.string().min(4).max(160),
   attributes: z.record(z.string(), z.unknown()).default({}),
   price: z.number().positive().max(1e9),
-  currency: z.string().length(3).default("USD"),
+  // Optional — defaults to the active vertical's currency, not a hardcoded
+  // one (machinery prices in EUR, QA-167).
+  currency: z.string().length(3).optional(),
   photos: z.array(z.string().max(300)).max(12).default([]),
 });
 
@@ -107,7 +109,7 @@ export async function POST(req: Request) {
         title: data!.title,
         attributes: attrs.data,
         price: data!.price,
-        currency: data!.currency ?? "USD",
+        currency: data!.currency ?? config.currency,
         photos: data!.photos ?? [],
       },
       { cap: operator.plan === "free" ? FREE_LISTING_LIMIT : undefined },
