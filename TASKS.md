@@ -379,3 +379,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 280 | ~18:55 | QA-293 | cross-vertical guard: foreign-vertical listings 404 on detail/rfq/api/PATCH — PATCH could strip foreign attrs |
 | 281 | ~16:49 | QA-294 | REAL BUG: listRfqs/countRfqs gain vertical filter; operator inbox + admin mod queues scope to verticalSlug() (shared-DB contact-leak) |
 | 282 | ~17:01 | QA-295 | REAL BUG: jobs.vertical column + scoped claim; worker expiry/match/fanout sweeps + web lazy sweep filtered by vertical (shared-DB cross-contamination) |
+| 283 | ~17:04 | QA-296 | close remaining shared-DB seams: admin mod/deal/job routes + listing OG image now vertical-scoped (jobs list/retry + foreign-id 404s) |
