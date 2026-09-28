@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  claimJobs,
   createDb,
   databaseUrl,
   enqueueJob,
@@ -401,5 +402,26 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(remainingIds.has(recentDone)).toBe(true);
     expect(remainingIds.has(recentFailed)).toBe(true);
     expect(remainingIds.has(oldPending)).toBe(true);
+  });
+
+  it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {
+    // Scale-out safety: two workers polling the same queue must partition
+    // the pending set, not duplicate it. Serial tests can't prove the
+    // FOR UPDATE SKIP LOCKED actually blocks a second claimer.
+    const ids = await Promise.all(
+      Array.from({ length: 6 }, (_, i) =>
+        enqueueJob(sql, "email.quote_notification", { matchId: `race-${i}` }),
+      ),
+    );
+    const [a, b] = await Promise.all([
+      claimJobs(sql, ["email.quote_notification"], 10),
+      claimJobs(sql, ["email.quote_notification"], 10),
+    ]);
+    const aIds = new Set(a.map((j) => j.id));
+    const bIds = new Set(b.map((j) => j.id));
+    for (const id of ids) {
+      expect(aIds.has(id) || bIds.has(id)).toBe(true);
+      expect(aIds.has(id) && bIds.has(id)).toBe(false);
+    }
   });
 });
