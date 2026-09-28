@@ -38,6 +38,10 @@ export default function NewListingPage() {
   const [error, setError] = useState<string | null>(null);
   const [limitHit, setLimitHit] = useState(false);
   const [pending, setPending] = useState(false);
+  // Buyers reach /app now (QA-267) — without an operator profile the POST
+  // would 401 after they filled the form, so gate the form up front like
+  // /app/rfqs' needProfile state (QA-269).
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Retry once — a route being recompiled in dev can briefly answer
@@ -68,6 +72,10 @@ export default function NewListingPage() {
         if (c.attributes) setAttrs(c.attributes);
       })
       .catch(() => setError(t("configLoadFailed")));
+    fetch("/api/operators")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setHasProfile(d != null))
+      .catch(() => setHasProfile(false));
   }, []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -131,7 +139,18 @@ export default function NewListingPage() {
   return (
     <main className="mx-auto max-w-xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
-      <form onSubmit={submit} className="mt-6 space-y-4">
+      {hasProfile === false ? (
+        <div className="mt-6 rounded-md border border-border bg-surface p-5">
+          <p className="text-sm text-muted">{t("needProfile")}</p>
+          <Link
+            href="/app/onboarding"
+            className="mt-3 inline-block rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
+          >
+            {tv("app.dashboard.createProfile")}
+          </Link>
+        </div>
+      ) : null}
+      <form onSubmit={submit} className="mt-6 space-y-4" hidden={hasProfile === false}>
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
@@ -220,7 +239,7 @@ export default function NewListingPage() {
         </label>
         <button
           type="submit"
-          disabled={pending || !type}
+          disabled={pending || !type || hasProfile !== true}
           data-testid="listing-save"
           className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >

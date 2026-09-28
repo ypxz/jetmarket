@@ -644,7 +644,8 @@
       "failed": "failed",
       "publishing": "Publishing…",
       "typeLabel": "Listing type",
-      "configLoadFailed": "Could not load listing form — please refresh."
+      "configLoadFailed": "Could not load listing form — please refresh.",
+      "needProfile": "Create an operator profile first"
     },
     "rfqs": {
       "needProfile": "Create an operator profile first.",
