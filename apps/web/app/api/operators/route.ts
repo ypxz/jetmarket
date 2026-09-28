@@ -41,5 +41,10 @@ export async function POST(req: Request) {
 export async function GET() {
   const user = await requireUser("operator");
   if (!user) return err("unauthorized", 401);
-  return ok((await getRepo()).getOperatorByUserId(user.id) ?? null);
+  // The row must be awaited — NextResponse.json(Promise) serializes to {}
+  // (truthy), which told profile-less users they already had one (QA-312).
+  // Operator row carries plan/verified — private, never cache (QA-305).
+  return noStore(
+    ok((await (await getRepo()).getOperatorByUserId(user.id)) ?? null),
+  );
 }
