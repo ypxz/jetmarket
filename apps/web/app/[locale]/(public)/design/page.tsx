@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   Badge,
   Button,
@@ -25,6 +26,12 @@ import {
   Textarea,
 } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
+
+// Dev-facing component gallery — not a public surface, keep it out of the
+// index (it's also absent from the sitemap by design).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /** /design — living gallery of every primitive and block for visual review. */
 export default async function DesignPage() {
