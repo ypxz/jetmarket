@@ -225,6 +225,12 @@ export class DrizzleRepo implements Repo {
       .set({ sessionVersion: sql`${users.sessionVersion} + 1` })
       .where(eq(users.id, userId));
   }
+  async setUserRole(userId: string, role: UserRole): Promise<void> {
+    await this.db
+      .update(users)
+      .set({ role })
+      .where(eq(users.id, userId));
+  }
   async getUser(id: string): Promise<User | undefined> {
     if (!isUuid(id)) return undefined;
     const [r] = await this.db

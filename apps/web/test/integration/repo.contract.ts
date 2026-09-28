@@ -306,6 +306,12 @@ export function repoContract(
       await repo.bumpSessionVersion(
         "00000000-0000-0000-0000-000000000000",
       );
+
+      // ADMIN_EMAILS sync path: promote to admin and back.
+      await repo.setUserRole(user.id, "admin");
+      expect((await repo.getUser(user.id))?.role).toBe("admin");
+      await repo.setUserRole(user.id, "operator");
+      expect((await repo.getUser(user.id))?.role).toBe("operator");
     });
 
     it("filters listings by status/vertical/type/facets/query", async () => {

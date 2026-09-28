@@ -58,6 +58,10 @@ class MemoryRepo implements Repo {
     const u = this.users.get(userId);
     if (u) u.sessionVersion += 1;
   }
+  async setUserRole(userId: string, role: UserRole) {
+    const u = this.users.get(userId);
+    if (u) u.role = role;
+  }
 
   async upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },

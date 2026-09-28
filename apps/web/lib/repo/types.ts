@@ -138,6 +138,8 @@ export interface Repo {
   listUsers(ids: string[]): Promise<User[]>;
   /** Invalidate every outstanding session for the user (logout). */
   bumpSessionVersion(userId: string): Promise<void>;
+  /** ADMIN_EMAILS sync on login — promote listed users, revoke removed ones. */
+  setUserRole(userId: string, role: UserRole): Promise<void>;
 
   upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },

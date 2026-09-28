@@ -35,6 +35,13 @@ export async function POST(req: Request) {
     .map((e) => e.trim().toLowerCase());
   const resolvedRole = adminEmails.includes(email.toLowerCase()) ? "admin" : role;
   const user = await repo.createUser(email, resolvedRole);
+  // ADMIN_EMAILS is the admin source of truth: sync on each sign-in request —
+  // a listed returning user is promoted, a removed one loses admin access.
+  if (user.role === "admin" || resolvedRole === "admin") {
+    if (user.role !== resolvedRole && resolvedRole) {
+      await repo.setUserRole(user.id, resolvedRole);
+    }
+  }
 
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}`;
