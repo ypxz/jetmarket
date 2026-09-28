@@ -510,12 +510,13 @@ class MemoryRepo implements Repo {
     return true;
   }
 
-  async expireRfqs(cutoff: string) {
+  async expireRfqs(cutoff: string, vertical?: string) {
     const day = cutoff.slice(0, 10);
     const stale = new Date(cutoff);
     stale.setUTCDate(stale.getUTCDate() - 30);
     const expired = [...this.rfqs.values()].filter(
       (r) =>
+        (vertical === undefined || r.vertical === vertical) &&
         (r.status === "open" ||
           r.status === "matched" ||
           r.status === "quoted") &&

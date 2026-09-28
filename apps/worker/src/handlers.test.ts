@@ -114,6 +114,7 @@ const sent: EmailMessage[] = [];
 const deps = (repo: WorkerRepo): WorkerDeps => ({
   repo,
   sql: {} as Sql, // enqueueJob is stubbed via sql.unsafe below in unit tests
+  vertical: "jets",
   email: {
     send: async (m) => {
       sent.push(m);

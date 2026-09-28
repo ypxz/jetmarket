@@ -315,9 +315,13 @@ export interface Repo {
   /**
    * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is
    * strictly before `cutoff` -> "expired"; their still-"sent" quotes ->
-   * "declined". Returns affected counts.
+   * "declined". Returns affected counts. `vertical` scopes the sweep on
+   * shared-DB deployments (QA-295).
    */
-  expireRfqs(cutoff: string): Promise<{ rfqs: number; quotes: number }>;
+  expireRfqs(
+    cutoff: string,
+    vertical?: string,
+  ): Promise<{ rfqs: number; quotes: number }>;
 
   createQuote(
     q: Omit<Quote, "id" | "createdAt" | "status">,

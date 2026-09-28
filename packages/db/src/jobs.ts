@@ -10,6 +10,9 @@ export type JobKind = "rfq.fanout" | "email.quote_notification" | (string & {});
 export interface EnqueueOptions {
   runAt?: Date;
   maxAttempts?: number;
+  /** Owning vertical — on a shared DB only that vertical's worker claims
+   * the row (QA-295). NULL jobs stay claimable by every worker. */
+  vertical?: string;
 }
 
 export async function enqueueJob(
@@ -19,12 +22,13 @@ export async function enqueueJob(
   opts: EnqueueOptions = {},
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
-    insert into jobs (kind, payload, run_at, max_attempts)
+    insert into jobs (kind, payload, run_at, max_attempts, vertical)
     values (
       ${kind},
       ${JSON.stringify(payload)}::jsonb,
       ${(opts.runAt ?? new Date()).toISOString()},
-      ${opts.maxAttempts ?? 5}
+      ${opts.maxAttempts ?? 5},
+      ${opts.vertical ?? null}
     )
     returning id
   `;
@@ -41,7 +45,13 @@ export async function claimJobs(
   kinds: string[],
   limit = 10,
   now: Date = new Date(),
+  /** Claim only jobs owned by this vertical (plus unscoped NULL rows) —
+   * omit to claim anything (shared-DB deployments must always pass it). */
+  vertical?: string,
 ): Promise<JobRow[]> {
+  const vcond = vertical
+    ? sql`and (vertical is null or vertical = ${vertical})`
+    : sql``;
   return sql<JobRow[]>`
     update jobs
        set status = 'running',
@@ -52,6 +62,7 @@ export async function claimJobs(
         where status = 'pending'
           and run_at <= ${now.toISOString()}
           and kind = any(${kinds})
+          ${vcond}
         order by run_at
         limit ${limit}
         for update skip locked

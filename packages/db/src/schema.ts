@@ -247,6 +247,8 @@ export const jobs = pgTable(
     })
       .notNull()
       .default("pending"),
+    /** Owning vertical — NULL rows are claimable by any deploy's worker. */
+    vertical: text("vertical"),
     runAt: timestamp("run_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

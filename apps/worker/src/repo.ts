@@ -43,24 +43,25 @@ export interface WorkerRepo {
     }[],
   ): Promise<{ id: string; state: string }[]>;
   markRfqMatched(rfqId: string): Promise<void>;
-  /** Flip due delayed matches to pending; returns their ids. */
-  deliverDueMatches(now: Date): Promise<string[]>;
+  /** Flip due delayed matches to pending; returns their ids. `vertical`
+   * scopes the sweep to this deploy's RFQs on shared DBs (QA-295). */
+  deliverDueMatches(now: Date, vertical?: string): Promise<string[]>;
   /** Delivered ('pending') matches whose notification job was never
    * enqueued — the flip→enqueue window isn't transactional, so a crash
    * between them strands the email forever (QA-162). Matches with a
    * terminal 'failed' job keep their row and are excluded on purpose:
    * they belong to admin retry, not an unbounded auto-resend loop. */
-  unnotifiedPendingMatches(limit?: number): Promise<string[]>;
+  unnotifiedPendingMatches(limit?: number, vertical?: string): Promise<string[]>;
   /** RFQs still 'new' past the grace window with NO rfq.fanout job row at
    * all — the web route's enqueueJob can throw after the RFQ persisted
    * (QA-168), or a job row can be lost to admin cleanup. RFQs whose fanout
    * job exists in a terminal 'failed' state are excluded on purpose: they
    * belong to admin retry, not an unbounded auto-refanout loop. */
-  unfanoutedRfqs(olderThan: Date, limit?: number): Promise<string[]>;
+  unfanoutedRfqs(olderThan: Date, limit?: number, vertical?: string): Promise<string[]>;
   /** Expiry sweep: stale open/quoted rfqs -> closed, their sent quotes ->
    * declined (shares the one-pass SQL with the web DrizzleRepo). Returns the
    * affected rows so the tick can notify buyers + operators. */
-  expireRfqs(now: Date): Promise<ExpireResultDetailed>;
+  expireRfqs(now: Date, vertical?: string): Promise<ExpireResultDetailed>;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
@@ -182,7 +183,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         .where(and(eq(rfqs.id, rfqId), eq(rfqs.status, "new")));
     },
 
-    async deliverDueMatches(now) {
+    async deliverDueMatches(now, vertical) {
       const rows = await db
         .update(rfqMatches)
         .set({ state: "pending" })
@@ -193,10 +194,13 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             // Dead RFQs never deliver: a delayed match that comes due after
             // the parent closed/expired stays 'delayed' (and invisible)
             // instead of notifying operators about a dead request (QA-169).
+            // The same EXISTS also pins the sweep to this deploy's vertical
+            // on shared DBs (QA-295).
             sql`exists (
               select 1 from rfqs r
               where r.id = ${rfqMatches.rfqId}
                 and r.status in ('new', 'matched', 'quoted')
+                ${vertical ? sql`and r.vertical = ${vertical}` : sql``}
             )`,
           ),
         )
@@ -204,7 +208,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
       return rows.map((r) => r.id);
     },
 
-    async unnotifiedPendingMatches(limit = 200) {
+    async unnotifiedPendingMatches(limit = 200, vertical) {
       const rows = await db
         .select({ id: rfqMatches.id })
         .from(rfqMatches)
@@ -216,13 +220,22 @@ export function createWorkerRepo(db: Db): WorkerRepo {
               where j.kind = 'email.quote_notification'
                 and j.payload ->> 'matchId' = ${rfqMatches.id}::text
             )`,
+            ...(vertical
+              ? [
+                  sql`exists (
+                    select 1 from rfqs r
+                    where r.id = ${rfqMatches.rfqId}
+                      and r.vertical = ${vertical}
+                  )`,
+                ]
+              : []),
           ),
         )
         .limit(limit);
       return rows.map((r) => r.id);
     },
 
-    async unfanoutedRfqs(olderThan, limit = 100) {
+    async unfanoutedRfqs(olderThan, limit = 100, vertical) {
       const rows = await db
         .select({ id: rfqs.id })
         .from(rfqs)
@@ -230,6 +243,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           and(
             eq(rfqs.status, "new"),
             lt(rfqs.createdAt, olderThan),
+            ...(vertical ? [eq(rfqs.vertical, vertical)] : []),
             sql`not exists (
               select 1 from jobs j
               where j.kind = 'rfq.fanout'
@@ -264,8 +278,8 @@ export function createWorkerRepo(db: Db): WorkerRepo {
       return rows[0] ?? null;
     },
 
-    async expireRfqs(now) {
-      return expireStaleRfqsDetailed(db, now);
+    async expireRfqs(now, vertical) {
+      return expireStaleRfqsDetailed(db, now, vertical);
     },
 
     async loadOperatorEmails(operatorIds) {

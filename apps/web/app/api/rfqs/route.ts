@@ -196,7 +196,9 @@ export async function POST(req: Request) {
     // and the owner was notified; the RFQ just stays `new` until a fan-out
     // retry (logged for ops).
     try {
-      await enqueueJob(getDbSql(), "rfq.fanout", { rfqId: rfq.id });
+      await enqueueJob(getDbSql(), "rfq.fanout", { rfqId: rfq.id }, {
+        vertical: rfq.vertical,
+      });
     } catch (e) {
       logWarn("rfq.fanout_enqueue_failed", {
         rfqId: rfq.id,

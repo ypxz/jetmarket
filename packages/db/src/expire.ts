@@ -42,11 +42,15 @@ export interface ExpireResultDetailed {
 export async function expireStaleRfqsDetailed(
   db: Db,
   cutoff: Date,
+  /** Scope the sweep to one vertical on shared-DB deployments (QA-295). */
+  vertical?: string,
 ): Promise<ExpireResultDetailed> {
+  const vcond = vertical ? sql`AND vertical = ${vertical}` : sql``;
   const rows = await db.execute(sql`
     WITH expired_rfqs AS (
       UPDATE rfqs SET status = 'closed'
       WHERE status IN ('new', 'matched', 'quoted')
+        ${vcond}
         AND (
           -- dated request: live through dateTo, dead the day after
           (fields->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
@@ -85,7 +89,11 @@ export async function expireStaleRfqsDetailed(
 }
 
 /** Count-only projection — the web Repo iface's shape. */
-export async function expireStaleRfqs(db: Db, cutoff: Date): Promise<ExpireResult> {
-  const d = await expireStaleRfqsDetailed(db, cutoff);
+export async function expireStaleRfqs(
+  db: Db,
+  cutoff: Date,
+  vertical?: string,
+): Promise<ExpireResult> {
+  const d = await expireStaleRfqsDetailed(db, cutoff, vertical);
   return { rfqs: d.rfqs.length, quotes: d.quotes.length };
 }

@@ -1,5 +1,6 @@
 import { repoBackend } from "./repo";
 import type { Repo } from "./repo/types";
+import { verticalSlug } from "./vertical";
 
 /**
  * Lazy RFQ expiry sweep. The worker ticks every 5s in postgres mode, but
@@ -16,5 +17,5 @@ export async function sweepStaleRfqs(repo: Repo): Promise<void> {
   // even when a DATABASE_URL leaks into the process env (e.g. `pnpm test:all`
   // invoked under an exported dev URL — QA-277).
   if (repoBackend() !== "memory") return;
-  await repo.expireRfqs(new Date().toISOString());
+  await repo.expireRfqs(new Date().toISOString(), verticalSlug());
 }

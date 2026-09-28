@@ -152,6 +152,32 @@ describe("jobs queue", () => {
       select status from jobs where id = ${futureId}`;
     expect(done[0]!.status).toBe("done");
   });
+
+  it("scopes claims to the caller's vertical; NULL stays claimable by all (QA-295)", async () => {
+    const { sql } = client;
+    const foreign = await enqueueJob(
+      sql,
+      "rfq.fanout",
+      { rfqId: "m1" },
+      { vertical: "machinery" },
+    );
+    const unscoped = await enqueueJob(sql, "rfq.fanout", { rfqId: "n1" });
+
+    // A jets worker skips the machinery job but still gets the NULL one.
+    const claimed = await claimJobs(sql, ["rfq.fanout"], 10, new Date(), "jets");
+    expect(claimed.map((j) => j.id)).toEqual([unscoped]);
+    // The machinery worker claims its own row — nothing jets left behind.
+    const foreignClaim = await claimJobs(
+      sql,
+      ["rfq.fanout"],
+      10,
+      new Date(),
+      "machinery",
+    );
+    expect(foreignClaim.map((j) => j.id)).toEqual([foreign]);
+    await completeJob(sql, unscoped);
+    await completeJob(sql, foreign);
+  });
 });
 
 describe("rfq -> match -> quote -> deal chain", () => {

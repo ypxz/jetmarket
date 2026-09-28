@@ -38,7 +38,7 @@ export function pollIntervalMs(env: NodeJS.ProcessEnv = process.env): number {
 /** One poll iteration: RFQ expiry sweep, delayed-match sweep, then
  * claim+handle a batch. */
 export async function tick(deps: WorkerDeps): Promise<number> {
-  const expired = await deps.repo.expireRfqs(new Date());
+  const expired = await deps.repo.expireRfqs(new Date(), deps.vertical);
   if (expired.rfqs.length || expired.quotes.length) {
     logInfo("worker.expired", {
       rfqs: expired.rfqs.length,
@@ -77,7 +77,13 @@ export async function tick(deps: WorkerDeps): Promise<number> {
     if (pruned) logInfo("worker.pruned_jobs", { jobs: pruned });
   }
 
-  const jobs = await claimJobs(deps.sql, [...JOB_KINDS], CLAIM_BATCH);
+  const jobs = await claimJobs(
+    deps.sql,
+    [...JOB_KINDS],
+    CLAIM_BATCH,
+    undefined,
+    deps.vertical,
+  );
   for (const job of jobs) {
     try {
       await handleJob(deps, job.kind, job.payload);
@@ -103,6 +109,9 @@ async function main() {
   const deps: WorkerDeps = {
     repo: createWorkerRepo(db),
     sql,
+    // Scoped sweeps + claims keep a shared DB's other-vertical rows and
+    // jobs for that deploy's own worker (QA-295).
+    vertical: getVertical().slug,
     email: createEmailProvider(),
     analytics: analyticsProvider(),
     // The active vertical's plan table — a machinery delay must not run

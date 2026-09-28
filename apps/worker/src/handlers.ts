@@ -16,6 +16,9 @@ import type { WorkerRepo } from "./repo";
 export interface WorkerDeps {
   repo: WorkerRepo;
   sql: Sql;
+  /** This deploy's vertical — sweeps + job claims are scoped to it so a
+   * shared DB's other-vertical rows stay untouched (QA-295). */
+  vertical: string;
   email: EmailProvider;
   plans: Plan[];
   /** Active vertical's fan-out matching shape (QA-229). */
@@ -94,7 +97,9 @@ export async function rfqFanout(
   // Instant matches notify now; delayed ones notify via the sweep.
   for (const m of inserted) {
     if (m.state === "pending") {
-      await enqueueJob(deps.sql, "email.quote_notification", { matchId: m.id });
+      await enqueueJob(deps.sql, "email.quote_notification", { matchId: m.id }, {
+        vertical: deps.vertical,
+      });
     }
   }
 }
@@ -104,16 +109,21 @@ export async function rfqFanout(
  * `delayed` matches to `pending` and enqueue their notification jobs.
  */
 export async function deliverDueMatches(deps: WorkerDeps): Promise<number> {
-  const fresh = await deps.repo.deliverDueMatches(at(deps));
+  const fresh = await deps.repo.deliverDueMatches(at(deps), deps.vertical);
   // Freshly-flipped matches have no job row yet, so they appear in the
   // stranded set too — Set dedupes; each match gets exactly one enqueue.
   // Stranded = pending with NO notification job row ever (crash between
   // flip and enqueue) — distinct from 'failed' jobs, which stay with
   // admin retry rather than being auto-resend in a loop (QA-162).
-  const stranded = await deps.repo.unnotifiedPendingMatches();
+  const stranded = await deps.repo.unnotifiedPendingMatches(
+    undefined,
+    deps.vertical,
+  );
   const ids = [...new Set([...fresh, ...stranded])];
   for (const matchId of ids) {
-    await enqueueJob(deps.sql, "email.quote_notification", { matchId });
+    await enqueueJob(deps.sql, "email.quote_notification", { matchId }, {
+      vertical: deps.vertical,
+    });
   }
   return ids.length;
 }
@@ -132,9 +142,13 @@ export async function recoverUnfanoutedRfqs(
 ): Promise<number> {
   const ids = await deps.repo.unfanoutedRfqs(
     new Date(at(deps).getTime() - FANOUT_GRACE_MS),
+    undefined,
+    deps.vertical,
   );
   for (const rfqId of ids) {
-    await enqueueJob(deps.sql, "rfq.fanout", { rfqId });
+    await enqueueJob(deps.sql, "rfq.fanout", { rfqId }, {
+      vertical: deps.vertical,
+    });
   }
   return ids.length;
 }

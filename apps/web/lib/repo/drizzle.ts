@@ -815,8 +815,8 @@ export class DrizzleRepo implements Repo {
       .where(and(eq(rfqs.id, rows[0]!.rfqId), eq(rfqs.status, "new")));
   }
 
-  async expireRfqs(cutoff: string) {
-    return expireStaleRfqs(this.db, new Date(cutoff));
+  async expireRfqs(cutoff: string, vertical?: string) {
+    return expireStaleRfqs(this.db, new Date(cutoff), vertical);
   }
 
   async createQuote(

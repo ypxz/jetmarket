@@ -42,6 +42,7 @@ const email = new MockEmailProvider({ outboxDir });
 const deps = () => ({
   repo: createWorkerRepo(db),
   sql,
+  vertical: "jets",
   email,
   plans: defaultPlans(),
 });
