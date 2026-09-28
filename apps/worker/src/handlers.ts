@@ -19,6 +19,9 @@ export interface WorkerDeps {
   plans: Plan[];
   /** Active vertical's fan-out matching shape (QA-229). */
   matching?: MatchingConfig;
+  /** RFQ field key -> label, in the vertical's rfqFields order — emails show
+   * these instead of raw keys (QA-234). */
+  fieldLabels?: ReadonlyMap<string, string>;
   analytics?: AnalyticsProvider;
   now?: () => Date;
 }
@@ -243,21 +246,35 @@ export async function quoteNotification(
   }
 
   const f = ctx.rfqFields;
+  // Contact fields are masked until a deal closes (QA-152) — name only.
+  const buyerName =
+    typeof f["name"] === "string" && f["name"] ? f["name"] : "A buyer";
+  // Details render the vertical's declared fields (labeled, in form order)
+  // plus any undeclared extras — was a hardcoded Route/Dates/pax shape that
+  // emailed machinery dealers "Route: n/a" (QA-234).
+  const CONTACT_KEYS = new Set(["name", "email", "phone"]);
+  const declaredOrder = deps.fieldLabels ? [...deps.fieldLabels.keys()] : [];
+  const detailKeys = [
+    ...declaredOrder.filter((k) => !CONTACT_KEYS.has(k)),
+    ...Object.keys(f).filter(
+      (k) => !CONTACT_KEYS.has(k) && !declaredOrder.includes(k),
+    ),
+  ];
+  const detailLines = detailKeys
+    .filter((k) => f[k] !== undefined && f[k] !== null && String(f[k]) !== "")
+    .map((k) => `${deps.fieldLabels?.get(k) ?? k}: ${String(f[k])}`);
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
     .filter(Boolean)
     .join(" → ");
-  const pax = f["passengers"] ? ` — ${String(f["passengers"])} pax` : "";
-  // Buyer contact stays masked until a deal closes (QA-152) — name only.
-  const buyerName =
-    typeof f["name"] === "string" && f["name"] ? f["name"] : "A buyer";
-  const subject = `New RFQ ${route}${pax}`.trim();
+  const subject = ["New RFQ", route, ctx.listingTitle]
+    .filter(Boolean)
+    .join(" — ");
   await deps.email.send({
     to: ctx.operatorEmail,
     subject,
     text:
       `You have a new request for quotation on ${site.name}.\n\n` +
-      `Route: ${route || "n/a"}${pax}\n` +
-      `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
+      `${detailLines.join("\n")}\n` +
       `Buyer: ${buyerName}\n\n` +
       `Open your operator inbox to send a quote.`,
     html: brandedEmailHtml({
@@ -265,8 +282,7 @@ export async function quoteNotification(
       title: subject,
       paragraphs: [
         `You have a new request for quotation on ${site.name}.`,
-        `Route: ${route || "n/a"}${pax}`,
-        `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}`,
+        ...detailLines,
         `Buyer: ${buyerName}`,
         "Open your operator inbox to send a quote.",
       ],

@@ -7,7 +7,8 @@ import {
   pruneJobs,
   requeueStaleJobs,
 } from "@jetmarket/db";
-import { getVertical } from "@jetmarket/verticals";
+import { getVertical, rfqFieldLabels } from "@jetmarket/verticals";
+import en from "@jetmarket/i18n/messages/en.json";
 import { createEmailProvider } from "@jetmarket/providers/email";
 import { analyticsProvider } from "@jetmarket/providers";
 import {
@@ -104,6 +105,14 @@ async function main() {
     // Matching shape is vertical-driven too (fleet listing type, category
     // attribute, RFQ field keys) — QA-229.
     matching: getVertical().matching,
+    // RFQ field labels for notification emails — the vertical's declared
+    // fields in form order, resolved from the en messages subtree (QA-234).
+    fieldLabels: rfqFieldLabels(
+      getVertical(),
+      ((en.vertical as Record<string, Record<string, unknown>>) ?? {})[
+        getVertical().slug
+      ] ?? {},
+    ),
   };
   const pollMs = pollIntervalMs();
   console.log(`[worker] up — polling jobs every ${pollMs}ms`);

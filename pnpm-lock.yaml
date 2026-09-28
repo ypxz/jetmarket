@@ -96,6 +96,9 @@ importers:
       '@jetmarket/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@jetmarket/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@jetmarket/providers':
         specifier: workspace:*
         version: link:../../packages/providers

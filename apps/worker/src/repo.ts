@@ -74,6 +74,9 @@ export interface WorkerRepo {
     operatorName: string;
     rfqFields: Record<string, unknown>;
     buyerEmail: string;
+    /** Title of the RFQ'd listing — the notification subject under
+     * non-route verticals (QA-234). */
+    listingTitle: string | null;
   } | null>;
   markMatchState(matchId: string, state: "sent" | "failed"): Promise<void>;
 }
@@ -249,11 +252,13 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           rfqFields: rfqs.fields,
           rfqStatus: rfqs.status,
           buyerEmail: rfqs.buyerEmail,
+          listingTitle: listings.title,
         })
         .from(rfqMatches)
         .innerJoin(operators, eq(rfqMatches.operatorId, operators.id))
         .innerJoin(users, eq(operators.userId, users.id))
         .innerJoin(rfqs, eq(rfqMatches.rfqId, rfqs.id))
+        .leftJoin(listings, eq(rfqs.listingId, listings.id))
         .where(eq(rfqMatches.id, matchId))
         .limit(1);
       return rows[0] ?? null;

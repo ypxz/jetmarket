@@ -1,6 +1,7 @@
 import { deliverAt, matchOperators } from "@jetmarket/domain";
+import { rfqFieldLabels } from "@jetmarket/verticals";
 import { site } from "@jetmarket/config";
-import { verticalConfig } from "@/lib/vertical";
+import { verticalConfig, verticalMessages } from "@/lib/vertical";
 import type { OperatorCandidate } from "@jetmarket/domain";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
@@ -90,29 +91,41 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
   // Instant matches get the same notification email the worker sends in pg
   // mode; delayed matches stay silent until due (mock outbox has no sweep).
   const f = rfq.fields;
-  const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
-    .filter(Boolean)
-    .join(" → ");
-  const pax = f["passengers"] ? ` — ${String(f["passengers"])} pax` : "";
   const opsById = new Map(ops.map((o) => [o.id, o]));
   // Buyer contact stays masked until a deal closes (QA-152) — name only,
   // same masking the worker's quote_notification applies in pg mode.
   const buyerName =
     typeof f["name"] === "string" && f["name"].trim() ? f["name"] : "A buyer";
+  // Field detail lines mirror the worker's email (QA-234): the vertical's
+  // declared fields, labeled and in form order, plus undeclared extras.
+  const labels = rfqFieldLabels(vertical, verticalMessages());
+  const CONTACT_KEYS = new Set(["name", "email", "phone"]);
+  const declaredOrder = [...labels.keys()];
+  const detailKeys = [
+    ...declaredOrder.filter((k) => !CONTACT_KEYS.has(k)),
+    ...Object.keys(f).filter(
+      (k) => !CONTACT_KEYS.has(k) && !declaredOrder.includes(k),
+    ),
+  ];
+  const detailLines = detailKeys
+    .filter((k) => f[k] !== undefined && f[k] !== null && String(f[k]) !== "")
+    .map((k) => `${labels.get(k) ?? k}: ${String(f[k])}`);
+  const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
+    .filter(Boolean)
+    .join(" → ");
+  const subject = ["New RFQ", route, listing.title].filter(Boolean).join(" — ");
   for (const m of matches) {
     if (m.delivery === "delayed") continue;
     const op = opsById.get(m.operatorId);
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
     try {
-      const subject = `New RFQ ${route}${pax}`.trim();
       await emailProvider().send({
         to: user.email,
         subject,
         text:
           `You have a new request for quotation on ${site.name}.\n\n` +
-          `Route: ${route || "n/a"}${pax}\n` +
-          `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
+          `${detailLines.join("\n")}\n` +
           `Buyer: ${buyerName}\n\n` +
           `Open your operator inbox to send a quote.`,
         html: brandedEmailHtml({
@@ -120,8 +133,7 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
           title: subject,
           paragraphs: [
             `You have a new request for quotation on ${site.name}.`,
-            `Route: ${route || "n/a"}${pax}`,
-            `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}`,
+            ...detailLines,
             `Buyer: ${buyerName}`,
             "Open your operator inbox to send a quote.",
           ],

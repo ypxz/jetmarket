@@ -7,6 +7,7 @@ export * from "./types";
 // see through star-reexports, so `import { buildRfqSchema }` fails under
 // plain node/tsx (apps/worker).
 export { buildRfqSchema, getAttributesSchema, isoDate, nonContactFields, rfqFieldsFor } from "./schema";
+export { rfqFieldLabels } from "./labels";
 export { jetsVertical, machineryVertical };
 
 const registry: Record<VerticalSlug, VerticalConfig> = {

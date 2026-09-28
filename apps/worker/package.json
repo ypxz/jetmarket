@@ -20,6 +20,7 @@
     "@jetmarket/config": "workspace:*",
     "@jetmarket/db": "workspace:*",
     "@jetmarket/domain": "workspace:*",
+    "@jetmarket/i18n": "workspace:*",
     "@jetmarket/providers": "workspace:*",
     "@jetmarket/verticals": "workspace:*",
     "drizzle-orm": "^0.45.2",

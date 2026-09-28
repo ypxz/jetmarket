@@ -11,6 +11,8 @@ import {
 } from "./handlers";
 import type { WorkerDeps } from "./handlers";
 import type { WorkerRepo } from "./repo";
+import { machineryVertical, rfqFieldLabels } from "@jetmarket/verticals";
+import en from "@jetmarket/i18n/messages/en.json";
 
 function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
   calls: Record<string, unknown[]>;
@@ -98,6 +100,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         operatorName: "Alpine Jet",
         rfqFields: { departure: "ZRH", arrival: "NCE", passengers: 6 },
         buyerEmail: "buyer@x.com",
+        listingTitle: "Phenom 300 charter",
       };
     },
     markMatchState: async (id, s) => {
@@ -350,6 +353,47 @@ describe("handleJob dispatch", () => {
     expect(repo.calls["markMatchState"]).toEqual([["m9", "sent"]]);
   });
 
+  it("renders the machinery RFQ body with field labels, not a jets route (QA-234)", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "pending",
+        rfqStatus: "new",
+        operatorEmail: "ops@alpine.example",
+        operatorName: "Alpine Werkzeug",
+        rfqFields: {
+          deliveryPostcode: "80331",
+          budgetEur: 45000,
+          name: "Ada Lovelace",
+          email: "ada@x.com",
+          phone: "+49 0000",
+        },
+        buyerEmail: "ada@x.com",
+        listingTitle: "Okuma LB-EX II lathe",
+      }),
+    });
+    sent.length = 0;
+    const labels = rfqFieldLabels(
+      machineryVertical,
+      (en.vertical as Record<string, Record<string, unknown>>).machinery,
+    );
+    await handleJob({ ...deps(repo), fieldLabels: labels },
+      "email.quote_notification",
+      { matchId: "m9" },
+    );
+    expect(sent).toHaveLength(1);
+    const mail = sent[0]!;
+    expect(mail.subject).toContain("Okuma LB-EX II lathe");
+    expect(mail.text).toContain("Delivery postcode: 80331");
+    expect(mail.text).toContain("Budget (EUR): 45000");
+    expect(mail.text).toContain("Buyer: Ada Lovelace");
+    // No jets-shaped leftovers; contact fields stay masked until a deal.
+    expect(mail.text).not.toContain("Route:");
+    expect(mail.text).not.toContain("ada@x.com");
+    expect(mail.text).not.toContain("+49 0000");
+  });
+
   it("skips the send when the match is already sent (retry dedup, QA-161)", async () => {
     const repo = fakeRepo({
       loadMatchContext: async (id: string) => ({
@@ -361,6 +405,7 @@ describe("handleJob dispatch", () => {
         operatorName: "Alpine Jet",
         rfqFields: {},
         buyerEmail: "buyer@x.com",
+        listingTitle: null,
       }),
     });
     sent.length = 0;
@@ -382,6 +427,7 @@ describe("handleJob dispatch", () => {
         operatorName: "Alpine Jet",
         rfqFields: {},
         buyerEmail: "buyer@x.com",
+        listingTitle: null,
       }),
     });
     sent.length = 0;
