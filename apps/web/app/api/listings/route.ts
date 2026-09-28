@@ -51,8 +51,9 @@ const CreateListing = z.object({
   title: z.string().min(4).max(160),
   attributes: z.record(z.string(), z.unknown()).default({}),
   price: z.number().positive().max(1e9),
-  // Optional — defaults to the active vertical's currency, not a hardcoded
-  // one (machinery prices in EUR, QA-167).
+  // Defaults to the active vertical's currency; a mismatched code is rejected
+  // — a EUR listing in the USD jets pool would sort/facet against raw minor
+  // units in the wrong denomination (QA-185).
   currency: z.string().length(3).optional(),
   photos: z.array(z.string().max(300)).max(12).default([]),
 });
@@ -82,6 +83,13 @@ export async function POST(req: Request) {
   // Attributes present in the payload are validated against the vertical's
   // zod schema for this listing type (e.g. seats >= 1); missing keys are
   // tolerated, unknown keys stripped.
+  if (data!.currency !== undefined && data!.currency !== config.currency) {
+    return err(
+      `listings in the ${config.slug} vertical are priced in ${config.currency}`,
+      422,
+      { allowed: [config.currency] },
+    );
+  }
   const attrs = getAttributesSchema(config, data!.type)
     .partial()
     .safeParse(data!.attributes ?? {});

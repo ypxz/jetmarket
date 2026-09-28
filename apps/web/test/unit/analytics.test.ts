@@ -131,6 +131,30 @@ describe("analytics events on money routes (mock sink)", async () => {
     ).toBe(before);
   });
 
+  it("listings POST rejects a currency that isn't the vertical's (QA-185)", async () => {
+    const bad = await postListing(
+      jsonReq({
+        type: "charter",
+        title: "EUR-priced listing in USD pool",
+        price: 500,
+        currency: "EUR",
+        attributes: {},
+      }),
+    );
+    expect(bad.status).toBe(422);
+    // Omitted currency defaults to the vertical's own.
+    const ok = await postListing(
+      jsonReq({
+        type: "charter",
+        title: "Default-currency charter",
+        price: 500,
+        attributes: {},
+      }),
+    );
+    expect(ok.status).toBe(201);
+    expect((await ok.json()).currency).toBe("USD");
+  });
+
   it("listings POST emits listing_created", async () => {
     const res = await postListing(
       jsonReq({
