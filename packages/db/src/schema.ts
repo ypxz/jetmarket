@@ -46,7 +46,7 @@ export const operators = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("operators_user_idx").on(t.userId)],
+  (t) => [uniqueIndex("operators_user_uniq").on(t.userId)],
 );
 
 export const listings = pgTable(

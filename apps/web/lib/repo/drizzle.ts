@@ -262,17 +262,14 @@ export class DrizzleRepo implements Repo {
         .returning();
       return toOperator(r!);
     }
-    // upsert by userId (one operator profile per user)
-    const prev = await this.getOperatorByUserId(o.userId);
-    if (prev) {
-      const [r] = await this.db
-        .update(operators)
-        .set(values)
-        .where(eq(operators.id, prev.id))
-        .returning();
-      return toOperator(r!);
-    }
-    const [r] = await this.db.insert(operators).values(values).returning();
+    // One operator profile per user — ON CONFLICT on the unique
+    // operators.user_id index makes concurrent first-signups upsert instead
+    // of minting duplicate profiles.
+    const [r] = await this.db
+      .insert(operators)
+      .values(values)
+      .onConflictDoUpdate({ target: operators.userId, set: values })
+      .returning();
     return toOperator(r!);
   }
   async getOperator(id: string): Promise<Operator | undefined> {

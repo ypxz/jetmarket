@@ -62,7 +62,12 @@ class MemoryRepo implements Repo {
   async upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },
   ): Promise<Operator> {
-    const id = o.id ?? uid("op");
+    // Parity with the drizzle ON CONFLICT (user_id) path: no explicit id
+    // means upsert on the one-profile-per-user invariant.
+    const byUser = [...this.operators.values()].find(
+      (x) => x.userId === o.userId,
+    );
+    const id = o.id ?? byUser?.id ?? uid("op");
     const prev = this.operators.get(id);
     const op: Operator = { ...o, id, createdAt: prev?.createdAt ?? now() };
     this.operators.set(id, op);
