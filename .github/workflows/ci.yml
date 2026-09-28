@@ -106,7 +106,8 @@ jobs:
       - name: e2e VERTICAL=machinery
         run: E2E_PORT=3100 pnpm --filter @jetmarket/tests-e2e test:e2e:machinery
         env:
-          TEST_DATABASE_URL: postgres://jetmarket:jetmarket@localhost:5432/jetmarket
+          # Must end in _test — the e2e guard refuses non-test DB names.
+          TEST_DATABASE_URL: postgres://jetmarket:jetmarket@localhost:5432/jetmarket_machinery_test
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
