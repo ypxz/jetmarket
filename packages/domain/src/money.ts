@@ -5,7 +5,7 @@
 export type Currency = "USD" | "EUR" | "CHF" | "GBP" | (string & {});
 
 /** ISO-4217 minor unit digits for the currencies we deal with. */
-const MINOR_UNIT_DIGITS: Record<string, number> = {
+export const MINOR_UNIT_DIGITS: Record<string, number> = {
   USD: 2,
   EUR: 2,
   CHF: 2,

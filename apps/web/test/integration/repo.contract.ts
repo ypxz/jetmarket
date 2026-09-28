@@ -539,6 +539,48 @@ export function repoContract(
       expect(await repo.listListings({ ids: [""] })).toEqual([]);
     });
 
+    it("stores money in currency-aware minor units (0-digit currency)", async () => {
+      const repo = await factory();
+      const tag = `jpy${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "JPY Air",
+        baseAirport: "HND",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const l = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "empty_leg",
+        title: `${tag} HND to NGO`,
+        price: 1500,
+        currency: "JPY",
+        photos: [],
+        attributes: { from: "HND", to: "NGO" },
+      });
+      // JPY has 0 minor digits — ¥1,500 must not read back as ¥15 (QA-226).
+      expect((await repo.getListing(l.id))!.price).toBe(1500);
+
+      // Range-facet bounds are major units in the listing's own currency.
+      const inRange = await repo.listListings({
+        operatorId: op.id,
+        facetRanges: [{ key: "price", min: 1000, max: 2000 }],
+      });
+      expect(inRange.map((x) => x.id)).toContain(l.id);
+      const outOfRange = await repo.listListings({
+        operatorId: op.id,
+        facetRanges: [{ key: "price", min: 2001 }],
+      });
+      expect(outOfRange.map((x) => x.id)).not.toContain(l.id);
+
+      // updateListing converts under the row's currency, not a fixed *100.
+      await repo.updateListing(l.id, { price: 2000 });
+      expect((await repo.getListing(l.id))!.price).toBe(2000);
+    });
+
     it("paginates listings with limit/offset and countListings", async () => {
       const repo = await factory();
       const tag = `pg${Date.now().toString(36)}`;

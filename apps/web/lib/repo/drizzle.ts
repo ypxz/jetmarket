@@ -6,8 +6,13 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
+import {
+  fromMinorUnits,
+  MINOR_UNIT_DIGITS,
+  toMinorUnits,
+} from "@jetmarket/domain";
 import type {
   Deal,
   JobInfo,
@@ -42,7 +47,15 @@ const {
 
 const iso = (d: Date | null | undefined): string =>
   (d ?? new Date()).toISOString();
-const minor = (usd: number): number => Math.round(usd * 100);
+
+/** Per-row minor-unit exponent for `col`, mirroring domain MINOR_UNIT_DIGITS. */
+const minorDigitsExpr = (col: unknown) =>
+  sql`case ${sql.join(
+    Object.entries(MINOR_UNIT_DIGITS).map(
+      ([c, d]) => sql`when ${col} = ${c} then ${d}`,
+    ),
+    sql` `,
+  )} else 2 end`;
 
 function toUser(r: typeof users.$inferSelect): User {
   return {
@@ -73,7 +86,7 @@ function toListing(r: typeof listings.$inferSelect): Listing {
     type: r.type as ListingType,
     title: r.title,
     attributes: r.attributes,
-    price: (r.priceMinor ?? 0) / 100,
+    price: fromMinorUnits(r.priceMinor ?? 0, r.currency),
     currency: r.currency,
     status: r.status as ListingStatus,
     photos: r.photos,
@@ -97,7 +110,7 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
     id: r.id,
     rfqId: r.rfqId,
     operatorId: r.operatorId,
-    amount: r.amountMinor / 100,
+    amount: fromMinorUnits(r.amountMinor, r.currency),
     currency: r.currency,
     message: r.message ?? "",
     status: r.status as QuoteStatus,
@@ -122,12 +135,12 @@ function toDeal(d: DealRow, q: QuoteRow): Deal {
     id: d.id,
     quoteId: d.quoteId,
     operatorId: q.operatorId,
-    amount: q.amountMinor / 100,
+    amount: fromMinorUnits(q.amountMinor, q.currency),
     // The quote carries the authoritative currency; the deal column mirrors
     // it for ledger reads that don't join (QA-167).
     currency: q.currency,
     feePct: d.feePct,
-    feeAmount: d.feeAmountMinor / 100,
+    feeAmount: fromMinorUnits(d.feeAmountMinor, d.currency),
     invoiceStatus: d.invoiceStatus as Deal["invoiceStatus"],
     invoiceRef: d.invoiceRef ?? undefined,
     closedAt: iso(d.closedAt),
@@ -192,9 +205,17 @@ function listingConds(filter?: ListingFilter) {
       // The regex guard keeps non-numeric attribute strings from failing the
       // ::numeric cast — they simply never satisfy a range (memory impl parity).
       if (r.key === "price") {
-        // listListings exposes `price` in major units; the column stores minor.
-        if (r.min !== undefined) conds.push(gte(listings.priceMinor, Math.ceil(r.min * 100)));
-        if (r.max !== undefined) conds.push(lte(listings.priceMinor, Math.floor(r.max * 100)));
+        // listListings exposes `price` in major units; the column stores
+        // minor units with a per-row exponent from the listing's currency.
+        const digits = minorDigitsExpr(listings.currency);
+        if (r.min !== undefined)
+          conds.push(
+            sql`${listings.priceMinor} >= ceil(${r.min} * pow(10, ${digits}))`,
+          );
+        if (r.max !== undefined)
+          conds.push(
+            sql`${listings.priceMinor} <= floor(${r.max} * pow(10, ${digits}))`,
+          );
         continue;
       }
       const num = sql`case when ${listings.attributes} ->> ${r.key} ~ '^-?[0-9]+(\\.[0-9]+)?$' then (${listings.attributes} ->> ${r.key})::numeric end`;
@@ -391,7 +412,7 @@ export class DrizzleRepo implements Repo {
           type: l.type,
           title: l.title,
           attributes: l.attributes,
-          priceMinor: minor(l.price),
+          priceMinor: toMinorUnits(l.price, l.currency),
           currency: l.currency,
           status: l.status ?? "active",
           photos: l.photos,
@@ -496,7 +517,14 @@ export class DrizzleRepo implements Repo {
   ): Promise<void> {
     const set: Record<string, unknown> = { updatedAt: new Date() };
     if (patch.title !== undefined) set.title = patch.title;
-    if (patch.price !== undefined) set.priceMinor = minor(patch.price);
+    if (patch.price !== undefined) {
+      const [row] = await this.db
+        .select({ c: listings.currency })
+        .from(listings)
+        .where(eq(listings.id, id))
+        .limit(1);
+      set.priceMinor = toMinorUnits(patch.price, row?.c ?? "USD");
+    }
     if (patch.attributes !== undefined) set.attributes = patch.attributes;
     if (patch.photos !== undefined) set.photos = patch.photos;
     await this.db.update(listings).set(set).where(eq(listings.id, id));
@@ -759,7 +787,7 @@ export class DrizzleRepo implements Repo {
       .values({
         rfqId: q.rfqId,
         operatorId: q.operatorId,
-        amountMinor: minor(q.amount),
+        amountMinor: toMinorUnits(q.amount, q.currency),
         currency: q.currency,
         message: q.message,
         status: "sent",
@@ -882,7 +910,7 @@ export class DrizzleRepo implements Repo {
         quoteId: d.quoteId,
         closedAt: new Date(),
         feePct: d.feePct,
-        feeAmountMinor: minor(d.feeAmount),
+        feeAmountMinor: toMinorUnits(d.feeAmount, d.currency),
         currency: d.currency,
         invoiceStatus: d.invoiceStatus,
       })
@@ -960,12 +988,15 @@ export class DrizzleRepo implements Repo {
     const conds = filter?.operatorId
       ? [eq(quotes.operatorId, filter.operatorId)]
       : [];
+    const digits = minorDigitsExpr(deals.currency);
     const [r] = await this.db
-      .select({ s: sql<string>`coalesce(sum(${deals.feeAmountMinor}), 0)::text` })
+      .select({
+        s: sql<string>`coalesce(sum(${deals.feeAmountMinor} / pow(10, ${digits})), 0)::text`,
+      })
       .from(deals)
       .innerJoin(quotes, eq(deals.quoteId, quotes.id))
       .where(conds.length ? and(...conds) : undefined);
-    return Number(r?.s ?? 0) / 100;
+    return Number(r?.s ?? 0);
   }
 
   async upsertSubscription(
