@@ -89,6 +89,18 @@ describe("buildJetsSeed", () => {
     expect(byState["sent"]).toBe(1); // geneva-executive, delivered instantly
     expect(byState["delayed"]).toBe(2); // swiss-aircharter + helvetic (free)
   });
+
+  it("seeds a live quote + known buyer token so the inbox demo works (QA-236)", () => {
+    expect(seed.quoteRows).toHaveLength(1);
+    const q = seed.quoteRows[0]!;
+    expect(q.status).toBe("sent");
+    expect(q.rfqId).toBe(seed.rfqRows[0]!.id);
+    // The quoting operator is the delivered match — not a delayed free op.
+    const delivered = seed.rfqMatchRows.find((m) => m.state === "sent")!;
+    expect(q.operatorId).toBe(delivered.operatorId);
+    expect(seed.rfqRows[0]!.status).toBe("quoted");
+    expect(seed.rfqRows[0]!.accessToken).toBe("demo-buyer-token");
+  });
 });
 
 import { machineryVertical } from "@jetmarket/verticals";
@@ -110,6 +122,7 @@ describe("buildMachinerySeed", () => {
         ...seed.opRows,
         ...seed.listingRows,
         ...seed.rfqRows,
+        ...seed.quoteRows,
       ].map((r) => r.id),
     );
     for (const r of [
@@ -117,6 +130,7 @@ describe("buildMachinerySeed", () => {
       ...mseed.opRows,
       ...mseed.listingRows,
       ...mseed.rfqRows,
+      ...mseed.quoteRows,
     ]) {
       expect(jetsIds.has(r.id!)).toBe(false);
     }
@@ -133,6 +147,13 @@ describe("buildMachinerySeed", () => {
     );
     expect(byState["sent"]).toBe(1); // alpine-werkzeug, delivered
     expect(byState["delayed"]).toBe(2); // piemonte-macchine + lowlands (free)
+    // And a live quote + known buyer token — the inbox demo lands on a
+    // payable quote (QA-236).
+    expect(mseed.quoteRows).toHaveLength(1);
+    expect(mseed.quoteRows[0]!.status).toBe("sent");
+    expect(mseed.quoteRows[0]!.currency).toBe("EUR");
+    const delivered = mseed.rfqMatchRows.find((m) => m.state === "sent")!;
+    expect(mseed.quoteRows[0]!.operatorId).toBe(delivered.operatorId);
   });
 
   it("validates every listing against the machinery config", () => {

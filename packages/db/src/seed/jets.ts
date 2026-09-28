@@ -11,10 +11,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../client";
-import { listings, operators, rfqMatches, rfqs, users } from "../schema";
+import { listings, operators, quotes, rfqMatches, rfqs, users } from "../schema";
 import type {
   NewListing,
   NewOperator,
+  NewQuote,
   NewRfq,
   NewRfqMatch,
   NewUser,
@@ -176,6 +177,7 @@ export interface JetsSeedData {
   listingRows: NewListing[];
   rfqRows: NewRfq[];
   rfqMatchRows: NewRfqMatch[];
+  quoteRows: NewQuote[];
 }
 
 /**
@@ -306,8 +308,12 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
         name: "Demo Buyer",
         email: "charter@geneva-pe.example",
       },
-      status: "matched",
+      status: "quoted",
       dedupeKey: "seed-rfq-zrh-nce",
+      // Fixed demo token — the buyer-inbox link for the seeded RFQ is
+      // /quotes?email=charter@geneva-pe.example&t=demo-buyer-token (seed is
+      // dev-only data; the token is deliberately public, QA-236).
+      accessToken: "demo-buyer-token",
     },
   ];
   const rfqMatchRows: NewRfqMatch[] = [
@@ -334,7 +340,21 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
     },
   ];
 
-  return { userRows, opRows, listingRows, rfqRows, rfqMatchRows };
+  // One live quote from the delivered pro operator — the buyer inbox demo
+  // ends at a payable quote, not an empty list (QA-236).
+  const quoteRows: NewQuote[] = [
+    {
+      id: uid(400),
+      rfqId: uid(300),
+      operatorId: uid(102), // geneva-executive — the delivered match
+      amountMinor: 1_450_000, // $14,500
+      currency: "USD",
+      message: "Phenom 300, ZRH → NCE, all-in incl. handling and catering.",
+      status: "sent",
+    },
+  ];
+
+  return { userRows, opRows, listingRows, rfqRows, rfqMatchRows, quoteRows };
 }
 
 export interface SeedResult {
@@ -366,7 +386,7 @@ export async function seedJets(
   const storageDir =
     opts.storageDir ??
     (process.env.STORAGE_DIR ? resolve(process.env.STORAGE_DIR) : webStorage);
-  const { userRows, opRows, listingRows, rfqRows, rfqMatchRows } =
+  const { userRows, opRows, listingRows, rfqRows, rfqMatchRows, quoteRows } =
     buildJetsSeed(now);
 
   // Photo placeholders on the storage mock's filesystem.
@@ -444,6 +464,9 @@ export async function seedJets(
         .onConflictDoNothing({
           target: [rfqMatches.rfqId, rfqMatches.operatorId],
         });
+    }
+    if (quoteRows.length) {
+      await tx.insert(quotes).values(quoteRows).onConflictDoNothing();
     }
   });
 

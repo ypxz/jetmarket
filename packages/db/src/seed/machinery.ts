@@ -13,10 +13,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../client";
-import { listings, operators, rfqMatches, rfqs, users } from "../schema";
+import { listings, operators, quotes, rfqMatches, rfqs, users } from "../schema";
 import type {
   NewListing,
   NewOperator,
+  NewQuote,
   NewRfq,
   NewRfqMatch,
   NewUser,
@@ -109,6 +110,7 @@ export interface MachinerySeedData {
   listingRows: NewListing[];
   rfqRows: NewRfq[];
   rfqMatchRows: NewRfqMatch[];
+  quoteRows: NewQuote[];
 }
 
 export function buildMachinerySeed(now = new Date()): MachinerySeedData {
@@ -188,8 +190,11 @@ export function buildMachinerySeed(now = new Date()): MachinerySeedData {
         name: "Demo Buyer",
         email: "procurement@bavaria-werk.example",
       },
-      status: "matched",
+      status: "quoted",
       dedupeKey: "seed-rfq-okuma-lathe",
+      // Fixed demo token — buyer inbox: /quotes?email=procurement@
+      // bavaria-werk.example&t=demo-buyer-token (dev-only data, QA-236).
+      accessToken: "demo-buyer-token",
     },
   ];
   const rfqMatchRows: NewRfqMatch[] = [
@@ -216,7 +221,21 @@ export function buildMachinerySeed(now = new Date()): MachinerySeedData {
     },
   ];
 
-  return { userRows, opRows, listingRows, rfqRows, rfqMatchRows };
+  // One live quote from the delivered pro dealer — the buyer inbox demo
+  // ends at a payable quote, not an empty list (QA-236).
+  const quoteRows: NewQuote[] = [
+    {
+      id: uid(1400),
+      rfqId: uid(1300),
+      operatorId: uid(1101), // alpine-werkzeug — the delivered match
+      amountMinor: 38_500_000, // €385,000
+      currency: "EUR",
+      message: "Okuma LB-EX II, incl. transport to 80331 and commissioning.",
+      status: "sent",
+    },
+  ];
+
+  return { userRows, opRows, listingRows, rfqRows, rfqMatchRows, quoteRows };
 }
 
 // Keys live under the owning user's uploads/ prefix so the listing-photo
@@ -257,7 +276,7 @@ export async function seedMachinery(
   const storageDir =
     opts.storageDir ??
     (process.env.STORAGE_DIR ? resolve(process.env.STORAGE_DIR) : webStorage);
-  const { userRows, opRows, listingRows, rfqRows, rfqMatchRows } =
+  const { userRows, opRows, listingRows, rfqRows, rfqMatchRows, quoteRows } =
     buildMachinerySeed();
   const now = new Date();
 
@@ -327,6 +346,9 @@ export async function seedMachinery(
             dedupeKey: row.dedupeKey,
           },
         });
+    }
+    if (quoteRows.length) {
+      await tx.insert(quotes).values(quoteRows).onConflictDoNothing();
     }
     if (rfqMatchRows.length) {
       await tx
