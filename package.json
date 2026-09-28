@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @jetmarket/web dev",
+    "start": "pnpm --filter @jetmarket/web start",
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint && pnpm check:design && pnpm check:i18n",
     "typecheck": "pnpm -r --if-present typecheck",
