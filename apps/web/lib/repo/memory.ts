@@ -371,8 +371,17 @@ class MemoryRepo implements Repo {
   async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {
     const quote: Quote = { ...q, id: uid("quo"), status: "sent", createdAt: now() };
     this.quotes.set(quote.id, quote);
+    // Same live-state guard as drizzle (QA-165): a closed/spam RFQ must not
+    // resurrect to 'quoted' when a quote create races its terminal flip.
     const rfq = this.rfqs.get(quote.rfqId);
-    if (rfq) this.rfqs.set(rfq.id, { ...rfq, status: "quoted" });
+    if (
+      rfq &&
+      (rfq.status === "open" ||
+        rfq.status === "matched" ||
+        rfq.status === "quoted")
+    ) {
+      this.rfqs.set(rfq.id, { ...rfq, status: "quoted" });
+    }
     return quote;
   }
   async getQuote(id: string) {

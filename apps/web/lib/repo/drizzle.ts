@@ -697,10 +697,15 @@ export class DrizzleRepo implements Repo {
         status: "sent",
       })
       .returning();
+    // Only live RFQs become 'quoted' — an unconditional flip could resurrect
+    // a 'closed' RFQ (accept won between the route's status check and this
+    // write) and let a second deal mint (QA-165).
     await this.db
       .update(rfqs)
       .set({ status: "quoted" })
-      .where(eq(rfqs.id, q.rfqId));
+      .where(
+        and(eq(rfqs.id, q.rfqId), inArray(rfqs.status, ["new", "matched", "quoted"])),
+      );
     return toQuote(row!);
   }
   async getQuote(id: string): Promise<Quote | undefined> {

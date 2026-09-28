@@ -165,6 +165,49 @@ export function repoContract(
       expect(await repo.listDeals({ operatorId: op.id })).toHaveLength(1);
     });
 
+    it("createQuote never resurrects a closed RFQ (QA-165)", async () => {
+      const repo = await factory();
+      const tag = `res-${Date.now()}`;
+      const user = await repo.createUser(`op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Res Air",
+        baseAirport: "ZRH",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Res Jet ${tag}`,
+        price: 100,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `res-${tag}@test.dev`,
+        fields: { ref: "res" },
+        dedupeKey: `res-${tag}`,
+      });
+      // Accept on a competing quote wins the race: RFQ is terminal.
+      expect(await repo.setRfqStatus(rfq.id, "closed", ["open"])).toBe(true);
+      // The loser's in-flight quote create lands anyway — it must NOT flip
+      // the RFQ back to 'quoted' (second accept would mint a second deal).
+      await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 100,
+        currency: "USD",
+        message: "",
+      });
+      expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+    });
+
     it("fan-out matches grant inbox access; delayed matches hide until due", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);
