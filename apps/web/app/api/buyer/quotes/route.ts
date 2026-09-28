@@ -1,5 +1,6 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 import { publicOperator } from "@/lib/repo/types";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { isExpiredListing } from "@/lib/search";
@@ -31,9 +32,15 @@ export async function GET(req: Request) {
   await sweepStaleRfqs(repo);
   // The token match happens post-fetch, so the cap must stay generous — a
   // buyer with >200 RFQs on older links loses the match. Still bounded.
-  const rfqs = (await repo.listRfqs({ buyerEmail: email, limit: 200 })).filter(
-    (r) => r.accessToken === token,
-  );
+  const rfqs = (
+    await repo.listRfqs({
+      buyerEmail: email,
+      // Per-vertical inbox: foreign-vertical RFQ tokens never resolve
+      // here — that deploy's own origin serves them (QA-297).
+      vertical: verticalSlug(),
+      limit: 200,
+    })
+  ).filter((r) => r.accessToken === token);
   // Batched: one listing + one quote + one operator lookup for the whole
   // inbox — was ~3 queries per quote row (QA-103). Buyers legitimately see
   // every quote on their own RFQs.

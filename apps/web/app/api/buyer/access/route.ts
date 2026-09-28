@@ -2,6 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { site } from "@jetmarket/config";
 import { appOrigin } from "@/lib/origin";
@@ -32,6 +33,9 @@ export async function POST(req: Request) {
   const repo = await getRepo();
   const rfqs = await repo.listRfqs({
     buyerEmail: email,
+    // Per-vertical inbox: a machinery RFQ's token must not ship in a
+    // jets-branded access mail (or resolve on this deploy) (QA-297).
+    vertical: verticalSlug(),
     limit: MAX_LINKS_PER_MAIL,
   });
   if (rfqs.length === 0) {
