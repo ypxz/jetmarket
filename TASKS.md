@@ -385,3 +385,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 286 | ~17:09 | QA-299 | auth/callback + logout redirects + Origin check + cookie secure flag all on canonical appOrigin — Host-derived open redirects closed |
 | 287 | ~17:15 | QA-300 | archived listing blocks new quotes + accept->deal mint (409 pre-CAS); open RFQs expire naturally — no cascade needed |
 | 288 | ~17:16 | QA-301 | magic-link response dropped resolvedRole echo — unauthenticated ADMIN_EMAILS enumeration oracle closed |
+| 289 | ~17:23 | QA-302 | operator dashboard/inbox + admin counts + plan caps scope by vertical; countOperatorListings/listListingCountsByOperator gained vertical param; full test:all green |
