@@ -41,7 +41,12 @@ class MemoryRepo implements Repo {
 
   async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
     const normalized = email.toLowerCase();
-    const existing = await this.findUserByEmail(normalized);
+    // Find synchronously — awaiting findUserByEmail would yield the
+    // microtask queue and let a parallel same-email create duplicate the
+    // user (QA-333). Drizzle is atomic via ON CONFLICT + re-read.
+    const existing = [...this.users.values()].find(
+      (u) => u.email === normalized,
+    );
     if (existing) return existing;
     const u: User = {
       id: uid("usr"),
@@ -145,11 +150,21 @@ class MemoryRepo implements Repo {
     },
     opts?: { cap?: number },
   ): Promise<Listing> {
-    if (
-      opts?.cap !== undefined &&
-      (await this.countOperatorListings(l.operatorId, l.vertical)) >= opts.cap
-    ) {
-      throw new PlanCapError();
+    if (opts?.cap !== undefined) {
+      // Count synchronously: awaiting countOperatorListings would yield the
+      // microtask queue and let parallel callers all observe count < cap
+      // (QA-332) — drizzle gets the same atomicity from FOR UPDATE.
+      let n = 0;
+      for (const x of this.listings.values()) {
+        if (
+          x.operatorId === l.operatorId &&
+          x.status !== "archived" &&
+          x.vertical === l.vertical
+        ) {
+          n += 1;
+        }
+      }
+      if (n >= opts.cap) throw new PlanCapError();
     }
     const listing: Listing = {
       ...l,
@@ -290,8 +305,14 @@ class MemoryRepo implements Repo {
   ) {
     const l = this.listings.get(id);
     if (l && status === "active" && opts?.cap !== undefined) {
+      // Same-vertical only, matching drizzle — free-tier caps are per-
+      // marketplace on a shared DB (QA-302).
       const others = [...this.listings.values()].filter(
-        (x) => x.operatorId === l.operatorId && x.id !== id && x.status !== "archived",
+        (x) =>
+          x.operatorId === l.operatorId &&
+          x.id !== id &&
+          x.status !== "archived" &&
+          x.vertical === l.vertical,
       ).length;
       if (others >= opts.cap) throw new PlanCapError();
     }

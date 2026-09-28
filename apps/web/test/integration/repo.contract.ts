@@ -574,6 +574,60 @@ export function repoContract(
       ).rejects.toMatchObject({ name: "PlanCapError" });
     });
 
+    it("listing cap holds under parallel creates (FOR UPDATE serialization)", async () => {
+      const repo = await factory();
+      const user = await repo.createUser(
+        `caprace-${Date.now().toString(36)}@test.dev`,
+        "operator",
+      );
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "CapRace Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const mk = (title: string) =>
+        repo.createListing(
+          {
+            operatorId: op.id,
+            vertical: "jets",
+            type: "charter",
+            title,
+            price: 1000,
+            currency: "USD",
+            photos: [],
+            attributes: {},
+          },
+          { cap: 3 },
+        );
+      // 5 racers against cap 3: the operator-row FOR UPDATE lock serializes
+      // count+insert, so exactly 3 land and 2 get PlanCapError — a check-then-
+      // insert impl would let all 5 through.
+      const results = await Promise.allSettled(
+        ["R1", "R2", "R3", "R4", "R5"].map((t) => mk(t)),
+      );
+      const ok = results.filter((r) => r.status === "fulfilled");
+      const capped = results.filter(
+        (r) => r.status === "rejected" && r.reason?.name === "PlanCapError",
+      );
+      expect(ok).toHaveLength(3);
+      expect(capped).toHaveLength(2);
+      expect(await repo.countOperatorListings(op.id)).toBe(3);
+    });
+
+    it("parallel same-email createUser returns one user (QA-333)", async () => {
+      const repo = await factory();
+      const email = `dupe-${Date.now().toString(36)}@test.dev`;
+      const users = await Promise.all(
+        Array.from({ length: 4 }, () => repo.createUser(email, "buyer")),
+      );
+      const ids = new Set(users.map((u) => u.id));
+      expect(ids.size).toBe(1);
+      expect(users[0]?.email).toBe(email);
+    });
+
     it("stale-webhook gate: older event stamps never clobber the sub", async () => {
       const repo = await factory();
       const tag = `stale${Date.now().toString(36)}`;
