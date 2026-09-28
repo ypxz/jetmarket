@@ -40,22 +40,23 @@ export default async function OperatorDashboard() {
 
   // Cap the dashboard render — the header count uses the true total; beyond
   // 100 listings this page needs a pager, not a longer card wall.
-  const [listings, listingCount, deals, dealCount] = await Promise.all([
-    repo.listListings({ operatorId: operator.id, limit: 100 }),
-    repo.countOperatorListings(operator.id),
-    // Success-fee obligations are invisible to operators without this —
-    // the admin ledger saw them, the party paying them did not (QA-118).
-    repo.listDeals({ operatorId: operator.id, limit: 20 }),
-    // Header shows the true total, not the capped page (QA-179).
-    repo.countDeals({ operatorId: operator.id }),
-  ]);
-  const openRfqs = await repo.countRfqs({
-    operatorId: operator.id,
-    // Repo impls disagree on the terminal-after-time label (drizzle writes
-    // "closed", memory "expired") — exclude both, plus spam (QA-163).
-    statusNot: ["closed", "expired", "spam"],
-  });
-  const sub = await repo.getSubscription(operator.id);
+  const [listings, listingCount, deals, dealCount, openRfqs, sub] =
+    await Promise.all([
+      repo.listListings({ operatorId: operator.id, limit: 100 }),
+      repo.countOperatorListings(operator.id),
+      // Success-fee obligations are invisible to operators without this —
+      // the admin ledger saw them, the party paying them did not (QA-118).
+      repo.listDeals({ operatorId: operator.id, limit: 20 }),
+      // Header shows the true total, not the capped page (QA-179).
+      repo.countDeals({ operatorId: operator.id }),
+      repo.countRfqs({
+        operatorId: operator.id,
+        // Repo impls disagree on the terminal-after-time label (drizzle
+        // writes "closed", memory "expired") — exclude both + spam (QA-163).
+        statusNot: ["closed", "expired", "spam"],
+      }),
+      repo.getSubscription(operator.id),
+    ]);
   // Funnel stats (QA-151): the Pro "analytics" bullet was vaporware — these
   // counts come from real rows, no external vendor needed. Pro-only now —
   // pricing sells analytics as the Pro tier's differentiator (QA-202), so
