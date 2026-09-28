@@ -31,6 +31,14 @@ docker compose --profile app up --build   # http://localhost:3000, mail http://l
 Tests: `pnpm test:all` (unit → integration → contract → e2e).
 Smoke vs any deploy: `pnpm smoke --url=https://…`.
 
+**Integration/e2e tests are destructive** (they drop the public schema) — they
+run against per-suite `*_test` databases (`jetmarket_test` for web+e2e,
+`jetmarket_worker_test`, `jetmarket_providers_test`, `jetmarket_db_test`),
+auto-created when missing. Override via `*_TEST_DATABASE_URL` env vars
+(`TEST_DATABASE_URL`, `WORKER_TEST_DATABASE_URL`, `DB_TEST_DATABASE_URL`,
+`PROVIDERS_TEST_DATABASE_URL`); anything not ending in `_test` is refused
+(`ALLOW_DESTRUCTIVE_TEST_DB=1` overrides).
+
 ## Layout
 
 ```
