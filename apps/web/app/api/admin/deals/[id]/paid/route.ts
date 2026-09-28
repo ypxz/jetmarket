@@ -18,11 +18,11 @@ export async function POST(
   const repo = await getRepo();
   const deal = await repo.getDeal(id);
   if (!deal) return err("deal not found", 404);
-  if (deal.invoiceStatus !== "invoiced") {
-    return err(`invoice is ${deal.invoiceStatus}, not invoiced`, 409);
+  // CAS: a concurrent void must not be overwritten back to paid (QA-145).
+  if (!(await repo.setDealInvoice(id, "paid", undefined, ["invoiced"]))) {
+    const cur = (await repo.getDeal(id))?.invoiceStatus ?? "gone";
+    return err(`invoice is ${cur}, not invoiced`, 409);
   }
-  // ref omitted on purpose — keeps the provider's invoice ref.
-  await repo.setDealInvoice(id, "paid");
   logInfo("admin.deal_invoice_paid", { adminId: user.id, dealId: id });
   // Close the loop: the operator should learn their success-fee invoice
   // settled without watching the dashboard. Mail failure must not 500 —

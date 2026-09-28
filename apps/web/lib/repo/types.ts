@@ -314,12 +314,16 @@ export interface Repo {
     offset?: number;
   }): Promise<Deal[]>;
   countDeals(filter?: { operatorId?: string }): Promise<number>;
-  /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid). */
+  /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid).
+   * `expectedIn` makes the write conditional on the current invoiceStatus —
+   * returns false when the deal is already past it (admin void vs provider
+   * settle race, QA-145). */
   setDealInvoice(
     id: string,
     status: Deal["invoiceStatus"],
     ref?: string,
-  ): Promise<void>;
+    expectedIn?: Deal["invoiceStatus"][],
+  ): Promise<boolean>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

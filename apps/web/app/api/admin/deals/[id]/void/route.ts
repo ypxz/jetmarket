@@ -17,10 +17,16 @@ export async function POST(
   const repo = await getRepo();
   const deal = await repo.getDeal(id);
   if (!deal) return err("deal not found", 404);
-  if (deal.invoiceStatus !== "pending" && deal.invoiceStatus !== "invoiced") {
-    return err(`invoice is ${deal.invoiceStatus} — only pending/invoiced can be voided`, 409);
+  // CAS: never void an invoice that raced to paid in between (QA-145).
+  if (
+    !(await repo.setDealInvoice(id, "void", undefined, [
+      "pending",
+      "invoiced",
+    ]))
+  ) {
+    const cur = (await repo.getDeal(id))?.invoiceStatus ?? "gone";
+    return err(`invoice is ${cur} — only pending/invoiced can be voided`, 409);
   }
-  await repo.setDealInvoice(id, "void");
   logInfo("admin.deal_invoice_voided", {
     adminId: user.id,
     dealId: id,

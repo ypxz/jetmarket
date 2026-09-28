@@ -449,14 +449,17 @@ class MemoryRepo implements Repo {
     id: string,
     status: Deal["invoiceStatus"],
     ref?: string,
+    expectedIn?: Deal["invoiceStatus"][],
   ) {
     const deal = this.deals.get(id);
-    if (deal)
-      this.deals.set(id, {
-        ...deal,
-        invoiceStatus: status,
-        invoiceRef: ref ?? deal.invoiceRef,
-      });
+    if (!deal) return false;
+    if (expectedIn && !expectedIn.includes(deal.invoiceStatus)) return false;
+    this.deals.set(id, {
+      ...deal,
+      invoiceStatus: status,
+      invoiceRef: ref ?? deal.invoiceRef,
+    });
+    return true;
   }
   async listDeals(filter?: {
     operatorId?: string;

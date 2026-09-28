@@ -120,9 +120,18 @@ export async function POST(
       idempotencyKey: deal.id,
       metadata: { dealId: deal.id, quoteId: quote.id },
     });
-    await repo.setDealInvoice(deal.id, "invoiced", invoice.id);
-    deal.invoiceStatus = "invoiced";
-    deal.invoiceRef = invoice.id;
+    // pending→invoiced, idempotent on retry (a repeat accept re-invoices
+    // and refreshes the ref) but never resurrects paid/void (QA-145).
+    const flipped = await repo.setDealInvoice(
+      deal.id,
+      "invoiced",
+      invoice.id,
+      ["pending", "invoiced"],
+    );
+    if (flipped) {
+      deal.invoiceStatus = "invoiced";
+      deal.invoiceRef = invoice.id;
+    }
   } catch (e) {
     logWarn("invoice.create_failed", {
       dealId: deal.id,

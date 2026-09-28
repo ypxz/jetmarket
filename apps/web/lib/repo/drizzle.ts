@@ -810,14 +810,22 @@ export class DrizzleRepo implements Repo {
     id: string,
     status: Deal["invoiceStatus"],
     ref?: string,
-  ): Promise<void> {
-    await this.db
+    expectedIn?: Deal["invoiceStatus"][],
+  ): Promise<boolean> {
+    const rows = await this.db
       .update(deals)
       .set({
         invoiceStatus: status,
         ...(ref !== undefined ? { invoiceRef: ref } : {}),
       })
-      .where(eq(deals.id, id));
+      .where(
+        and(
+          eq(deals.id, id),
+          ...(expectedIn ? [inArray(deals.invoiceStatus, expectedIn)] : []),
+        ),
+      )
+      .returning({ id: deals.id });
+    return rows.length > 0;
   }
   async listDeals(filter?: {
     operatorId?: string;

@@ -686,6 +686,12 @@ export function repoContract(
         invoiceStatus: "paid",
         invoiceRef: "inv_test_1",
       });
+      // CAS (QA-145): expectedIn gates the transition — a paid invoice can't
+      // be voided/re-invoiced by a racing writer.
+      expect(await repo.setDealInvoice(deal.id, "void", undefined, ["invoiced"])).toBe(false);
+      expect(await repo.setDealInvoice(deal.id, "invoiced", "inv_x", ["pending"])).toBe(false);
+      expect((await repo.getDeal(deal.id))?.invoiceStatus).toBe("paid");
+      expect((await repo.getDeal(deal.id))?.invoiceRef).toBe("inv_test_1");
       // deals.quote_id is unique — a racing double-accept must be rejected.
       await expect(
         repo.createDeal({
