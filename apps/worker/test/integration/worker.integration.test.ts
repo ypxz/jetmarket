@@ -140,6 +140,38 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(sent.length).toBeGreaterThan(0);
   });
 
+  it("re-enqueues a pending match whose notification job never landed (QA-162)", async () => {
+    // Simulate the crash window: match flipped to 'pending', worker died
+    // before enqueueJob — no jobs row exists for it.
+    const rfqId = await insertRfq({ name: "Strand", email: "s@x.com" });
+    const [op] = await db
+      .select({ id: operators.id })
+      .from(operators)
+      .limit(1);
+    const [m] = await db
+      .insert(rfqMatches)
+      .values({
+        rfqId,
+        operatorId: op!.id,
+        state: "pending",
+        deliverAt: new Date(),
+      })
+      .returning({ id: rfqMatches.id });
+    const stranded = await db
+      .select({ id: rfqMatches.id })
+      .from(rfqMatches)
+      .where(eq(rfqMatches.id, m!.id));
+    expect(stranded).toHaveLength(1);
+
+    const n = await deliverDueMatches(deps());
+    expect(n).toBeGreaterThan(0);
+
+    const jobs = await sql<{ matchId: string }[]>`
+      select payload ->> 'matchId' as "matchId" from jobs
+      where kind = 'email.quote_notification'`;
+    expect(jobs.map((j) => j.matchId)).toContain(m!.id);
+  });
+
   it("expires stale rfqs and declines their sent quotes on tick", async () => {
     const rfqId = await insertRfq({
       departure: "ZRH",

@@ -1,4 +1,4 @@
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import {
   expireStaleRfqsDetailed,
   type Db,
@@ -38,6 +38,12 @@ export interface WorkerRepo {
   markRfqMatched(rfqId: string): Promise<void>;
   /** Flip due delayed matches to pending; returns their ids. */
   deliverDueMatches(now: Date): Promise<string[]>;
+  /** Delivered ('pending') matches whose notification job was never
+   * enqueued — the flip→enqueue window isn't transactional, so a crash
+   * between them strands the email forever (QA-162). Matches with a
+   * terminal 'failed' job keep their row and are excluded on purpose:
+   * they belong to admin retry, not an unbounded auto-resend loop. */
+  unnotifiedPendingMatches(limit?: number): Promise<string[]>;
   /** Expiry sweep: stale open/quoted rfqs -> closed, their sent quotes ->
    * declined (shares the one-pass SQL with the web DrizzleRepo). Returns the
    * affected rows so the tick can notify buyers + operators. */
@@ -159,6 +165,24 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           ),
         )
         .returning({ id: rfqMatches.id });
+      return rows.map((r) => r.id);
+    },
+
+    async unnotifiedPendingMatches(limit = 200) {
+      const rows = await db
+        .select({ id: rfqMatches.id })
+        .from(rfqMatches)
+        .where(
+          and(
+            eq(rfqMatches.state, "pending"),
+            sql`not exists (
+              select 1 from jobs j
+              where j.kind = 'email.quote_notification'
+                and j.payload ->> 'matchId' = ${rfqMatches.id}::text
+            )`,
+          ),
+        )
+        .limit(limit);
       return rows.map((r) => r.id);
     },
 

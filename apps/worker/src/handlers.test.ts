@@ -77,6 +77,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
       rec("deliverDueMatches", now);
       return ["m-due-1", "m-due-2"];
     },
+    unnotifiedPendingMatches: async () => {
+      rec("unnotifiedPendingMatches", undefined);
+      return [];
+    },
     loadMatchContext: async (id) => {
       rec("loadMatchContext", id);
       return {
@@ -180,6 +184,22 @@ describe("deliverDueMatches", () => {
       "email.quote_notification",
       "email.quote_notification",
     ]);
+  });
+
+  it("re-enqueues stranded pending matches (crash window), deduped (QA-162)", async () => {
+    const enqueued: { kind: string; payload: unknown }[] = [];
+    const repo = fakeRepo({
+      // m-due-1 was flipped this tick AND is stranded (job not yet enqueued
+      // when the scan ran) — Set dedup must enqueue it exactly once.
+      unnotifiedPendingMatches: async () => ["m-due-1", "m-stranded-9"],
+    });
+    const d = deps(repo);
+    d.sql = sqlStub(enqueued);
+    const n = await deliverDueMatches(d);
+    expect(n).toBe(3);
+    expect(
+      enqueued.map((e) => (e.payload as { matchId: string }).matchId),
+    ).toEqual(["m-due-1", "m-due-2", "m-stranded-9"]);
   });
 });
 

@@ -76,7 +76,14 @@ export async function rfqFanout(
  * `delayed` matches to `pending` and enqueue their notification jobs.
  */
 export async function deliverDueMatches(deps: WorkerDeps): Promise<number> {
-  const ids = await deps.repo.deliverDueMatches(at(deps));
+  const fresh = await deps.repo.deliverDueMatches(at(deps));
+  // Freshly-flipped matches have no job row yet, so they appear in the
+  // stranded set too — Set dedupes; each match gets exactly one enqueue.
+  // Stranded = pending with NO notification job row ever (crash between
+  // flip and enqueue) — distinct from 'failed' jobs, which stay with
+  // admin retry rather than being auto-resend in a loop (QA-162).
+  const stranded = await deps.repo.unnotifiedPendingMatches();
+  const ids = [...new Set([...fresh, ...stranded])];
   for (const matchId of ids) {
     await enqueueJob(deps.sql, "email.quote_notification", { matchId });
   }
