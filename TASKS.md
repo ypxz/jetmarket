@@ -178,6 +178,8 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 99 | ~00:12 | QA-109 | api | authed read APIs (admin deals/operators/jobs, operator inbox) got 600/hr IP buckets — last unlimited routes |
 | 100 | ~00:15 | QA-110 | verify | jets e2e suite (9 pass) run under EMAIL_PROVIDER=smtp against real Mailpit — nodemailer adapter + magic-link MIME extraction verified end-to-end |
 | 101 | ~00:20 | QA-110 | verify | PAYMENTS_PROVIDER=stripe vs stripe-mock: real SDK checkout session created (cs_test_ URL) — adapter serialization verified |
+| 97 | ~00:30 | QA-111 | web/seo | Public operator profile /operators/[id]: verified badge, fleet, listings grid, JSON-LD, sitemap |
+| 98 | ~00:30 | QA-112 | seo/correctness | Soft-404: [locale]/loading.tsx Suspense made every notFound() serve 200 (next#76474) — moved to search/; all 404s now real |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
