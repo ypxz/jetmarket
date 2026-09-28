@@ -100,6 +100,17 @@ function isRealIsoDate(v: string): boolean {
 }
 
 /**
+ * Shared ISO-date schema for vertical field/attribute configs: shape AND
+ * calendar validity (regex alone accepts 2026-13-40 — QA-197).
+ */
+export function isoDate() {
+  return z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "expected ISO date")
+    .refine(isRealIsoDate, "expected a valid calendar date");
+}
+
+/**
  * `fields` minus contact keys (email/tel) — what an operator may see about a
  * buyer before a deal is accepted (QA-152). Raw contact channels bypass the
  * marketplace fee, so they stay masked until deal-close.

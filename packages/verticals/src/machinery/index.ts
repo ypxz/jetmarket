@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { VerticalConfig } from "../types";
+import { isoDate } from "../schema";
 
-const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected ISO date");
+const ISO_DATE = isoDate();
 
 /**
  * Machinery vertical — scaffold config proving the abstraction works for a

@@ -189,6 +189,22 @@ describe("buildRfqSchema (jets)", () => {
       schema.parse({ ...valid, dateFrom: "2026-10-10", dateTo: "2026-10-10" }),
     ).not.toThrow();
   });
+
+  it("listing date attributes use the same real-calendar rule (QA-197)", () => {
+    const schema = getAttributesSchema(jetsVertical, "empty_leg");
+    const good = {
+      aircraftCategory: "light",
+      model: "Phenom 300",
+      seats: 7,
+      year: 2020,
+      rangeNm: 2000,
+      from: "zrh",
+      to: "NCE",
+      date: "2026-10-10",
+    };
+    expect(() => schema.parse(good)).not.toThrow();
+    expect(() => schema.parse({ ...good, date: "2026-02-30" })).toThrow();
+  });
 });
 
 describe("machinery scaffold", () => {

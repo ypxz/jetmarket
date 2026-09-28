@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { VerticalConfig } from "../types";
+import { isoDate } from "../schema";
 
 // Airport code as stored in listings.attributes (IATA or ICAO); normalizes to uppercase.
 const AIRPORT = z.preprocess(
@@ -7,7 +8,7 @@ const AIRPORT = z.preprocess(
   z.string().regex(/^[A-Z]{3,4}$/, "expected 3–4 letter airport code"),
 );
 
-const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected ISO date");
+const ISO_DATE = isoDate();
 
 /**
  * Jets vertical: charter, empty legs and aircraft for sale.
