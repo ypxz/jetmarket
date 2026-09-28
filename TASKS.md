@@ -370,3 +370,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 271 | ~16:35 | QA-285 | billing-ops.api.spec: mock webhook stays sealed without MOCK_WEBHOOK_SECRET; portal enforces auth+role+profile chain |
 | 272 | ~16:50 | QA-284+ | admin-api.spec extended: full deal chain -> admin paid -> void-on-paid 409 (invoice CAS covered e2e) |
 | 273 | ~17:00 | QA-286 | admin.ui.spec: /admin + /admin/jobs first browser render coverage incl. verify toggle + buyer redirect |
+| 274 | ~17:10 | QA-287 | seo-pages.ui.spec: landing page render + JSON-LD escaping + bogus-slug 404 |
