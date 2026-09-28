@@ -74,6 +74,29 @@ test('magic-link prefetch: GET verifies but does not consume the token', async (
   await ctx.dispose();
 });
 
+test('buyer access resend: indistinguishable for unknown inboxes, capped per-inbox', async () => {
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'x-forwarded-for': IP },
+  });
+  // Unknown inbox → same {sent:true} 200 as a real one — no enumeration.
+  const unknown = await ctx.post('/api/buyer/access', {
+    data: { email: `ghost-${run}@x.test` },
+  });
+  expect(unknown.status()).toBe(200);
+  expect(((await unknown.json()) as { sent?: boolean }).sent).toBe(true);
+
+  // Per-inbox cap is 3/hour — the IP bucket (20/hour) stays clear.
+  const email = `access-flood-${run}@x.test`;
+  const statuses: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = await ctx.post('/api/buyer/access', { data: { email } });
+    statuses.push(r.status());
+  }
+  expect(statuses.slice(0, 3)).toEqual([200, 200, 200]);
+  expect(statuses[3]).toBe(429);
+  await ctx.dispose();
+});
+
 test('magic-link abuse: per-inbox rate limit → 429', async () => {
   const ctx = await request.newContext({
     extraHTTPHeaders: { 'x-forwarded-for': IP },
