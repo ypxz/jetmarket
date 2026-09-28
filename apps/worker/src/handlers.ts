@@ -162,6 +162,9 @@ export async function quoteNotification(
     .filter(Boolean)
     .join(" → ");
   const pax = f["passengers"] ? ` — ${String(f["passengers"])} pax` : "";
+  // Buyer contact stays masked until a deal closes (QA-152) — name only.
+  const buyerName =
+    typeof f["name"] === "string" && f["name"] ? f["name"] : "A buyer";
   await deps.email.send({
     to: ctx.operatorEmail,
     subject: `New RFQ ${route}${pax}`.trim(),
@@ -169,7 +172,7 @@ export async function quoteNotification(
       `You have a new request for quotation on ${site.name}.\n\n` +
       `Route: ${route || "n/a"}${pax}\n` +
       `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
-      `Buyer: ${ctx.buyerEmail}\n\n` +
+      `Buyer: ${buyerName}\n\n` +
       `Open your operator inbox to send a quote.`,
   });
   await deps.repo.markMatchState(matchId, "sent");

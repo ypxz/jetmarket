@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
 import { z } from "zod";
-import { buildRfqSchema, getVertical } from "@jetmarket/verticals";
+import { buildRfqSchema, getVertical, nonContactFields } from "@jetmarket/verticals";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { fanoutRfq } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
@@ -95,14 +95,18 @@ export async function POST(req: Request) {
   }
 
   // The listing owner gets the direct notice in every mode — it must not
-  // depend on the worker being up.
+  // depend on the worker being up. Contact fields (email/tel) are masked —
+  // the intro is the fee, so contact happens only after deal-close (QA-152).
   const operator = await repo.getOperator(listing.operatorId);
   const owner = operator ? await repo.getUser(operator.userId) : undefined;
   if (owner) {
+    const buyerName =
+      typeof parsed.data["name"] === "string" ? parsed.data["name"] : "A buyer";
+    const publicFields = nonContactFields(getVertical(), listing.type, parsed.data);
     await emailProvider().send({
       to: owner.email,
       subject: `New RFQ on “${listing.title}”`,
-      text: `Buyer ${buyerEmail} sent a request. Fields: ${JSON.stringify(fields)}`,
+      text: `${buyerName} sent a request. Details: ${JSON.stringify(publicFields)}`,
     });
   }
 

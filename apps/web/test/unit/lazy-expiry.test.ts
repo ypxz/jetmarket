@@ -112,4 +112,38 @@ describe("lazy RFQ expiry (memory mode, QA-142)", () => {
     const row = body.find((r) => r.id === stale.id);
     expect(row?.status).toBe("expired");
   });
+
+  it("masks buyer contact fields + email in the operator inbox (QA-152)", async () => {
+    const { repo, listing } = await fixture();
+    await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: "private-buyer@test.dev",
+      fields: {
+        name: "Ada Buyer",
+        email: "private-buyer@test.dev",
+        phone: "+41 79 000",
+        departure: "ZRH",
+        arrival: "NCE",
+        passengers: 2,
+        dateFrom: "2099-01-01",
+        dateTo: "2099-01-02",
+      },
+    });
+
+    const res = await operatorRfqs(
+      new Request("http://test.local/api/operator/rfqs"),
+    );
+    const raw = await res.text();
+    // Neither the column nor the typed field value may leave the payload.
+    expect(raw).not.toContain("private-buyer@test.dev");
+    expect(raw).not.toContain("+41 79 000");
+    expect(raw).not.toContain("accessToken");
+    const body = JSON.parse(raw) as {
+      buyerName: string | null;
+      fields: Record<string, unknown>;
+    }[];
+    expect(body[0]?.buyerName).toBe("Ada Buyer");
+    expect(body[0]?.fields["departure"]).toBe("ZRH");
+  });
 });

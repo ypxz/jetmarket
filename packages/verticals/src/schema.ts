@@ -48,3 +48,23 @@ export function buildRfqSchema(
   }
   return z.object(shape).strip();
 }
+
+/**
+ * `fields` minus contact keys (email/tel) — what an operator may see about a
+ * buyer before a deal is accepted (QA-152). Raw contact channels bypass the
+ * marketplace fee, so they stay masked until deal-close.
+ */
+export function nonContactFields(
+  config: VerticalConfig,
+  listingType: ListingTypeSlug | undefined,
+  fields: Record<string, unknown>,
+): Record<string, unknown> {
+  const hidden = new Set(
+    rfqFieldsFor(config, listingType)
+      .filter((f) => f.type === "email" || f.type === "tel")
+      .map((f) => f.key),
+  );
+  return Object.fromEntries(
+    Object.entries(fields).filter(([k]) => !hidden.has(k)),
+  );
+}

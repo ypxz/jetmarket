@@ -4,8 +4,10 @@ import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { operatorRfqView } from "@/lib/rfq-view";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { quoteStateVariant } from "@/lib/state-variant";
+import { verticalConfig } from "@/lib/vertical";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 
@@ -55,11 +57,17 @@ export default async function RfqInboxPage({
     arr.push(q);
     quotesByRfq.set(q.rfqId, arr);
   }
-  const rfqRows = rfqsPage.map((r) => ({
-    rfq: r,
-    listing: listingById.get(r.listingId) ?? null,
-    quotes: quotesByRfq.get(r.id) ?? [],
-  }));
+  // Buyer contact fields stay masked pre-deal — the marketplace intro is
+  // the fee (QA-152). The buyer's email reaches the winner via email only.
+  const vertical = verticalConfig();
+  const rfqRows = rfqsPage.map((r) => {
+    const listing = listingById.get(r.listingId) ?? null;
+    return {
+      rfq: operatorRfqView(r, listing?.type, vertical),
+      listing,
+      quotes: quotesByRfq.get(r.id) ?? [],
+    };
+  });
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -85,7 +93,7 @@ export default async function RfqInboxPage({
                 </div>
                 <p className="mt-1 text-sm text-muted">
                   {t("from", {
-                    email: r.buyerEmail,
+                    name: r.buyerName ?? t("anonymousBuyer"),
                     date: new Date(r.createdAt).toLocaleString("en-US"),
                   })}
                 </p>

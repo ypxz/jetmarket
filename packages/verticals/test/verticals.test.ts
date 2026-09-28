@@ -7,6 +7,7 @@ import {
   isVerticalSlug,
   jetsVertical,
   machineryVertical,
+  nonContactFields,
 } from "../src";
 
 describe("getVertical / getVerticalSlug", () => {
@@ -195,5 +196,29 @@ describe("machinery scaffold", () => {
       locationCountry: "DE",
     });
     expect(parsed.machineryCategory).toBe("cnc_milling");
+  });
+});
+
+describe("nonContactFields (QA-152)", () => {
+  it("strips email/tel-typed keys, keeps the rest", () => {
+    const out = nonContactFields(jetsVertical, "charter", {
+      name: "Ada",
+      email: "a@b.c",
+      phone: "+41 79",
+      departure: "ZRH",
+      passengers: 2,
+    });
+    expect(out).toEqual({ name: "Ada", departure: "ZRH", passengers: 2 });
+  });
+
+  it("scopes hidden keys to the listing type", () => {
+    // machinery dates apply only to for_rent; contact fields are hidden
+    // regardless of type.
+    const out = nonContactFields(machineryVertical, "for_sale", {
+      name: "Ada",
+      email: "a@b.c",
+      make: "DMG MORI",
+    });
+    expect(out).toEqual({ name: "Ada", make: "DMG MORI" });
   });
 });

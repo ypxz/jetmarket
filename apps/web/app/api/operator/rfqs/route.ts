@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { sweepStaleRfqs } from "@/lib/sweep";
+import { operatorRfqView } from "@/lib/rfq-view";
+import { verticalConfig } from "@/lib/vertical";
 
 export async function GET(req: Request) {
   const user = await requireUser("operator");
@@ -38,14 +40,19 @@ export async function GET(req: Request) {
     arr.push(q);
     quotesByRfq.set(q.rfqId, arr);
   }
+  // Contact fields (email/tel) + buyerEmail are hidden until the buyer
+  // accepts — the marketplace intro is its fee; raw contact details pre-deal
+  // invite off-platform deals that bypass it (QA-152).
+  const vertical = verticalConfig();
   return ok(
-    rfqs.map((rfq) => ({
-      // never leak the buyer bearer token — operators with it could
-      // impersonate the buyer and accept their own quote (QA-41)
-      ...{ ...rfq, accessToken: undefined },
-      listing: listingById.get(rfq.listingId) ?? null,
-      // own quotes only — matched operators must not see competitors' amounts (QA-73)
-      quotes: quotesByRfq.get(rfq.id) ?? [],
-    })),
+    rfqs.map((rfq) => {
+      const listing = listingById.get(rfq.listingId) ?? null;
+      return {
+        ...operatorRfqView(rfq, listing?.type, vertical),
+        listing,
+        // own quotes only — matched operators must not see competitors' amounts (QA-73)
+        quotes: quotesByRfq.get(rfq.id) ?? [],
+      };
+    }),
   );
 }
