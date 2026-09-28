@@ -3,12 +3,19 @@
 // republishable nudge, and moderation is admin-only.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.2.7' } });
+
 const run = Date.now();
 const OPERATOR_EMAIL = `e2e-mod-operator-${run}@jetmarket.local`;
 const ADMIN_EMAIL = 'admin@jetmarket.local';
 
 async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.2.7' },
+  });
   const res = await ctx.post('/api/auth/magic-link', {
     data: { email, role },
   });

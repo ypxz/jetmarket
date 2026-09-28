@@ -2,6 +2,11 @@
 // Pins page render + JSON-LD escaping + unknown-slug 404.
 import { expect, test } from '@playwright/test';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.18.7' } });
+
 test('seo landing page renders filtered results + safe JSON-LD', async ({
   page,
 }) => {

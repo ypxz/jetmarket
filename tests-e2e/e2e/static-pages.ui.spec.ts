@@ -4,6 +4,11 @@
 // confirmation card.
 import { expect, test } from '@playwright/test';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.19.7' } });
+
 test('legal pages render with entity substitution', async ({ page }) => {
   for (const path of ['/tos', '/privacy', '/imprint']) {
     const res = await page.goto(path);

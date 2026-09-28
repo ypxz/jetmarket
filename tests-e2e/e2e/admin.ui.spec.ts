@@ -4,6 +4,11 @@
 import { expect, test } from '@playwright/test';
 import { signUpAndLogin } from '../helpers/flow';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.3.7' } });
+
 const run = Date.now();
 
 test('admin dashboard + jobs render and verify toggles', async ({ page }) => {

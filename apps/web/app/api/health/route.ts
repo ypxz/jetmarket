@@ -7,6 +7,9 @@ const payload = (extra?: Record<string, unknown>) => ({
   ok: true,
   service: "jetmarket-web",
   vertical: process.env.VERTICAL ?? "jets",
+  // Which repo the process serves — lets the e2e harness tell a reused
+  // dev server apart from the postgres-backed one it asked for (QA-289).
+  backend: repoBackend(),
   time: new Date().toISOString(),
   ...extra,
 });

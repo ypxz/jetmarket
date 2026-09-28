@@ -44,6 +44,10 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
+  // All specs share one seeded test DB — seeded-state assertions (deal
+  // ledger, demo RFQ, verify toggles) cross-contaminate under parallel
+  // workers (QA-289). fullyParallel only covers within-file ordering.
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
     ? [['github'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]

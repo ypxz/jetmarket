@@ -4,6 +4,11 @@
 import { expect, test } from '@playwright/test';
 import { signUpAndLogin } from '../helpers/flow';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.17.7' } });
+
 test('search paginates results and keeps facet params across pages', async ({
   page,
 }) => {

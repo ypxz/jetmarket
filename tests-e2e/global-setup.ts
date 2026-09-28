@@ -52,6 +52,31 @@ function runDbScript(script: string) {
 }
 
 export default async function globalSetup() {
+  // Reused-server guard (QA-289): webServer.reuseExistingServer happily
+  // reuses ANYTHING on the port — a stale `pnpm dev` in memory mode swaps
+  // the suite's whole backend (seeded uid() fixtures don't exist there,
+  // every seed-dependent spec fails). Probe /api/health's backend field
+  // and refuse loudly instead of running 40 bogus tests.
+  const base = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`;
+  try {
+    const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(3000) });
+    const health = (await res.json()) as { backend?: string; vertical?: string };
+    const wantVertical = process.env.VERTICAL ?? 'jets';
+    if (
+      (health.backend && health.backend !== 'postgres') ||
+      (health.vertical && health.vertical !== wantVertical)
+    ) {
+      throw new Error(
+        `[e2e setup] ${base} already serves backend="${health.backend}" vertical="${health.vertical}" — ` +
+          `e2e needs the postgres-backed "${wantVertical}" server it spawns itself. ` +
+          `Kill the stale process (e.g. \`pkill -f "next dev -p ${process.env.E2E_PORT ?? 3100}"\`) and re-run.`,
+      );
+    }
+  } catch (err) {
+    // No server yet — webServer will spawn one; only backend mismatches abort.
+    if (err instanceof Error && err.message.includes('already serves')) throw err;
+  }
+
   if (!dbPkgHasScript('migrate') && !process.env.E2E_REQUIRE_DB) {
     console.log('[e2e setup] no @jetmarket/db migrate script — skipping test DB provisioning');
     return;

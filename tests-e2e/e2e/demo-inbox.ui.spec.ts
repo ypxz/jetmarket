@@ -7,6 +7,11 @@
 // for every later check of the same demo path.
 import { expect, test, type Page } from '@playwright/test';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.10.7' } });
+
 const DEMO_RFQ_ID = '00000000-0000-4000-8000-000000000300';
 const DEMO_URL =
   '/en/quotes?email=charter%40geneva-pe.example#t=demo-buyer-token';

@@ -11,6 +11,11 @@ import {
   tidPrefix,
 } from '../helpers/flow';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.8.7' } });
+
 const run = Date.now();
 const OPERATOR_EMAIL = `e2e-ui-operator-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-ui-buyer-${run}@jetmarket.local`;

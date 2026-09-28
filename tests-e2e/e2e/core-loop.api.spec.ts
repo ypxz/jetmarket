@@ -7,6 +7,11 @@
 // this request context.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
 
+// Isolated rate-limit bucket per spec file — the dev server keeps
+// buckets across the whole suite run (and across runs when reused), so
+// shared 'local' IP logins exhaust ml:*/30ph mid-suite (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.7.7' } });
+
 const run = Date.now();
 const OPERATOR_EMAIL = `e2e-operator-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-buyer-${run}@jetmarket.local`;
@@ -17,7 +22,9 @@ const QUOTE_AMOUNT = 42000;
 const EXPECTED_FEE = QUOTE_AMOUNT * 0.03;
 
 async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.7.7' },
+  });
   const res = await ctx.post('/api/auth/magic-link', {
     data: { email, role },
   });
