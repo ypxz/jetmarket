@@ -1,4 +1,4 @@
-import { err, ok } from "@/lib/api";
+import { err, ok, readBodyCapped } from "@/lib/api";
 import { applyPaymentEvent } from "@/lib/billing";
 import { getRepo } from "@/lib/repo";
 import { paymentsProvider, paymentsProviderName } from "@jetmarket/providers";
@@ -20,7 +20,11 @@ export async function POST(req: Request) {
       return err("forbidden", 403);
     }
   }
-  const raw = await req.text();
+  // Provider events are a few KB — cap the read so an oversized (or chunked)
+  // body can't land in memory before signature verification (QA-319).
+  const body = await readBodyCapped(req, 256 * 1024);
+  if (body === null) return err("payload too large", 413);
+  const raw = new TextDecoder().decode(body);
   const signature = req.headers.get("stripe-signature");
   let event;
   try {

@@ -62,8 +62,9 @@ const jsonReq = (body: unknown, ip = "198.51.100.77") =>
 describe("analytics events on money routes (mock sink)", async () => {
   const repo = await getRepo();
   // Seeded operator + one of its listings (memory seed: ops@alpine-air.example
-  // is pro so the free-listing limit never bites).
-  const [op] = await repo.listOperators();
+  // is pro so the free-listing limit never bites). Pinned by plan — list order
+  // is createdAt desc since QA-317, so [0] is no longer the first seed.
+  const op = (await repo.listOperators()).find((o) => o.plan === "pro");
   const user = await repo.getUser(op!.userId);
   beforeAll(() => {
     h.userId = user!.id;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clientIp, rateLimit } from "@/lib/api";
+import { clientIp, err, rateLimit, readBodyCapped } from "@/lib/api";
 import {
   consumeMagicLink,
   sessionCookie,
@@ -94,15 +94,29 @@ export async function POST(req: Request) {
   let token: string | undefined;
   let next = "/";
   const ct = req.headers.get("content-type") ?? "";
+  // The consume payload is a token + next path — tiny. Read with the shared
+  // cap so an oversized/chunked body can't buffer fully (QA-319).
+  const raw = await readBodyCapped(req, 64 * 1024);
+  if (raw === null) return err("payload too large", 413);
   if (ct.includes("json")) {
-    const body = (await req.json().catch(() => null)) as {
-      token?: string;
-      next?: string;
-    } | null;
+    const body = (() => {
+      try {
+        return JSON.parse(new TextDecoder().decode(raw)) as {
+          token?: string;
+          next?: string;
+        };
+      } catch {
+        return null;
+      }
+    })();
     token = body?.token;
     next = safeNext(body?.next ?? null);
   } else {
-    const form = await req.formData().catch(() => null);
+    const form = await new Response(raw, {
+      headers: { "content-type": ct },
+    })
+      .formData()
+      .catch(() => null);
     token = form?.get("token")?.toString();
     next = safeNext(form?.get("next")?.toString() ?? null);
   }

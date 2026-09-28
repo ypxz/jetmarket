@@ -23,6 +23,47 @@ export function noStore<T extends NextResponse>(res: T): T {
 // through multipart on a different route. Cap to bound request-body memory.
 const MAX_JSON_BODY_BYTES = 64 * 1024;
 
+/**
+ * Buffer a request body with a hard byte cap. `req.text()`/`json()`/
+ * `formData()`/`arrayBuffer()` all read to completion — an unauthenticated
+ * route accepting bodies needs this so a giant (or chunked) body can't land
+ * fully in memory before validation (QA-318/QA-319).
+ * Returns the body, an empty Uint8Array when there is none, or null when the
+ * cap was crossed / the stream errored.
+ */
+export async function readBodyCapped(
+  req: Request,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  const declared = Number(req.headers.get("content-length") ?? 0);
+  if (declared > maxBytes) return null;
+  const reader = req.body?.getReader();
+  if (!reader) return new Uint8Array(0);
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return null;
+  }
+  const body = new Uint8Array(received);
+  let at = 0;
+  for (const c of chunks) {
+    body.set(c, at);
+    at += c.byteLength;
+  }
+  return body;
+}
+
 export async function parseBody<T>(
   req: Request,
   schema: ZodSchema<T>,

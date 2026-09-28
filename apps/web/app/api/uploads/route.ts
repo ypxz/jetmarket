@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { clientIp, err, ok, rateLimit } from "@/lib/api";
+import { clientIp, err, ok, rateLimit, readBodyCapped } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { storageProvider } from "@jetmarket/providers";
 
@@ -30,31 +30,11 @@ export async function POST(req: Request) {
     return err("rate limit exceeded — try again later", 429);
   }
 
-  const declared = Number(req.headers.get("content-length") ?? 0);
-  if (declared > MAX_BODY_BYTES) return err("payload too large", 413);
-
-  // Chunked bodies carry no content-length — read with a hard byte cap
-  // instead of letting formData() buffer to completion.
-  const reader = req.body?.getReader();
-  if (!reader) return err("expected multipart/form-data with a file field", 422);
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    received += value.byteLength;
-    if (received > MAX_BODY_BYTES) {
-      await reader.cancel();
-      return err("payload too large", 413);
-    }
-    chunks.push(value);
-  }
-  const body = new Uint8Array(received);
-  let at = 0;
-  for (const c of chunks) {
-    body.set(c, at);
-    at += c.byteLength;
-  }
+  // Buffer with a hard cap — req.formData() reads the whole body to
+  // completion, so an oversized chunked body would land in memory before the
+  // per-file size check ran (QA-318).
+  const body = await readBodyCapped(req, MAX_BODY_BYTES);
+  if (body === null) return err("payload too large", 413);
 
   let file: File;
   try {
