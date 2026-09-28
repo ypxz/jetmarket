@@ -34,8 +34,8 @@
 
 ## 🔲 Small additions to merged pages
 
-- `plan-limit-banner` on `/app/listings/new` when the plan limit is hit
-  (currently the 402 error + `upgrade-cta` plays this role — spec accepts both).
+- ~~`plan-limit-banner`~~ resolved: `upgrade-cta` is the stable contract for the
+  402 plan-limit surface on `/app/listings/new` (spec asserts it directly).
 
 ## Env/seed contract the suite assumes
 
