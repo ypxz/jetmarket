@@ -84,7 +84,8 @@
     "rfqCta": "Request quotes for this listing",
     "notFound": "Listing not found or no longer active.",
     "back": "← Back to search",
-    "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator."
+    "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator.",
+    "similar": "Similar listings"
   },
   "rfq": {
     "title": "Request a quote",

@@ -66,3 +66,28 @@ test('search sorts by price and keeps the choice through facets', async ({
   await expect(page).toHaveURL(/sort=price_desc/);
   expect(await priceOf(0)).toBeGreaterThanOrEqual(await priceOf(1));
 });
+
+// QA-180: detail page renders a "similar listings" rail — same-type siblings,
+// capped at 4, and never the listing itself.
+test('listing page shows similar listings excluding itself', async ({
+  page,
+}) => {
+  // Charter is the best-seeded type — guarantees same-type siblings.
+  await page.goto('/search?type=charter');
+  const card = page.getByTestId('listing-card').first();
+  const href = await card.getAttribute('href');
+  expect(href).toBeTruthy();
+  await card.click();
+  await expect(page).toHaveURL(/\/listing\//);
+
+  const rail = page.getByTestId('similar-listings');
+  await expect(rail).toBeVisible();
+  const cards = rail.getByTestId('listing-card');
+  const count = await cards.count();
+  expect(count).toBeGreaterThan(0);
+  expect(count).toBeLessThanOrEqual(4);
+  const hrefs = await cards.evaluateAll((els) =>
+    els.map((el) => el.getAttribute('href')),
+  );
+  expect(hrefs).not.toContain(href);
+});

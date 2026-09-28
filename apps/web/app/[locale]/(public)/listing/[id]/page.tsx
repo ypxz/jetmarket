@@ -5,9 +5,11 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { AttributeTable } from "@/components/attribute-table";
 import { Gallery } from "@/components/gallery";
+import { ListingCard } from "@/components/listing-card";
 import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { publicOperator } from "@/lib/repo/types";
 import { siteUrl } from "@/lib/seo";
 
 // Escape </script> breakouts inside JSON-LD payloads.
@@ -63,6 +65,26 @@ export default async function ListingPage({
   if (!listing) notFound();
   const repo = await getRepo();
   const operator = await repo.getOperator(listing.operatorId) ?? null;
+
+  // Same-type siblings keep the buyer in the browse loop when this one
+  // doesn't fit — 5 fetched so dropping self still yields up to 4.
+  const similar = (
+    await repo.listListings({
+      vertical: listing.vertical,
+      type: listing.type,
+      status: "active",
+      limit: 5,
+    })
+  )
+    .filter((l) => l.id !== listing.id)
+    .slice(0, 4);
+  const similarOps = new Map(
+    (
+      await repo.listOperators({
+        ids: [...new Set(similar.map((l) => l.operatorId))],
+      })
+    ).map((o) => [o.id, publicOperator(o)] as const),
+  );
 
   const productLd = {
     "@context": "https://schema.org",
@@ -160,6 +182,21 @@ export default async function ListingPage({
           </CardBody>
         </Card>
       </div>
+
+      {similar.length > 0 ? (
+        <section className="mt-10" data-testid="similar-listings">
+          <h2 className="text-xl font-semibold">{t("similar")}</h2>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {similar.map((l) => (
+              <ListingCard
+                key={l.id}
+                listing={l}
+                operator={similarOps.get(l.operatorId) ?? null}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

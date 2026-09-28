@@ -27,7 +27,7 @@
 | billing | `checkout-pro`, `pro-active`, `upgrade-cta`, `billing-portal` |
 | landing (`/`) | `hero-search` (GET form → `/search?q=`) |
 | search (`/search`) | `facet-sidebar`, `facet-q` (query input), `facet-<key>` (enum select) / `facet-<key>-min` + `facet-<key>-max` (number-range), `facet-apply` (submit), `search-results`, `search-result` (per card), `search-results-count` |
-| listing (`/listing/[id]`) | `listing-title`, `listing-price`, `attribute-table`, `listing-card`, `listing-rfq-cta` (→ `/rfq/[id]`) |
+| listing (`/listing/[id]`) | `listing-title`, `listing-price`, `attribute-table`, `listing-card`, `similar-listings`, `listing-rfq-cta` (→ `/rfq/[id]`) |
 | RFQ (`/rfq/[listingId]`) | `rfq-form`, `rfq-field-<key>` per `vertical.rfqFields[].key` (buyer email is `rfq-field-email`), `rfq-honeypot`, `rfq-submit`, `rfq-error` |
 | RFQ thanks (`/rfq/thanks`) | `rfq-confirmation`, `rfq-reference` (rfqId), `rfq-view-quotes` |
 | misc | `design-gallery` (`/design`), `legal-imprint`, `legal-privacy`, `legal-tos` |
