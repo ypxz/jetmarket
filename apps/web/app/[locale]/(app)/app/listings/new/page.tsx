@@ -203,7 +203,7 @@ export default function NewListingPage() {
           type="number"
           required
           min={0}
-          placeholder={t("pricePh")}
+          placeholder={t("pricePh", { currency })}
           data-testid="listing-price"
           className={input}
         />

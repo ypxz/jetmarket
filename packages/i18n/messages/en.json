@@ -710,7 +710,7 @@
       "yearPh": "Year",
       "seatsPh": "Seats",
       "rangePh": "Range (nm)",
-      "pricePh": "Price (USD)",
+      "pricePh": "Price ({currency})",
       "fromPh": "From (ZRH)",
       "toPh": "To (NCE)",
       "publish": "Publish listing",
@@ -757,11 +757,12 @@
     "editListing": {
       "title": "Edit listing",
       "fieldTitle": "Title",
-      "fieldPrice": "Price (USD)",
+      "fieldPrice": "Price ({currency})",
       "save": "Save",
       "saving": "Saving…",
       "photosLabel": "Photos (uncheck to remove; pick files to add)",
-      "keepPhoto": "Keep photo"
+      "keepPhoto": "Keep photo",
+      "failed": "Save failed — try again"
     }
   },
   "checkout": {

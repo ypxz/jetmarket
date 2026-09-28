@@ -35,16 +35,18 @@ export function EditListingForm({
   const [error, setError] = useState<string | null>(null);
   const [attrs, setAttrs] = useState<AttributeView[]>([]);
   const [vertical, setVertical] = useState("jets");
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     const load = () =>
       fetch("/api/vertical").then((r) =>
-        readJson<{ slug?: string; attributes?: AttributeView[] }>(r),
+        readJson<{ slug?: string; attributes?: AttributeView[]; currency?: string }>(r),
       );
     load()
       .catch(() => new Promise((r) => setTimeout(r, 400)).then(load))
       .then((c) => {
         if (c.slug) setVertical(c.slug);
+        if (c.currency) setCurrency(c.currency);
         if (c.attributes) setAttrs(c.attributes);
       })
       .catch(() => {});
@@ -186,7 +188,7 @@ export function EditListingForm({
           className="mt-2 w-full text-sm"
         />
       </Field>
-      <Field label={t("fieldPrice")} htmlFor="price" required>
+      <Field label={t("fieldPrice", { currency })} htmlFor="price" required>
         <Input
           id="price"
           name="price"
