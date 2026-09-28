@@ -24,6 +24,8 @@ interface RfqFormProps {
   rateLimitedLabel: string;
   honeypotHint: string;
   emailFieldKey: string;
+  /** Field-key → default value from the source listing's attributes. */
+  prefill?: Record<string, string>;
   /** Turnstile site key — renders the widget; empty = captcha provider mock/dev. */
   turnstileSiteKey?: string;
 }
@@ -42,6 +44,7 @@ export function RfqForm({
   rateLimitedLabel,
   honeypotHint,
   emailFieldKey,
+  prefill,
   turnstileSiteKey,
 }: RfqFormProps) {
   const router = useRouter();
@@ -137,6 +140,7 @@ export function RfqForm({
                       name={f.key}
                       required={f.required}
                       placeholder={f.placeholder}
+                      defaultValue={prefill?.[f.key]}
                       data-testid={`rfq-field-${f.key}`}
                     />
                   ) : f.type === "select" ? (
@@ -145,7 +149,7 @@ export function RfqForm({
                       name={f.key}
                       required={f.required}
                       data-testid={`rfq-field-${f.key}`}
-                      defaultValue=""
+                      defaultValue={prefill?.[f.key] ?? ""}
                     >
                       <option value="" disabled>
                         {f.placeholder ?? "—"}
@@ -163,6 +167,7 @@ export function RfqForm({
                       type={f.type}
                       required={f.required}
                       placeholder={f.placeholder}
+                      defaultValue={prefill?.[f.key]}
                       data-testid={`rfq-field-${f.key}`}
                     />
                   )}

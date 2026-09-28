@@ -37,6 +37,15 @@ export default async function RfqPage({
       : {}),
   }));
 
+  // Empty-leg (and any prefillFrom-declared) fields carry the listing's own
+  // attributes — a buyer quoting a ZRH→NCE leg shouldn't retype the route.
+  const prefill: Record<string, string> = {};
+  for (const f of scoped) {
+    if (!f.prefillFrom) continue;
+    const v = listing.attributes[f.prefillFrom];
+    if (v !== undefined && v !== null && v !== "") prefill[f.key] = String(v);
+  }
+
   const groupLabels: Record<string, string> = {};
   for (const f of scoped) {
     if (f.groupKey) groupLabels[f.groupKey] = t(`groups.${f.groupKey}`);
@@ -58,6 +67,7 @@ export default async function RfqPage({
           errorLabel={t("error")}
           rateLimitedLabel={t("rateLimited")}
           honeypotHint={t("honeypotHint")}
+          prefill={prefill}
           emailFieldKey="email"
           turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined}
         />

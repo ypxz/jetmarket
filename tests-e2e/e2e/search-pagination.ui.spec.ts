@@ -122,3 +122,27 @@ test('listing back link restores the search filters', async ({ page }) => {
   await expect(page).toHaveURL(/type=empty_leg/);
   await expect(page).toHaveURL(/aircraftCategory=light/);
 });
+
+// QA-218: RFQ opened from an empty leg prefills route + leg date via the
+// field's `prefillFrom` mapping; a charter (no from/to/date attrs) stays empty.
+test('rfq form prefills route and leg date from the listing', async ({ page }) => {
+  await page.goto('/search?type=empty_leg');
+  await page.getByTestId('listing-card').first().click();
+  await page.getByTestId('listing-rfq-cta').click();
+  await expect(page).toHaveURL(/\/rfq\//);
+  const departure = await page.getByTestId('rfq-field-departure').inputValue();
+  const arrival = await page.getByTestId('rfq-field-arrival').inputValue();
+  expect(departure).toMatch(/^[A-Z]{3}$/);
+  expect(arrival).toMatch(/^[A-Z]{3}$/);
+  const dateFrom = await page.getByTestId('rfq-field-dateFrom').inputValue();
+  expect(dateFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  // Both date bounds carry the same leg date — the buyer loosens if needed.
+  await expect(page.getByTestId('rfq-field-dateTo')).toHaveValue(dateFrom);
+
+  // Charter listings declare no from/to/date attributes → nothing prefilled.
+  await page.goto('/search?type=charter');
+  await page.getByTestId('listing-card').first().click();
+  await page.getByTestId('listing-rfq-cta').click();
+  await expect(page).toHaveURL(/\/rfq\//);
+  await expect(page.getByTestId('rfq-field-departure')).toHaveValue('');
+});

@@ -73,6 +73,11 @@ export interface FieldSchema {
   /** Optional grouping so related fields render together (e.g. "route", "contact"). */
   groupKey?: string;
   placeholderKey?: string;
+  /**
+   * Listing attributes key whose value prefills this field when the RFQ is
+   * opened from a listing (empty-leg route/date carries over — QA-218).
+   */
+  prefillFrom?: string;
 }
 
 export interface Plan {
