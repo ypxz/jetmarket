@@ -311,7 +311,7 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
       status: "quoted",
       dedupeKey: "seed-rfq-zrh-nce",
       // Fixed demo token — the buyer-inbox link for the seeded RFQ is
-      // /quotes?email=charter@geneva-pe.example&t=demo-buyer-token (seed is
+      // /quotes?email=charter@geneva-pe.example#t=demo-buyer-token (seed is
       // dev-only data; the token is deliberately public, QA-236).
       accessToken: "demo-buyer-token",
     },

@@ -28,6 +28,14 @@ docker compose --profile app up --build   # http://localhost:3000, mail http://l
 # SEED_DEMO_DATA=1 seeds the demo vertical on first boot (default); VERTICAL=machinery switches.
 ```
 
+Seeded demo path to try first — the buyer inbox for the seeded ZRH→NCE
+request (machinery: `procurement@bavaria-werk.example`), one live payable
+quote already on it:
+
+```
+/quotes?email=charter@geneva-pe.example#t=demo-buyer-token
+```
+
 Tests: `pnpm test:all` (unit → integration → contract → e2e).
 Smoke vs any deploy: `pnpm smoke --url=https://…`.
 
