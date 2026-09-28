@@ -2,6 +2,7 @@
 // must appear, page 2 must swap results, and filter params must survive
 // navigation. See TESTIDS.md for the data-testid contract.
 import { expect, test } from '@playwright/test';
+import { signUpAndLogin } from '../helpers/flow';
 
 test('search paginates results and keeps facet params across pages', async ({
   page,
@@ -150,6 +151,19 @@ test('listing back link restores the search filters', async ({ page }) => {
   await expect(page).toHaveURL(/\/search\?/);
   await expect(page).toHaveURL(/type=empty_leg/);
   await expect(page).toHaveURL(/aircraftCategory=light/);
+});
+
+// QA-224: public browse hides expired legs, but the operator dashboard must
+// say so — otherwise dead inventory reads "active" with no hint to relist.
+// Alpine Jet owns the seeded flown GVA→IBZ leg.
+test('operator dashboard flags expired listings as hidden', async ({
+  page,
+}) => {
+  await signUpAndLogin(page, 'ops@alpinejet.example', 'operator');
+  await page.goto('/app');
+  await expect(
+    page.getByText('expired — hidden from buyers'),
+  ).toBeVisible();
 });
 
 // QA-222: the similar-listings rail keeps the search context alive — its

@@ -8,6 +8,7 @@ import { ListingActions } from "./listing-actions";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { invoiceStateVariant } from "@/lib/state-variant";
+import { isExpiredListing } from "@/lib/search";
 
 export default async function OperatorDashboard() {
   const t = await getTranslations("app.dashboard");
@@ -207,8 +208,13 @@ export default async function OperatorDashboard() {
               <li key={l.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <div className="font-medium">{l.title}</div>
-                  <div className="text-xs text-muted">
+                  <div className="mt-0.5 text-xs text-muted">
                     {l.type} · {l.status}
+                    {isExpiredListing(l) ? (
+                      <Badge variant="warning" className="ml-2">
+                        {t("expiredHidden")}
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
