@@ -375,3 +375,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 276 | ~17:35 | QA-289 | e2e harness hardening: health backend probe + reuse guard, workers:1 pinned, per-file rate-limit IP buckets — kills a whole class of false failures |
 | 277 | ~18:20 | QA-290 | docker build verify at HEAD (web+worker images clean, container boots, health reports backend) |
 | 278 | ~18:30 | QA-291 | apps/web lint now runs @next/eslint-plugin-next + react-hooks — fixed the <a>/deps issues it caught |
+| 279 | ~18:45 | QA-292 | host-header token theft closed: appOrigin() helper — APP_URL-only in prod, 6 call sites converted |
