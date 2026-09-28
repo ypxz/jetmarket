@@ -13,11 +13,11 @@ Flip a provider by setting `<SVC>_PROVIDER` in `.env`. Everything works with all
 | db | `REPO` | In-memory store + jets seed (resets on restart; `memory` default when no `DATABASE_URL`) | `postgres` — Drizzle/pg via `DATABASE_URL` | `pnpm db:up` (docker compose :5432) then `pnpm db:migrate` |
 | auth | `AUTH_PROVIDER` | Any email signs in instantly (dev session cookie); `ADMIN_EMAILS` grants admin role | `supabase` — magic link | `supabase start` + `NEXT_PUBLIC_SUPABASE_*` |
 | payments | `PAYMENTS_PROVIDER` | `createCheckoutSession`/`createInvoice` auto-complete + normalized webhook | `stripe` — Stripe SDK + signed webhook | stripe-mock on :12111 via compose, `STRIPE_API_BASE` |
-| email | `EMAIL_PROVIDER` | Writes `EMAIL_OUTBOX_DIR` (default `tmp/outbox/*.json`) | `smtp`/`resend` skeleton (`TODO(go-live)`) | Mailpit on :1025/:8025 via compose |
+| email | `EMAIL_PROVIDER` | Writes `EMAIL_OUTBOX_DIR` (default `tmp/outbox/<id>.eml` + `<id>.json`; `.eml` is multipart/alternative when text+html both present) | `smtp`/`resend` skeleton (`TODO(go-live)`) | Mailpit on :1025/:8025 via compose |
 | storage | `STORAGE_PROVIDER` | Files under `STORAGE_DIR`, served via `/storage/*` | `supabase` (Supabase Storage) skeleton | `supabase start` |
 | captcha | `CAPTCHA_PROVIDER` | Always-pass; token `force-fail` rejects | `turnstile` (`TURNSTILE_SECRET_KEY`) | — |
 | search | `SEARCH_PROVIDER` | In-process filter of repo listings | `typesense`/`meilisearch` skeleton (`TODO(go-live)`) | compose services |
-| analytics | `ANALYTICS_PROVIDER` | Events to mock sink (`tmp/analytics.jsonl`) | `posthog` skeleton (`TODO(go-live)`) | — |
+| analytics | `ANALYTICS_PROVIDER` | `console.debug` + in-memory `events[]` for tests | `posthog` skeleton (`TODO(go-live)`) | — |
 
 ## Conventions the adapters enforce
 
