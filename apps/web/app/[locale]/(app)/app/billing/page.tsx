@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { currentUser } from "@/lib/auth";
+import { Link } from "@/i18n/navigation";
 import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { PortalButton } from "./portal-button";
@@ -50,7 +51,16 @@ export default async function BillingPage({
           <p className="mt-4 text-2xl font-semibold">
             ${PRO_PLAN_PRICE_USD}<span className="text-sm font-normal text-muted">{t("perMonth")}</span>
           </p>
-          {operator?.plan === "pro" ? (
+          {!operator ? (
+            // Buyers can reach /app now (QA-267) — without an operator
+            // profile checkout would just 401, so route them to onboarding.
+            <Link
+              href="/app/onboarding"
+              className="mt-4 inline-block rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
+            >
+              {t("needProfile")}
+            </Link>
+          ) : operator.plan === "pro" ? (
             <>
               <p className="mt-3 text-sm font-medium text-[color:var(--color-success)]" data-testid="pro-active">
                 {sub
