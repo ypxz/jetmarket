@@ -1,5 +1,6 @@
-import { defaultPlans, deliverAt, matchOperators } from "@jetmarket/domain";
+import { deliverAt, matchOperators } from "@jetmarket/domain";
 import { site } from "@jetmarket/config";
+import { verticalConfig } from "@/lib/vertical";
 import type { OperatorCandidate } from "@jetmarket/domain";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
@@ -40,10 +41,17 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
       }),
     })),
   );
-  const matches = matchOperators(rfq.fields, candidates, defaultPlans(), {
-    limit: 10,
-    excludeOperatorIds: new Set([listing.operatorId]),
-  });
+  // Plans come from the active vertical, not the domain's default mirror —
+  // a machinery-priced delay must not silently run jets' 24h (QA-221).
+  const matches = matchOperators(
+    rfq.fields,
+    candidates,
+    verticalConfig().fees.subscriptionPlans,
+    {
+      limit: 10,
+      excludeOperatorIds: new Set([listing.operatorId]),
+    },
+  );
   if (!matches.length) return;
 
   const at = new Date();

@@ -1,6 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { matchOperators } from "@jetmarket/domain";
 import { fanoutRfq } from "@/lib/fanout";
 import { getRepo } from "@/lib/repo";
+import { verticalConfig } from "@/lib/vertical";
+
+// Spy so QA-221 can pin that matching runs on the active vertical's plan
+// table, not the domain's defaultPlans() mirror. Calls still forward.
+vi.mock("@jetmarket/domain", async (importOriginal) => {
+  const m = await importOriginal<typeof import("@jetmarket/domain")>();
+  return { ...m, matchOperators: vi.fn(m.matchOperators) };
+});
 
 /**
  * Memory-mode fan-out (QA-89): POST /rfqs runs domain matching inline when
@@ -53,6 +62,12 @@ describe("fanoutRfq (memory mode)", () => {
     expect(await repo.hasRfqMatch(rfq.id, instant.id)).toBe(true);
     expect(await repo.hasRfqMatch(rfq.id, delayed.id)).toBe(false);
     expect(await repo.hasRfqMatch(rfq.id, owner.id)).toBe(false);
+
+    // QA-221: the plan table handed to matching IS the vertical config's —
+    // not defaultPlans(); a vertical changing rfqDelayHours actually applies.
+    expect(vi.mocked(matchOperators).mock.calls.at(-1)?.[2]).toBe(
+      verticalConfig().fees.subscriptionPlans,
+    );
 
     expect((await repo.getRfq(rfq.id))?.status).toBe("matched");
     expect(

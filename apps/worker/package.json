@@ -21,6 +21,7 @@
     "@jetmarket/db": "workspace:*",
     "@jetmarket/domain": "workspace:*",
     "@jetmarket/providers": "workspace:*",
+    "@jetmarket/verticals": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9"
   },

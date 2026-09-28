@@ -7,7 +7,7 @@ import {
   pruneJobs,
   requeueStaleJobs,
 } from "@jetmarket/db";
-import { defaultPlans } from "@jetmarket/domain";
+import { getVertical } from "@jetmarket/verticals";
 import { createEmailProvider } from "@jetmarket/providers/email";
 import { analyticsProvider } from "@jetmarket/providers";
 import {
@@ -98,7 +98,9 @@ async function main() {
     sql,
     email: createEmailProvider(),
     analytics: analyticsProvider(),
-    plans: defaultPlans(),
+    // The active vertical's plan table — a machinery delay must not run
+    // jets' 24h defaults (QA-221).
+    plans: getVertical().fees.subscriptionPlans,
   };
   const pollMs = pollIntervalMs();
   console.log(`[worker] up — polling jobs every ${pollMs}ms`);
