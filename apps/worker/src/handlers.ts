@@ -10,6 +10,7 @@ import {
 import type { Sql } from "postgres";
 import type { MatchingConfig } from "@jetmarket/verticals";
 import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
+import { logWarn } from "./log";
 import type { WorkerRepo } from "./repo";
 
 export interface WorkerDeps {
@@ -164,10 +165,10 @@ export async function notifyExpirations(
         }),
       });
     } catch (e) {
-      console.warn(
-        `[worker] expiry email to buyer failed for rfq ${rfq.id}:`,
-        e instanceof Error ? e.message : e,
-      );
+      logWarn("worker.expiry_email_buyer_failed", {
+        rfqId: rfq.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
   if (expired.quotes.length) {
@@ -198,10 +199,10 @@ export async function notifyExpirations(
           }),
         });
       } catch (e) {
-        console.warn(
-          `[worker] expiry email to operator ${q.operatorId} failed:`,
-          e instanceof Error ? e.message : e,
-        );
+        logWarn("worker.expiry_email_operator_failed", {
+          operatorId: q.operatorId,
+          error: e instanceof Error ? e.message : String(e),
+        });
       }
     }
   }
@@ -225,9 +226,7 @@ export async function quoteNotification(
   // cascade) or the id never existed (bad payload). Retrying can never fix
   // that, so complete the job instead of burning attempts to `failed`.
   if (!ctx) {
-    console.warn(
-      `[worker] quote_notification: rfq_match ${matchId} gone — skipping`,
-    );
+    logWarn("worker.quote_notification_match_gone", { matchId });
     return;
   }
   // Retry dedup: send happens BEFORE markMatchState — a mark failure retries
@@ -239,9 +238,11 @@ export async function quoteNotification(
   // 409s their quote attempt — skip (QA-169); complete the job, the match
   // stays 'pending' as a delivered-but-dead record.
   if (!["new", "matched", "quoted"].includes(ctx.rfqStatus)) {
-    console.warn(
-      `[worker] quote_notification: rfq ${ctx.rfqId} is ${ctx.rfqStatus} — skipping`,
-    );
+    logWarn("worker.quote_notification_rfq_dead", {
+      matchId,
+      rfqId: ctx.rfqId,
+      rfqStatus: ctx.rfqStatus,
+    });
     return;
   }
 

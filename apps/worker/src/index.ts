@@ -18,6 +18,7 @@ import {
   recoverUnfanoutedRfqs,
   type WorkerDeps,
 } from "./handlers";
+import { logError, logInfo } from "./log";
 import { createWorkerRepo } from "./repo";
 
 const JOB_KINDS = ["rfq.fanout", "email.quote_notification"] as const;
@@ -39,20 +40,21 @@ export function pollIntervalMs(env: NodeJS.ProcessEnv = process.env): number {
 export async function tick(deps: WorkerDeps): Promise<number> {
   const expired = await deps.repo.expireRfqs(new Date());
   if (expired.rfqs.length || expired.quotes.length) {
-    console.log(
-      `[worker] expired ${expired.rfqs.length} rfq(s), declined ${expired.quotes.length} quote(s)`,
-    );
+    logInfo("worker.expired", {
+      rfqs: expired.rfqs.length,
+      quotes: expired.quotes.length,
+    });
     await notifyExpirations(deps, expired);
   }
 
   const delivered = await deliverDueMatches(deps);
-  if (delivered) console.log(`[worker] delivered ${delivered} delayed match(es)`);
+  if (delivered) logInfo("worker.delivered_matches", { count: delivered });
 
   // Persisted RFQs whose fan-out job never landed (route enqueue threw
   // post-write, QA-168) — re-enqueue past the grace window.
   const refanouted = await recoverUnfanoutedRfqs(deps);
   if (refanouted) {
-    console.log(`[worker] re-enqueued fan-out for ${refanouted} stranded rfq(s)`);
+    logInfo("worker.refanouted", { rfqs: refanouted });
   }
 
   // Crash recovery: a worker that dies mid-claim leaves rows 'running'
@@ -61,7 +63,7 @@ export async function tick(deps: WorkerDeps): Promise<number> {
     deps.sql,
     new Date(Date.now() - 10 * 60_000),
   );
-  if (requeued) console.log(`[worker] requeued ${requeued} stale job(s)`);
+  if (requeued) logInfo("worker.requeued_stale_jobs", { jobs: requeued });
 
   // Retention: terminal jobs pile up forever otherwise — sweep hourly
   // (done>7d, failed>30d for forensics).
@@ -72,7 +74,7 @@ export async function tick(deps: WorkerDeps): Promise<number> {
       doneOlderThan: new Date(nowMs - DONE_RETENTION_MS),
       failedOlderThan: new Date(nowMs - FAILED_RETENTION_MS),
     });
-    if (pruned) console.log(`[worker] pruned ${pruned} terminal job(s)`);
+    if (pruned) logInfo("worker.pruned_jobs", { jobs: pruned });
   }
 
   const jobs = await claimJobs(deps.sql, [...JOB_KINDS], CLAIM_BATCH);
@@ -86,7 +88,11 @@ export async function tick(deps: WorkerDeps): Promise<number> {
         job.id,
         err instanceof Error ? err.message : String(err),
       );
-      console.error(`[worker] job ${job.id} (${job.kind}) failed:`, err);
+      logError("worker.job_failed", {
+        jobId: job.id,
+        kind: job.kind,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
   return jobs.length;
@@ -115,7 +121,7 @@ async function main() {
     ),
   };
   const pollMs = pollIntervalMs();
-  console.log(`[worker] up — polling jobs every ${pollMs}ms`);
+  logInfo("worker.up", { pollMs });
 
   let stop = false;
   const shutdown = () => {
@@ -130,12 +136,14 @@ async function main() {
       const claimed = await tick(deps);
       if (!claimed) await new Promise((r) => setTimeout(r, pollMs));
     } catch (err) {
-      console.error("[worker] tick error:", err);
+      logError("worker.tick_error", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       await new Promise((r) => setTimeout(r, pollMs));
     }
   }
   await sql.end();
-  console.log("[worker] stopped");
+  logInfo("worker.stopped");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
