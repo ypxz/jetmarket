@@ -45,6 +45,7 @@ vi.mock("next/headers", async () => {
 vi.mock("@/lib/outbox", () => ({ sendMail: async () => {} }));
 
 import { getRepo } from "@/lib/repo";
+import { applyPaymentEvent } from "@/lib/billing";
 import { POST as postRfq } from "@/app/api/rfqs/route";
 import { POST as buyerAccess } from "@/app/api/buyer/access/route";
 import { POST as postListing } from "@/app/api/listings/route";
@@ -212,5 +213,35 @@ describe("analytics events on money routes (mock sink)", async () => {
     const deal = events("deal_closed").slice(-1)[0]!;
     expect(deal.props?.quoteId).toBe(quote.id);
     expect(Number(deal.props?.feeAmount)).toBeCloseTo(270); // 3% charter fee
+  });
+
+  it("billing events emit plan_upgraded/plan_downgraded (QA-187)", async () => {
+    const t0 = Math.floor(Date.now() / 1000);
+    const before = sink.events.length;
+    await applyPaymentEvent(repo, {
+      kind: "subscription.activated",
+      customerId: op!.id,
+      subscriptionId: "sub_test1",
+      created: t0,
+      metadata: { operatorId: op!.id, plan: "pro" },
+    });
+    await applyPaymentEvent(repo, {
+      kind: "subscription.canceled",
+      customerId: op!.id,
+      subscriptionId: "sub_test1",
+      created: t0 + 1,
+      metadata: { operatorId: op!.id },
+    });
+    const names = sink.events.slice(before).map((e) => e.name);
+    expect(names).toEqual(["plan_upgraded", "plan_downgraded"]);
+    expect(sink.events[before]!.props?.operatorId).toBe(op!.id);
+    // Restore the seeded pro plan so later suites' listing caps don't bite.
+    await applyPaymentEvent(repo, {
+      kind: "subscription.activated",
+      customerId: op!.id,
+      subscriptionId: "sub_test1",
+      created: t0 + 2,
+      metadata: { operatorId: op!.id, plan: "pro" },
+    });
   });
 });

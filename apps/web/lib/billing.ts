@@ -1,3 +1,4 @@
+import { analyticsProvider } from "@jetmarket/providers";
 import type { PaymentEvent } from "@jetmarket/providers/payments";
 import type { Plan, Repo } from "./repo/types";
 
@@ -36,6 +37,10 @@ export async function applyPaymentEvent(
       lastEventAt: event.created,
     });
     await repo.setOperatorPlan(operatorId, plan);
+    analyticsProvider().track({
+      name: "plan_upgraded",
+      props: { operatorId, plan },
+    });
     return true;
   }
   // subscription.canceled
@@ -50,5 +55,9 @@ export async function applyPaymentEvent(
     });
   }
   await repo.setOperatorPlan(operatorId, "free");
+  analyticsProvider().track({
+    name: "plan_downgraded",
+    props: { operatorId },
+  });
   return true;
 }
