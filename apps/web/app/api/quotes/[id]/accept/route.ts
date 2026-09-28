@@ -115,6 +115,20 @@ export async function POST(
     if (msg.includes("deal already exists") || isUniqueViolation(e)) {
       return err("quote already accepted", 409);
     }
+    // Transient failure (db blip etc.): roll the CAS flips back so a buyer
+    // retry can complete — otherwise the RFQ stays closed with no deal and
+    // every retry hits "quote already accepted" (QA-310). Best-effort: if
+    // the rollback also fails the datastore is still down anyway.
+    try {
+      if (await repo.setQuoteStatus(id, "sent", "accepted")) {
+        await repo.setRfqStatus(rfq.id, "quoted", ["closed"]);
+      }
+    } catch (rollbackErr) {
+      logWarn("quote.accept_rollback_failed", {
+        quoteId: id,
+        error: rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr),
+      });
+    }
     throw e;
   }
 

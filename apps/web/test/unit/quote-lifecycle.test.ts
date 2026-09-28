@@ -310,3 +310,34 @@ describe("POST /api/rfqs/[id]/close (QA-182)", () => {
     expect(lateAccept.status).toBe(409);
   });
 });
+
+describe("POST /api/quotes/[id]/accept transient deal failure (QA-310)", () => {
+  it("rolls the CAS flips back so a buyer retry still completes", async () => {
+    const repo = await getMemoryRepo();
+    const { rfq, quote, buyerEmail } = await fixture(repo);
+
+    const spy = vi
+      .spyOn(repo, "createDeal")
+      .mockRejectedValueOnce(new Error("connection reset"));
+    await expect(
+      acceptQuote(
+        post({ buyerEmail, token: rfq.accessToken }),
+        params(quote.id),
+      ),
+    ).rejects.toThrow("connection reset");
+    spy.mockRestore();
+
+    // Neither CAS leaked: the RFQ is live again and the quote is back to
+    // 'sent', so the retry takes the normal path instead of a dead 409.
+    expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
+    expect((await repo.getQuote(quote.id))?.status).toBe("sent");
+
+    const retry = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(retry.status).toBe(200);
+    expect((await repo.getQuote(quote.id))?.status).toBe("accepted");
+    expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+  });
+});
