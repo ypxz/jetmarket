@@ -15,7 +15,7 @@
 | Email delivery | mock outbox + Mailpit contract; `resend`/`smtp` skeletons `TODO(go-live)` |
 | Supabase auth/storage | skeletons `TODO(go-live)`; mock auth + local storage verified |
 | Turnstile captcha | skeleton + mock `force-fail` path tested; real site key untested |
-| Security baseline | **shipped** — per-IP rate limits on all public POSTs, 64KB JSON cap, honeypot+captcha, svg sandbox on /storage, security headers, no open redirects, buyer quotes gated by per-RFQ bearer token |
+| Security baseline | **shipped** — per-IP rate limits on all public POSTs, 64KB JSON cap (bodies stream-capped on uploads/webhook/auth-callback too), honeypot+captcha, svg sandbox on /storage, security headers, no open redirects, buyer quotes gated by per-RFQ bearer token. **Rate limits are per-instance** (in-memory buckets) — N replicas ≈ N× the effective cap; add an edge limiter (Cloudflare/Fly proxy rules) if you scale past one replica (QA-320) |
 
 ## Deploy path (cheapest first)
 
