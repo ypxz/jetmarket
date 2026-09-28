@@ -318,6 +318,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 234 | ~15:35 | QA-249 | admin notification sweep done | Deal-void was the last silent admin action — owner now emailed. Full admin action set (listing pause/archive, operator verify, deal paid/void) notifies; spam-marking deliberately silent |
 | 235 | ~15:55 | QA-250 | auth hardening | Magic-link single-use moved to repo (magic_links_used table) — restart/multi-instance can't re-arm consumed links; contract x2 |
 | 236 | ~16:20 | QA-251 | email-mock fidelity | .eml now multipart/alternative when text+html (was html-wins single-part) — matches nodemailer output; +1 providers test |
+| 237 | ~16:40 | QA-252 | perf | quotes.operator_id unindexed — dashboard + inbox seq-scanned quotes (~5x/page load); quotes_operator_idx added (0012) |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
