@@ -706,18 +706,31 @@ async function seedJets(repo: MemoryRepo) {
 // Placeholder machinery inventory — proves the same repo/flow works for the
 // second vertical (spec: machinery content is scaffold-only tonight).
 async function seedMachinery(repo: MemoryRepo) {
-  const u = await repo.createUser("ops@alpine-machinery.example", "operator");
-  const op = await repo.upsertOperator({
-    userId: u.id,
-    name: "Alpine Industrial Machines",
-    baseAirport: "ZRH",
-    fleetSummary: "Decommissioned CNC + presses",
-    verified: true,
-    plan: "free",
-  });
-  const mk = async (type: string, title: string, price: number, attributes: Record<string, unknown>, photos: string[] = []) =>
+  // A handful of dealers across categories so QA-229 category fan-out and
+  // the browse grid actually demo something — was 1 dealer / 3 listings.
+  const dealers = [
+    { email: "ops@alpine-machinery.example", name: "Alpine Industrial Machines", base: "ZRH", fleet: "Decommissioned CNC + presses", verified: true, plan: "pro" as Plan },
+    { email: "vertrieb@rhein-maschinen.example", name: "Rhein Maschinen", base: "DUS", fleet: "Presses + forming", verified: true, plan: "pro" as Plan },
+    { email: "sales@ibérica-maquinaria.example", name: "Ibérica Maquinaria", base: "BIO", fleet: "Lathes", verified: true, plan: "free" as Plan },
+    { email: "verkauf@nord-foerdertechnik.example", name: "Nord Fördertechnik", base: "HAM", fleet: "Conveyors", verified: true, plan: "free" as Plan },
+    { email: "hire@lowlandsfl.example", name: "Lowlands Forklifts", base: "RTM", fleet: "Electric forklifts", verified: false, plan: "free" as Plan },
+  ];
+  const dealerIds: string[] = [];
+  for (const d of dealers) {
+    const u = await repo.createUser(d.email, "operator");
+    const op = await repo.upsertOperator({
+      userId: u.id,
+      name: d.name,
+      baseAirport: d.base,
+      fleetSummary: d.fleet,
+      verified: d.verified,
+      plan: d.plan,
+    });
+    dealerIds.push(op.id);
+  }
+  const mk = async (operatorId: string, type: string, title: string, price: number, attributes: Record<string, unknown>, photos: string[] = []) =>
     await repo.createListing({
-      operatorId: op.id,
+      operatorId,
       vertical: "machinery",
       type,
       title,
@@ -726,17 +739,39 @@ async function seedMachinery(repo: MemoryRepo) {
       currency: "EUR",
       photos,
     });
-  await mk("for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
+
+  const alpine = dealerIds[0]!;
+  await mk(alpine, "for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
     machineryCategory: "cnc_milling", make: "DMG Mori", yearOfManufacture: 2016,
     hoursUsed: 8200, condition: "used",
-  }, [await seedPhoto(`uploads/${u.id}/seed-dmg-mori.svg`, "DMG Mori CNC", 160)]);
-  await mk("for_rent", "Kaeser industrial compressor · monthly", 1200, {
-    machineryCategory: "generator", make: "Kaeser", yearOfManufacture: 2020,
-    hoursUsed: 3100, condition: "used",
+  }, [await seedPhoto(`uploads/${alpine}/seed-dmg-mori.svg`, "DMG Mori CNC", 160)]);
+  await mk(alpine, "for_sale", "Hermle C 42 5-axis mill (2019)", 210000, {
+    machineryCategory: "cnc_milling", make: "Hermle", yearOfManufacture: 2019,
+    hoursUsed: 5400, condition: "used",
   });
-  await mk("auction", "Hydraulic press 400t — liquidation lot", 28000, {
+  await mk(alpine, "for_sale", "Mazak QTN 250 lathe (2017)", 88000, {
+    machineryCategory: "lathe", make: "Mazak", yearOfManufacture: 2017,
+    hoursUsed: 9100, condition: "used",
+  });
+  await mk(dealerIds[1]!, "for_sale", "Trumpf TruBend press brake (2015)", 96500, {
+    machineryCategory: "press", make: "Trumpf", yearOfManufacture: 2015,
+    hoursUsed: 12400, condition: "used",
+  });
+  await mk(dealerIds[1]!, "auction", "Schuler hydraulic press 400t — liquidation lot", 28000, {
     machineryCategory: "press", make: "Schuler", yearOfManufacture: 2008,
     hoursUsed: 31000, condition: "decommissioned",
+  });
+  await mk(dealerIds[2]!, "for_sale", "Okuma LB3000 lathe (2018)", 72000, {
+    machineryCategory: "lathe", make: "Okuma", yearOfManufacture: 2018,
+    hoursUsed: 6800, condition: "used",
+  }, [await seedPhoto(`uploads/${dealerIds[2]}/seed-okuma.svg`, "Okuma LB3000", 30)]);
+  await mk(dealerIds[3]!, "for_rent", "Dematic belt conveyor line 20m", 2400, {
+    machineryCategory: "conveyor", make: "Dematic", yearOfManufacture: 2021,
+    hoursUsed: 1200, condition: "used",
+  });
+  await mk(dealerIds[4]!, "for_rent", "Linde E39 electric forklift · monthly", 950, {
+    machineryCategory: "forklift", make: "Linde", yearOfManufacture: 2019,
+    hoursUsed: 4200, condition: "used",
   });
 }
 
