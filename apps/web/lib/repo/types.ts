@@ -287,6 +287,12 @@ export interface Repo {
     /** Batch-lookup: quotes belonging to any of these RFQs. */
     rfqIds?: string[];
   }): Promise<Quote[]>;
+  /** Quote count for operator stats — avoids an unbounded listQuotes fetch
+   *  on the dashboard (QA-151). */
+  countQuotes(filter?: {
+    operatorId?: string;
+    status?: QuoteStatus;
+  }): Promise<number>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */

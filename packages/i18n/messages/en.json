@@ -666,7 +666,12 @@
       "subActive": "Subscription active until {date}",
       "deals": "Deals ({count})",
       "dealFee": "fee {fee}",
-      "editProfile": "Edit profile"
+      "editProfile": "Edit profile",
+      "statsTitle": "Performance",
+      "statRfqs": "RFQs received",
+      "statQuotes": "Quotes sent",
+      "statWon": "Quotes won",
+      "statWinRate": "Win rate"
     },
     "welcome": "Welcome back",
     "plan": "Plan",

@@ -51,6 +51,18 @@ export default async function OperatorDashboard() {
     statusNot: ["closed"],
   });
   const sub = await repo.getSubscription(operator.id);
+  // Funnel stats (QA-151): the Pro "analytics" bullet was vaporware — these
+  // counts come from real rows, no external vendor needed.
+  const [rfqsReceived, quotesSent, quotesWon, quotesLost] = await Promise.all([
+    repo.countRfqs({ operatorId: operator.id }),
+    repo.countQuotes({ operatorId: operator.id }),
+    repo.countQuotes({ operatorId: operator.id, status: "accepted" }),
+    repo.countQuotes({ operatorId: operator.id, status: "declined" }),
+  ]);
+  const winRate =
+    quotesWon + quotesLost > 0
+      ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
+      : null;
   const limit = operator.plan === "pro" ? "∞" : String(FREE_LISTING_LIMIT);
 
   return (
@@ -94,6 +106,30 @@ export default async function OperatorDashboard() {
           ) : null}
         </div>
       </div>
+
+      <section className="mt-8" aria-label={t("statsTitle")}>
+        <dl
+          data-testid="operator-stats"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        >
+          {(
+            [
+              ["statRfqs", rfqsReceived],
+              ["statQuotes", quotesSent],
+              ["statWon", quotesWon],
+              ["statWinRate", winRate === null ? "—" : `${winRate}%`],
+            ] as const
+          ).map(([key, value]) => (
+            <div
+              key={key}
+              className="rounded-md border border-border px-4 py-3"
+            >
+              <dt className="text-xs text-muted">{t(key)}</dt>
+              <dd className="mt-1 text-xl font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       <section className="mt-10">
         <div className="flex items-center justify-between">

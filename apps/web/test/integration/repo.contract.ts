@@ -126,6 +126,11 @@ export function repoContract(
         message: "all-in",
       });
       expect(await repo.listQuotes({ rfqId: rfq.id })).toHaveLength(1);
+      // countQuotes mirrors the same filters without fetching rows (QA-151).
+      expect(await repo.countQuotes({ operatorId: op.id })).toBe(1);
+      expect(await repo.countQuotes({ operatorId: op.id, status: "sent" })).toBe(1);
+      expect(await repo.countQuotes({ operatorId: first.id })).toBe(0);
+      expect(await repo.countQuotes({ operatorId: op.id, status: "accepted" })).toBe(0);
       // Creating a quote moves the RFQ open → quoted.
       expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
 

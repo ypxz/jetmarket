@@ -727,6 +727,19 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(quotes.createdAt));
     return rows.map(toQuote);
   }
+  async countQuotes(filter?: {
+    operatorId?: string;
+    status?: QuoteStatus;
+  }): Promise<number> {
+    const conds = [];
+    if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
+    if (filter?.status) conds.push(eq(quotes.status, filter.status));
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(quotes)
+      .where(conds.length ? and(...conds) : undefined);
+    return r?.n ?? 0;
+  }
   async setQuoteStatus(
     id: string,
     status: QuoteStatus,
