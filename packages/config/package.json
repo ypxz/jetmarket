@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "eslint": "^9.34.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.42.0",
