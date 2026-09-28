@@ -1,5 +1,13 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { email } from "@jetmarket/providers";
 import { MockAnalyticsProvider } from "@jetmarket/providers/analytics";
+
+// Mock email provider writes to a per-suite outbox dir (QA-158 assertion).
+const outboxDir = mkdtempSync(join(tmpdir(), "jm-analytics-outbox-"));
+process.env.EMAIL_OUTBOX_DIR = outboxDir;
 
 // Operator session + analytics sink, shared by the route-handler tests below.
 // The mock sink replaces the globalThis singleton so route imports can stay
@@ -82,6 +90,16 @@ describe("analytics events on money routes (mock sink)", async () => {
     expect(e?.props?.listingId).toBe(listing.id);
     expect(e?.props?.vertical).toBe("jets");
     expect(String(e?.props?.rfqId)).toMatch(/^rfq_/);
+
+    // QA-158: the buyer gets a durable copy of their inbox link — the POST
+    // response is the only other carrier and is lossy.
+    const mails = email.readOutbox(outboxDir);
+    const confirm = mails.find((m) => m.to === "buyer@x.example");
+    expect(confirm).toBeTruthy();
+    expect(confirm!.text).toContain("/quotes?");
+    expect(confirm!.text).toContain("t=");
+    // Submitted fields stay out of the confirmation (bogus-address safety).
+    expect(confirm!.text).not.toContain("E2E Buyer");
   });
 
   it("listings POST emits listing_created", async () => {

@@ -121,6 +121,28 @@ export async function POST(req: Request) {
     }
   }
 
+  // Buyer confirmation: the inbox link (bearer token) otherwise lives only in
+  // this POST's response — a lost response strands the buyer with no recovery
+  // path. The mail is boilerplate + listing title (no submitted fields), so a
+  // bogus buyerEmail can't weaponize it beyond "someone used your address".
+  // Token goes only to the claimed mailbox — same model as magic links.
+  const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
+  const inboxUrl = `${appUrl}/quotes?email=${encodeURIComponent(
+    rfq.buyerEmail,
+  )}&t=${encodeURIComponent(rfq.accessToken)}`;
+  try {
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject: `Your request for “${listing.title}” was sent`,
+      text: `We sent your request to the seller and matching operators. Track their quotes here: ${inboxUrl}`,
+    });
+  } catch (e) {
+    logWarn("rfq.buyer_confirm_failed", {
+      rfqId: rfq.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+
   if (process.env.DATABASE_URL) {
     // Postgres mode: the worker fans the RFQ out to matched operators. A job
     // enqueue failure must not 500 the buyer — the RFQ is already persisted
