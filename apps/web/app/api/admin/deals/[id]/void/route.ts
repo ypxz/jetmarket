@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { notifyDealInvoiceVoided } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 
 // Admin voids a success-fee invoice (dispute/refund — keeps the row, kills the bill).
@@ -27,6 +28,8 @@ export async function POST(
     const cur = (await repo.getDeal(id))?.invoiceStatus ?? "gone";
     return err(`invoice is ${cur} — only pending/invoiced can be voided`, 409);
   }
+  // Owner told — symmetric with the paid notification (QA-249). Non-fatal.
+  await notifyDealInvoiceVoided(repo, deal);
   logInfo("admin.deal_invoice_voided", {
     adminId: user.id,
     dealId: id,

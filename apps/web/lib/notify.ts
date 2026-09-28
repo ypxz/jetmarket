@@ -230,3 +230,37 @@ export async function notifyOperatorVerified(
     });
   }
 }
+
+/**
+ * Tell an operator their success-fee invoice was voided (dispute/refund) —
+ * the dashboard row would otherwise just flip state silently (QA-249).
+ */
+export async function notifyDealInvoiceVoided(
+  repo: Repo,
+  deal: Deal,
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(deal.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (!owner) return;
+    const subject = `Success-fee invoice voided — deal ${deal.id.slice(0, 8)}`;
+    const body =
+      `Your success-fee invoice${deal.invoiceRef ? ` (${deal.invoiceRef})` : ""} ` +
+      `of ${deal.feeAmount} for the ${deal.amount} deal was voided — you owe no fee on it. Contact support if you have questions.`;
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.deal_invoice_voided_failed", {
+      dealId: deal.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}

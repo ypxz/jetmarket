@@ -23,6 +23,7 @@ vi.mock("next/headers", () => ({
 import { email } from "@jetmarket/providers";
 import { sessionCookie, signSession } from "../../lib/auth";
 import {
+  notifyDealInvoiceVoided,
   notifyListingModerated,
   notifyOperatorVerified,
 } from "../../lib/notify";
@@ -129,5 +130,48 @@ describe("operator verification (QA-249)", () => {
       (m) => m.to === opUser.email && m.subject.includes("no longer verified"),
     );
     expect(toOp?.text).toContain("badge");
+  });
+});
+
+describe("deal invoice void (QA-249)", () => {
+  it("void emails the operator owner", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, op, listing } = await fixture(repo);
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: "b@test.dev",
+      fields: {},
+    });
+    const quote = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: op.id,
+      amount: 9000,
+      currency: "USD",
+      message: "",
+    });
+    const deal = await repo.createDeal({
+      quoteId: quote.id,
+      operatorId: op.id,
+      amount: 9000,
+      currency: "USD",
+      feePct: 0.03,
+      feeAmount: 270,
+      invoiceStatus: "invoiced",
+      invoiceRef: "inv_test",
+    });
+    await repo.setDealInvoice(deal.id, "void", undefined, [
+      "pending",
+      "invoiced",
+    ]);
+
+    await notifyDealInvoiceVoided(repo, deal);
+
+    const box = email.readOutbox(process.env.EMAIL_OUTBOX_DIR);
+    const toOp = box.find(
+      (m) => m.to === opUser.email && m.subject.includes("voided"),
+    );
+    expect(toOp?.subject).toContain("voided");
+    expect(toOp?.text).toContain("270");
   });
 });
