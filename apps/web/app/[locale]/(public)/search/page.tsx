@@ -21,6 +21,16 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const t = await getTranslations("search");
+  // Cards carry the query string so "← Back to search" on a listing restores
+  // the buyer's filters (QA-217). `page` excluded — back lands on page 1 of
+  // the same filter set, not mid-pager.
+  const fromQuery = new URLSearchParams(
+    Object.entries(params).flatMap(([k, v]) =>
+      (Array.isArray(v) ? v : [v])
+        .filter((x): x is string => typeof x === "string" && x !== "" && k !== "page")
+        .map((x) => [k, x] as [string, string]),
+    ),
+  ).toString();
   const repo = await getRepo();
   const { items: listings, page, pages, total } =
     await searchListingsPage(params);
@@ -51,6 +61,7 @@ export default async function SearchPage({
                     <ListingCard
                       listing={l}
                       operator={ops.get(l.operatorId) ?? null}
+                      from={fromQuery || undefined}
                     />
                   </div>
                 ))}

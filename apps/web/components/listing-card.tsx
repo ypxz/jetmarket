@@ -11,9 +11,11 @@ import type { Listing, PublicOperator } from "@/lib/repo/types";
 interface ListingCardProps {
   listing: Listing;
   operator?: PublicOperator | null;
+  /** Serialized search params — round-trips to the listing's back link. */
+  from?: string;
 }
 
-export async function ListingCard({ listing, operator }: ListingCardProps) {
+export async function ListingCard({ listing, operator, from }: ListingCardProps) {
   const vertical = getVertical();
   const vt = await getTranslations(vertical.copy.namespace);
   const ct = await getTranslations("common");
@@ -45,7 +47,11 @@ export async function ListingCard({ listing, operator }: ListingCardProps) {
       : null;
 
   return (
-    <Link href={`/listing/${listing.id}`} className="block" data-testid="listing-card">
+    <Link
+      href={from ? `/listing/${listing.id}?from=${encodeURIComponent(from)}` : `/listing/${listing.id}`}
+      className="block"
+      data-testid="listing-card"
+    >
       <Card className="h-full transition-shadow hover:shadow-pop">
         {listing.photos[0] ? (
           <img

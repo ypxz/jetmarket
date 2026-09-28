@@ -110,3 +110,15 @@ test('search filters empty legs by leg-date range', async ({ page }) => {
   await expect(page.getByTestId('facet-legDate-from')).toHaveValue(from);
   await expect(page.getByTestId('facet-legDate-to')).toHaveValue(to);
 });
+
+// QA-217: a card opened from a filtered search carries the query — "Back to
+// search" restores the buyer's filters instead of landing on bare /search.
+test('listing back link restores the search filters', async ({ page }) => {
+  await page.goto('/search?type=empty_leg&aircraftCategory=light');
+  await page.getByTestId('listing-card').first().click();
+  await expect(page).toHaveURL(/\/listing\//);
+  await page.getByTestId('back-to-search').click();
+  await expect(page).toHaveURL(/\/search\?/);
+  await expect(page).toHaveURL(/type=empty_leg/);
+  await expect(page).toHaveURL(/aircraftCategory=light/);
+});

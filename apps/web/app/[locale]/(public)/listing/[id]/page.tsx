@@ -59,10 +59,21 @@ export async function generateMetadata({
 
 export default async function ListingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+  // Cards on /search carry the filter query so "back" restores it. searchParams
+  // already decoded the value once — the string below is the raw query tail; it
+  // only ever lands inside a /search URL, so a crafted `from` can't navigate
+  // anywhere else.
+  const fromRaw = sp.from;
+  const from = (Array.isArray(fromRaw) ? fromRaw[0] : fromRaw)
+    ?.replace(/^[/?#\s]+/, "");
+  const backHref = from ? `/search?${from}` : "/search";
   const t = await getTranslations("listing");
   const ct = await getTranslations("common");
   const listing = await load(id);
@@ -112,7 +123,7 @@ export default async function ListingPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(productLd) }}
       />
-      <Link href="/search" className="text-sm text-muted hover:text-foreground">
+      <Link href={backHref} className="text-sm text-muted hover:text-foreground" data-testid="back-to-search">
         {t("back")}
       </Link>
 
