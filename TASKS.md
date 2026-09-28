@@ -359,3 +359,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 260 | ~21:00 | QA-274 | repo contract gap → real bug class: 6 unguarded uuid-array inputs (listUsers, listOperators.ids, listListingCountsByOperator, quotes.ids/rfqIds, retryJob) 22P02'd on junk ids; all guarded + shared contract test pins both impls |
 | 261 | ~21:10 | QA-275 | /design component gallery had no robots noindex — a dev showcase page was indexable; metadata robots added |
 | 262 | ~16:20 | QA-276 | compose: first-boot race — web served 500s until worker's inline migrate finished; dedicated `migrate` one-shot + service_completed_successfully gates |
+| 263 | ~17:05 | QA-277 | unit tests non-hermetic: ambient DATABASE_URL flipped repo to drizzle (test:all failed 32/88); REPO=memory pin + sweep/rfqs/health now key off resolved repoBackend() not raw env |

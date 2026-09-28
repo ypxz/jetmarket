@@ -7,7 +7,7 @@ import { verticalMessages } from "@/lib/vertical";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { fanoutRfq } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
-import { getRepo } from "@/lib/repo";
+import { getRepo, repoBackend } from "@/lib/repo";
 import { isExpiredListing } from "@/lib/search";
 import { getDbSql } from "@/lib/repo/drizzle";
 import { enqueueJob } from "@jetmarket/db";
@@ -181,7 +181,7 @@ export async function POST(req: Request) {
     });
   }
 
-  if (process.env.DATABASE_URL) {
+  if (repoBackend() === "postgres") {
     // Postgres mode: the worker fans the RFQ out to matched operators. A job
     // enqueue failure must not 500 the buyer — the RFQ is already persisted
     // and the owner was notified; the RFQ just stays `new` until a fan-out

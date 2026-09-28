@@ -8,7 +8,7 @@
     "start": "next start -p 3000",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "REPO=memory vitest run --passWithNoTests",
     "test:integration": "vitest run --passWithNoTests --config vitest.integration.config.ts"
   },
   "dependencies": {

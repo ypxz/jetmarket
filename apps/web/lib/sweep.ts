@@ -1,3 +1,4 @@
+import { repoBackend } from "./repo";
 import type { Repo } from "./repo/types";
 
 /**
@@ -11,6 +12,9 @@ import type { Repo } from "./repo/types";
  * would flip the rows and silently skip those notifications.
  */
 export async function sweepStaleRfqs(repo: Repo): Promise<void> {
-  if (process.env.REPO === "postgres" || process.env.DATABASE_URL) return;
+  // Key off the resolved backend, not the raw env: `REPO=memory` must sweep
+  // even when a DATABASE_URL leaks into the process env (e.g. `pnpm test:all`
+  // invoked under an exported dev URL — QA-277).
+  if (repoBackend() !== "memory") return;
   await repo.expireRfqs(new Date().toISOString());
 }

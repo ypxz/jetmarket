@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logInfo, logWarn } from "@/lib/log";
+import { repoBackend } from "@/lib/repo";
 import { getDbSql } from "@/lib/repo/drizzle";
 
 const payload = (extra?: Record<string, unknown>) => ({
@@ -14,7 +15,7 @@ const payload = (extra?: Record<string, unknown>) => ({
 // wedged pool still fails health (deploy/load-balancer checks).
 export async function GET() {
   logInfo("health.check");
-  if (!process.env.DATABASE_URL) return NextResponse.json(payload());
+  if (repoBackend() !== "postgres") return NextResponse.json(payload());
   try {
     await getDbSql()`select 1`;
     return NextResponse.json(payload({ db: "ok" }));
