@@ -394,3 +394,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 295 | ~17:52 | QA-308 | LATENT LEAK: quote-notification contact mask was hardcoded name/email/phone — now contactFieldKeys(config) unions email/tel + groupKey:'contact'; a vertical renaming its contact fields can't leak them pre-deal |
 | 296 | ~17:56 | QA-309 | prod-boot fix: 'pnpm start' hardcoded -p 3000 (PORT env ignored — breaks non-Docker hosts); verified next build + start on :3210 + smoke 8/8 against the prod server |
 | 297 | ~18:05 | QA-310 | accept-route soft-lock: transient createDeal failure stranded RFQ=closed/quote=accepted w/o deal; added conditional rollback (sent/quoted) + test — retry completes |
+| 298 | ~18:07 | QA-311 | docs: GO_LIVE deploy path listed Docker only — added the non-Docker PORT=<port> pnpm start line so PaaS/bare-VM deploys don't 3000-pin |
