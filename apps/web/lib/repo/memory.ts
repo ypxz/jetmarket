@@ -363,10 +363,13 @@ class MemoryRepo implements Repo {
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    vertical?: string;
     limit?: number;
     offset?: number;
   }): Promise<Rfq[]> {
     let out = [...this.rfqs.values()];
+    if (filter?.vertical)
+      out = out.filter((r) => r.vertical === filter.vertical);
     // buyerEmail is stored lowercase at create (QA-153); normalize the
     // lookup side so case re-entry still finds the inbox.
     if (filter?.buyerEmail)
@@ -426,6 +429,7 @@ class MemoryRepo implements Repo {
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    vertical?: string;
     statusNot?: Rfq["status"][];
     since?: string;
   }): Promise<number> {

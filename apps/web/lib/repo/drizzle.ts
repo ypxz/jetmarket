@@ -643,6 +643,7 @@ export class DrizzleRepo implements Repo {
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    vertical?: string;
     limit?: number;
     offset?: number;
   }): Promise<Rfq[]> {
@@ -664,7 +665,12 @@ export class DrizzleRepo implements Repo {
         .from(rfqs)
         .leftJoin(listings, eq(rfqs.listingId, listings.id))
         .where(
-          or(eq(listings.operatorId, filter.operatorId), matched),
+          and(
+            or(eq(listings.operatorId, filter.operatorId), matched),
+            ...(filter.vertical
+              ? [eq(rfqs.vertical, filter.vertical)]
+              : []),
+          ),
         )
         .orderBy(desc(rfqs.createdAt))
         .$dynamic();
@@ -675,6 +681,8 @@ export class DrizzleRepo implements Repo {
     const conds = [];
     if (filter?.buyerEmail)
       conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
+    if (filter?.vertical)
+      conds.push(eq(rfqs.vertical, filter.vertical));
     let q = this.db
       .select()
       .from(rfqs)
@@ -689,6 +697,7 @@ export class DrizzleRepo implements Repo {
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    vertical?: string;
     statusNot?: RfqStatus[];
     since?: string;
   }): Promise<number> {
@@ -711,6 +720,8 @@ export class DrizzleRepo implements Repo {
           and m.state <> 'delayed'
       )`;
       const conds = [or(eq(listings.operatorId, filter.operatorId), matched)!];
+      if (filter.vertical)
+        conds.push(eq(rfqs.vertical, filter.vertical));
       if (statusCond) conds.push(statusCond);
       if (sinceCond) conds.push(sinceCond);
       const [r] = await this.db
@@ -723,6 +734,8 @@ export class DrizzleRepo implements Repo {
     const conds = [];
     if (filter?.buyerEmail)
       conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
+    if (filter?.vertical)
+      conds.push(eq(rfqs.vertical, filter.vertical));
     if (statusCond) conds.push(statusCond);
     if (sinceCond) conds.push(sinceCond);
     const [r] = await this.db

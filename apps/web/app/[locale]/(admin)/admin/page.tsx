@@ -8,7 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
-import { verticalConfig } from "@/lib/vertical";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { ListingModButton } from "./listing-mod-button";
 import { MarkPaidButton, VoidInvoiceButton } from "./mark-paid";
 import { RfqSpamButton } from "./rfq-mod-button";
@@ -34,8 +34,10 @@ export default async function AdminPage({
       repo.countDeals(),
       repo.listOperators({ limit: 100 }),
       repo.sumDealFees(),
-      repo.listListings({ limit: 50 }),
-      repo.listRfqs({ limit: 50 }),
+      // Moderation queues are per-vertical: a shared DB hosts other
+      // verticals' rows and admins only govern this deploy's (QA-294).
+      repo.listListings({ limit: 50, vertical: verticalSlug() }),
+      repo.listRfqs({ limit: 50, vertical: verticalSlug() }),
     ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);

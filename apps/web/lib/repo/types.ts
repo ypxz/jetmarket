@@ -269,6 +269,8 @@ export interface Repo {
     buyerEmail?: string;
     /** Listing owner OR an operator with a delivered (pending) rfq_match. */
     operatorId?: string;
+    /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
+    vertical?: string;
     /** Page slice applied after other filters, newest-first. */
     limit?: number;
     offset?: number;
@@ -297,6 +299,8 @@ export interface Repo {
   countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    /** Scope to one vertical — matches listRfqs (QA-293). */
+    vertical?: string;
     /** Exclude these iface statuses (e.g. "closed" counts only live RFQs). */
     statusNot?: RfqStatus[];
     /** ISO timestamp — only rows created at/after this instant count. */

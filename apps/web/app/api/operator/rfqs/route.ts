@@ -4,7 +4,7 @@ import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { operatorRfqView } from "@/lib/rfq-view";
-import { verticalConfig } from "@/lib/vertical";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 export async function GET(req: Request) {
   const user = await requireUser("operator");
@@ -24,6 +24,9 @@ export async function GET(req: Request) {
   const off = Number(url.searchParams.get("offset"));
   const rfqs = await repo.listRfqs({
     operatorId: operator.id,
+    // Shared-DB deployments host >1 vertical: machinery RFQs masked with
+    // jets field defs would leak buyer contacts (QA-294).
+    vertical: verticalSlug(),
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 100) : SEARCH_PAGE_SIZE,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
   });

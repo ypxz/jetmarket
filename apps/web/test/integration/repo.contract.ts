@@ -91,6 +91,30 @@ export function repoContract(
       expect(
         await repo.listRfqs({ operatorId: op.id, limit: 1, offset: 1 }),
       ).toHaveLength(0);
+      // vertical filter: a foreign-vertical RFQ under the same operator must
+      // be invisible to scoped queries (shared-DB deployments — QA-294).
+      await repo.createRfq({
+        vertical: "machinery",
+        listingId: listing.id,
+        buyerEmail: `buyer-${tag}@test.dev`,
+        fields: { name: "M Uyer", email: `buyer-${tag}@test.dev` },
+      });
+      expect(
+        await repo.listRfqs({ operatorId: op.id, vertical: "jets" }),
+      ).toHaveLength(1);
+      expect(
+        await repo.countRfqs({ operatorId: op.id, vertical: "jets" }),
+      ).toBe(1);
+      expect(
+        await repo.listRfqs({ operatorId: op.id, vertical: "machinery" }),
+      ).toHaveLength(1);
+      expect(
+        await repo.listRfqs({
+          buyerEmail: `buyer-${tag}@test.dev`,
+          vertical: "machinery",
+        }),
+      ).toHaveLength(1);
+      expect(await repo.listRfqs({ operatorId: op.id })).toHaveLength(2);
 
       // Dedupe: same key collides (unique index / map) and resolves the
       // original RFQ; a different key or absent key inserts normally.
@@ -145,8 +169,17 @@ export function repoContract(
       expect(
         await repo.countRfqs({ operatorId: op.id, since: future }),
       ).toBe(0);
+      // 4 rows: the first RFQ + its foreign-vertical sibling + the two
+      // dedupe RFQs — and scoping to "jets" drops the machinery one.
       expect(
         await repo.countRfqs({ operatorId: op.id, since: "2000-01-01" }),
+      ).toBe(4);
+      expect(
+        await repo.countRfqs({
+          operatorId: op.id,
+          since: "2000-01-01",
+          vertical: "jets",
+        }),
       ).toBe(3);
       expect(
         await repo.countQuotes({ operatorId: op.id, since: future }),
