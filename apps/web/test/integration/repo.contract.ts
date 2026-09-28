@@ -139,6 +139,25 @@ export function repoContract(
       expect(await repo.countQuotes({ operatorId: op.id, status: "sent" })).toBe(1);
       expect(await repo.countQuotes({ operatorId: first.id })).toBe(0);
       expect(await repo.countQuotes({ operatorId: op.id, status: "accepted" })).toBe(0);
+      // `since` windows the counts by createdAt (rolling-30d stats, QA-208):
+      // a future cutoff excludes, an old cutoff includes.
+      const future = new Date(Date.now() + 86_400_000).toISOString();
+      expect(
+        await repo.countRfqs({ operatorId: op.id, since: future }),
+      ).toBe(0);
+      expect(
+        await repo.countRfqs({ operatorId: op.id, since: "2000-01-01" }),
+      ).toBe(3);
+      expect(
+        await repo.countQuotes({ operatorId: op.id, since: future }),
+      ).toBe(0);
+      expect(
+        await repo.countQuotes({
+          operatorId: op.id,
+          status: "sent",
+          since: "2000-01-01",
+        }),
+      ).toBe(1);
       // Creating a quote moves the RFQ open → quoted.
       expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
 

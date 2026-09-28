@@ -171,9 +171,12 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // Mock checkout routes to ?checkout=success — banner pins QA-203.
     await expect(operator.getByTestId('checkout-success')).toBeVisible();
     await expect(operator.getByTestId('pro-active')).toBeVisible();
-    // Pro unlocks the funnel tiles (QA-202).
+    // Pro unlocks the funnel tiles (QA-202) + rolling-30d line (QA-208).
     await operator.goto('/app');
     await expect(operator.getByTestId('operator-stats')).toBeVisible();
+    await expect(operator.getByTestId('stats-recent')).toContainText(
+      'Last 30 days',
+    );
 
     await createListing(operator, {
       type: 'charter',

@@ -599,6 +599,7 @@
       "statQuotes": "Quotes sent",
       "statWon": "Quotes won",
       "statWinRate": "Win rate",
+      "statsRecent": "Last 30 days — {rfqs} RFQs · {quotes} quotes · {won} won",
       "statsProGateTitle": "Performance stats are a Pro feature",
       "statsProGateBody": "RFQs received, quotes sent, win rate — unlock your operator funnel with Pro.",
       "statsProGateCta": "Upgrade now"

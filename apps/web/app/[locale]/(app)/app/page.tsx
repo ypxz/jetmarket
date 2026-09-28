@@ -60,14 +60,30 @@ export default async function OperatorDashboard() {
   // pricing sells analytics as the Pro tier's differentiator (QA-202), so
   // free plans get the gate card instead and skip the count queries.
   const isPro = operator.plan === "pro";
-  const [rfqsReceived, quotesSent, quotesWon, quotesLost] = isPro
+  const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const [
+    rfqsReceived,
+    quotesSent,
+    quotesWon,
+    quotesLost,
+    rfqs30d,
+    quotes30d,
+    won30d,
+  ] = isPro
     ? await Promise.all([
         repo.countRfqs({ operatorId: operator.id }),
         repo.countQuotes({ operatorId: operator.id }),
         repo.countQuotes({ operatorId: operator.id, status: "accepted" }),
         repo.countQuotes({ operatorId: operator.id, status: "declined" }),
+        repo.countRfqs({ operatorId: operator.id, since: since30d }),
+        repo.countQuotes({ operatorId: operator.id, since: since30d }),
+        repo.countQuotes({
+          operatorId: operator.id,
+          status: "accepted",
+          since: since30d,
+        }),
       ])
-    : [0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0, 0];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
@@ -118,27 +134,39 @@ export default async function OperatorDashboard() {
 
       <section className="mt-8" aria-label={t("statsTitle")}>
         {isPro ? (
-          <dl
-            data-testid="operator-stats"
-            className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-          >
-            {(
-              [
-                ["statRfqs", rfqsReceived],
-                ["statQuotes", quotesSent],
-                ["statWon", quotesWon],
-                ["statWinRate", winRate === null ? "—" : `${winRate}%`],
-              ] as const
-            ).map(([key, value]) => (
-              <div
-                key={key}
-                className="rounded-md border border-border px-4 py-3"
-              >
-                <dt className="text-xs text-muted">{t(key)}</dt>
-                <dd className="mt-1 text-xl font-semibold">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <>
+            <dl
+              data-testid="operator-stats"
+              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+            >
+              {(
+                [
+                  ["statRfqs", rfqsReceived],
+                  ["statQuotes", quotesSent],
+                  ["statWon", quotesWon],
+                  ["statWinRate", winRate === null ? "—" : `${winRate}%`],
+                ] as const
+              ).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="rounded-md border border-border px-4 py-3"
+                >
+                  <dt className="text-xs text-muted">{t(key)}</dt>
+                  <dd className="mt-1 text-xl font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p
+              className="mt-3 text-sm text-muted"
+              data-testid="stats-recent"
+            >
+              {t("statsRecent", {
+                rfqs: rfqs30d,
+                quotes: quotes30d,
+                won: won30d,
+              })}
+            </p>
+          </>
         ) : (
           <div
             data-testid="stats-pro-gate"

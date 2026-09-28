@@ -273,6 +273,8 @@ export interface Repo {
     operatorId?: string;
     /** Exclude these iface statuses (e.g. "closed" counts only live RFQs). */
     statusNot?: RfqStatus[];
+    /** ISO timestamp — only rows created at/after this instant count. */
+    since?: string;
   }): Promise<number>;
   /**
    * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is
@@ -297,6 +299,8 @@ export interface Repo {
   countQuotes(filter?: {
     operatorId?: string;
     status?: QuoteStatus;
+    /** ISO timestamp — only rows created at/after this instant count. */
+    since?: string;
   }): Promise<number>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent

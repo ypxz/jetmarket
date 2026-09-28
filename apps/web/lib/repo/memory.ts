@@ -370,6 +370,7 @@ class MemoryRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     statusNot?: Rfq["status"][];
+    since?: string;
   }): Promise<number> {
     let out = await this.listRfqs({
       ...filter,
@@ -380,6 +381,8 @@ class MemoryRepo implements Repo {
       const banned = new Set(filter.statusNot);
       out = out.filter((r) => !banned.has(r.status));
     }
+    // ISO strings compare lexicographically — same convention as expiry cutoffs.
+    if (filter?.since) out = out.filter((r) => r.createdAt >= filter.since!);
     return out.length;
   }
 
@@ -416,10 +419,11 @@ class MemoryRepo implements Repo {
     }
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  async countQuotes(filter?: { operatorId?: string; status?: Quote["status"] }) {
+  async countQuotes(filter?: { operatorId?: string; status?: Quote["status"]; since?: string }) {
     let out = [...this.quotes.values()];
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
     if (filter?.status) out = out.filter((q) => q.status === filter.status);
+    if (filter?.since) out = out.filter((q) => q.createdAt >= filter.since!);
     return out.length;
   }
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"]) {

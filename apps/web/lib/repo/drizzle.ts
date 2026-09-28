@@ -611,6 +611,7 @@ export class DrizzleRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     statusNot?: RfqStatus[];
+    since?: string;
   }): Promise<number> {
     // iface statuses -> db vocabulary (open -> new; expired -> closed).
     const bannedDb = filter?.statusNot?.map((s) =>
@@ -618,6 +619,9 @@ export class DrizzleRepo implements Repo {
     );
     const statusCond = bannedDb?.length
       ? sql`${rfqs.status} NOT IN ${bannedDb}`
+      : undefined;
+    const sinceCond = filter?.since
+      ? gte(rfqs.createdAt, new Date(filter.since))
       : undefined;
     if (filter?.operatorId) {
       // Same visibility window as listRfqs: delivered = any state but delayed.
@@ -629,6 +633,7 @@ export class DrizzleRepo implements Repo {
       )`;
       const conds = [or(eq(listings.operatorId, filter.operatorId), matched)!];
       if (statusCond) conds.push(statusCond);
+      if (sinceCond) conds.push(sinceCond);
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(rfqs)
@@ -640,6 +645,7 @@ export class DrizzleRepo implements Repo {
     if (filter?.buyerEmail)
       conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
     if (statusCond) conds.push(statusCond);
+    if (sinceCond) conds.push(sinceCond);
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(rfqs)
@@ -764,10 +770,13 @@ export class DrizzleRepo implements Repo {
   async countQuotes(filter?: {
     operatorId?: string;
     status?: QuoteStatus;
+    since?: string;
   }): Promise<number> {
     const conds = [];
     if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
     if (filter?.status) conds.push(eq(quotes.status, filter.status));
+    if (filter?.since)
+      conds.push(gte(quotes.createdAt, new Date(filter.since)));
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(quotes)
