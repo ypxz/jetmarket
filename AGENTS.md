@@ -23,6 +23,11 @@ cd tests-e2e && VERTICAL=machinery E2E_PORT=3101 TEST_DATABASE_URL=... pnpm test
 auto-installed via `core.hooksPath` by the root `prepare` script on
 `pnpm i` (no git dir → skipped, e.g. Docker). `git push --no-verify` skips.
 
+`pnpm test:all` (root) is the full matrix — every package's unit +
+integration + contract + both e2e suites. Run it after any repo-iface or
+cross-package change and periodically during QA loops: per-suite checks
+missed a web typecheck break once (QA-322).
+
 Per-suite DBs: each integration/e2e suite owns its own `*_test` database
 (`jetmarket_test` web+e2e, `jetmarket_db_test`, `jetmarket_worker_test`,
 `jetmarket_providers_test` via `*_TEST_DATABASE_URL` overrides). NEVER point a
