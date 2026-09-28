@@ -51,6 +51,18 @@ export async function PATCH(
   }
   const { data, error } = await parseBody(req, PatchListing);
   if (error) return error;
+  // Archive is terminal for operators — the UI offers no un-archive and an
+  // admin-archived (moderated) listing must not come back on a PATCH, nor
+  // through the archived→paused→active two-hop (QA-247). Paused → active
+  // stays allowed: moderation pause is a nudge the operator fixes and
+  // republishes under the plan cap (see below).
+  if (
+    listing.status === "archived" &&
+    data!.status !== undefined &&
+    data!.status !== "archived"
+  ) {
+    return err("archived listings can't be reactivated — contact support", 403);
+  }
   // Validate EVERYTHING before writing — the status write used to run before
   // attribute/photo checks, so a rejected PATCH could still flip status.
   // Reactivating on the free plan still counts against the listing cap (QA-63);

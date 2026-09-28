@@ -2,6 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { notifyListingModerated } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 
 const ModerateListing = z.object({
@@ -27,6 +28,9 @@ export async function POST(
   const listing = await repo.getListing(id);
   if (!listing) return err("not found", 404);
   await repo.updateListingStatus(id, data!.status);
+  // Owner gets a moderation email — a listing silently vanishing from
+  // search was the QA-247 gap. Fire-and-forget; never fails the request.
+  await notifyListingModerated(repo, listing, data!.status);
   logInfo("admin.listing_moderated", {
     adminId: user.id,
     listingId: id,

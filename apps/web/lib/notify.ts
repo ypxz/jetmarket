@@ -155,3 +155,41 @@ export async function notifyDealClosed(
     });
   }
 }
+
+/**
+ * Tell an operator that moderation paused or archived their listing — the
+ * listing disappears from public search otherwise with no signal to the
+ * owner. Buyers are never notified here (no buyer attachment to a listing
+ * outside an RFQ). Failures never fail the admin request.
+ */
+export async function notifyListingModerated(
+  repo: Repo,
+  listing: Listing,
+  status: "paused" | "archived",
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(listing.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (!owner) return;
+    const subject = `Your listing “${listing.title}” was ${status} by moderation`;
+    const body =
+      status === "paused"
+        ? `Our moderation team paused your listing "${listing.title}" on ${site.name}, so it is hidden from public search. Review its details and contact support if you believe this was a mistake — you can reactivate it from your dashboard.`
+        : `Our moderation team archived your listing "${listing.title}" on ${site.name}, so it is no longer listed. Contact support if you believe this was a mistake.`;
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.listing_moderated_failed", {
+      listingId: listing.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
