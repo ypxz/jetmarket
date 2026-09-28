@@ -195,6 +195,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 111 | ~02:45 | QA-125 | api | PATCH /listings reordered validate-then-write (rejected patch could still flip status) |
 | 112 | ~03:00 | QA-126 | auth | Magic links single-use via consumeMagicLink (replay -> invalid-token) |
 | 113 | ~03:15 | QA-127 | seed | Seed photo keys moved under uploads/<uid>/ so QA-120 guard doesn't break photo-edit on seeded listings |
+| 114 | ~03:25 | QA-128 | email | Quote email link falls back to request origin when APP_URL unset (was a dead relative URL) |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
