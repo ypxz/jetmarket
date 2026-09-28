@@ -37,6 +37,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       name: `E2E UI Ops ${run}`,
       baseAirport: 'LSZH',
     });
+    // Free plan: analytics tiles are Pro-gated (QA-202).
+    await operator.goto('/app');
+    await expect(operator.getByTestId('stats-pro-gate')).toBeVisible();
+    await expect(operator.getByTestId('operator-stats')).not.toBeVisible();
   });
 
   await step('operator creates 2 listings', async () => {
@@ -164,7 +168,12 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
 
     await operator.getByTestId('upgrade-cta').click();
     await operator.getByTestId('checkout-pro').click();
+    // Mock checkout routes to ?checkout=success — banner pins QA-203.
+    await expect(operator.getByTestId('checkout-success')).toBeVisible();
     await expect(operator.getByTestId('pro-active')).toBeVisible();
+    // Pro unlocks the funnel tiles (QA-202).
+    await operator.goto('/app');
+    await expect(operator.getByTestId('operator-stats')).toBeVisible();
 
     await createListing(operator, {
       type: 'charter',
