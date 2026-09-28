@@ -347,3 +347,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 248 | ~19:20 | QA-262 | admin invoice paid/void emails include deal.currency — convention was currency-prefixed everywhere else |
 | 249 | ~19:25 | QA-263 | pnpm typecheck broken since QA-246: t.key→t.slug on ListingType + machinery ns cast for noUncheckedIndexedAccess — root gate green again |
 | 250 | ~19:30 | QA-264 | AGENTS.md gate fixed: root pnpm typecheck (every pkg incl. test files) replaces web-only tsc — the gap that hid QA-263 |
+| 251 | ~19:35 | QA-265 | worker logging → structured JSON-lines (shared shape w/ web; events: expired/delivered/refanouted/requeued/pruned/job_failed/tick_error/up/stopped + email-fail warns w/ ids) |
