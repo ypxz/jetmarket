@@ -51,6 +51,12 @@ export async function POST(req: Request) {
     text: `Sign in: ${link}`,
   });
 
-  // Mock mode: also return the link so the flow is demoable without outbox access.
-  return ok({ sent: true, devLink: link, role: resolvedRole });
+  // Dev/test only: also return the link so the flow is demoable without
+  // outbox access. In production this must NEVER ship — the response is
+  // attacker-controlled input (any mailbox), and a live link in JSON is an
+  // account-takeover primitive when AUTH_PROVIDER stays at its mock default
+  // (QA-177).
+  const devLink =
+    process.env.NODE_ENV === "production" ? undefined : link;
+  return ok({ sent: true, devLink, role: resolvedRole });
 }
