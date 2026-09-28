@@ -75,6 +75,20 @@ export default async function globalSetup() {
     await sql.end();
   }
 
+  // Reset before seeding: suites sharing *_test DBs leave rows behind (and a
+  // stray worker/integration run can deliver seeded delayed matches — QA-266).
+  // Without a clean schema, leftover RFQs/matches make inbox assertions flaky.
+  const resetSql = postgres(testDatabaseUrl, { max: 1, connect_timeout: 10 });
+  try {
+    await resetSql`drop schema public cascade`;
+    await resetSql`create schema public`;
+    console.log(`[e2e setup] reset schema on ${testDbName}`);
+  } catch (err) {
+    console.warn(`[e2e setup] schema reset failed on ${testDbName}: ${String(err)}`);
+  } finally {
+    await resetSql.end();
+  }
+
   for (const script of ['migrate', 'seed']) {
     try {
       runDbScript(script);

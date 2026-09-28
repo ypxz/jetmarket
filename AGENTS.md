@@ -19,6 +19,13 @@ cd tests-e2e && E2E_PORT=3100 TEST_DATABASE_URL=postgres://jetmarket:jetmarket@l
 cd tests-e2e && VERTICAL=machinery E2E_PORT=3101 TEST_DATABASE_URL=... pnpm test:e2e:machinery
 ```
 
+Per-suite DBs: each integration/e2e suite owns its own `*_test` database
+(`jetmarket_test` web+e2e, `jetmarket_db_test`, `jetmarket_worker_test`,
+`jetmarket_providers_test` via `*_TEST_DATABASE_URL` overrides). NEVER point a
+suite at another suite's DB — worker ticks mutate e2e fixtures (a stray
+deliverDueMatches flips seeded delayed matches and breaks inbox specs, QA-266).
+e2e global-setup drops+recreates the public schema, then migrate+seed.
+
 Test DBs are destructive (drop `public` schema) — must end in `_test`.
 Use dedicated `E2E_PORT`s: playwright's `reuseExistingServer` will otherwise
 latch onto a stale dev server with an old module graph and give false failures.

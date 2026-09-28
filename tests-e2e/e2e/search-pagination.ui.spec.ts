@@ -176,8 +176,12 @@ test('free operator inbox shows the delayed-RFQ teaser', async ({ page }) => {
   await expect(page.getByTestId('delayed-rfq-teaser')).toContainText(
     '1 buyer request lands in your inbox in 24h',
   );
-  // And the delayed RFQ itself stays out of the list until due.
-  await expect(page.getByTestId('rfq-empty')).toBeVisible();
+  // And the delayed RFQ itself stays out of the list until due. Not
+  // `rfq-empty` — the shared jetmarket_test DB can carry RFQs from sibling
+  // suites, so assert the seeded demo RFQ (uid 300) specifically is absent.
+  await expect(
+    page.getByTestId('rfq-00000000-0000-4000-8000-000000000300'),
+  ).toHaveCount(0);
 });
 
 // QA-222: the similar-listings rail keeps the search context alive — its
