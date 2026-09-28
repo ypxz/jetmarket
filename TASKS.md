@@ -181,6 +181,8 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 97 | ~00:30 | QA-111 | web/seo | Public operator profile /operators/[id]: verified badge, fleet, listings grid, JSON-LD, sitemap |
 | 98 | ~00:30 | QA-112 | seo/correctness | Soft-404: [locale]/loading.tsx Suspense made every notFound() serve 200 (next#76474) — moved to search/; all 404s now real |
 | 99 | ~00:50 | QA-113 | seo | robots disallow /rfq + /sign-in thin pages |
+| 100 | ~00:55 | QA-114 | security/api | Rate-limit sweep #3: listing GET, auth callback/logout/me, vertical, 4 admin mutations |
+| 101 | ~00:55 | QA-115 | auth/ux | Sign-in renders ?error= banner (expired link, rate-limited) — was silently dropped |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
