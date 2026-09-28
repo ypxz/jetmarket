@@ -29,14 +29,16 @@ export function rfqFieldsFor(
 }
 
 /**
- * Compose the zod object validating a buyer RFQ payload (`rfqs.fields` jsonb).
+ * Compose the zod schema validating a buyer RFQ payload (`rfqs.fields` jsonb).
  * Optional fields accept "" from HTML forms as "absent". `listingType` scopes
- * the schema to fields applicable to that listing's type.
+ * the schema to fields applicable to that listing's type. Returns a
+ * ZodEffects wrapper: object-level refinements (real calendar dates,
+ * ordered `*From`/`*To` pairs) sit on top of the field shape.
  */
 export function buildRfqSchema(
   config: VerticalConfig,
   listingType?: string,
-): z.ZodObject<Record<string, z.ZodTypeAny>> {
+): z.ZodEffects<z.ZodObject<Record<string, z.ZodTypeAny>>> {
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const field of rfqFieldsFor(config, listingType)) {
     shape[field.key] = field.required
@@ -46,7 +48,55 @@ export function buildRfqSchema(
           field.schema.optional(),
         );
   }
-  return z.object(shape).strip();
+  const dateKeys = new Set(
+    rfqFieldsFor(config, listingType)
+      .filter((f) => f.type === "date")
+      .map((f) => f.key),
+  );
+  return z
+    .object(shape)
+    .strip()
+    .superRefine((data, ctx) => {
+      for (const key of dateKeys) {
+        const v = data[key];
+        if (v === undefined || v === null) continue;
+        if (typeof v === "string" && !isRealIsoDate(v)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "expected a valid calendar date",
+          });
+        }
+      }
+      // Any `xFrom`/`xTo` date pair must be ordered — an RFQ window that
+      // ends before it starts is nonsense no operator can fulfill.
+      for (const key of dateKeys) {
+        if (!key.endsWith("From")) continue;
+        const toKey = `${key.slice(0, -4)}To`;
+        if (!dateKeys.has(toKey)) continue;
+        const a = data[key];
+        const b = data[toKey];
+        if (typeof a === "string" && typeof b === "string" && a > b) {
+          ctx.addIssue({
+            code: "custom",
+            path: [toKey],
+            message: `must be on or after ${key}`,
+          });
+        }
+      }
+    });
+}
+
+/** `/^\d{4}-\d{2}-\d{2}$/` still admits 9999-99-99 — round-trip through UTC
+ *  so only real calendar dates pass. */
+function isRealIsoDate(v: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return true; // non-ISO values are the field schema's own concern
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return (
+    dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d
+  );
 }
 
 /**

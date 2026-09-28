@@ -173,6 +173,22 @@ describe("buildRfqSchema (jets)", () => {
       name: "Ada", email: "a@b.c",
     })).toThrow();
   });
+
+  it("rejects impossible calendar dates and reversed date windows (QA-197)", () => {
+    const schema = buildRfqSchema(jetsVertical, "charter");
+    // ISO shape but not a real calendar date
+    expect(() =>
+      schema.parse({ ...valid, dateFrom: "2026-13-40" }),
+    ).toThrow();
+    // and a window that ends before it starts
+    expect(() =>
+      schema.parse({ ...valid, dateFrom: "2026-10-12", dateTo: "2026-10-10" }),
+    ).toThrow();
+    // equal bounds are a valid single-day window
+    expect(() =>
+      schema.parse({ ...valid, dateFrom: "2026-10-10", dateTo: "2026-10-10" }),
+    ).not.toThrow();
+  });
 });
 
 describe("machinery scaffold", () => {
