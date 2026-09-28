@@ -339,3 +339,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 240 | ~17:35 | QA-254 | operatorRfqView masking pinned (no buyerEmail/accessToken/contact fields, machinery parity) + attrsFor/optionLabelKey/readJson/state-variant unit coverage; 78→86 web unit |
 | 241 | ~17:50 | QA-255 | docs/providers.md drift: email outbox .eml+.json multipart, analytics console+memory (not a jsonl file) |
 | 242 | ~18:00 | QA-256 | notifyQuoteDeclined/notifyBuyerQuoteWithdrawn unit-pinned (3 decline reasons → operator; withdraw → buyer); 86→88 unit |
+| 243 | ~18:15 | QA-257 | AGENTS.md — all accumulated QA rules encoded as repo conventions (gates, repo contract, auth, notify, hydration, vertical, migrations, seo, providers) |
