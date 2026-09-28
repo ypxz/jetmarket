@@ -353,3 +353,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 254 | ~20:10 | QA-268 | buyer→operator UI pin: sign-in as buyer → /app CTA → onboarding → dashboard, all in one browser session (QA-267's API+layout fix exercised end-to-end) |
 | 255 | ~20:20 | QA-269 | /app/billing Pro card for operator-less users rendered a checkout button that 401s → needProfile onboarding link (consistent w/ /app/rfqs); new app.billing.needProfile key (296) |
 | 256 | ~20:30 | QA-270 | /app/listings/new profile gate (same class as QA-269): fill-form→401 dead end → needProfile state + onboarding link; publish disabled until profile resolves |
+| 257 | ~20:40 | QA-271 | Operator nav link rendered only for operator/admin — buyers had no nav path to onboarding; now shown to any signed-in user (lands on becomeOperator CTA); e2e drives nav→/app→onboarding |
