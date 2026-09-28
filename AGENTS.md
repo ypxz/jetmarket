@@ -55,6 +55,12 @@ repo layer as CAS/transactional writes — never read-check-write in a route.
   transitions out of it); `spam` RFQs are admin-set and invisible to workers.
 - Dedupe: `createRfq` dedupeKey collides only against LIVE statuses — closed
   rows re-mint (partial unique index `rfq_dedupe_live`).
+- Memory-repo mutators must be synchronous between check and write: an
+  `await` inside a check-then-write yields the microtask queue and parallel
+  callers interleave (QA-333 bit `createListing`'s cap, `createUser`'s email
+  dedupe, `upsertSubscription`'s stale-gate). Drizzle does the same work
+  under FOR UPDATE / ON CONFLICT — parity requires the memory side to never
+  yield mid-mutation.
 
 ## Auth / sessions
 
