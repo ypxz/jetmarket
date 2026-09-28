@@ -391,3 +391,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 292 | ~17:29 | QA-305 | all private-data GET routes now return noStore() (Cache-Control: private, no-store) — bearer/cookie JSON can't linger in shared caches |
 | 293 | ~17:36 | QA-306 | REAL BUG: countPendingRfqs leaked foreign delayed matches into the free-plan teaser count — vertical param added, inbox scopes, contract pins jets≠machinery |
 | 294 | ~17:45 | QA-307 | REAL BUG: fan-out candidates included foreign-vertical-only dealers (empty-fleet wildcard spammed machinery dealers onto jets RFQs) — workers + memory fanout now exclude foreign-book-only ops; zero-listing brokers still match |
+| 295 | ~17:52 | QA-308 | LATENT LEAK: quote-notification contact mask was hardcoded name/email/phone — now contactFieldKeys(config) unions email/tel + groupKey:'contact'; a vertical renaming its contact fields can't leak them pre-deal |
