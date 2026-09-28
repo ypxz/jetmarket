@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { toMinorUnits } from "@jetmarket/domain";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { applyPaymentEvent } from "@/lib/billing";
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   const session = await paymentsProvider().createCheckoutSession({
     operatorId: operator.id,
     plan: data!.plan,
-    amountMinor: Math.round(PRO_PLAN_PRICE_USD * 100),
+    amountMinor: toMinorUnits(PRO_PLAN_PRICE_USD, plans.pro.currency),
     // Plan-declared currency (plans.pro.currency) — not the vertical's
     // listing currency: a EUR marketplace can still price Pro in USD.
     currency: plans.pro.currency,
