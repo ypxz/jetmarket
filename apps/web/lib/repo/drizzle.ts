@@ -372,7 +372,14 @@ export class DrizzleRepo implements Repo {
     offset?: number;
     ids?: string[];
   }): Promise<Operator[]> {
-    let q = this.db.select().from(operators).$dynamic();
+    let q = this.db
+      .select()
+      .from(operators)
+      // Deterministic order: the admin API pages with limit/offset, and pg
+      // heap order shifts when a row updates (e.g. verify toggle) — without
+      // ORDER BY, page 2 can repeat or skip operators (QA-317).
+      .orderBy(desc(operators.createdAt), operators.id)
+      .$dynamic();
     if (filter?.ids) {
       const ids = filter.ids.filter(isUuid);
       if (ids.length === 0) return [];

@@ -1178,6 +1178,17 @@ export function repoContract(
       expect(await repo.listOperators({ ids: [] })).toEqual([]);
       expect(await repo.listOperators({ limit: 1 })).toHaveLength(1);
 
+      // Paged calls concatenate into the query's total order with no
+      // repeats/skips — pg heap order alone would shuffle on UPDATE (QA-317).
+      // allOps is already the ordered result; µs-precise created_at means a
+      // JS-side re-sort can't reproduce pg's order for same-ms rows, so
+      // compare pages against the ordered list itself.
+      const paged = [];
+      for (let off = 0; off < allOps.length; off += 1) {
+        paged.push(...(await repo.listOperators({ limit: 1, offset: off })));
+      }
+      expect(paged.map((o) => o.id)).toEqual(allOps.map((o) => o.id));
+
       // listListingCountsByOperator: non-archived counts keyed by operator.
       const l1 = await repo.createListing({
         operatorId: op.id,

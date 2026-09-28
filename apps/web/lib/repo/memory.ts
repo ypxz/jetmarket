@@ -118,6 +118,11 @@ class MemoryRepo implements Repo {
       const want = new Set(filter.ids);
       out = out.filter((o) => want.has(o.id));
     }
+    // Same deterministic order as the drizzle repo (createdAt desc, id
+    // tiebreak) — admin pagination depends on it (QA-317).
+    out.sort(
+      (a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? -1 : 1),
+    );
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
     return out;
