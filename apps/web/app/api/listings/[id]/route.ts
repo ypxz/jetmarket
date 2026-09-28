@@ -48,6 +48,8 @@ export async function PATCH(
   }
   const { data, error } = await parseBody(req, PatchListing);
   if (error) return error;
+  // Validate EVERYTHING before writing — the status write used to run before
+  // attribute/photo checks, so a rejected PATCH could still flip status.
   if (data!.status) {
     // Reactivating on the free plan still counts against the listing cap —
     // the create route enforces it, PATCH must too (QA-63).
@@ -62,7 +64,6 @@ export async function PATCH(
         403,
       );
     }
-    await repo.updateListingStatus(id, data!.status);
   }
   const patch: Parameters<typeof repo.updateListing>[1] = {};
   if (data!.photos !== undefined) {
@@ -85,6 +86,7 @@ export async function PATCH(
     if (!attrs.success) return err("invalid attributes", 422, attrs.error.issues);
     patch.attributes = attrs.data;
   }
+  if (data!.status) await repo.updateListingStatus(id, data!.status);
   if (Object.keys(patch).length) await repo.updateListing(id, patch);
   return ok(await repo.getListing(id));
 }
