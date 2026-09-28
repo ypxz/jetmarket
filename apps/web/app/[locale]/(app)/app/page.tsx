@@ -48,7 +48,9 @@ export default async function OperatorDashboard() {
   ]);
   const openRfqs = await repo.countRfqs({
     operatorId: operator.id,
-    statusNot: ["closed"],
+    // Repo impls disagree on the terminal-after-time label (drizzle writes
+    // "closed", memory "expired") — exclude both, plus spam (QA-163).
+    statusNot: ["closed", "expired", "spam"],
   });
   const sub = await repo.getSubscription(operator.id);
   // Funnel stats (QA-151): the Pro "analytics" bullet was vaporware — these
