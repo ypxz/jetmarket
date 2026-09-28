@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paginate, SEARCH_PAGE_SIZE, searchListings } from "@/lib/search";
+import { paginate, SEARCH_PAGE_SIZE, searchListings, isExpiredListing } from "@/lib/search";
 import { getRepo } from "@/lib/repo";
 
 // Runs against the seeded in-memory repo (lib/repo/memory.ts).
@@ -83,6 +83,11 @@ describe("searchListings (config-driven, jets)", () => {
       await getRepo()
     ).listListings({ type: "empty_leg" });
     expect(raw.length).toBe(5);
+    // isExpiredListing drives the detail/RFQ/API 404s (QA-220).
+    const past = raw.find((l) => l.attributes.to === "IBZ");
+    expect(past && isExpiredListing(past)).toBe(true);
+    const future = raw.find((l) => l.attributes.to === "GVA");
+    expect(future && isExpiredListing(future)).toBe(false);
   });
 
   it("combines query + facets + ranges", async () => {

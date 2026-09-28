@@ -7,6 +7,7 @@ import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/li
 import { fanoutRfq } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
+import { isExpiredListing } from "@/lib/search";
 import { getDbSql } from "@/lib/repo/drizzle";
 import { enqueueJob } from "@jetmarket/db";
 
@@ -48,7 +49,10 @@ export async function POST(req: Request) {
 
   const repo = await getRepo();
   const listing = await repo.getListing(listingId);
-  if (!listing || listing.status !== "active") return err("listing not found", 404);
+  if (!listing || listing.status !== "active" || isExpiredListing(listing)) {
+    // Expired dated inventory is unbookable — same 404 as a withdrawn listing.
+    return err("listing not found", 404);
+  }
 
   // RFQ payload shape comes from the active vertical's rfqFields config,
   // scoped to this listing's type — an aircraft_sale inquiry has no trip

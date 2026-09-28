@@ -113,7 +113,10 @@ test('search filters empty legs by leg-date range', async ({ page }) => {
 
 // QA-219: a leg that already flew is dead inventory — the seed's GVA→IBZ
 // leg is dated yesterday and must not surface anywhere on public browse.
-test('past-dated empty legs are hidden from public browse', async ({ page }) => {
+test('past-dated empty legs are hidden from public browse', async ({
+  page,
+  request,
+}) => {
   // Unfiltered type browse — the whole empty_leg rail must exclude it.
   await page.goto('/search?type=empty_leg');
   await expect(page.getByText('GVA → IBZ empty leg')).toHaveCount(0);
@@ -123,6 +126,18 @@ test('past-dated empty legs are hidden from public browse', async ({ page }) => 
   // Featured rail on the home page is also a browse surface.
   await page.goto('/');
   await expect(page.getByText('GVA → IBZ empty leg')).toHaveCount(0);
+
+  // QA-220: a direct URL must 404 too — detail page, RFQ form, and the
+  // listing API all treat a flown leg like a withdrawn listing.
+  const gone = '00000000-0000-4000-8000-000000000248'; // the seeded past leg
+  for (const path of [
+    `/listing/${gone}`,
+    `/rfq/${gone}`,
+    `/api/listings/${gone}`,
+  ]) {
+    const res = await request.get(path);
+    expect(res.status(), path).toBe(404);
+  }
 });
 
 // QA-217: a card opened from a filtered search carries the query — "Back to

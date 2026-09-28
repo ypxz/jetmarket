@@ -109,6 +109,21 @@ export function browseExpiry() {
   } as const;
 }
 
+/**
+ * Per-listing form of `browseExpiry` — true when this row is the vertical's
+ * dated one-shot inventory and its date is already past. Public detail/RFQ
+ * surfaces treat expired as gone (QA-220).
+ */
+export function isExpiredListing(l: {
+  type: string;
+  attributes: Record<string, unknown>;
+}): boolean {
+  const expiry = getVertical().expiry;
+  if (!expiry || l.type !== expiry.type) return false;
+  const v = l.attributes[expiry.attributeKey];
+  return typeof v === "string" && v < new Date().toISOString().slice(0, 10);
+}
+
 function repoFilter(p: ParsedParams) {
   const facetRanges = p.ranges.map(({ f, min, max }) => ({
     key: f.attributeKey ?? f.key,

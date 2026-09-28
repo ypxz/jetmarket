@@ -1,7 +1,9 @@
 // Regression: unmatched paths + notFound() pages must return HTTP 404.
-// A locale-level loading.tsx wraps every page in Suspense, which flushes a
-// 200 before notFound() resolves (Next.js #76474) — keep loading.tsx out of
-// the [locale] segment root. Exercises public pages only (no auth).
+// A loading.tsx above a notFound()-capable page wraps it in Suspense and
+// flushes a 200 before notFound() resolves (Next.js #76474) — keep
+// loading.tsx out of the [locale] segment root AND the (public) group;
+// leaf loaders that never notFound (e.g. search/loading.tsx) are fine.
+// Exercises public pages only (no auth).
 import { expect, test } from '@playwright/test';
 
 const MISSING = '00000000-0000-0000-0000-000000000000';

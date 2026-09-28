@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { RfqForm, type RfqFieldView } from "@/components/rfq-form";
 import { getRepo } from "@/lib/repo";
+import { isExpiredListing } from "@/lib/search";
 
 export default async function RfqPage({
   params,
@@ -15,7 +16,9 @@ export default async function RfqPage({
   const vt = await getTranslations(vertical.copy.namespace);
   const repo = await getRepo();
   const listing = await repo.getListing(listingId);
-  if (!listing || listing.status !== "active") notFound();
+  if (!listing || listing.status !== "active" || isExpiredListing(listing)) {
+    notFound();
+  }
 
   // Only the fields applicable to this listing's type render — a sale
   // inquiry doesn't ask for trip dates (QA-147).

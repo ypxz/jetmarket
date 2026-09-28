@@ -10,7 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
-import { browseExpiry } from "@/lib/search";
+import { browseExpiry, isExpiredListing } from "@/lib/search";
 import { siteUrl } from "@/lib/seo";
 
 // Escape </script> breakouts inside JSON-LD payloads.
@@ -20,7 +20,10 @@ const jsonLd = (data: object) =>
 async function load(id: string) {
   const repo = await getRepo();
   const listing = await repo.getListing(id);
-  return listing?.status === "active" ? listing : null;
+  // Expired dated inventory is gone for buyers — 404 like a withdrawn one.
+  return listing?.status === "active" && !isExpiredListing(listing)
+    ? listing
+    : null;
 }
 
 export async function generateMetadata({

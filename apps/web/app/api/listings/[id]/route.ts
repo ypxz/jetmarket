@@ -4,6 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
+import { isExpiredListing } from "@/lib/search";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig } from "@/lib/vertical";
 
@@ -25,7 +26,9 @@ export async function GET(
   }
   const repo = await getRepo();
   const listing = await repo.getListing(id);
-  if (!listing || listing.status !== "active") return err("not found", 404);
+  if (!listing || listing.status !== "active" || isExpiredListing(listing)) {
+    return err("not found", 404);
+  }
   const op = await repo.getOperator(listing.operatorId);
   return ok({ ...listing, operator: op ? publicOperator(op) : null });
 }
