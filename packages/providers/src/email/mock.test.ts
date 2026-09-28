@@ -53,10 +53,28 @@ describe("MockEmailProvider", () => {
       "Reply-To",
       "Subject",
       "Date",
+      "MIME-Version",
       "Content-Type",
     ]);
     expect(headers).toContain("Subject: Hi Bcc: attacker@y.com");
     expect(sent.subject).toBe("Hi Bcc: attacker@y.com");
+  });
+
+  it("writes multipart/alternative when text+html are both present (QA-251)", async () => {
+    const dir = tmp();
+    const email = new MockEmailProvider({ outboxDir: dir });
+    const sent = await email.send({
+      to: "b@b.c",
+      subject: "both",
+      text: "plain body",
+      html: "<p>html body</p>",
+    });
+    const eml = readFileSync(join(dir, `${sent.id}.eml`), "utf8");
+    expect(eml).toContain("Content-Type: multipart/alternative");
+    expect(eml).toContain("Content-Type: text/plain");
+    expect(eml).toContain("plain body");
+    expect(eml).toContain("Content-Type: text/html");
+    expect(eml).toContain("<p>html body</p>");
   });
 
   it("rejects messages without a body and returns [] for missing dirs", async () => {

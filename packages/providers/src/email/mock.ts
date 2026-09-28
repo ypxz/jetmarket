@@ -50,15 +50,39 @@ export class MockEmailProvider implements EmailProvider {
     const subject = headerSafe(message.subject);
     const replyTo = message.replyTo ? headerSafe(message.replyTo) : undefined;
     mkdirSync(this.dir, { recursive: true });
+    // multipart/alternative when both bodies exist — same shape the real
+    // (nodemailer) adapter produces, so text-only readers and link-scrapers
+    // see the plain part instead of raw markup (QA-251).
+    const boundary = `----jm-${id}`;
+    const body = message.text && message.html
+      ? [
+          `Content-Type: multipart/alternative; boundary="${boundary}"`,
+          ``,
+          `--${boundary}`,
+          `Content-Type: text/plain; charset=utf-8`,
+          ``,
+          message.text,
+          ``,
+          `--${boundary}`,
+          `Content-Type: text/html; charset=utf-8`,
+          ``,
+          message.html,
+          ``,
+          `--${boundary}--`,
+        ]
+      : [
+          `Content-Type: ${message.html ? "text/html" : "text/plain"}; charset=utf-8`,
+          ``,
+          message.html ?? message.text ?? ``,
+        ];
     const eml = [
       `From: ${from}`,
       `To: ${to}`,
       replyTo ? `Reply-To: ${replyTo}` : null,
       `Subject: ${subject}`,
       `Date: ${at.toUTCString()}`,
-      message.html ? `Content-Type: text/html; charset=utf-8` : `Content-Type: text/plain; charset=utf-8`,
-      ``,
-      message.html ?? message.text ?? ``,
+      `MIME-Version: 1.0`,
+      ...body,
     ]
       .filter((l): l is string => l !== null)
       .join("\r\n");
