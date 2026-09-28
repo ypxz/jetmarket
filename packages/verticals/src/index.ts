@@ -6,7 +6,7 @@ export * from "./types";
 // Named re-exports (not `export *`) — Node's CJS named-export detection can't
 // see through star-reexports, so `import { buildRfqSchema }` fails under
 // plain node/tsx (apps/worker).
-export { buildRfqSchema, getAttributesSchema, isoDate, nonContactFields, rfqFieldsFor } from "./schema";
+export { buildRfqSchema, contactFieldKeys, getAttributesSchema, isoDate, nonContactFields, rfqFieldsFor } from "./schema";
 export { rfqFieldLabels } from "./labels";
 export { jetsVertical, machineryVertical };
 

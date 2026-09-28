@@ -395,6 +395,37 @@ describe("handleJob dispatch", () => {
     expect(mail.text).not.toContain("+49 0000");
   });
 
+  it("masks renamed contact keys when contactKeys is configured (QA-308)", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "pending",
+        rfqStatus: "new",
+        operatorEmail: "ops@alpine.example",
+        operatorName: "Alpine",
+        rfqFields: {
+          buyerMail: "secret@buyer.example",
+          buyerTel: "+00 111",
+          budgetEur: 1000,
+        },
+        buyerEmail: "secret@buyer.example",
+        listingTitle: "Lathe",
+      }),
+    });
+    sent.length = 0;
+    // Vertical renames its contact fields — only the configured set masks.
+    await handleJob(
+      { ...deps(repo), contactKeys: new Set(["buyerMail", "buyerTel"]) },
+      "email.quote_notification",
+      { matchId: "m10" },
+    );
+    const mail = sent[0]!;
+    expect(mail.text).toContain("budgetEur: 1000"); // raw key, no fieldLabels
+    expect(mail.text).not.toContain("secret@buyer.example");
+    expect(mail.text).not.toContain("+00 111");
+  });
+
   it("skips the send when the match is already sent (retry dedup, QA-161)", async () => {
     const repo = fakeRepo({
       loadMatchContext: async (id: string) => ({

@@ -111,6 +111,23 @@ export function isoDate() {
 }
 
 /**
+ * Keys that must never reach an operator pre-deal — every rfqField carrying
+ * `type: "email"|"tel"` OR `groupKey: "contact"` (the group tag catches a
+ * contact field that forgets the channel type; QA-308). Covers the config's
+ * whole rfqFields list: contact shape is deployment-wide.
+ */
+export function contactFieldKeys(config: VerticalConfig): Set<string> {
+  return new Set(
+    config.rfqFields
+      .filter(
+        (f) =>
+          f.type === "email" || f.type === "tel" || f.groupKey === "contact",
+      )
+      .map((f) => f.key),
+  );
+}
+
+/**
  * `fields` minus contact keys (email/tel) — what an operator may see about a
  * buyer before a deal is accepted (QA-152). Raw contact channels bypass the
  * marketplace fee, so they stay masked until deal-close.

@@ -7,7 +7,11 @@ import {
   pruneJobs,
   requeueStaleJobs,
 } from "@jetmarket/db";
-import { getVertical, rfqFieldLabels } from "@jetmarket/verticals";
+import {
+  contactFieldKeys,
+  getVertical,
+  rfqFieldLabels,
+} from "@jetmarket/verticals";
 import en from "@jetmarket/i18n/messages/en.json";
 import { createEmailProvider } from "@jetmarket/providers/email";
 import { analyticsProvider } from "@jetmarket/providers";
@@ -130,6 +134,9 @@ async function main() {
         getVertical().slug
       ] ?? {},
     ),
+    // Contact-field mask comes from the same config the form validates
+    // against (QA-308).
+    contactKeys: contactFieldKeys(getVertical()),
   };
   const pollMs = pollIntervalMs();
   logInfo("worker.up", { pollMs });

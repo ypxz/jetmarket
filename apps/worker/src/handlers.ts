@@ -26,6 +26,10 @@ export interface WorkerDeps {
   /** RFQ field key -> label, in the vertical's rfqFields order — emails show
    * these instead of raw keys (QA-234). */
   fieldLabels?: ReadonlyMap<string, string>;
+  /** Config-derived contact keys (email/tel types + groupKey:"contact") —
+   * detail lines mask these so a renamed contact field can't leak into
+   * operator mail (QA-308). Defaults to name/email/phone when unset. */
+  contactKeys?: ReadonlySet<string>;
   analytics?: AnalyticsProvider;
   now?: () => Date;
 }
@@ -267,7 +271,10 @@ export async function quoteNotification(
   // Details render the vertical's declared fields (labeled, in form order)
   // plus any undeclared extras — was a hardcoded Route/Dates/pax shape that
   // emailed machinery dealers "Route: n/a" (QA-234).
-  const CONTACT_KEYS = new Set(["name", "email", "phone"]);
+  // Config-derived contact keys (QA-308): a vertical that renames its
+  // email/tel field would leak it here under a hardcoded name/email/phone set.
+  const CONTACT_KEYS =
+    deps.contactKeys ?? new Set(["name", "email", "phone"]);
   const declaredOrder = deps.fieldLabels ? [...deps.fieldLabels.keys()] : [];
   const detailKeys = [
     ...declaredOrder.filter((k) => !CONTACT_KEYS.has(k)),

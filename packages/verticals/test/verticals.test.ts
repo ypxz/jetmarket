@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRfqSchema,
+  contactFieldKeys,
   getAttributesSchema,
   getVertical,
   getVerticalSlug,
@@ -269,6 +270,24 @@ describe("nonContactFields (QA-152)", () => {
       make: "DMG MORI",
     });
     expect(out).toEqual({ name: "Ada", make: "DMG MORI" });
+  });
+});
+
+describe("contactFieldKeys (QA-308)", () => {
+  it("covers email/tel types AND the contact group for every vertical", () => {
+    for (const v of [jetsVertical, machineryVertical]) {
+      const keys = contactFieldKeys(v);
+      expect(keys.has("name")).toBe(true); // contact-grouped
+      expect(keys.has("email")).toBe(true); // email-typed
+      expect(keys.has("phone")).toBe(true); // tel-typed
+      expect(keys.has("notes")).toBe(false);
+      // every email/tel field is masked even if its groupKey was forgotten
+      for (const f of v.rfqFields) {
+        if (f.type === "email" || f.type === "tel") {
+          expect(keys.has(f.key)).toBe(true);
+        }
+      }
+    }
   });
 });
 
