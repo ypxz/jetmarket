@@ -397,3 +397,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 298 | ~18:07 | QA-311 | docs: GO_LIVE deploy path listed Docker only — added the non-Docker PORT=<port> pnpm start line so PaaS/bare-VM deploys don't 3000-pin |
 | 299 | ~18:09 | QA-312 | REAL BUG: GET /api/operators returned {} (unawaited Promise in NextResponse.json) — onboarding prefill blank + profile-less users saw the listing form; also missing noStore. Fixed + 2 tests |
 | 300 | ~18:13 | QA-313 | shared-DB leak: admin deal list/count/fee-sum were unscoped — foreign-vertical deals showed in this deploy's ledger; listDeals/countDeals/sumDealFees gained vertical via deal→quote→rfq; admin page + /api/admin/deals scoped; contract test |
+| 301 | ~18:18 | QA-314 | schema invariant: rfqs.access_token unique index (0014) — bearer-token collision would cross-open buyer inboxes; machinery demo token suffixed for shared-DB seeding |
