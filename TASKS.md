@@ -183,6 +183,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 99 | ~00:50 | QA-113 | seo | robots disallow /rfq + /sign-in thin pages |
 | 100 | ~00:55 | QA-114 | security/api | Rate-limit sweep #3: listing GET, auth callback/logout/me, vertical, 4 admin mutations |
 | 101 | ~00:55 | QA-115 | auth/ux | Sign-in renders ?error= banner (expired link, rate-limited) — was silently dropped |
+| 102 | ~01:00 | QA-116 | email | Deal-paid route now emails the operator (was silent) — failure logged, not 500 |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
