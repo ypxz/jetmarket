@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { site } from "@jetmarket/config";
+import { fromMinorUnits, percentOf, toMinorUnits } from "@jetmarket/domain";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
@@ -77,6 +78,13 @@ export async function POST(
 
   const listing = await repo.getListing(rfq.listingId);
   const feePct = listing ? successFeePctFor(listing.type) : 0.03;
+  // Fee in integer minor units — float math on majors loses cents at edges,
+  // and a hardcoded ×100 invoices a 0-decimal currency at 100× (QA-258).
+  const feeMinor = percentOf(
+    toMinorUnits(quote.amount, quote.currency),
+    feePct * 100,
+  );
+  const feeAmount = fromMinorUnits(feeMinor, quote.currency);
   let deal;
   try {
     deal = await repo.createDeal({
@@ -85,7 +93,7 @@ export async function POST(
       amount: quote.amount,
       currency: quote.currency,
       feePct,
-      feeAmount: Math.round(quote.amount * feePct * 100) / 100,
+      feeAmount,
       invoiceStatus: "pending",
     });
   } catch (e) {
@@ -117,7 +125,7 @@ export async function POST(
   try {
     const invoice = await paymentsProvider().createInvoice({
       customerId: quote.operatorId,
-      amountMinor: Math.round(deal.feeAmount * 100),
+      amountMinor: feeMinor,
       currency: quote.currency,
       description: `${site.name} success fee — deal ${deal.id}`,
       idempotencyKey: deal.id,
