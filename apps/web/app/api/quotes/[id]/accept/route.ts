@@ -83,6 +83,7 @@ export async function POST(
       quoteId: quote.id,
       operatorId: quote.operatorId,
       amount: quote.amount,
+      currency: quote.currency,
       feePct,
       feeAmount: Math.round(quote.amount * feePct * 100) / 100,
       invoiceStatus: "pending",
