@@ -349,3 +349,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 250 | ~19:30 | QA-264 | AGENTS.md gate fixed: root pnpm typecheck (every pkg incl. test files) replaces web-only tsc — the gap that hid QA-263 |
 | 251 | ~19:35 | QA-265 | worker logging → structured JSON-lines (shared shape w/ web; events: expired/delivered/refanouted/requeued/pruned/job_failed/tick_error/up/stopped + email-fail warns w/ ids) |
 | 252 | ~19:45 | QA-266 | e2e determinism: global-setup drops+recreates public schema before migrate+seed (stray worker ticks on shared *_test DB had delivered the delayed-match fixture); QA-225 spec asserts the delayed rfq's absence, not rfq-empty |
+| 253 | ~20:00 | QA-267 | POST /api/operators promotes buyer→operator on first profile create (sign-in role radio only applies at user creation — existing buyers were locked out of onboarding with 401); lifecycle e2e pins 401→201→201 |
