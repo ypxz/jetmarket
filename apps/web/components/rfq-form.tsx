@@ -70,19 +70,27 @@ export function RfqForm({
       const v = fd.get(f.key);
       fieldsObj[f.key] = v === null || v === "" ? "" : String(v);
     }
-    const res = await fetch("/api/rfqs", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        listingId,
-        buyerEmail: String(fieldsObj[emailFieldKey] ?? ""),
-        fields: fieldsObj,
-        website: String(fd.get("website") ?? ""),
-        captchaToken: String(
-          fd.get("cf-turnstile-response") ?? fd.get("captchaToken") ?? "",
-        ),
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/rfqs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          listingId,
+          buyerEmail: String(fieldsObj[emailFieldKey] ?? ""),
+          fields: fieldsObj,
+          website: String(fd.get("website") ?? ""),
+          captchaToken: String(
+            fd.get("cf-turnstile-response") ?? fd.get("captchaToken") ?? "",
+          ),
+        }),
+      });
+    } catch {
+      // Offline/timeout — the button was spinning forever before (QA-172).
+      setBusy(false);
+      setError(errorLabel);
+      return;
+    }
     const data = (await res.json().catch(() => ({}))) as {
       rfqId?: string;
       accessToken?: string;

@@ -12,9 +12,12 @@ export function MarkPaidButton({ dealId }: { dealId: string }) {
   async function markPaid() {
     if (pending) return;
     setPending(true);
-    await fetch(`/api/admin/deals/${dealId}/paid`, { method: "POST" });
-    router.refresh();
-    setPending(false);
+    try {
+      await fetch(`/api/admin/deals/${dealId}/paid`, { method: "POST" });
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -37,9 +40,12 @@ export function VoidInvoiceButton({ dealId }: { dealId: string }) {
   async function voidInvoice() {
     if (pending) return;
     setPending(true);
-    await fetch(`/api/admin/deals/${dealId}/void`, { method: "POST" });
-    router.refresh();
-    setPending(false);
+    try {
+      await fetch(`/api/admin/deals/${dealId}/void`, { method: "POST" });
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   return (

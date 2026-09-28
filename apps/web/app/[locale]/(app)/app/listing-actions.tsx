@@ -13,13 +13,16 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
   async function patch(status: "active" | "paused" | "archived") {
     if (pending) return;
     setPending(true);
-    await fetch(`/api/listings/${listing.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    router.refresh();
-    setPending(false);
+    try {
+      await fetch(`/api/listings/${listing.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   const btn =

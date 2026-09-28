@@ -12,9 +12,12 @@ export function RetryJobButton({ jobId }: { jobId: string }) {
   async function retry() {
     if (pending) return;
     setPending(true);
-    await fetch(`/api/admin/jobs/${jobId}/retry`, { method: "POST" });
-    router.refresh();
-    setPending(false);
+    try {
+      await fetch(`/api/admin/jobs/${jobId}/retry`, { method: "POST" });
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   return (

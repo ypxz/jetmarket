@@ -12,9 +12,12 @@ export function WithdrawButton({ quoteId }: { quoteId: string }) {
   async function withdraw() {
     if (pending) return;
     setPending(true);
-    await fetch(`/api/quotes/${quoteId}/withdraw`, { method: "POST" });
-    router.refresh();
-    setPending(false);
+    try {
+      await fetch(`/api/quotes/${quoteId}/withdraw`, { method: "POST" });
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
