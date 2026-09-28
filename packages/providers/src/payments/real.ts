@@ -44,6 +44,9 @@ export class StripePaymentsProvider implements PaymentsProvider {
   constructor(opts: StripePaymentsOptions) {
     this.stripe = new Stripe(opts.secretKey || "sk_test_mock", {
       apiVersion: "2026-08-26.dahlia",
+      // Bound the request — stripe-node's default timeout (~80s) stalls the
+      // awaiting checkout/portal route on a hung API connection.
+      timeout: 30_000,
       ...apiBaseConfig(opts.apiBase),
     });
     this.webhookSecret = opts.webhookSecret;
