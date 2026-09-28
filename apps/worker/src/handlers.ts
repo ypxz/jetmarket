@@ -156,6 +156,10 @@ export async function quoteNotification(
     );
     return;
   }
+  // Retry dedup: send happens BEFORE markMatchState — a mark failure retries
+  // the job and would re-mail the operator. Already-sent means this attempt
+  // is a replay of a completed send; skip it (QA-161).
+  if (ctx.state === "sent") return;
 
   const f = ctx.rfqFields;
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]

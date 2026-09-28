@@ -49,6 +49,7 @@ export interface WorkerRepo {
   loadMatchContext(matchId: string): Promise<{
     matchId: string;
     rfqId: string;
+    state: string;
     operatorEmail: string;
     operatorName: string;
     rfqFields: Record<string, unknown>;
@@ -166,6 +167,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         .select({
           matchId: rfqMatches.id,
           rfqId: rfqMatches.rfqId,
+          state: rfqMatches.state,
           operatorEmail: users.email,
           operatorName: operators.name,
           rfqFields: rfqs.fields,

@@ -82,6 +82,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
       return {
         matchId: id,
         rfqId: "r1",
+        state: "pending",
         operatorEmail: "ops@alpinejet.example",
         operatorName: "Alpine Jet",
         rfqFields: { departure: "ZRH", arrival: "NCE", passengers: 6 },
@@ -193,6 +194,26 @@ describe("handleJob dispatch", () => {
     expect(sent[0]!.to).toBe("ops@alpinejet.example");
     expect(sent[0]!.subject).toContain("ZRH");
     expect(repo.calls["markMatchState"]).toEqual([["m9", "sent"]]);
+  });
+
+  it("skips the send when the match is already sent (retry dedup, QA-161)", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "sent",
+        operatorEmail: "ops@alpinejet.example",
+        operatorName: "Alpine Jet",
+        rfqFields: {},
+        buyerEmail: "buyer@x.com",
+      }),
+    });
+    sent.length = 0;
+    await handleJob(deps(repo), "email.quote_notification", {
+      matchId: "m9",
+    });
+    expect(sent).toHaveLength(0);
+    expect(repo.calls["markMatchState"]).toBeUndefined();
   });
 
   it("throws on unknown job kinds", async () => {
