@@ -19,19 +19,19 @@ interface AttributeView {
   required: boolean;
   options?: string[];
 }
-const FALLBACK_TYPES: ListingTypeOpt[] = [
-  { slug: "charter", labelKey: "listingTypes.charter" },
-  { slug: "empty_leg", labelKey: "listingTypes.empty_leg" },
-  { slug: "aircraft_sale", labelKey: "listingTypes.aircraft_sale" },
-];
+// No baked-in type list — under another vertical (machinery) jets slugs
+// would render pre-fetch and 400 on submit (server validates the type
+// against the vertical's listingTypes). The select stays empty until
+// /api/vertical answers; a failed fetch leaves an error, not a jets form
+// (QA-232).
 
 export default function NewListingPage() {
   const t = useTranslations("app.newListing");
   const tv = useTranslations();
   const router = useRouter();
-  const [types, setTypes] = useState<ListingTypeOpt[]>(FALLBACK_TYPES);
+  const [types, setTypes] = useState<ListingTypeOpt[]>([]);
   const [attrs, setAttrs] = useState<AttributeView[]>([]);
-  const [type, setType] = useState<string>("charter");
+  const [type, setType] = useState<string>("");
   const [vertical, setVertical] = useState<string>("jets");
   // Posted with the listing — machinery deployments price in EUR (QA-167).
   const [currency, setCurrency] = useState<string>("USD");
@@ -67,12 +67,12 @@ export default function NewListingPage() {
         }
         if (c.attributes) setAttrs(c.attributes);
       })
-      .catch(() => {});
+      .catch(() => setError(t("configLoadFailed")));
   }, []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (pending) return;
+    if (pending || !type) return;
     setPending(true);
     setError(null);
     setLimitHit(false);
@@ -220,7 +220,7 @@ export default function NewListingPage() {
         </label>
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !type}
           data-testid="listing-save"
           className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >

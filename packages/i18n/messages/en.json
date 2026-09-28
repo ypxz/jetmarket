@@ -635,7 +635,8 @@
       "upgradeCta": "Upgrade to Pro — unlimited listings →",
       "failed": "failed",
       "publishing": "Publishing…",
-      "typeLabel": "Listing type"
+      "typeLabel": "Listing type",
+      "configLoadFailed": "Could not load listing form — please refresh."
     },
     "rfqs": {
       "needProfile": "Create an operator profile first.",
