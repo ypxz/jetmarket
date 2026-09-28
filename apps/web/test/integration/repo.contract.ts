@@ -331,6 +331,48 @@ export function repoContract(
       expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
     });
 
+    it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {
+      const repo = await factory();
+      const tag = `cas-${Date.now()}`;
+      const user = await repo.createUser(`op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Cas Air",
+        baseAirport: "ZRH",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Cas Jet ${tag}`,
+        price: 100,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `cas-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `cas-${tag}`,
+      });
+      // The accept route's single-winner gate relies on this CAS being
+      // atomic: N concurrent accepts may only flip the RFQ once. Serial
+      // tests can't prove it — drizzle serializes on the pg row lock, so
+      // Promise.all must return exactly one true.
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () =>
+          repo.setRfqStatus(rfq.id, "closed", ["open"]),
+        ),
+      );
+      expect(results.filter(Boolean)).toHaveLength(1);
+      expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+    });
+
     it("fan-out matches grant inbox access; delayed matches hide until due", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);
