@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
-import { logInfo } from "@/lib/log";
+import { logInfo, logWarn } from "@/lib/log";
+import { emailProvider } from "@jetmarket/providers";
 import { getRepo } from "@/lib/repo";
 
 // Admin marks a success-fee invoice paid (mock ledger settlement).
@@ -23,5 +24,26 @@ export async function POST(
   // ref omitted on purpose — keeps the provider's invoice ref.
   await repo.setDealInvoice(id, "paid");
   logInfo("admin.deal_invoice_paid", { adminId: user.id, dealId: id });
+  // Close the loop: the operator should learn their success-fee invoice
+  // settled without watching the dashboard. Mail failure must not 500 —
+  // the ledger state already flipped.
+  try {
+    const operator = await repo.getOperator(deal.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (owner) {
+      await emailProvider().send({
+        to: owner.email,
+        subject: `Success-fee invoice paid — deal ${id.slice(0, 8)}`,
+        text:
+          `Your success-fee invoice${deal.invoiceRef ? ` (${deal.invoiceRef})` : ""} ` +
+          `for ${deal.feeAmount} on deal amount ${deal.amount} was marked paid.`,
+      });
+    }
+  } catch (e) {
+    logWarn("admin.deal_paid_email_failed", {
+      dealId: id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
   return ok(await repo.getDeal(id));
 }
