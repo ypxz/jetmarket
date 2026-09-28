@@ -36,3 +36,33 @@ test('search paginates results and keeps facet params across pages', async ({
     await expect(page).toHaveURL(/[?&]page=2/);
   }
 });
+
+// QA-178: sort select lives in the same GET form, so it composes with
+// facets and persists through the pager.
+test('search sorts by price and keeps the choice through facets', async ({
+  page,
+}) => {
+  await page.goto('/search');
+  const priceOf = async (i: number) => {
+    const text = await page
+      .getByTestId('search-result')
+      .nth(i)
+      .textContent();
+    const m = /\$([\d,]+)/.exec(text ?? '');
+    return m ? Number(m[1]!.replace(/,/g, '')) : NaN;
+  };
+
+  await page.getByTestId('facet-sort').selectOption('price_asc');
+  await page.getByTestId('facet-apply').click();
+  await expect(page).toHaveURL(/sort=price_asc/);
+  const first = await priceOf(0);
+  const last = await priceOf(
+    (await page.getByTestId('search-result').count()) - 1,
+  );
+  expect(first).toBeLessThanOrEqual(last);
+
+  await page.getByTestId('facet-sort').selectOption('price_desc');
+  await page.getByTestId('facet-apply').click();
+  await expect(page).toHaveURL(/sort=price_desc/);
+  expect(await priceOf(0)).toBeGreaterThanOrEqual(await priceOf(1));
+});
