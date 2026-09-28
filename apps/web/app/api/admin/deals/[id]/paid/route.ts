@@ -35,7 +35,7 @@ export async function POST(
       const subject = `Success-fee invoice paid — deal ${id.slice(0, 8)}`;
       const body =
         `Your success-fee invoice${deal.invoiceRef ? ` (${deal.invoiceRef})` : ""} ` +
-        `for ${deal.feeAmount} on deal amount ${deal.amount} was marked paid.`;
+        `for ${deal.currency} ${deal.feeAmount} on deal amount ${deal.currency} ${deal.amount} was marked paid.`;
       await emailProvider().send({
         to: owner.email,
         subject,

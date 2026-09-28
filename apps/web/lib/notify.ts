@@ -246,7 +246,7 @@ export async function notifyDealInvoiceVoided(
     const subject = `Success-fee invoice voided — deal ${deal.id.slice(0, 8)}`;
     const body =
       `Your success-fee invoice${deal.invoiceRef ? ` (${deal.invoiceRef})` : ""} ` +
-      `of ${deal.feeAmount} for the ${deal.amount} deal was voided — you owe no fee on it. Contact support if you have questions.`;
+      `of ${deal.currency} ${deal.feeAmount} for the ${deal.currency} ${deal.amount} deal was voided — you owe no fee on it. Contact support if you have questions.`;
     await emailProvider().send({
       to: owner.email,
       subject,
