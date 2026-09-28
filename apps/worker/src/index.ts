@@ -62,6 +62,7 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const requeued = await requeueStaleJobs(
     deps.sql,
     new Date(Date.now() - 10 * 60_000),
+    deps.vertical,
   );
   if (requeued) logInfo("worker.requeued_stale_jobs", { jobs: requeued });
 
@@ -73,6 +74,7 @@ export async function tick(deps: WorkerDeps): Promise<number> {
     const pruned = await pruneJobs(deps.sql, {
       doneOlderThan: new Date(nowMs - DONE_RETENTION_MS),
       failedOlderThan: new Date(nowMs - FAILED_RETENTION_MS),
+      vertical: deps.vertical,
     });
     if (pruned) logInfo("worker.pruned_jobs", { jobs: pruned });
   }

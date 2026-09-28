@@ -102,10 +102,17 @@ export async function failJob(
 export async function requeueStaleJobs(
   sql: Sql,
   staleBefore: Date,
+  /** Same scoping as claimJobs — a worker must not churn foreign-vertical
+   *  stuck rows on a shared DB; NULL stays fair game (QA-304). */
+  vertical?: string,
 ): Promise<number> {
+  const vcond = vertical
+    ? sql`and (vertical is null or vertical = ${vertical})`
+    : sql``;
   const rows = await sql<{ id: string }[]>`
     update jobs set status = 'pending', updated_at = now()
      where status = 'running' and updated_at < ${staleBefore.toISOString()}
+     ${vcond}
     returning id
   `;
   return rows.length;
@@ -118,12 +125,18 @@ export async function requeueStaleJobs(
  */
 export async function pruneJobs(
   sql: Sql,
-  opts: { doneOlderThan: Date; failedOlderThan: Date },
+  opts: { doneOlderThan: Date; failedOlderThan: Date; vertical?: string },
 ): Promise<number> {
+  // Shared-DB: pruning must not erase another deploy's terminal history —
+  // NULL (legacy/unscoped) rows are fair game for whoever prunes first.
+  const vcond = opts.vertical
+    ? sql`and (vertical is null or vertical = ${opts.vertical})`
+    : sql``;
   const rows = await sql<{ id: string }[]>`
     delete from jobs
-     where (status = 'done'   and updated_at < ${opts.doneOlderThan.toISOString()})
-        or (status = 'failed' and updated_at < ${opts.failedOlderThan.toISOString()})
+     where ((status = 'done'   and updated_at < ${opts.doneOlderThan.toISOString()})
+        or  (status = 'failed' and updated_at < ${opts.failedOlderThan.toISOString()}))
+       ${vcond}
     returning id
   `;
   return rows.length;
