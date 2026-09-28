@@ -26,3 +26,16 @@ export function formatAttribute(value: unknown, unit?: string): string {
   }
   return unit ? `${String(value)} ${unit}` : String(value);
 }
+
+/**
+ * ISO "YYYY-MM-DD" attribute (inputType:"date" on the attribute def) rendered
+ * as a medium date ("Oct 1, 2026"). Unparseable values fall back to the raw
+ * string rather than "Invalid Date" (QA-216).
+ */
+export function formatAttributeDate(value: unknown, locale = "en"): string {
+  const s = String(value ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(`${s}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return s;
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(d);
+}

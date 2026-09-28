@@ -43,6 +43,37 @@ describe("searchListings (config-driven, jets)", () => {
     expect(r.every((l) => Number(l.attributes.seats) >= 9)).toBe(true);
   });
 
+  it("date-range facet on attributes.date (legDate) — strict bounds", async () => {
+    // Memory seed keys leg dates to today+N (inDays 1/2/3/6).
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const today = new Date();
+    const plus1 = new Date(Date.now() + 86_400_000);
+    const plus2 = new Date(Date.now() + 2 * 86_400_000);
+
+    const one = await searchListings({
+      type: "empty_leg",
+      legDateFrom: iso(today),
+      legDateTo: iso(plus1),
+    });
+    expect(one.length).toBe(1);
+    expect(one[0]?.attributes.to).toBe("GVA");
+
+    const two = await searchListings({ legDateTo: iso(plus2) });
+    // Strict: listings without a `date` attribute never match a set bound —
+    // only the two earliest empty legs qualify.
+    expect(two.length).toBe(2);
+    expect(two.every((l) => l.type === "empty_leg")).toBe(true);
+  });
+
+  it("date-range ignores non-ISO params", async () => {
+    const r = await searchListings({
+      type: "empty_leg",
+      legDateFrom: "garbage",
+      legDateTo: "20/10/2026",
+    });
+    expect(r.length).toBe(4);
+  });
+
   it("combines query + facets + ranges", async () => {
     const r = await searchListings({
       type: "empty_leg",

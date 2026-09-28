@@ -1,7 +1,7 @@
 import { getVertical } from "@jetmarket/verticals";
 import { getTranslations } from "next-intl/server";
 import { attrsFor, optionLabelKey } from "@/lib/attrs";
-import { formatAttribute } from "@/lib/format";
+import { formatAttribute, formatAttributeDate } from "@/lib/format";
 import type { Listing } from "@/lib/repo/types";
 
 /** Attribute table for a listing, labelled via the vertical's copy namespace. */
@@ -17,7 +17,11 @@ export async function AttributeTable({ listing }: { listing: Listing }) {
       const unit = a.unitKey ? vt(a.unitKey) : undefined;
       return {
         label: vt(a.labelKey),
-        value: optKey ? vt(optKey) : formatAttribute(value, unit),
+        value: optKey
+          ? vt(optKey)
+          : a.inputType === "date"
+            ? formatAttributeDate(value)
+            : formatAttribute(value, unit),
       };
     })
     .filter((r): r is { label: string; value: string } => r !== null);

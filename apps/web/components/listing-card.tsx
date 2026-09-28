@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { attrsFor, optionLabelKey } from "@/lib/attrs";
-import { formatAttribute, formatMoney } from "@/lib/format";
+import { formatAttribute, formatAttributeDate, formatMoney } from "@/lib/format";
 import type { Listing, PublicOperator } from "@/lib/repo/types";
 
 interface ListingCardProps {
@@ -31,7 +31,11 @@ export async function ListingCard({ listing, operator }: ListingCardProps) {
       if (value === undefined || value === null || value === "") return null;
       const optKey = optionLabelKey(vertical, a, String(value));
       const unit = a.unitKey ? vt(a.unitKey) : undefined;
-      return optKey ? vt(optKey) : formatAttribute(value, unit);
+      return optKey
+        ? vt(optKey)
+        : a.inputType === "date"
+          ? formatAttributeDate(value)
+          : formatAttribute(value, unit);
     })
     .filter(Boolean);
 
