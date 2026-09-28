@@ -14,8 +14,10 @@ vi.mock("next/headers", () => ({
 }));
 
 import {
+  consumeMagicLink,
   currentUser,
   sessionCookie,
+  signMagicLink,
   signSession,
   verifySession,
 } from "../../lib/auth";
@@ -57,5 +59,26 @@ describe("session revocation", () => {
     // Current version works.
     jar.set(sessionCookie, signSession(user.id, 2));
     expect((await currentUser())?.id).toBe(user.id);
+  });
+});
+
+describe("magic links (QA-126)", () => {
+  it("are single-use — a replayed link returns null", async () => {
+    const repo = await getMemoryRepo();
+    const user = await repo.createUser("replay@test.dev", "operator");
+    const link = signMagicLink(user.id);
+    expect(consumeMagicLink(link)).toBe(user.id);
+    expect(consumeMagicLink(link)).toBeNull();
+  });
+
+  it("a different valid link for the same user still works", async () => {
+    const repo = await getMemoryRepo();
+    const user = await repo.createUser("fresh@test.dev", "operator");
+    // Distinct iat → distinct signature.
+    const link = signMagicLink(user.id);
+    await new Promise((r) => setTimeout(r, 2));
+    const link2 = signMagicLink(user.id);
+    expect(consumeMagicLink(link)).toBe(user.id);
+    expect(consumeMagicLink(link2)).toBe(user.id);
   });
 });

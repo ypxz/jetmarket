@@ -97,6 +97,34 @@ export function verifyMagicLink(value: string | undefined): string | null {
   return userId!;
 }
 
+// One-shot enforcement: a magic link's signature is recorded on first
+// successful consume; replaying it (e.g. a link a bot/email scanner followed
+// or a leaked log) yields null. In-memory like rateLimit — correct for the
+// single web process this deploys as; a multi-instance fleet needs this in
+// the repo instead.
+const usedMagicLinks: Map<string, number> =
+  ((globalThis as { __jmUsedLinks?: Map<string, number> }).__jmUsedLinks ??=
+    new Map());
+const MAX_USED_LINKS = 10_000;
+
+/** Verify AND consume — returns the userId only for a fresh, valid link. */
+export function consumeMagicLink(value: string | undefined): string | null {
+  const userId = verifyMagicLink(value);
+  if (!userId || !value) return null;
+  const sig = value.split(".")[2]!;
+  if (usedMagicLinks.has(sig)) return null;
+  if (usedMagicLinks.size >= MAX_USED_LINKS) {
+    const now = Date.now();
+    for (const [k, exp] of usedMagicLinks) {
+      if (exp < now) usedMagicLinks.delete(k);
+    }
+    // Fail closed if still full — flood can't bypass single-use.
+    if (usedMagicLinks.size >= MAX_USED_LINKS) return null;
+  }
+  usedMagicLinks.set(sig, Date.now() + MAGIC_LINK_TTL_MS);
+  return userId;
+}
+
 export async function currentUser(): Promise<User | null> {
   const jar = await cookies();
   const sess = verifySession(jar.get(COOKIE)?.value);

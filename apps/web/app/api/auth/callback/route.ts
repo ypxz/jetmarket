@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/api";
-import { sessionCookie, signSession, verifyMagicLink } from "@/lib/auth";
+import { consumeMagicLink, sessionCookie, signSession } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
 export async function GET(req: Request) {
@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/sign-in?error=rate-limited", url.origin));
   }
   const token = url.searchParams.get("token") ?? undefined;
-  const userId = verifyMagicLink(token);
+  const userId = consumeMagicLink(token);
   if (!userId || !token) {
     return NextResponse.redirect(new URL("/sign-in?error=invalid-token", url.origin));
   }
