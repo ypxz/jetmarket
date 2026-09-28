@@ -735,7 +735,9 @@
       "fieldTitle": "Title",
       "fieldPrice": "Price (USD)",
       "save": "Save",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "photosLabel": "Photos (uncheck to remove; pick files to add)",
+      "keepPhoto": "Keep photo"
     }
   },
   "checkout": {

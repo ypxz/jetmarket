@@ -383,12 +383,13 @@ export class DrizzleRepo implements Repo {
   }
   async updateListing(
     id: string,
-    patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
+    patch: Partial<Pick<Listing, "title" | "price" | "attributes" | "photos">>,
   ): Promise<void> {
     const set: Record<string, unknown> = { updatedAt: new Date() };
     if (patch.title !== undefined) set.title = patch.title;
     if (patch.price !== undefined) set.priceMinor = minor(patch.price);
     if (patch.attributes !== undefined) set.attributes = patch.attributes;
+    if (patch.photos !== undefined) set.photos = patch.photos;
     await this.db.update(listings).set(set).where(eq(listings.id, id));
   }
   async listListingCountsByOperator(

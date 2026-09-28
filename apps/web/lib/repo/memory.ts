@@ -203,7 +203,7 @@ class MemoryRepo implements Repo {
   }
   async updateListing(
     id: string,
-    patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
+    patch: Partial<Pick<Listing, "title" | "price" | "attributes" | "photos">>,
   ) {
     const l = this.listings.get(id);
     if (l) this.listings.set(id, { ...l, ...patch });

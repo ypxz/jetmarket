@@ -12,6 +12,7 @@ const PatchListing = z.object({
   title: z.string().min(3).max(200).optional(),
   price: z.number().positive().max(1e9).optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
+  photos: z.array(z.string().max(300)).max(12).optional(),
 });
 
 export async function GET(
@@ -64,6 +65,15 @@ export async function PATCH(
     await repo.updateListingStatus(id, data!.status);
   }
   const patch: Parameters<typeof repo.updateListing>[1] = {};
+  if (data!.photos !== undefined) {
+    // Same ownership rule as POST — photos may only reference this
+    // operator's own uploads (QA-120).
+    const photoPrefix = `uploads/${user.id}/`;
+    if (data!.photos.some((k) => !k.startsWith(photoPrefix))) {
+      return err("photos must come from your own uploads", 422);
+    }
+    patch.photos = data!.photos;
+  }
   if (data!.title !== undefined) patch.title = data!.title;
   if (data!.price !== undefined) patch.price = data!.price;
   if (data!.attributes !== undefined) {

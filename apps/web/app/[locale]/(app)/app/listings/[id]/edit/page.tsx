@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect, notFound } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
+import { storageProvider } from "@jetmarket/providers";
 import { EditListingForm } from "./edit-form";
 
 export default async function EditListingPage({
@@ -29,6 +30,10 @@ export default async function EditListingPage({
           price: listing.price,
           type: listing.type,
           attributes: listing.attributes,
+          photos: listing.photos.map((k) => ({
+            key: k,
+            url: storageProvider().url(k),
+          })),
         }}
       />
     </main>

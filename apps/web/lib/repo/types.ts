@@ -189,7 +189,7 @@ export interface Repo {
   updateListingStatus(id: string, status: ListingStatus): Promise<void>;
   updateListing(
     id: string,
-    patch: Partial<Pick<Listing, "title" | "price" | "attributes">>,
+    patch: Partial<Pick<Listing, "title" | "price" | "attributes" | "photos">>,
   ): Promise<void>;
   countOperatorListings(operatorId: string): Promise<number>;
   /** Non-archived listing counts keyed by operator id — one grouped query for

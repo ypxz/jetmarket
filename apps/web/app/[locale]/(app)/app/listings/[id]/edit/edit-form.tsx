@@ -25,6 +25,7 @@ export function EditListingForm({
     price: number;
     type: string;
     attributes: Record<string, unknown>;
+    photos: { key: string; url: string }[];
   };
 }) {
   const t = useTranslations("app.editListing");
@@ -63,6 +64,25 @@ export function EditListingForm({
       if (v === null || v === "") continue;
       attributes[a.key] = a.input === "number" ? Number(v) : v;
     }
+    // Photos: keep checked existing keys + upload any newly-picked files.
+    const photos = listing.photos
+      .map((p) => p.key)
+      .filter((k) => fd.get(`keep_${k}`) !== null);
+    const files = (fd.getAll("photosNew") as File[]).filter(
+      (f) => f.size > 0,
+    );
+    for (const file of files) {
+      const up = new FormData();
+      up.append("file", file);
+      const upRes = await fetch("/api/uploads", { method: "POST", body: up });
+      if (!upRes.ok) {
+        setPending(false);
+        setError(t("failed"));
+        return;
+      }
+      const upData = (await upRes.json()) as { key?: string };
+      if (upData.key) photos.push(upData.key);
+    }
     const res = await fetch(`/api/listings/${listing.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -70,6 +90,7 @@ export function EditListingForm({
         title: String(fd.get("title") ?? ""),
         price: Number(fd.get("price")),
         attributes,
+        photos,
       }),
     });
     setPending(false);
@@ -135,6 +156,36 @@ export function EditListingForm({
           );
         })}
       </div>
+      <Field label={t("photosLabel")} htmlFor="photosNew">
+        <div className="flex flex-wrap gap-3">
+          {listing.photos.map((p) => (
+            <label key={p.key} className="relative block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.url}
+                alt=""
+                className="h-16 w-24 rounded border border-border object-cover"
+              />
+              <input
+                type="checkbox"
+                name={`keep_${p.key}`}
+                defaultChecked
+                aria-label={t("keepPhoto")}
+                className="absolute right-1 top-1 h-4 w-4 accent-primary"
+              />
+            </label>
+          ))}
+        </div>
+        <input
+          id="photosNew"
+          name="photosNew"
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          data-testid="edit-photos"
+          className="mt-2 w-full text-sm"
+        />
+      </Field>
       <Field label={t("fieldPrice")} htmlFor="price" required>
         <Input
           id="price"

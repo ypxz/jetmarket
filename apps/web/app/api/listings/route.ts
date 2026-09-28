@@ -103,6 +103,13 @@ export async function POST(req: Request) {
     );
   }
 
+  // Photos must point at this operator's own uploads — an arbitrary key
+  // would render someone else's images (or a broken image) on the listing.
+  const photoPrefix = `uploads/${user.id}/`;
+  if ((data!.photos ?? []).some((k) => !k.startsWith(photoPrefix))) {
+    return err("photos must come from your own uploads", 422);
+  }
+
   const listing = await repo.createListing({
     operatorId: operator.id,
     vertical: verticalSlug(),
