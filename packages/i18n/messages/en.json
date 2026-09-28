@@ -382,6 +382,11 @@
             }
           ]
         }
+      },
+      "operator": {
+        "baseLabel": "Base airport (e.g. ZRH)",
+        "basedAt": "Based at {place}",
+        "fleetLabel": "Fleet summary (models, seats)"
       }
     },
     "machinery": {
@@ -538,6 +543,11 @@
             }
           ]
         }
+      },
+      "operator": {
+        "baseLabel": "Yard or HQ location (e.g. Munich)",
+        "basedAt": "Located at {place}",
+        "fleetLabel": "Inventory summary (makes, models)"
       }
     }
   },
@@ -670,8 +680,6 @@
       "title": "Operator profile",
       "subtitle": "Profiles start unverified — our team reviews each one.",
       "name": "Company name",
-      "baseAirport": "Base airport (e.g. ZRH)",
-      "fleetSummary": "Fleet summary (models, seats)",
       "save": "Save profile",
       "failed": "failed"
     },
@@ -786,7 +794,6 @@
     "viewJobs": "Job queue →"
   },
   "operator": {
-    "basedAt": "Based at {airport}",
     "listingsTitle": "Active listings ({count})",
     "emptyTitle": "No active listings",
     "emptyBody": "This operator has no active listings right now.",

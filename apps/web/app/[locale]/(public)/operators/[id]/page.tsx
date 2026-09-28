@@ -8,7 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { siteUrl } from "@/lib/seo";
-import { verticalSlug } from "@/lib/vertical";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 // Escape </script> breakouts inside JSON-LD payloads.
 const jsonLd = (data: object) =>
@@ -56,6 +56,7 @@ export default async function OperatorPage({
   const { id } = await params;
   const t = await getTranslations("operator");
   const ct = await getTranslations("common");
+  const vt = await getTranslations(`${verticalConfig().copy.namespace}.operator`);
   const found = await load(id);
   if (!found) notFound();
   const { operator, listings } = found;
@@ -96,7 +97,7 @@ export default async function OperatorPage({
         <CardBody>
           <Stack gap="sm">
             <p className="text-sm text-muted" data-testid="operator-base">
-              {t("basedAt", { airport: pub.baseAirport || "—" })}
+              {vt("basedAt", { place: pub.baseAirport || "—" })}
             </p>
             {pub.fleetSummary ? (
               <p className="text-sm" data-testid="operator-fleet">

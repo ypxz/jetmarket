@@ -5,7 +5,7 @@ import { getRepo } from "@/lib/repo";
 
 const UpsertOperator = z.object({
   name: z.string().min(2).max(120),
-  baseAirport: z.string().min(3).max(8),
+  baseAirport: z.string().min(3).max(60),
   fleetSummary: z.string().max(500).default(""),
 });
 

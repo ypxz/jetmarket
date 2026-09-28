@@ -13,8 +13,12 @@ interface OperatorProfile {
 
 export default function OnboardingPage() {
   const t = useTranslations("app.onboarding");
+  const tv = useTranslations();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Field labels come from the active vertical's copy (base airport vs
+  // yard/HQ location), resolved via /api/vertical like the listing form.
+  const [vertical, setVertical] = useState<string>("jets");
   // POST /api/operators upserts by userId, so this form doubles as the
   // profile editor — prefill via GET so editing one field doesn't blank
   // the rest (fleetSummary was silently cleared otherwise).
@@ -26,6 +30,12 @@ export default function OnboardingPage() {
       .then((d) => setProfile(d ?? null))
       .catch(() => setProfile(null))
       .finally(() => setLoaded(true));
+    fetch("/api/vertical")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.slug) setVertical(d.slug);
+      })
+      .catch(() => {});
   }, []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -67,17 +77,17 @@ export default function OnboardingPage() {
           name="baseAirport"
           required
           defaultValue={profile?.baseAirport ?? ""}
-          aria-label={t("baseAirport")}
-          placeholder={t("baseAirport")}
-          maxLength={8}
+          aria-label={tv(`vertical.${vertical}.operator.baseLabel`)}
+          placeholder={tv(`vertical.${vertical}.operator.baseLabel`)}
+          maxLength={60}
           data-testid="operator-base-input"
           className="w-full rounded-md border border-border bg-background px-3 py-2"
         />
         <textarea
           name="fleetSummary"
           defaultValue={profile?.fleetSummary ?? ""}
-          aria-label={t("fleetSummary")}
-          placeholder={t("fleetSummary")}
+          aria-label={tv(`vertical.${vertical}.operator.fleetLabel`)}
+          placeholder={tv(`vertical.${vertical}.operator.fleetLabel`)}
           data-testid="operator-fleet-input"
           className="w-full rounded-md border border-border bg-background px-3 py-2"
         />
