@@ -106,6 +106,10 @@ every per-vertical row carries `vertical` and every surface must scope by
 - Quotes/deals have no vertical column: resolve via `quote.rfqId →
   rfq.vertical`. Operator-facing deal/funnel lists stay deliberately
   unscoped (a user's cross-vertical earnings are their business).
+- Operators/users are global rows (no vertical). Fan-out candidates are
+  scoped instead: `loadOperatorCandidates`/`fanoutRfq` exclude an operator
+  whose book is entirely foreign-vertical (dealer elsewhere ≠ broker here);
+  zero-listing operators keep the wildcard (QA-307).
 
 ## DB / migrations
 
