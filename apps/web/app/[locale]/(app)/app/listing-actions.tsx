@@ -6,7 +6,7 @@ import { useState } from "react";
 import type { Listing } from "@/lib/repo/types";
 
 export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "status"> }) {
-  const t = useTranslations("dashboard");
+  const t = useTranslations("app.dashboard");
   const router = useRouter();
   const [pending, setPending] = useState(false);
 

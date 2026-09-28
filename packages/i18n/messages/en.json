@@ -653,7 +653,9 @@
       "noListings": "No listings yet. Create your first {types}.",
       "rfqInbox": "RFQ inbox ({count} open)",
       "openInbox": "Open inbox →",
-      "subActive": "Subscription active until {date}"
+      "subActive": "Subscription active until {date}",
+      "deals": "Deals ({count})",
+      "dealFee": "fee {fee}"
     },
     "welcome": "Welcome back",
     "plan": "Plan",

@@ -131,6 +131,14 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(ledger.locator(tidPrefix('deal-')).filter({ hasText: EXPECTED_FEE })).toBeVisible();
   });
 
+  await step('operator dashboard surfaces the closed deal and fee state', async () => {
+    await operator.goto('/app');
+    const deals = operator.getByTestId('operator-deals');
+    await expect(deals).toBeVisible();
+    await expect(deals.filter({ hasText: EXPECTED_FEE })).toBeVisible();
+    await expect(deals.getByText('invoiced')).toBeVisible();
+  });
+
   await step('free limit → upgrade via mock checkout → limit lifted', async () => {
     // third listing still allowed (free = 3)
     await createListing(operator, {

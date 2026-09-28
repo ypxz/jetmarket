@@ -1,3 +1,4 @@
+import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getVertical } from "@jetmarket/verticals";
@@ -6,9 +7,11 @@ import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
 import { ListingActions } from "./listing-actions";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { invoiceStateVariant } from "@/lib/state-variant";
 
 export default async function OperatorDashboard() {
   const t = await getTranslations("app.dashboard");
+  const tc = await getTranslations("common");
   const vertical = getVertical();
   const vt = await getTranslations(vertical.copy.namespace);
   const listingTypeNames = vertical.listingTypes
@@ -36,9 +39,12 @@ export default async function OperatorDashboard() {
 
   // Cap the dashboard render — the header count uses the true total; beyond
   // 100 listings this page needs a pager, not a longer card wall.
-  const [listings, listingCount] = await Promise.all([
+  const [listings, listingCount, deals] = await Promise.all([
     repo.listListings({ operatorId: operator.id, limit: 100 }),
     repo.countOperatorListings(operator.id),
+    // Success-fee obligations are invisible to operators without this —
+    // the admin ledger saw them, the party paying them did not (QA-118).
+    repo.listDeals({ operatorId: operator.id, limit: 20 }),
   ]);
   const openRfqs = await repo.countRfqs({
     operatorId: operator.id,
@@ -120,6 +126,35 @@ export default async function OperatorDashboard() {
           </ul>
         )}
       </section>
+
+      {deals.length > 0 ? (
+        <section className="mt-10" data-testid="operator-deals">
+          <h2 className="text-lg font-semibold">
+            {t("deals", { count: deals.length })}
+          </h2>
+          <ul className="mt-4 divide-y divide-border rounded-md border border-border">
+            {deals.map((d) => (
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+              >
+                <div>
+                  <div className="font-medium">
+                    {formatMoney(d.amount, "USD")} · {t("dealFee", { fee: formatMoney(d.feeAmount, "USD") })}
+                  </div>
+                  <div className="text-xs text-muted">
+                    {new Date(d.closedAt).toDateString()}
+                    {d.invoiceRef ? ` · ${d.invoiceRef}` : ""}
+                  </div>
+                </div>
+                <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
+                  {tc(`invoiceState.${d.invoiceStatus}`)}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-10">
         <h2 className="text-lg font-semibold">
