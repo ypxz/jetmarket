@@ -34,6 +34,9 @@ await check("GET /api/health", async () => {
 await check("GET / renders landing", async () => {
   const res = await get("/");
   if (!res.ok) throw new Error(`status ${res.status}`);
+  // poweredByHeader: false — no framework fingerprint on responses.
+  if (res.headers.get("x-powered-by"))
+    throw new Error("x-powered-by emitted");
   const html = await res.text();
   if (!html.toLowerCase().includes("<html")) throw new Error("no html");
 });

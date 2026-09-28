@@ -22,6 +22,7 @@ const csp = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  poweredByHeader: false,
   transpilePackages: [
     "@jetmarket/config",
     "@jetmarket/db",
