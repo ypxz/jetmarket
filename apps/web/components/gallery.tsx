@@ -26,6 +26,7 @@ export async function Gallery({ photos, title }: { photos: string[]; title: stri
   return (
     <Grid cols={3} data-testid="gallery" aria-label={t("gallery")}>
       {photos.map((key, i) => (
+        // eslint-disable-next-line @next/next/no-img-element -- untrusted SVG uploads can't use next/image
         <img
           key={key}
           src={storage.url(key)}

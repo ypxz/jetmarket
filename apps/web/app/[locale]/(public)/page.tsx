@@ -2,6 +2,7 @@ import { Faq, FeatureGrid, Grid, Hero, PricingTable, Section, Container, Stack, 
 import { getVertical } from "@jetmarket/verticals";
 import { getTranslations } from "next-intl/server";
 import { ListingCard } from "@/components/listing-card";
+import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { browseExpiry } from "@/lib/search";
 import { publicOperator } from "@/lib/repo/types";
@@ -69,9 +70,9 @@ export default async function LandingPage() {
               <h2 className="text-2xl font-semibold tracking-tight">
                 {t("featured.title")}
               </h2>
-              <a href="/search" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              <Link href="/search" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                 {t("featured.viewAll")}
-              </a>
+              </Link>
             </div>
             <Grid cols={3}>
               {featured.map((l) => (

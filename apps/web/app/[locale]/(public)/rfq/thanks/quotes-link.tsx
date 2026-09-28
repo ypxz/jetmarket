@@ -31,7 +31,7 @@ export function ThanksQuotesLink({ email, label }: { email: string; label: strin
       url.searchParams.delete("t");
       window.history.replaceState(null, "", url.toString());
     }
-  }, [email]);
+  }, [email, base]);
   return (
     <a
       href={href}

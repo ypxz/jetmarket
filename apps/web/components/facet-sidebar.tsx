@@ -2,6 +2,7 @@ import { Button, Card, CardBody, CardHeader, CardTitle, Input, Label, Select } f
 import { getVertical } from "@jetmarket/verticals";
 import { getTranslations } from "next-intl/server";
 import type { SearchParams } from "@/lib/search";
+import { Link } from "@/i18n/navigation";
 
 /**
  * Facet sidebar rendered from config.facets — a plain GET form so search stays
@@ -126,9 +127,9 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
             <Button type="submit" data-testid="facet-apply">
               {t("submit")}
             </Button>
-            <a href="/search" className="px-3 py-2 text-sm text-muted">
+            <Link href="/search" className="px-3 py-2 text-sm text-muted">
               {t("reset")}
-            </a>
+            </Link>
           </div>
         </form>
       </CardBody>

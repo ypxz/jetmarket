@@ -76,7 +76,7 @@ export default function NewListingPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setHasProfile(d != null))
       .catch(() => setHasProfile(false));
-  }, []);
+  }, [t]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

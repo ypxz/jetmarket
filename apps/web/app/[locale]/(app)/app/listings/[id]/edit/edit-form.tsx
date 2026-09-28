@@ -166,6 +166,7 @@ export function EditListingForm({
           {listing.photos.map((p) => (
             <label key={p.key} className="relative block">
               {/* Thumbnails come from our own storage; <img> suffices at this size. */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- untrusted SVG uploads. */}
               <img
                 src={p.url}
                 alt=""

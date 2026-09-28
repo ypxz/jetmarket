@@ -109,7 +109,10 @@ function QuotesInner() {
     }
     setReady(true);
     if (email) void load(undefined, effective);
-  }, []); // mount-only: refresh via the search form
+    // mount-only: refresh via the search form; load re-creates per render
+    // so it must not be a dep or the effect refetches every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function accept(quoteId: string) {
     let res: Response;

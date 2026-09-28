@@ -54,6 +54,7 @@ export async function ListingCard({ listing, operator, from }: ListingCardProps)
     >
       <Card className="h-full transition-shadow hover:shadow-pop">
         {listing.photos[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element -- untrusted SVG uploads can't use next/image
           <img
             src={storageProvider().url(listing.photos[0])}
             alt={listing.title}
