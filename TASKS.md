@@ -377,3 +377,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 278 | ~18:30 | QA-291 | apps/web lint now runs @next/eslint-plugin-next + react-hooks — fixed the <a>/deps issues it caught |
 | 279 | ~18:45 | QA-292 | host-header token theft closed: appOrigin() helper — APP_URL-only in prod, 6 call sites converted |
 | 280 | ~18:55 | QA-293 | cross-vertical guard: foreign-vertical listings 404 on detail/rfq/api/PATCH — PATCH could strip foreign attrs |
+| 281 | ~16:49 | QA-294 | REAL BUG: listRfqs/countRfqs gain vertical filter; operator inbox + admin mod queues scope to verticalSlug() (shared-DB contact-leak) |
