@@ -3,6 +3,7 @@
 import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { sendAction } from "@/lib/fetch-action";
 import type { Listing } from "@/lib/repo/types";
 
 export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "status"> }) {
@@ -16,18 +17,15 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
     if (pending) return;
     setPending(true);
     try {
-      const res = await fetch(`/api/listings/${listing.id}`, {
+      // The server's reason matters — the 403 plan-cap message is the Pro
+      // upsell and must not fail silently (QA-211).
+      const e = await sendAction(`/api/listings/${listing.id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: { status },
+        fallback: tc("error"),
       });
-      if (!res.ok) {
-        // Surface the server's reason — e.g. the 403 plan-cap message is the
-        // Pro upsell and must not fail silently (QA-211).
-        const body = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        setError(body?.error ?? tc("error"));
+      if (e) {
+        setError(e);
         return;
       }
       setError(null);

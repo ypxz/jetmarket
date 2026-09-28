@@ -2,29 +2,53 @@
 
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { sendAction } from "@/lib/fetch-action";
 
 export function RfqSpamButton({ rfqId }: { rfqId: string }) {
   const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   async function moderate() {
+    if (pending) return;
+    setPending(true);
     try {
-      await fetch(`/api/admin/rfqs/${rfqId}/status`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: "spam" }),
+      const e = await sendAction(`/api/admin/rfqs/${rfqId}/status`, {
+        body: { status: "spam" },
+        fallback: tc("error"),
       });
+      if (e) {
+        setError(e);
+        return;
+      }
+      setError(null);
       router.refresh();
-    } catch {
-      // network error — leave the row untouched; admin can retry
+    } finally {
+      setPending(false);
     }
   }
   return (
-    <button
-      onClick={moderate}
-      data-testid={`mod-rfq-spam-${rfqId}`}
-      className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface"
-    >
-      {t("markSpam")}
-    </button>
+    <span className="inline-flex flex-col gap-1">
+      <button
+        onClick={moderate}
+        disabled={pending}
+        data-testid={`mod-rfq-spam-${rfqId}`}
+        className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50"
+      >
+        {t("markSpam")}
+      </button>
+      {error ? (
+        <p
+          role="alert"
+          className="text-xs text-danger"
+          data-testid={`mod-rfq-error-${rfqId}`}
+        >
+          {error}
+        </p>
+      ) : null}
+    </span>
   );
 }
