@@ -46,6 +46,7 @@ vi.mock("@/lib/outbox", () => ({ sendMail: async () => {} }));
 
 import { getRepo } from "@/lib/repo";
 import { POST as postRfq } from "@/app/api/rfqs/route";
+import { POST as buyerAccess } from "@/app/api/buyer/access/route";
 import { POST as postListing } from "@/app/api/listings/route";
 import { POST as postQuote } from "@/app/api/quotes/route";
 import { POST as postAccept } from "@/app/api/quotes/[id]/accept/route";
@@ -100,6 +101,34 @@ describe("analytics events on money routes (mock sink)", async () => {
     expect(confirm!.text).toContain("t=");
     // Submitted fields stay out of the confirmation (bogus-address safety).
     expect(confirm!.text).not.toContain("E2E Buyer");
+  });
+
+  it("buyer/access re-emails the bearer links and never enumerates (QA-160)", async () => {
+    const res = await buyerAccess(
+      jsonReq({ email: "buyer@x.example" }, "198.51.100.78"),
+    );
+    expect(res.status).toBe(200);
+    const mail = email
+      .readOutbox(outboxDir)
+      .filter((m) => m.to === "buyer@x.example" && m.subject?.includes("quote links"))
+      .pop();
+    expect(mail).toBeTruthy();
+    expect(mail!.text).toContain("/quotes?");
+    expect(mail!.text).toContain("t=");
+
+    // Unknown inbox: same 200 shape, no mail.
+    const before = email
+      .readOutbox(outboxDir)
+      .filter((m) => m.to === "nobody@x.example").length;
+    const res2 = await buyerAccess(
+      jsonReq({ email: "nobody@x.example" }, "198.51.100.78"),
+    );
+    expect(res2.status).toBe(200);
+    expect(
+      email
+        .readOutbox(outboxDir)
+        .filter((m) => m.to === "nobody@x.example").length,
+    ).toBe(before);
   });
 
   it("listings POST emits listing_created", async () => {

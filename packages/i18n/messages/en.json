@@ -116,7 +116,10 @@
     "decline": "Decline",
     "declinedMsg": "Quote declined.",
     "declining": "Declining…",
-    "needLink": "Open the link from your RFQ or quote email to view your quotes."
+    "needLink": "Open the link from your RFQ or quote email to view your quotes.",
+    "needEmail": "Enter your email first.",
+    "resend": "Email me my links",
+    "resendSent": "If that email has requests, the links are on the way."
   },
   "design": {
     "title": "Design system",
