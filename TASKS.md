@@ -336,3 +336,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
   (defaults: DATABASE_URL set -> postgres). DrizzleRepo verified: full
   core-loop e2e green against seeded Postgres (60 listings).
 | 239 | ~17:20 | QA-253 | /api/vertical: Cache-Control public max-age=300 swr=600 (deployment-static config refetched on every client mount) |
+| 240 | ~17:35 | QA-254 | operatorRfqView masking pinned (no buyerEmail/accessToken/contact fields, machinery parity) + attrsFor/optionLabelKey/readJson/state-variant unit coverage; 78→86 web unit |
