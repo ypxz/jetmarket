@@ -72,9 +72,18 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
 }
 
 export function clientIp(req: Request): string {
+  // Trust order, most→least authoritative: fly-client-ip is set by the Fly
+  // edge; x-real-ip is overwritten by reverse proxies (nginx/Cloudflare/
+  // Vercel) with the real peer; the LAST x-forwarded-for entry is the hop our
+  // immediate upstream appended. The leftmost XFF entry is the client's own
+  // claim — freely spoofable, and rotating it minted unlimited rate-limit
+  // buckets (QA-140). With no trusted proxy the headers are client-controlled
+  // regardless — edge config must strip/overwrite them.
+  const xffLast = req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
   return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("fly-client-ip") ??
     req.headers.get("x-real-ip") ??
+    xffLast ??
     "local"
   );
 }
