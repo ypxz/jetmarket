@@ -112,9 +112,27 @@ describe("buildMachinerySeed", () => {
         ...seed.rfqRows,
       ].map((r) => r.id),
     );
-    for (const r of [...mseed.userRows, ...mseed.opRows, ...mseed.listingRows]) {
+    for (const r of [
+      ...mseed.userRows,
+      ...mseed.opRows,
+      ...mseed.listingRows,
+      ...mseed.rfqRows,
+    ]) {
       expect(jetsIds.has(r.id!)).toBe(false);
     }
+  });
+
+  it("seeds a demo RFQ trail like jets (delivered to pro, delayed for free)", () => {
+    expect(mseed.rfqRows).toHaveLength(1);
+    const byState = mseed.rfqMatchRows.reduce<Record<string, number>>(
+      (m, r) => {
+        m[r.state!] = (m[r.state!] ?? 0) + 1;
+        return m;
+      },
+      {},
+    );
+    expect(byState["sent"]).toBe(1); // alpine-werkzeug, delivered
+    expect(byState["delayed"]).toBe(2); // nord-foerdertechnik + lowlands (free)
   });
 
   it("validates every listing against the machinery config", () => {

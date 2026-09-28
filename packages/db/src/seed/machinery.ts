@@ -1,19 +1,26 @@
 /**
  * Idempotent machinery seed — same shape as the jets seed, for the second
  * vertical (spec: machinery = config-folder scaffold; this proves the data
- * layer works unchanged). 8 dealers / 24 listings across for_sale, for_rent,
+ * layer works unchanged). 8 dealers / 17 listings across for_sale, for_rent,
  * auction. Deterministic UUIDs + upserts; photos land in the storage mock's
  * dir.
  *
  * Row ids continue the shared counter space — users 1001–1008,
- * operators 1101–1108, listings 1200–1223 — so both seeds coexist in one db.
+ * operators 1101–1108, listings 1200–1216, RFQ demo trail 1300 — so both
+ * seeds coexist in one db.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../client";
-import { listings, operators, users } from "../schema";
-import type { NewListing, NewOperator, NewUser } from "../schema";
+import { listings, operators, rfqMatches, rfqs, users } from "../schema";
+import type {
+  NewListing,
+  NewOperator,
+  NewRfq,
+  NewRfqMatch,
+  NewUser,
+} from "../schema";
 
 const uid = (n: number): string =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -100,9 +107,11 @@ export interface MachinerySeedData {
   userRows: NewUser[];
   opRows: NewOperator[];
   listingRows: NewListing[];
+  rfqRows: NewRfq[];
+  rfqMatchRows: NewRfqMatch[];
 }
 
-export function buildMachinerySeed(): MachinerySeedData {
+export function buildMachinerySeed(now = new Date()): MachinerySeedData {
   const userRows: NewUser[] = DEALERS.map((d, i) => ({
     id: uid(i + 1001),
     email: d.email,
@@ -163,7 +172,51 @@ export function buildMachinerySeed(): MachinerySeedData {
       n += 1;
     });
   }
-  return { userRows, opRows, listingRows };
+
+  // Demo RFQ trail mirroring the jets seed (QA-225): one delivered match on a
+  // pro dealer plus two delayed matches on free dealers, so machinery-mode
+  // inboxes demonstrate the delayed-delivery upsell teaser too.
+  const rfqRows: NewRfq[] = [
+    {
+      id: uid(1300),
+      vertical: "machinery",
+      listingId: uid(1200), // alpine-werkzeug's DMG Mori milling centre
+      buyerEmail: "procurement@bavaria-werk.example",
+      fields: {
+        deliveryPostcode: "80331",
+        budgetEur: 400_000,
+        name: "Demo Buyer",
+        email: "procurement@bavaria-werk.example",
+      },
+      status: "matched",
+      dedupeKey: "seed-rfq-dmg-mori",
+    },
+  ];
+  const rfqMatchRows: NewRfqMatch[] = [
+    {
+      rfqId: uid(1300),
+      operatorId: uid(1101), // alpine-werkzeug — pro, delivered
+      listingId: uid(1200),
+      state: "sent",
+      deliverAt: new Date(now.getTime() - 3_600_000),
+    },
+    {
+      rfqId: uid(1300),
+      operatorId: uid(1103), // nord-foerdertechnik — free, delayed
+      listingId: uid(1200),
+      state: "delayed",
+      deliverAt: new Date(now.getTime() + 23 * 3_600_000),
+    },
+    {
+      rfqId: uid(1300),
+      operatorId: uid(1105), // lowlands-forklifts — free + unverified, delayed
+      listingId: uid(1200),
+      state: "delayed",
+      deliverAt: new Date(now.getTime() + 23 * 3_600_000),
+    },
+  ];
+
+  return { userRows, opRows, listingRows, rfqRows, rfqMatchRows };
 }
 
 // Keys live under the owning user's uploads/ prefix so the listing-photo
@@ -188,6 +241,7 @@ export interface SeedResult {
   operators: number;
   listings: number;
   photos: number;
+  rfqs: number;
 }
 
 export const MACHINERY_SEED_COUNTS = { operators: 8, listings: 17 } as const;
@@ -203,7 +257,8 @@ export async function seedMachinery(
   const storageDir =
     opts.storageDir ??
     (process.env.STORAGE_DIR ? resolve(process.env.STORAGE_DIR) : webStorage);
-  const { userRows, opRows, listingRows } = buildMachinerySeed();
+  const { userRows, opRows, listingRows, rfqRows, rfqMatchRows } =
+    buildMachinerySeed();
   const now = new Date();
 
   let photos = 0;
@@ -259,6 +314,28 @@ export async function seedMachinery(
           },
         });
     }
+    for (const row of rfqRows) {
+      await tx
+        .insert(rfqs)
+        .values(row)
+        .onConflictDoUpdate({
+          target: rfqs.id,
+          set: {
+            listingId: row.listingId,
+            fields: row.fields,
+            status: row.status,
+            dedupeKey: row.dedupeKey,
+          },
+        });
+    }
+    if (rfqMatchRows.length) {
+      await tx
+        .insert(rfqMatches)
+        .values(rfqMatchRows)
+        .onConflictDoNothing({
+          target: [rfqMatches.rfqId, rfqMatches.operatorId],
+        });
+    }
   });
 
   return {
@@ -266,5 +343,6 @@ export async function seedMachinery(
     operators: opRows.length,
     listings: listingRows.length,
     photos,
+    rfqs: rfqRows.length,
   };
 }

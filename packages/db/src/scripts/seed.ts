@@ -11,6 +11,6 @@ const { db, sql } = createDb(databaseUrl());
 const res =
   vertical === "machinery" ? await seedMachinery(db) : await seedJets(db);
 console.log(
-  `seeded ${vertical}: ${res.users} users, ${res.operators} operators, ${res.listings} listings, ${res.photos} photos`,
+  `seeded ${vertical}: ${res.users} users, ${res.operators} operators, ${res.listings} listings, ${res.photos} photos, ${res.rfqs} rfqs`,
 );
 await sql.end();
