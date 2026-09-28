@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
+import { ListingModButton } from "./listing-mod-button";
 import { MarkPaidButton, VoidInvoiceButton } from "./mark-paid";
 import { VerifyButton } from "./verify-button";
 
@@ -49,6 +50,14 @@ export default async function AdminPage({
     deals.map((d) => [d.id, operatorNames.get(d.operatorId) ?? "?"] as const),
   );
   const feeTotal = deals.reduce((s, d) => s + d.feeAmount, 0);
+
+  // Listing moderation (QA-157): newest 50 across live states — the takedown
+  // targets are active/paused listings, not drafts or already-archived rows.
+  const modListings = await repo.listListings({ limit: 50 });
+  const modOpRows = await repo.listOperators({
+    ids: [...new Set(modListings.map((l) => l.operatorId))],
+  });
+  const modOpNames = new Map(modOpRows.map((o) => [o.id, o.name] as const));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -154,6 +163,46 @@ export default async function AdminPage({
           page={page}
           pages={dealPages}
         />
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">
+          {t("listings", { count: modListings.length })}
+        </h2>
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colTitle")}</th>
+              <th className="py-2 pr-4">{t("colOperator")}</th>
+              <th className="py-2 pr-4">{t("colType")}</th>
+              <th className="py-2 pr-4">{t("colStatus")}</th>
+              <th className="py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {modListings.map((l) => (
+              <tr key={l.id} data-testid={`admin-listing-${l.id}`}>
+                <td className="py-2 pr-4 font-medium">{l.title}</td>
+                <td className="py-2 pr-4">{modOpNames.get(l.operatorId) ?? "?"}</td>
+                <td className="py-2 pr-4">{l.type}</td>
+                <td className="py-2 pr-4" data-testid={`admin-listing-status-${l.id}`}>
+                  {l.status}
+                </td>
+                <td className="flex gap-2 py-2">
+                  <ListingModButton listingId={l.id} status={l.status} action="paused" />
+                  <ListingModButton listingId={l.id} status={l.status} action="archived" />
+                </td>
+              </tr>
+            ))}
+            {modListings.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-muted">
+                  {t("noListings")}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table></div>
       </section>
     </main>
   );

@@ -21,6 +21,7 @@ import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
 import { POST as declineQuote } from "../../app/api/quotes/[id]/decline/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
+import { POST as moderateListing } from "../../app/api/admin/listings/[id]/status/route";
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (body?: unknown) =>
@@ -199,5 +200,37 @@ describe("POST /api/admin/deals/[id]/paid (admin)", () => {
 
     const again = await markPaid(post(), params(deal.id));
     expect(again.status).toBe(409);
+  });
+});
+
+describe("POST /api/admin/listings/[id]/status (QA-157)", () => {
+  it("is admin-only and only allows down-moderation states", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, listing } = await fixture(repo);
+
+    asUser(opUser.id); // operator, not admin
+    const denied = await moderateListing(
+      post({ status: "paused" }),
+      params(listing.id),
+    );
+    expect(denied.status).toBe(403);
+
+    const admin = await repo.createUser("admin-mod@test.dev", "admin");
+    asUser(admin.id);
+    // `active` rejected — reactivation stays operator-owned (plan cap binds).
+    const up = await moderateListing(
+      post({ status: "active" }),
+      params(listing.id),
+    );
+    expect(up.status).toBe(422);
+
+    const res = await moderateListing(
+      post({ status: "archived" }),
+      params(listing.id),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe("archived");
+    expect((await repo.getListing(listing.id))?.status).toBe("archived");
   });
 });
