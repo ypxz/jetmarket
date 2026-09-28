@@ -86,19 +86,22 @@ export default async function ListingPage({
   const listing = await load(id);
   if (!listing) notFound();
   const repo = await getRepo();
-  const operator = await repo.getOperator(listing.operatorId) ?? null;
-
-  // Same-type siblings keep the buyer in the browse loop when this one
-  // doesn't fit — 5 fetched so dropping self still yields up to 4.
-  const similar = (
-    await repo.listListings({
+  // Operator card and the similar rail both hang off `listing` — parallel.
+  const [operatorRow, similarRows] = await Promise.all([
+    repo.getOperator(listing.operatorId),
+    repo.listListings({
       vertical: listing.vertical,
       type: listing.type,
       status: "active",
       limit: 5,
       ...browseExpiry(),
-    })
-  )
+    }),
+  ]);
+  const operator = operatorRow ?? null;
+
+  // Same-type siblings keep the buyer in the browse loop when this one
+  // doesn't fit — 5 fetched so dropping self still yields up to 4.
+  const similar = similarRows
     .filter((l) => l.id !== listing.id)
     .slice(0, 4);
   const similarOps = new Map(

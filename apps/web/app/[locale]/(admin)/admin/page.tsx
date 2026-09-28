@@ -26,22 +26,37 @@ export default async function AdminPage({
   if (!user || user.role !== "admin") redirect("/sign-in");
 
   const repo = await getRepo();
-  const operatorCount = await repo.countOperators();
-  const dealTotal = await repo.countDeals();
+  // Wave 1: everything independent fires together (was 11 serialized
+  // round-trips — QA-252).
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs] =
+    await Promise.all([
+      repo.countOperators(),
+      repo.countDeals(),
+      repo.listOperators({ limit: 100 }),
+      repo.sumDealFees(),
+      repo.listListings({ limit: 50 }),
+      repo.listRfqs({ limit: 50 }),
+    ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? Math.min(rawPage, dealPages) : 1;
-  const deals = await repo.listDeals({
-    limit: SEARCH_PAGE_SIZE,
-    offset: (page - 1) * SEARCH_PAGE_SIZE,
-  });
-  // Cap the table render — count in the header already reflects the true total;
-  // beyond 100 operators this page needs a pager, not a longer table.
-  const operators = await repo.listOperators({ limit: 100 });
+  // Wave 2: the lookups that hang off wave-1 rows.
+  const [deals, listingCountRows, modOpRows, rfqListingRows] =
+    await Promise.all([
+      repo.listDeals({
+        limit: SEARCH_PAGE_SIZE,
+        offset: (page - 1) * SEARCH_PAGE_SIZE,
+      }),
+      repo.listListingCountsByOperator(operators.map((o) => o.id)),
+      repo.listOperators({
+        ids: [...new Set(modListings.map((l) => l.operatorId))],
+      }),
+      repo.listListings({
+        ids: [...new Set(modRfqs.map((r) => r.listingId))],
+      }),
+    ]);
   // One grouped query + one Map build — was 100 sequential counts (QA-100).
-  const listingCounts = new Map(
-    Object.entries(await repo.listListingCountsByOperator(operators.map((o) => o.id))),
-  );
+  const listingCounts = new Map(Object.entries(listingCountRows));
   // Deal rows resolve operator names in ONE query — the first-100 table page
   // doesn't necessarily contain a deal's operator (QA-100).
   const dealOpRows = await repo.listOperators({
@@ -56,23 +71,14 @@ export default async function AdminPage({
   // sumDealFees is a real all-deals aggregate — a page-scoped reduce would
   // understate "fees" once the ledger paginates (QA-171).
   const siteCurrency = verticalConfig().currency;
-  const feeTotal = await repo.sumDealFees();
 
   // Listing moderation (QA-157): newest 50 across live states — the takedown
   // targets are active/paused listings, not drafts or already-archived rows.
-  const modListings = await repo.listListings({ limit: 50 });
-  const modOpRows = await repo.listOperators({
-    ids: [...new Set(modListings.map((l) => l.operatorId))],
-  });
   const modOpNames = new Map(modOpRows.map((o) => [o.id, o.name] as const));
 
   // RFQ moderation (QA-181): newest 50 across all states — spam lands in
   // operator inboxes until an admin bins it. listing_id is set-null on
   // listing delete, so titles resolve via a batch lookup with a fallback.
-  const modRfqs = await repo.listRfqs({ limit: 50 });
-  const rfqListingRows = await repo.listListings({
-    ids: [...new Set(modRfqs.map((r) => r.listingId))],
-  });
   const rfqListingTitles = new Map(
     rfqListingRows.map((l) => [l.id, l.title] as const),
   );

@@ -55,9 +55,12 @@ export default async function RfqInboxPage({
   // fan-out matches make other operators' RFQs visible here; their quote
   // amounts must not leak to competitors (QA-73).
   const rfqIds = rfqsPage.map((r) => r.id);
-  const [listingRows, quoteRows] = await Promise.all([
+  // pendingRfqs powers the free-plan delayed-RFQ teaser (QA-225) — delayed
+  // matches are invisible until due, so the count becomes the upsell.
+  const [listingRows, quoteRows, pendingRfqs] = await Promise.all([
     repo.listListings({ ids: [...new Set(rfqsPage.map((r) => r.listingId))] }),
     repo.listQuotes({ rfqIds, operatorId: operator.id }),
+    operator.plan === "free" ? repo.countPendingRfqs(operator.id) : 0,
   ]);
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();
@@ -68,16 +71,11 @@ export default async function RfqInboxPage({
   }
   // Buyer contact fields stay masked pre-deal — the marketplace intro is
   // the fee (QA-152). The buyer's email reaches the winner via email only.
-  // Free-plan fan-out delay (QA-225): delayed matches are invisible until
-  // due — surface the count so the delay becomes an upsell, not silence.
-  const [pendingRfqs, rfqDelayHours] =
+  const rfqDelayHours =
     operator.plan === "free"
-      ? [
-          await repo.countPendingRfqs(operator.id),
-          vertical.fees.subscriptionPlans.find((p) => p.rfqDelayHours)
-            ?.rfqDelayHours ?? 24,
-        ]
-      : [0, 24];
+      ? (vertical.fees.subscriptionPlans.find((p) => p.rfqDelayHours)
+          ?.rfqDelayHours ?? 24)
+      : 24;
   const rfqRows = rfqsPage.map((r) => {
     const listing = listingById.get(r.listingId) ?? null;
     return {
