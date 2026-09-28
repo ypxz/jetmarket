@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { cx } from "./cx";
 
 export function Page({ className, ...props }: HTMLAttributes<HTMLElement>) {
-  return <main className={cx("min-h-[60vh]", className)} {...props} />;
+  return <main className={cx("min-h-main", className)} {...props} />;
 }
 
 export function Section({

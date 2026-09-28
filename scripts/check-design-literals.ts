@@ -1,5 +1,5 @@
 /**
- * `pnpm check:design` — CI gate: no color/spacing literals in apps/** code.
+ * `pnpm check:design` — CI gate: no color/spacing literals in apps/** or packages/ui code.
  * Catches hex colors, arbitrary Tailwind values ([#fff], [13px], [2.5rem]),
  * and raw palette utilities (bg-red-500 etc.) — app code must use tokens.
  */
@@ -7,7 +7,9 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const SCAN_DIRS = ["apps"];
+// apps/** is the product surface; packages/ui is where primitives live and
+// must stay token-pure too (a raw hex there bypasses every consumer check).
+const SCAN_DIRS = ["apps", "packages/ui/src"];
 const EXT = new Set([".ts", ".tsx", ".css"]);
 
 // Tailwind scale utilities (p-4, gap-6, mt-1) ARE the token system — allowed.
@@ -57,7 +59,7 @@ for (const dir of SCAN_DIRS) {
 }
 
 if (violations > 0) {
-  console.error(`\n${violations} design literal(s) in apps/** — use tokens/primitives (see packages/ui/tokens.css)`);
+  console.error(`\n${violations} design literal(s) in apps/** + packages/ui — use tokens/primitives (see packages/ui/tokens.css)`);
   process.exit(1);
 }
-console.log("check:design ok — no literals in apps/**");
+console.log("check:design ok — no literals in apps/** or packages/ui");

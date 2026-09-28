@@ -59,3 +59,9 @@
     font-family: var(--font-sans);
   }
 }
+
+/* Named layout utilities — primitives must stay token-pure (check:design
+ * scans packages/ui too), so viewport-relative guards live here. */
+@utility min-h-main {
+  min-height: 60vh;
+}
