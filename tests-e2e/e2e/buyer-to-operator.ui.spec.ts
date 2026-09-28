@@ -19,7 +19,10 @@ test('buyer sign-in can reach onboarding and becomes an operator', async ({
   });
 
   await step('/app shows the become-operator CTA instead of bouncing', async () => {
-    await page.goto('/app');
+    // The real path: the Operator nav link is visible to buyers too (QA-267 —
+    // it used to render only for operator/admin).
+    await page.goto('/');
+    await page.locator('nav').getByRole('link', { name: 'Operator' }).click();
     await expect(page.getByTestId('onboarding-cta')).toBeVisible();
   });
 

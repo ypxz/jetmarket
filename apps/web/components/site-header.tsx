@@ -24,7 +24,10 @@ export async function SiteHeader() {
           >
             {t("search")}
           </Link>
-          {user?.role === "operator" || user?.role === "admin" ? (
+          {/* Any signed-in user — a buyer lands on the becomeOperator CTA
+              (QA-267); hiding the link stranded buyers with no nav path to
+              onboarding. */}
+          {user ? (
             <Link
               href="/app"
               className="shrink-0 text-muted hover:text-foreground"
