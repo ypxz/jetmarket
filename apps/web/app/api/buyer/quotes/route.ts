@@ -1,4 +1,4 @@
-import { clientIp, err, ok, rateLimit } from "@/lib/api";
+import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 import { publicOperator } from "@/lib/repo/types";
@@ -83,7 +83,7 @@ export async function GET(req: Request) {
           : [{ label: labels.get(f.key) ?? f.key, value: String(v) }];
       });
   };
-  return ok(
+  return noStore(ok(
     rfqs.map((rfq) => ({
       // strip the bearer token — callers proved inbox access to get here,
       // but there's no reason to echo it back
@@ -102,5 +102,5 @@ export async function GET(req: Request) {
         operator: opById.get(q.operatorId) ?? null,
       })),
     })),
-  );
+  ));
 }

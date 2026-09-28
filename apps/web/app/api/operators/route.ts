@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
+import { clientIp, err, noStore, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   if (!prev && user.role === "buyer") {
     await repo.setUserRole(user.id, "operator");
   }
-  return ok(operator, prev ? 200 : 201);
+  return noStore(ok(operator, prev ? 200 : 201));
 }
 
 export async function GET() {

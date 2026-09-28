@@ -1,4 +1,4 @@
-import { clientIp, err, ok, rateLimit } from "@/lib/api";
+import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
@@ -24,11 +24,11 @@ export async function GET(req: Request) {
   ]);
   const quoteById = new Map(quoteRows.map((q) => [q.id, q] as const));
   const opById = new Map(opRows.map((o) => [o.id, o] as const));
-  return ok(
+  return noStore(ok(
     dealRows.map((d) => ({
       ...d,
       quote: quoteById.get(d.quoteId) ?? null,
       operator: opById.get(d.operatorId) ?? null,
     })),
-  );
+  ));
 }

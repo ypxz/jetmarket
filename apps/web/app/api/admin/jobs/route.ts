@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { clientIp, err, ok, rateLimit } from "@/lib/api";
+import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
@@ -24,5 +24,5 @@ export async function GET(req: Request) {
     vertical: verticalSlug(),
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : 50,
   });
-  return ok(jobs);
+  return noStore(ok(jobs));
 }

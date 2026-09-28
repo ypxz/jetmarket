@@ -12,6 +12,13 @@ export function err(message: string, status = 400, extra?: unknown) {
   );
 }
 
+/** Mark a response private — bearer/cookie-scoped JSON must never sit in a
+ *  shared cache keyed on URL alone (QA-305). */
+export function noStore<T extends NextResponse>(res: T): T {
+  res.headers.set("Cache-Control", "private, no-store");
+  return res;
+}
+
 // JSON API payloads here are small (form fields, messages); uploads go
 // through multipart on a different route. Cap to bound request-body memory.
 const MAX_JSON_BODY_BYTES = 64 * 1024;

@@ -1,4 +1,4 @@
-import { clientIp, err, ok, rateLimit } from "@/lib/api";
+import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 
@@ -24,11 +24,11 @@ export async function GET(req: Request) {
     repo.listListingCountsByOperator(ops.map((o) => o.id)),
   ]);
   const userById = new Map(userRows.map((u) => [u.id, u] as const));
-  return ok(
+  return noStore(ok(
     ops.map((o) => ({
       ...o,
       user: userById.get(o.userId) ?? null,
       listings: listingCounts[o.id] ?? 0,
     })),
-  );
+  ));
 }

@@ -1,4 +1,4 @@
-import { clientIp, err, ok, rateLimit } from "@/lib/api";
+import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   // accepts — the marketplace intro is its fee; raw contact details pre-deal
   // invite off-platform deals that bypass it (QA-152).
   const vertical = verticalConfig();
-  return ok(
+  return noStore(ok(
     rfqs.map((rfq) => {
       const listing = listingById.get(rfq.listingId) ?? null;
       return {
@@ -57,5 +57,5 @@ export async function GET(req: Request) {
         quotes: quotesByRfq.get(rfq.id) ?? [],
       };
     }),
-  );
+  ));
 }
