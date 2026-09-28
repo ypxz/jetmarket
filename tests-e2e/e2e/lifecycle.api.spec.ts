@@ -14,7 +14,13 @@ async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
   const res = await ctx.post('/api/auth/magic-link', { data: { email, role } });
   expect(res.ok()).toBeTruthy();
   const { devLink } = (await res.json()) as { devLink: string };
-  const cb = await ctx.get(new URL(devLink).pathname + new URL(devLink).search);
+  const cbUrl = new URL(devLink);
+  const cb = await ctx.post('/api/auth/callback', {
+    form: {
+      token: cbUrl.searchParams.get('token')!,
+      next: cbUrl.searchParams.get('next') ?? '/',
+    },
+  });
   expect(cb.status()).toBeLessThan(400);
   return ctx;
 }

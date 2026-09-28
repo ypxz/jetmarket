@@ -48,6 +48,32 @@ test('rfq abuse: captcha force-fail → 403, honeypot → fake 201, rate limit �
   await ctx.dispose();
 });
 
+test('magic-link prefetch: GET verifies but does not consume the token', async () => {
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'x-forwarded-for': IP },
+  });
+  const email = `ml-prefetch-${run}@x.test`;
+  const res = await ctx.post('/api/auth/magic-link', { data: { email } });
+  const { devLink } = (await res.json()) as { devLink: string };
+  const cbUrl = new URL(devLink);
+  const token = cbUrl.searchParams.get('token')!;
+
+  // Scanner prefetches the link twice — token must stay live.
+  for (let i = 0; i < 2; i++) {
+    const peek = await ctx.get(cbUrl.pathname + cbUrl.search);
+    expect(peek.status()).toBe(200);
+    expect(peek.headers()['content-type']).toContain('text/html');
+  }
+  // The real user then POSTs the confirm form and gets the session.
+  const cb = await ctx.post('/api/auth/callback', { form: { token } });
+  expect(cb.status()).toBeLessThan(400);
+  expect(await ctx.get('/api/auth/me').then((r) => r.ok())).toBeTruthy();
+  // Single-use still holds: a second POST redirects to the sign-in error.
+  const replay = await ctx.post('/api/auth/callback', { form: { token } });
+  expect(replay.url()).toContain('error=invalid-token');
+  await ctx.dispose();
+});
+
 test('magic-link abuse: per-inbox rate limit → 429', async () => {
   const ctx = await request.newContext({
     extraHTTPHeaders: { 'x-forwarded-for': IP },

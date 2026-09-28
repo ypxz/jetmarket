@@ -44,7 +44,9 @@
 - `POST /api/auth/magic-link {email, role}` → `{ devLink }` (mock mode); emailed
   link goes to `tmp/outbox/*.json` (`{to, subject, body}`) or Mailpit when
   `EMAIL_PROVIDER=smtp` (`MAILPIT_API_URL` — helper tries both).
-- `GET /api/auth/callback?token=` sets `jm_session` cookie.
+- `GET /api/auth/callback?token=` verifies only → confirm page (data-testid
+  `confirm-signin`); `POST /api/auth/callback` consumes and sets `jm_session`.
+  (Scanners prefetch GET without burning the single-use token.)
 - `admin@jetmarket.local` resolves to admin via `ADMIN_EMAILS` (default list).
 - `GET /api/health` → `{ ok: true, vertical }`.
 - E2E env vars: `E2E_BASE_URL` (skip webServer boot, test a deploy),

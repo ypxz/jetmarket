@@ -48,6 +48,9 @@ export async function signUpAndLogin(
   } else {
     await page.goto(await waitForEmailLink(email));
   }
+  // GET only verifies — the session cookie is set by posting the confirm
+  // form (magic links survive mail-scanner prefetch this way).
+  await page.getByTestId('confirm-signin').click();
 }
 
 export async function createOperatorProfile(

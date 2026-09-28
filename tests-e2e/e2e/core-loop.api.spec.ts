@@ -24,8 +24,14 @@ async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
   expect(res.ok()).toBeTruthy();
   const { devLink } = (await res.json()) as { devLink: string };
   expect(devLink).toBeTruthy();
-  // callback issues jm_session cookie → stored in ctx
-  const cb = await ctx.get(new URL(devLink).pathname + new URL(devLink).search);
+  // GET only verifies — POST the confirm form to consume + get jm_session
+  const cbUrl = new URL(devLink);
+  const cb = await ctx.post('/api/auth/callback', {
+    form: {
+      token: cbUrl.searchParams.get('token')!,
+      next: cbUrl.searchParams.get('next') ?? '/',
+    },
+  });
   expect(cb.status()).toBeLessThan(400);
   return ctx;
 }
