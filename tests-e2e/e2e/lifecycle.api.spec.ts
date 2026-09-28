@@ -224,3 +224,46 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
     ((await edited.json()) as { title: string }).title.endsWith('— edited'),
   ).toBeTruthy();
 });
+
+// A user who first signed in as buyer can still become an operator: the role
+// radio only applies at account creation, so POST /api/operators promotes a
+// buyer-role account on first profile creation (QA-267). Without it the
+// onboarding form would 401 forever for any email that ever signed in as
+// buyer.
+test('buyer-role account is promoted to operator on first profile create', async () => {
+  const buyer = await login(`e2e-lc-switch-${run}@jetmarket.local`, 'buyer');
+
+  // Before onboarding the operator-gated routes reject them.
+  expect(
+    (
+      await buyer.post('/api/listings', {
+        data: {
+          type: 'charter',
+          title: 'should not exist',
+          price: 1,
+          currency: 'USD',
+          photos: [],
+          attributes: { aircraftCategory: 'light', model: 'X', seats: 4 },
+        },
+      })
+    ).status(),
+  ).toBe(401);
+
+  const onb = await buyer.post('/api/operators', {
+    data: { name: `Switch Ops ${run}`, baseAirport: 'GVA' },
+  });
+  expect(onb.status()).toBe(201);
+
+  // Promotion is immediate — the same session now passes operator gates.
+  const lres = await buyer.post('/api/listings', {
+    data: {
+      type: 'charter',
+      title: `Switch Charter ${run}`,
+      price: 20000,
+      currency: 'USD',
+      photos: [],
+      attributes: { aircraftCategory: 'light', model: 'PC-24', seats: 6 },
+    },
+  });
+  expect(lres.status()).toBe(201);
+});

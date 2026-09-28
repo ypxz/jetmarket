@@ -10,8 +10,12 @@ const UpsertOperator = z.object({
 });
 
 export async function POST(req: Request) {
-  const user = await requireUser("operator");
-  if (!user) return err("sign in as an operator first", 401);
+  // Any signed-in user may create an operator profile — a buyer-role account is
+  // promoted to operator on first creation (the sign-in role radio only sets
+  // the role at account creation, so existing buyers would otherwise be locked
+  // out of onboarding forever).
+  const user = await requireUser();
+  if (!user) return err("sign in first", 401);
   if (!rateLimit(`operator-upsert:${clientIp(req)}`, 30, 60 * 60 * 1000)) {
     return err("rate limit exceeded — try again later", 429);
   }
@@ -28,6 +32,9 @@ export async function POST(req: Request) {
     baseAirport: data!.baseAirport,
     fleetSummary: data!.fleetSummary ?? "",
   });
+  if (!prev && user.role === "buyer") {
+    await repo.setUserRole(user.id, "operator");
+  }
   return ok(operator, prev ? 200 : 201);
 }
 
