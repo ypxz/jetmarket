@@ -199,6 +199,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 115 | ~03:30 | QA-129 | providers | Resend send() payload verified against resend-openapi SendEmailRequest — drops in as-is |
 | 116 | ~03:40 | QA-130 | notify | Operator email on quote decline (buyer decline + competing-accept sibling) |
 | 117 | ~03:45 | QA-131 | notify | Buyer email on operator quote withdrawal |
+| 118 | ~03:55 | QA-132 | worker | Expiry sweep emails buyer + quoted operators; worker brand literal → site.name |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
