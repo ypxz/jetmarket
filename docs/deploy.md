@@ -1,8 +1,11 @@
 # Deploying JetMarket
 
-The repo ships as a pnpm monorepo. The only deployable artifact today is
-`apps/web` (Next.js 15, standalone output). `apps/worker` is a stub until
-T13 (RFQ fan-out) lands — its Dockerfile then runs `pnpm --filter @jetmarket/worker start`.
+The repo ships as a pnpm monorepo with two deployable artifacts:
+`apps/web` (Next.js 15, standalone output — repo-root `Dockerfile`) and
+`apps/worker` (background jobs: RFQ fan-out, match delivery, expiry sweep —
+`Dockerfile.worker`, entry `pnpm --filter @jetmarket/worker start`). The
+worker needs only `DATABASE_URL`; deploy it alongside web or defer it —
+without it, delayed RFQs never deliver and expiries never fire.
 
 ## Docker (web)
 
@@ -21,9 +24,9 @@ is ~the traced server + static assets only — no dev deps, no source.
 
 - **Fly.io / Render / Railway:** point at the repo-root `Dockerfile`,
   expose port 3000, set the env vars below. Health check path `/api/health`.
-- **Docker Compose (local):** `pnpm db:up` already brings postgres,
-  stripe-mock and Mailpit; `docker compose up -d` plus this image covers
-  the rest.
+- **Docker Compose (local):** `docker compose --profile app up --build`
+  brings the full stack — web + worker + postgres + stripe-mock + Mailpit
+  (`SEED_DEMO_DATA=1` seeds on first boot).
 
 ## Environment
 
@@ -33,7 +36,7 @@ All variables live in `.env.example` (the contract). Production minimums:
 |-----|-----------|-------|
 | `APP_URL` | `https://<your-domain>` | used for absolute links/emails |
 | `VERTICAL` | `jets` (or `machinery`) | boots that vertical config |
-| `DATABASE_URL` | `postgres://…` | needed once `packages/db` is wired (T4) |
+| `DATABASE_URL` | `postgres://…` | required — repo + worker + expiry sweep all need it |
 | `SESSION_SECRET` | random 32+ bytes | replaces `dev-only-not-a-secret` |
 | `*_PROVIDER` | `mock` → real adapter | swap per `.env.example` comments |
 
