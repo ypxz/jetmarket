@@ -98,18 +98,25 @@ describe("fees", () => {
 
 describe("session signing", () => {
   it("round-trips and rejects tampering", () => {
-    const token = signSession("usr_test1");
-    expect(verifySession(token)).toBe("usr_test1");
+    const token = signSession("usr_test1", 1);
+    expect(verifySession(token)).toEqual({
+      userId: "usr_test1",
+      sessionVersion: 1,
+    });
     expect(verifySession("usr_test1.1.deadbeef")).toBeNull();
+    expect(verifySession("usr_test1.1.2.deadbeef")).toBeNull();
+    // A signature minted for v1 doesn't verify against a tampered v2 payload.
+    const tampered = token.replace(/\.1\./, ".2.");
+    expect(verifySession(tampered)).toBeNull();
     expect(verifySession("garbage")).toBeNull();
     expect(verifySession(undefined)).toBeNull();
   });
 
   it("expires stale tokens and never crosses purposes", async () => {
     // Fresh tokens pass; tokens aged past their TTL are rejected.
-    const session = signSession("u1");
+    const session = signSession("u1", 1);
     const link = signMagicLink("u1");
-    expect(verifySession(session)).toBe("u1");
+    expect(verifySession(session)?.userId).toBe("u1");
     expect(verifyMagicLink(link)).toBe("u1");
     // A session token can't be replayed as a magic link (or vice versa).
     expect(verifyMagicLink(session)).toBeNull();

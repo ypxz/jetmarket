@@ -13,6 +13,8 @@ export interface User {
   id: string;
   email: string;
   role: UserRole;
+  /** Session cookies embed this; bumping revokes all sessions server-side. */
+  sessionVersion: number;
   createdAt: string;
 }
 
@@ -134,6 +136,8 @@ export interface Repo {
   getUser(id: string): Promise<User | undefined>;
   /** Batch-lookup users by id — join-style admin pages. */
   listUsers(ids: string[]): Promise<User[]>;
+  /** Invalidate every outstanding session for the user (logout). */
+  bumpSessionVersion(userId: string): Promise<void>;
 
   upsertOperator(
     o: Omit<Operator, "id" | "createdAt"> & { id?: string },

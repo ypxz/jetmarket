@@ -25,61 +25,87 @@ function secret() {
   return s ?? "dev-only-not-a-secret";
 }
 
-// Tokens are `<userId>.<issuedAtMs>.<hmac>` where the MAC covers the purpose
+// Magic links are `<userId>.<issuedAtMs>.<hmac>`; sessions are
+// `<userId>.<issuedAtMs>.<sessionVersion>.<hmac>`. The MAC covers the purpose
 // tag — a stolen session can't be replayed as a magic link and vice versa.
-// Stateless by design (sessions survive restarts); revocation is cookie-level.
+// Sessions carry users.session_version so logout revokes server-side: bump the
+// version and every outstanding cookie — including a stolen one — fails the
+// comparison in currentUser. Magic links keep the 3-part form (15-min TTL,
+// one-shot, not worth versioning).
 type Purpose = "s" | "ml";
 
-function sign(purpose: Purpose, userId: string, iat: number): string {
+function sign(purpose: Purpose, payload: string): string {
   return createHmac("sha256", secret())
-    .update(`${purpose}:${userId}.${iat}`)
+    .update(`${purpose}:${payload}`)
     .digest("hex");
 }
 
-function verify(
-  purpose: Purpose,
+function verifyParts(
   value: string | undefined,
-  ttlMs: number,
-): string | null {
+  parts: number,
+): string[] | null {
   if (!value) return null;
-  const parts = value.split(".");
-  if (parts.length !== 3) return null;
-  const [userId, iatStr, sig] = parts;
+  const p = value.split(".");
+  if (p.length !== parts) return null;
+  const [userId, iatStr] = p;
   const iat = Number(iatStr);
+  const sig = p[p.length - 1];
   if (!userId || !sig || sig.length !== 64 || !Number.isFinite(iat)) return null;
-  const expect = sign(purpose, userId, iat);
-  const a = Buffer.from(sig);
+  const age = Date.now() - iat;
+  if (age > Number.MAX_SAFE_INTEGER || age < -SKEW_MS) return null;
+  return p;
+}
+
+export function signSession(userId: string, sessionVersion: number): string {
+  const iat = Date.now();
+  return `${userId}.${iat}.${sessionVersion}.${sign("s", `${userId}.${iat}.${sessionVersion}`)}`;
+}
+
+/** Returns the embedded userId+version; caller compares against the row. */
+export function verifySession(
+  value: string | undefined,
+): { userId: string; sessionVersion: number } | null {
+  const p = verifyParts(value, 4);
+  if (!p) return null;
+  const [userId, , verStr, sig] = p;
+  const iat = Number(p[1]);
+  const ver = Number(verStr);
+  if (!Number.isInteger(ver) || ver < 1) return null;
+  if (Date.now() - iat > SESSION_TTL_MS) return null;
+  const expect = sign("s", `${userId}.${iat}.${ver}`);
+  const a = Buffer.from(sig!);
   const b = Buffer.from(expect);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  const age = Date.now() - iat;
-  if (age > ttlMs || age < -SKEW_MS) return null;
-  return userId;
-}
-
-export function signSession(userId: string): string {
-  const iat = Date.now();
-  return `${userId}.${iat}.${sign("s", userId, iat)}`;
-}
-
-export function verifySession(value: string | undefined): string | null {
-  return verify("s", value, SESSION_TTL_MS);
+  return { userId: userId!, sessionVersion: ver };
 }
 
 export function signMagicLink(userId: string): string {
   const iat = Date.now();
-  return `${userId}.${iat}.${sign("ml", userId, iat)}`;
+  return `${userId}.${iat}.${sign("ml", `${userId}.${iat}`)}`;
 }
 
 export function verifyMagicLink(value: string | undefined): string | null {
-  return verify("ml", value, MAGIC_LINK_TTL_MS);
+  const p = verifyParts(value, 3);
+  if (!p) return null;
+  const [userId, iatStr, sig] = p;
+  const iat = Number(iatStr);
+  if (Date.now() - iat > MAGIC_LINK_TTL_MS) return null;
+  const expect = sign("ml", `${userId}.${iat}`);
+  const a = Buffer.from(sig!);
+  const b = Buffer.from(expect);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return userId!;
 }
 
 export async function currentUser(): Promise<User | null> {
   const jar = await cookies();
-  const userId = verifySession(jar.get(COOKIE)?.value);
-  if (!userId) return null;
+  const sess = verifySession(jar.get(COOKIE)?.value);
+  if (!sess) return null;
   const repo = await getRepo();
-  return (await repo.getUser(userId)) ?? null;
+  const user = await repo.getUser(sess.userId);
+  // Server-side revocation: version drift (logout bumps it) kills the session.
+  if (!user || user.sessionVersion !== sess.sessionVersion) return null;
+  return user;
 }
 
 export async function requireUser(role?: UserRole): Promise<User | null> {

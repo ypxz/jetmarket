@@ -47,6 +47,7 @@ function toUser(r: typeof users.$inferSelect): User {
     id: r.id,
     email: r.email,
     role: r.role as UserRole,
+    sessionVersion: r.sessionVersion,
     createdAt: iso(r.createdAt),
   };
 }
@@ -217,6 +218,12 @@ export class DrizzleRepo implements Repo {
       .where(eq(users.email, email))
       .limit(1);
     return r ? toUser(r) : undefined;
+  }
+  async bumpSessionVersion(userId: string): Promise<void> {
+    await this.db
+      .update(users)
+      .set({ sessionVersion: sql`${users.sessionVersion} + 1` })
+      .where(eq(users.id, userId));
   }
   async getUser(id: string): Promise<User | undefined> {
     if (!isUuid(id)) return undefined;

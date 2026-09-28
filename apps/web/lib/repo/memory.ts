@@ -34,7 +34,13 @@ class MemoryRepo implements Repo {
     const normalized = email.toLowerCase();
     const existing = await this.findUserByEmail(normalized);
     if (existing) return existing;
-    const u: User = { id: uid("usr"), email: normalized, role, createdAt: now() };
+    const u: User = {
+      id: uid("usr"),
+      email: normalized,
+      role,
+      sessionVersion: 1,
+      createdAt: now(),
+    };
     this.users.set(u.id, u);
     return u;
   }
@@ -47,6 +53,10 @@ class MemoryRepo implements Repo {
   async listUsers(ids: string[]) {
     const want = new Set(ids);
     return [...this.users.values()].filter((u) => want.has(u.id));
+  }
+  async bumpSessionVersion(userId: string) {
+    const u = this.users.get(userId);
+    if (u) u.sessionVersion += 1;
   }
 
   async upsertOperator(

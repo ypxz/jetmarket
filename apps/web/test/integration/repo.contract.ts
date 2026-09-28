@@ -295,6 +295,19 @@ export function repoContract(
       expect(unstamped.status).toBe("canceled");
     });
 
+    it("bumpSessionVersion invalidates sessions server-side", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`sv-${tag}@test.dev`);
+      expect(user.sessionVersion).toBe(1);
+      await repo.bumpSessionVersion(user.id);
+      expect((await repo.getUser(user.id))?.sessionVersion).toBe(2);
+      // Missing users are a no-op, not an error.
+      await repo.bumpSessionVersion(
+        "00000000-0000-0000-0000-000000000000",
+      );
+    });
+
     it("filters listings by status/vertical/type/facets/query", async () => {
       const repo = await factory();
       const tag = `flt${Date.now().toString(36)}`;

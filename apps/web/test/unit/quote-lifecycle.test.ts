@@ -77,9 +77,9 @@ async function fixture(repo: Repo) {
   return { opUser, op, otherUser, otherOp, listing, rfq, quote, buyerEmail };
 }
 
-const asUser = (id: string | null) =>
+const asUser = (id: string | null, sessionVersion = 1) =>
   id
-    ? jar.set(sessionCookie, signSession(id))
+    ? jar.set(sessionCookie, signSession(id, sessionVersion))
     : jar.delete(sessionCookie);
 
 beforeEach(() => jar.clear());

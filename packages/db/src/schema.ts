@@ -24,6 +24,7 @@ export const users = pgTable("users", {
   role: text("role", { enum: ["buyer", "operator", "admin"] })
     .notNull()
     .default("operator"),
+  sessionVersion: integer("session_version").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
