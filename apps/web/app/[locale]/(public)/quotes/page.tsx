@@ -20,7 +20,7 @@ interface Rfq {
   status: string;
   buyerEmail: string;
   createdAt: string;
-  listing: { title: string; currency: string } | null;
+  listing: { id: string; title: string; currency: string; browseable?: boolean } | null;
   // Echo of the request's own spec fields ("Departure: TEB"), built
   // server-side in vertical field order — contact fields excluded.
   requestFields: { label: string; value: string }[];
@@ -212,7 +212,19 @@ function QuotesInner() {
             {rfqs.map((r) => (
               <li key={r.id} className="rounded-md border border-border p-4" data-testid={`buyer-rfq-${r.id}`}>
                 <div className="flex justify-between">
-                  <div className="font-medium">{r.listing?.title}</div>
+                  <div className="font-medium">
+                    {r.listing?.browseable ? (
+                      <a
+                        href={`/listing/${r.listing.id}`}
+                        className="underline decoration-border underline-offset-4 hover:text-primary"
+                        data-testid={`rfq-listing-${r.id}`}
+                      >
+                        {r.listing.title}
+                      </a>
+                    ) : (
+                      r.listing?.title
+                    )}
+                  </div>
                   <span className="flex items-center gap-3">
                     <span className="text-xs text-muted" data-testid={`rfq-state-${r.id}`}>{tc(`rfqState.${r.status}`)}</span>
                     {["open", "matched", "quoted"].includes(r.status) ? (

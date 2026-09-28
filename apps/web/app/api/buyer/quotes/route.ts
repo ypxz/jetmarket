@@ -2,6 +2,7 @@ import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { sweepStaleRfqs } from "@/lib/sweep";
+import { isExpiredListing } from "@/lib/search";
 import { verticalConfig, verticalMessages } from "@/lib/vertical";
 import { rfqFieldLabels, rfqFieldsFor } from "@jetmarket/verticals";
 
@@ -81,7 +82,14 @@ export async function GET(req: Request) {
       // but there's no reason to echo it back
       ...{ ...rfq, accessToken: undefined },
       requestFields: requestFieldsOf(rfq.listingId, rfq.fields),
-      listing: listingById.get(rfq.listingId) ?? null,
+      listing: (() => {
+        const l = listingById.get(rfq.listingId) ?? null;
+        // Browseable = still publicly renderable; expired/withdrawn listings
+        // 404 on /listing/[id] and must not be linked from the inbox (QA-244).
+        return l
+          ? { ...l, browseable: l.status === "active" && !isExpiredListing(l) }
+          : null;
+      })(),
       quotes: (quotesByRfq.get(rfq.id) ?? []).map((q) => ({
         ...q,
         operator: opById.get(q.operatorId) ?? null,
