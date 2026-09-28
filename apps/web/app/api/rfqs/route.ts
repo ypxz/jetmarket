@@ -11,6 +11,7 @@ import { getRepo, repoBackend } from "@/lib/repo";
 import { isExpiredListing } from "@/lib/search";
 import { getDbSql } from "@/lib/repo/drizzle";
 import { enqueueJob } from "@jetmarket/db";
+import { appOrigin } from "@/lib/origin";
 
 const CreateRfq = z.object({
   listingId: z.string().min(1).max(64),
@@ -155,7 +156,7 @@ export async function POST(req: Request) {
   // path. The mail is boilerplate + listing title (no submitted fields), so a
   // bogus buyerEmail can't weaponize it beyond "someone used your address".
   // Token goes only to the claimed mailbox — same model as magic links.
-  const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
+  const appUrl = appOrigin(req);
   const inboxUrl = `${appUrl}/quotes?email=${encodeURIComponent(
     rfq.buyerEmail,
   )}#t=${encodeURIComponent(rfq.accessToken)}`;

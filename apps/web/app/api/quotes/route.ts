@@ -10,6 +10,7 @@ import {
   emailProvider,
   analyticsProvider,
 } from "@jetmarket/providers";
+import { appOrigin } from "@/lib/origin";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1).max(64),
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
   // (their retry would 409 on the live-quote guard). Operator sees the quote
   // in their inbox; the buyer's email can be resent later (QA-155).
   try {
-    const inboxUrl = `${process.env.APP_URL ?? new URL(req.url).origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}#t=${encodeURIComponent(rfq.accessToken)}`;
+    const inboxUrl = `${appOrigin(req)}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}#t=${encodeURIComponent(rfq.accessToken)}`;
     const quoteSubject = `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`;
     await emailProvider().send({
       to: rfq.buyerEmail,

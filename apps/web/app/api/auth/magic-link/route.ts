@@ -4,6 +4,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { signMagicLink } from "@/lib/auth";
+import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
   email: z.string().email().max(254),
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
+  const appUrl = appOrigin(req);
   // Operator intent lands on onboarding (no profile yet) or the dashboard;
   // buyer intent on the home page. An existing buyer choosing "I operate"
   // still lands on onboarding — the role upgrade happens at the first

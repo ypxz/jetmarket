@@ -10,6 +10,7 @@ import {
   paymentsProvider,
   paymentsProviderName,
 } from "@jetmarket/providers";
+import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({ plan: z.literal("pro") });
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
 
-  const origin = process.env.APP_URL ?? new URL(req.url).origin;
+  const origin = appOrigin(req);
   const session = await paymentsProvider().createCheckoutSession({
     operatorId: operator.id,
     plan: data!.plan,

@@ -4,6 +4,7 @@ import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { site } from "@jetmarket/config";
+import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
   email: z.string().email().max(254),
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     return ok({ sent: true });
   }
 
-  const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
+  const appUrl = appOrigin(req);
   const listings = new Map(
     (
       await repo.listListings({

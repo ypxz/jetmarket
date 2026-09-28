@@ -2,6 +2,7 @@ import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { paymentsProvider } from "@jetmarket/providers";
+import { appOrigin } from "@/lib/origin";
 
 export async function POST(req: Request) {
   const user = await requireUser("operator");
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
   if (!operator) return err("create an operator profile first", 409);
   const { url } = await paymentsProvider().createPortalSession({
     customerId: operator.id,
-    returnUrl: `${process.env.APP_URL ?? new URL(req.url).origin}/app/billing`,
+    returnUrl: `${appOrigin(req)}/app/billing`,
   });
   return ok({ url });
 }
