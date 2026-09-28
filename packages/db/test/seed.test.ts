@@ -50,11 +50,13 @@ describe("buildJetsSeed", () => {
     for (const a of ["ZRH", "GVA", "NCE", "LTN"]) {
       expect(airports.has(a), `empty legs must touch ${a}`).toBe(true);
     }
-    // All legs have future departure dates.
-    for (const l of legs) {
-      const d = String(l.attributes?.["date"]);
-      expect(d >= "2026-09-15").toBe(true);
-    }
+    // All legs have future departure dates except the seeded flown leg
+    // (GVA → IBZ, dayOffset -2 — QA-219 exercises public expiry).
+    const past = legs.filter(
+      (l) => String(l.attributes?.["date"]) < "2026-09-15",
+    );
+    expect(past.map((l) => l.attributes?.["to"])).toEqual(["IBZ"]);
+    expect(legs.length - past.length).toBe(27);
   });
 
   it("has a realistic mix of types, plans and verification states", () => {
@@ -63,7 +65,7 @@ describe("buildJetsSeed", () => {
       return m;
     }, {});
     expect(types["charter"]).toBe(21);
-    expect(types["empty_leg"]).toBe(27);
+    expect(types["empty_leg"]).toBe(28);
     expect(types["aircraft_sale"]).toBe(12);
 
     const verified = seed.opRows.filter((o) => o.verified).length;

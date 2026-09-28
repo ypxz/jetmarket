@@ -59,7 +59,6 @@ describe("migrations", () => {
       "quotes",
       "deals",
       "subscriptions",
-      "usage",
       "jobs",
       "_migrations",
     ]) {
@@ -72,7 +71,7 @@ describe("migrations", () => {
 });
 
 describe("jets seed", () => {
-  it("inserts 15 operators and 60 listings, idempotent on re-run", async () => {
+  it("inserts 15 operators and 61 listings, idempotent on re-run", async () => {
     const first = await seedJets(client.db, {
       storageDir: "tmp/test-storage",
       now: new Date("2026-09-15T00:00:00Z"),

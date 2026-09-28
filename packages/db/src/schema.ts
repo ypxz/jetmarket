@@ -11,7 +11,6 @@ import {
   jsonb,
   numeric,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -230,19 +229,6 @@ export const subscriptions = pgTable(
   },
 );
 
-export const usage = pgTable(
-  "usage",
-  {
-    operatorId: uuid("operator_id")
-      .notNull()
-      .references(() => operators.id, { onDelete: "cascade" }),
-    metric: text("metric").notNull(),
-    period: text("period").notNull().default("all"),
-    value: integer("value").notNull().default(0),
-  },
-  (t) => [primaryKey({ columns: [t.operatorId, t.metric, t.period] })],
-);
-
 export const jobs = pgTable(
   "jobs",
   {
@@ -281,7 +267,6 @@ export type RfqMatchRow = typeof rfqMatches.$inferSelect;
 export type QuoteRow = typeof quotes.$inferSelect;
 export type DealRow = typeof deals.$inferSelect;
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
-export type UsageRow = typeof usage.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;
 
 export type NewUser = typeof users.$inferInsert;
@@ -292,5 +277,4 @@ export type NewRfqMatch = typeof rfqMatches.$inferInsert;
 export type NewQuote = typeof quotes.$inferInsert;
 export type NewDeal = typeof deals.$inferInsert;
 export type NewSubscription = typeof subscriptions.$inferInsert;
-export type NewUsage = typeof usage.$inferInsert;
 export type NewJob = typeof jobs.$inferInsert;
