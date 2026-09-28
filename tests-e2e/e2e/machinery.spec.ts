@@ -103,12 +103,20 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     // inputs re-render, and a pre-hydration click natively GETs the same URL —
     // refill + resubmit until the POST lands
     await expect(async () => {
-      await fillRfqForm(buyer, BUYER_EMAIL);
-      await buyer.getByTestId('rfq-submit').click();
+      // Once a retry lands the POST the page navigates to /rfq/thanks and the
+      // form is gone — refilling would throw and burn the rest of the toPass
+      // budget while the confirmation renders (QA-316).
+      if (!buyer.url().includes('/rfq/thanks')) {
+        await fillRfqForm(buyer, BUYER_EMAIL);
+        await buyer.getByTestId('rfq-submit').click();
+      }
+      // Wait on the redirect, not the element — under `next dev` cold-compile
+      // /rfq/thanks can take several seconds to render (QA-144).
+      await buyer.waitForURL(/\/rfq\/thanks/, { timeout: 12_000 });
       await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       });
-    }).toPass({ timeout: 20_000 });
+    }).toPass({ timeout: 40_000 });
   });
 
   await step('operator quotes and buyer accepts', async () => {

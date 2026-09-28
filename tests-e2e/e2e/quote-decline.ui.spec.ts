@@ -58,8 +58,11 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     });
     await fillRfqForm(buyer, BUYER_EMAIL);
     await buyer.getByTestId('rfq-submit').click();
+    // Wait on the redirect, not the element — /rfq/thanks can take several
+    // seconds to render under `next dev` cold-compile (QA-144/QA-316).
+    await buyer.waitForURL(/\/rfq\/thanks/, { timeout: 15_000 });
     await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
-      timeout: 15_000,
+      timeout: 10_000,
     });
   });
 
