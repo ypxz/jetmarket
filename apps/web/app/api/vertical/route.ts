@@ -67,7 +67,7 @@ export async function GET(req: Request) {
     return err("rate limit exceeded — try again later", 429);
   }
   const c = verticalConfig();
-  return ok({
+  const res = ok({
     slug: verticalSlug(),
     name: c.name,
     currency: c.currency,
@@ -78,4 +78,11 @@ export async function GET(req: Request) {
     fees: c.fees,
     seo: { landingPages: c.seo.landingPages },
   });
+  // The payload is identical for every user and only changes on deploy — let
+  // browsers/CDNs reuse it so client mounts don't re-hit origin each time.
+  res.headers.set(
+    "Cache-Control",
+    "public, max-age=300, stale-while-revalidate=600",
+  );
+  return res;
 }
