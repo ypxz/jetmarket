@@ -158,7 +158,7 @@ export function buildMachinerySeed(): MachinerySeedData {
         priceMinor,
         currency: "EUR",
         status: "active",
-        photos: [0, 1].map((p) => photoKey(d.slug, n, p)),
+        photos: [0, 1].map((p) => photoKey(uid(d.n - 100), n, p)),
       });
       n += 1;
     });
@@ -166,8 +166,10 @@ export function buildMachinerySeed(): MachinerySeedData {
   return { userRows, opRows, listingRows };
 }
 
-function photoKey(dealerSlug: string, listingN: number, photo: number): string {
-  return `seed/${dealerSlug}/l${listingN}-p${photo}.svg`;
+// Keys live under the owning user's uploads/ prefix so the listing-photo
+// ownership rule (uploads/<userId>/) holds for seeded data too.
+function photoKey(ownerUserId: string, listingN: number, photo: number): string {
+  return `uploads/${ownerUserId}/seed-l${listingN}-p${photo}.svg`;
 }
 
 function photoSvg(title: string, variant: number): string {

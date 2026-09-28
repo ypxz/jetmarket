@@ -489,6 +489,7 @@ async function seedJets(repo: MemoryRepo) {
     { email: "ops@thames-exec.example", name: "Thames Executive", base: "LTN", fleet: "Praetor 600", verified: true, plan: "pro" as Plan },
   ];
   const opIds: string[] = [];
+  const opUserIds: string[] = [];
   for (const o of ops) {
     const u = await repo.createUser(o.email, "operator");
     const op = await repo.upsertOperator({
@@ -500,6 +501,7 @@ async function seedJets(repo: MemoryRepo) {
       plan: o.plan,
     });
     opIds.push(op.id);
+    opUserIds.push(u.id);
   }
   const mk = async (
     operatorId: string,
@@ -524,7 +526,7 @@ async function seedJets(repo: MemoryRepo) {
     aircraftCategory: "light", model: "Phenom 300", year: 2021, seats: 7,
     rangeNm: 2000, from: "ZRH", to: "NCE", date: "2026-09-22",
   }, [
-    await seedPhoto("seed/memory/zrh-nce-phenom.svg", "Phenom 300", 190),
+    await seedPhoto(`uploads/${opUserIds[0]}/seed-zrh-nce-phenom.svg`, "Phenom 300", 190),
   ]);
   await mk(opIds[0]!, "empty_leg", "Empty leg Geneva → London · CJ4", 6800, {
     aircraftCategory: "light", model: "Citation CJ4", year: 2019, seats: 8,
@@ -542,8 +544,8 @@ async function seedJets(repo: MemoryRepo) {
     aircraftCategory: "ultra_long", model: "G650", year: 2018, seats: 14,
     rangeNm: 7000, hoursTotal: 1450,
   }, [
-    await seedPhoto("seed/memory/g650.svg", "Gulfstream G650", 35),
-    await seedPhoto("seed/memory/g650-cabin.svg", "G650 cabin", 200),
+    await seedPhoto(`uploads/${opUserIds[2]}/seed-g650.svg`, "Gulfstream G650", 35),
+    await seedPhoto(`uploads/${opUserIds[2]}/seed-g650-cabin.svg`, "G650 cabin", 200),
   ]);
   await mk(opIds[2]!, "charter", "Falcon 2000LXS charter · Nice base", 7200, {
     aircraftCategory: "heavy", model: "Falcon 2000LXS", year: 2017, seats: 10,
@@ -585,7 +587,7 @@ async function seedMachinery(repo: MemoryRepo) {
   await mk("for_sale", "DMG Mori CNC milling centre (2016)", 145000, {
     machineryCategory: "cnc_milling", make: "DMG Mori", yearOfManufacture: 2016,
     hoursUsed: 8200, condition: "used",
-  }, [await seedPhoto("seed/memory/dmg-mori.svg", "DMG Mori CNC", 160)]);
+  }, [await seedPhoto(`uploads/${u.id}/seed-dmg-mori.svg`, "DMG Mori CNC", 160)]);
   await mk("for_rent", "Kaeser industrial compressor · monthly", 1200, {
     machineryCategory: "generator", make: "Kaeser", yearOfManufacture: 2020,
     hoursUsed: 3100, condition: "used",

@@ -145,8 +145,10 @@ function isoDateIn(days: number, from = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
-function photoKey(opSlug: string, listingN: number, photo: number): string {
-  return `seed/${opSlug}/l${listingN}-p${photo}.svg`;
+// Keys live under the owning user's uploads/ prefix so the listing-photo
+// ownership rule (uploads/<userId>/) holds for seeded data too.
+function photoKey(ownerUserId: string, listingN: number, photo: number): string {
+  return `uploads/${ownerUserId}/seed-l${listingN}-p${photo}.svg`;
 }
 
 function photoSvg(title: string, variant: number): string {
@@ -210,7 +212,7 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
         priceMinor: Math.round(a.hourlyUsd * 100),
         currency: "USD",
         status: "active",
-        photos: [0, 1].map((p) => photoKey(o.slug, n, p)),
+        photos: [0, 1].map((p) => photoKey(uid(o.n - 100), n, p)),
       });
       n += 1;
     }
@@ -239,7 +241,7 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
       priceMinor: Math.round(leg.priceUsd * 100),
       currency: "USD",
       status: "active",
-      photos: [photoKey(o.slug, n, 0)],
+      photos: [photoKey(uid(o.n - 100), n, 0)],
     });
     n += 1;
   }
@@ -265,7 +267,7 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
       priceMinor: Math.round(s.askUsd * 100),
       currency: "USD",
       status: "active",
-      photos: [0, 1, 2].map((p) => photoKey(o.slug, n, p)),
+      photos: [0, 1, 2].map((p) => photoKey(uid(o.n - 100), n, p)),
     });
     n += 1;
   }
