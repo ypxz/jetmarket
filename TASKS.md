@@ -342,3 +342,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 243 | ~18:15 | QA-257 | AGENTS.md — all accumulated QA rules encoded as repo conventions (gates, repo contract, auth, notify, hydration, vertical, migrations, seo, providers) |
 | 244 | ~18:30 | QA-258 | accept route fee math → integer minor units (percentOf/toMinorUnits/fromMinorUnits); invoice uses feeMinor not feeAmount*100 |
 | 245 | ~18:45 | QA-259 | checkout amountMinor → toMinorUnits(price, plans.pro.currency) — future-proof for 0-decimal billing currencies |
+| 246 | ~19:10 | QA-260 | signin-role-buyer/operator testids on role radios; flow helper uses getByTestId not label regex (i18n/copy-proof); TESTIDS gap closed |
