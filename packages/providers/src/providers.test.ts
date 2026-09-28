@@ -28,6 +28,29 @@ describe("captcha", () => {
     expect(r.success).toBe(false);
     expect(r.reason).toContain("TURNSTILE_SECRET_KEY");
   });
+
+  it("turnstile fails closed when siteverify is unreachable (QA-170)", async () => {
+    // Port 1 refuses instantly — exercises the fetch-throw path without
+    // stubbing globals. Must return {success:false}, never throw (a throw
+    // would 500 the RFQ route on a Cloudflare outage).
+    const c = new TurnstileCaptchaProvider({
+      secretKey: "k",
+      endpoint: "http://127.0.0.1:1/siteverify",
+    });
+    const r = await c.verify("tok");
+    expect(r.success).toBe(false);
+    expect(r.reason).toContain("fetch failed");
+  });
+
+  it("turnstile fails closed on non-JSON 200 responses (QA-170)", async () => {
+    const c = new TurnstileCaptchaProvider({
+      secretKey: "k",
+      endpoint: "data:text/plain,proxy error page",
+    });
+    const r = await c.verify("tok");
+    expect(r.success).toBe(false);
+    expect(r.reason).toContain("non-json");
+  });
 });
 
 const hit = (over: Partial<SearchHit>): SearchHit => ({

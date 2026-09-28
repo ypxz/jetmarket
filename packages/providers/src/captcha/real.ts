@@ -35,19 +35,36 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
     if (!token) {
       return { success: false, reason: "missing turnstile token" };
     }
-    const res = await fetch(this.opts.endpoint ?? SITEVERIFY_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        secret: this.opts.secretKey,
-        response: token,
-        remoteip: ip,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(this.opts.endpoint ?? SITEVERIFY_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          secret: this.opts.secretKey,
+          response: token,
+          remoteip: ip,
+        }),
+        // Cloudflare being down must fail closed, not 500 the route —
+        // every RFQ POST would otherwise throw uncaught.
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (e) {
+      return {
+        success: false,
+        reason: `siteverify fetch failed: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
     if (!res.ok) {
       return { success: false, reason: `siteverify http ${res.status}` };
     }
-    const body = (await res.json()) as SiteverifyResponse;
+    let body: SiteverifyResponse;
+    try {
+      body = (await res.json()) as SiteverifyResponse;
+    } catch {
+      // A 200 with a non-JSON body (edge proxy error page) fails closed too.
+      return { success: false, reason: "siteverify non-json body" };
+    }
     return {
       success: body.success === true,
       score: body.score,
