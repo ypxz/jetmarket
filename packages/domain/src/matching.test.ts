@@ -140,6 +140,40 @@ describe("matchOperators", () => {
     expect(results.map((r) => r.operatorId)).toEqual(["other"]);
   });
 
+  it("keeps the first fleet entry when a later one doesn't score higher", () => {
+    // Both entries fit equally (no requirements) — the chosen listingId must
+    // be the first entry's, not the last scanned (deterministic best-keep).
+    const results = matchOperators(
+      {},
+      [
+        op({
+          id: "multi",
+          fleet: [
+            { listingId: "first" },
+            { listingId: "second" },
+          ],
+        }),
+      ],
+      plans,
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]!.listingId).toBe("first");
+  });
+
+  it("treats an unknown plan slug as a no-delay plan", () => {
+    const results = matchOperators(
+      {},
+      [op({ id: "custom", planId: "enterprise" })],
+      plans,
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      operatorId: "custom",
+      delivery: "instant",
+      delayMinutes: 0,
+    });
+  });
+
   it("verified operators score a small boost, ties are deterministic", () => {
     const results = matchOperators(
       {},
