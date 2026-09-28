@@ -271,3 +271,107 @@ describe("nonContactFields (QA-152)", () => {
     expect(out).toEqual({ name: "Ada", make: "DMG MORI" });
   });
 });
+
+// QA-282: a third vertical is meant to be "config + content" — these checks
+// catch a config that boots but fails later at render/search/fan-out time.
+describe("config integrity (every registered vertical)", () => {
+  const verticals = [jetsVertical, machineryVertical];
+
+  for (const v of verticals) {
+    describe(v.slug, () => {
+      it("fees.successFeePct covers every listing type and nothing else", () => {
+        const types = v.listingTypes.map((t) => t.slug).sort();
+        expect(Object.keys(v.fees.successFeePct).sort()).toEqual(types);
+      });
+
+      it("facets resolve to real attributes with compatible types", () => {
+        const attrByKey = new Map(v.attributes.map((a) => [a.key, a]));
+        const types = new Set(v.listingTypes.map((t) => t.slug));
+        for (const f of v.facets) {
+          if (!f.attributeKey) {
+            // Built-in facets filter typed Listing fields (see FacetConfig):
+            // `type` and `price`; anything else needs an attributeKey.
+            expect(["type", "price"]).toContain(f.key);
+            continue;
+          }
+          const attr = attrByKey.get(f.attributeKey);
+          expect(
+            attr,
+            `facet ${f.key} -> missing attribute ${f.attributeKey}`,
+          ).toBeDefined();
+          if (f.type === "enum") {
+            const enumValues =
+              (attr!.schema as unknown as { options?: string[] }).options ?? [];
+            for (const o of f.options ?? []) {
+              expect(
+                enumValues,
+                `facet ${f.key} option ${o.value} not in attribute enum`,
+              ).toContain(o.value);
+            }
+          }
+          if (f.type === "date-range") {
+            expect(attr!.inputType ?? "date").toBe("date");
+          }
+        }
+        // `type` facet values (if declared as options) must be listing types
+        const typeFacet = v.facets.find((f) => f.key === "type");
+        for (const o of typeFacet?.options ?? []) {
+          expect(types.has(o.value)).toBe(true);
+        }
+      });
+
+      it("expiry points at a declared date attribute on a real type", () => {
+        if (!v.expiry) return;
+        const types = v.listingTypes.map((t) => t.slug);
+        expect(types).toContain(v.expiry.type);
+        const attr = v.attributes.find((a) => a.key === v.expiry!.attributeKey);
+        expect(attr, "expiry attributeKey not in attributes").toBeDefined();
+        expect(attr!.appliesTo).toContain(v.expiry.type);
+        expect(attr!.inputType ?? "date").toBe("date");
+        expect(attr!.schema.safeParse("2030-01-01").success).toBe(true);
+      });
+
+      it("seo landing pages have unique slugs and resolvable facet filters", () => {
+        const slugs = v.seo.landingPages.map((p) => p.slug);
+        expect(new Set(slugs).size).toBe(slugs.length);
+        const facetKeys = new Set([
+          ...v.facets.map((f) => f.key),
+          "q",
+          "sort",
+          "page",
+        ]);
+        for (const p of v.seo.landingPages) {
+          for (const k of Object.keys(p.filters)) {
+            expect(
+              facetKeys.has(k),
+              `seo page ${p.slug} filters on unknown facet ${k}`,
+            ).toBe(true);
+          }
+        }
+      });
+
+      it("declares exactly one free and one pro plan", () => {
+        const plans = v.fees.subscriptionPlans;
+        const free = plans.filter((p) => p.slug === "free");
+        const pro = plans.filter((p) => p.slug === "pro");
+        expect(free).toHaveLength(1);
+        expect(pro).toHaveLength(1);
+        expect(free[0]!.monthlyPriceUsd).toBe(0);
+        expect(Number.isInteger(free[0]!.maxListings)).toBe(true);
+        expect(pro[0]!.monthlyPriceUsd).toBeGreaterThan(0);
+        expect(pro[0]!.maxListings).toBeNull();
+      });
+
+      it("matching-config attribute refs resolve to declared attributes", () => {
+        const attrKeys = new Set(v.attributes.map((a) => a.key));
+        const m = v.matching;
+        if (!m) return;
+        if (m.categoryAttribute) expect(attrKeys.has(m.categoryAttribute)).toBe(true);
+        if (m.seatsAttribute) expect(attrKeys.has(m.seatsAttribute)).toBe(true);
+        if (m.fleetListingType) {
+          expect(v.listingTypes.map((t) => t.slug)).toContain(m.fleetListingType);
+        }
+      });
+    });
+  }
+});
