@@ -12,6 +12,7 @@ import {
   users,
 } from "@jetmarket/db/schema";
 import type { OperatorCandidate } from "@jetmarket/domain";
+import type { MatchingConfig } from "@jetmarket/verticals";
 
 /** Thin data access for worker handlers — keeps them unit-testable. */
 export interface WorkerRepo {
@@ -22,9 +23,15 @@ export interface WorkerRepo {
     listingId: string | null;
     /** The RFQ's listing owner — fan-out must not match them with themselves. */
     ownerOperatorId: string | null;
+    /** The RFQ'd listing's attributes — fan-out infers the requirement's
+     * category from them when the RFQ form doesn't ask for one (QA-229). */
+    listingAttributes: Record<string, unknown> | null;
     fields: Record<string, unknown>;
   } | null>;
-  loadOperatorCandidates(vertical: string): Promise<OperatorCandidate[]>;
+  loadOperatorCandidates(
+    vertical: string,
+    matching?: MatchingConfig,
+  ): Promise<OperatorCandidate[]>;
   /** Insert matches; returns ids of actually-inserted rows w/ their state. */
   insertMatches(
     rows: {
@@ -81,6 +88,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           status: rfqs.status,
           listingId: rfqs.listingId,
           ownerOperatorId: listings.operatorId,
+          listingAttributes: listings.attributes,
           fields: rfqs.fields,
         })
         .from(rfqs)
@@ -90,7 +98,12 @@ export function createWorkerRepo(db: Db): WorkerRepo {
       return rows[0] ?? null;
     },
 
-    async loadOperatorCandidates(vertical) {
+    async loadOperatorCandidates(vertical, matching) {
+      // Fleet shape is vertical-driven (QA-229): jets scan `charter` rows'
+      // aircraftCategory/seats; machinery scans a dealer's whole stock for
+      // machineryCategory, seat-agnostic.
+      const catAttr = matching?.categoryAttribute ?? "aircraftCategory";
+      const seatAttr = matching ? matching.seatsAttribute : "seats";
       const ops = await db
         .select({
           id: operators.id,
@@ -109,7 +122,9 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         .where(
           and(
             eq(listings.vertical, vertical),
-            eq(listings.type, "charter"),
+            ...(matching?.fleetListingType
+              ? [eq(listings.type, matching.fleetListingType)]
+              : []),
             eq(listings.status, "active"),
           ),
         );
@@ -119,8 +134,11 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         const list = fleet.get(l.operatorId) ?? [];
         list.push({
           listingId: l.id,
-          category: typeof a["aircraftCategory"] === "string" ? a["aircraftCategory"] : undefined,
-          seats: typeof a["seats"] === "number" ? a["seats"] : undefined,
+          category: typeof a[catAttr] === "string" ? a[catAttr] : undefined,
+          seats:
+            seatAttr !== undefined && typeof a[seatAttr] === "number"
+              ? a[seatAttr]
+              : undefined,
         });
         fleet.set(l.operatorId, list);
       }

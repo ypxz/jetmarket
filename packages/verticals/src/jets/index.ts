@@ -270,6 +270,14 @@ export const jetsVertical: VerticalConfig = {
   // automatically (operator dashboard keeps it for re-listing).
   expiry: { type: "empty_leg", attributeKey: "date" },
 
+  // Fleet = charter listings; category inferred from the RFQ'd aircraft when
+  // the RFQ form doesn't ask for one (it doesn't today).
+  matching: {
+    fleetListingType: "charter",
+    categoryAttribute: "aircraftCategory",
+    seatsAttribute: "seats",
+  },
+
   seo: {
     landingPages: [
       {

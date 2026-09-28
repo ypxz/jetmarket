@@ -13,6 +13,12 @@ import type { Listing, Repo, Rfq } from "@/lib/repo/types";
  * (the memory repo checks lazily on read — no sweep needed).
  */
 export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
+  const vertical = verticalConfig();
+  const matching = vertical.matching;
+  // Fleet attribute keys come from the vertical's matching config — machinery
+  // fleets are `machineryCategory`, not `aircraftCategory` (QA-229).
+  const catAttr = matching?.categoryAttribute ?? "aircraftCategory";
+  const seatAttr = matching ? matching.seatsAttribute : "seats";
   const ops = await repo.listOperators();
   const candidates: OperatorCandidate[] = await Promise.all(
     ops.map(async (o) => ({
@@ -20,36 +26,53 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
       verified: o.verified,
       planId: o.plan,
       baseAirport: o.baseAirport,
-      // Fleet mirrors the worker's loadOperatorCandidates: charter listings'
-      // aircraftCategory/seats.
+      // Fleet mirrors the worker's loadOperatorCandidates.
       fleet: (
         await repo.listListings({
           operatorId: o.id,
           status: "active",
-          type: "charter",
+          ...(matching?.fleetListingType
+            ? { type: matching.fleetListingType }
+            : {}),
         })
       ).map((l) => {
         const a = l.attributes;
         return {
           listingId: l.id,
           category:
-            typeof a["aircraftCategory"] === "string"
-              ? a["aircraftCategory"]
+            typeof a[catAttr] === "string" ? a[catAttr] : undefined,
+          seats:
+            seatAttr !== undefined && typeof a[seatAttr] === "number"
+              ? a[seatAttr]
               : undefined,
-          seats: typeof a["seats"] === "number" ? a["seats"] : undefined,
         };
       }),
     })),
   );
+  // The RFQ form may not ask for a category (jets and machinery both omit
+  // it) — an RFQ on a lathe listing wants lathe dealers. Infer it from the
+  // listing's own category attribute; an explicit RFQ field wins (QA-229).
+  const reqFields = { ...rfq.fields };
+  if (
+    catAttr &&
+    reqFields[catAttr] === undefined &&
+    typeof listing.attributes[catAttr] === "string"
+  ) {
+    reqFields[catAttr] = listing.attributes[catAttr];
+  }
   // Plans come from the active vertical, not the domain's default mirror —
   // a machinery-priced delay must not silently run jets' 24h (QA-221).
   const matches = matchOperators(
-    rfq.fields,
+    reqFields,
     candidates,
-    verticalConfig().fees.subscriptionPlans,
+    vertical.fees.subscriptionPlans,
     {
       limit: 10,
       excludeOperatorIds: new Set([listing.operatorId]),
+      ...(matching?.rfqCategoryKeys
+        ? { categoryKeys: matching.rfqCategoryKeys }
+        : {}),
+      ...(matching?.rfqSeatsKeys ? { seatsKeys: matching.rfqSeatsKeys } : {}),
     },
   );
   if (!matches.length) return;

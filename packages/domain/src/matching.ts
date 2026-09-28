@@ -82,12 +82,17 @@ function firstNumber(
   return undefined;
 }
 
-/** Default extractor for the documented RFQ field names. */
+/** Default extractor for the documented RFQ field names. The vertical can
+ * override the key lists (e.g. machinery reads `machineryCategory`). */
 export function defaultRequirementExtractor(
   fields: Record<string, unknown>,
+  keys: {
+    categoryKeys?: readonly string[];
+    seatsKeys?: readonly string[];
+  } = {},
 ): MatchRequirements {
-  const category = firstString(fields, CATEGORY_KEYS);
-  const seats = firstNumber(fields, SEAT_KEYS);
+  const category = firstString(fields, keys.categoryKeys ?? CATEGORY_KEYS);
+  const seats = firstNumber(fields, keys.seatsKeys ?? SEAT_KEYS);
   const departure = firstString(fields, DEPARTURE_KEYS);
   const arrival = firstString(fields, ARRIVAL_KEYS);
   return {
@@ -108,6 +113,12 @@ export interface MatchOptions {
   limit?: number;
   /** Operators to exclude entirely (e.g. already matched via the listing). */
   excludeOperatorIds?: ReadonlySet<string>;
+  /** Overrides for the default extractor's category field keys (vertical-
+   * driven, e.g. machinery's `machineryCategory`). Ignored with a custom
+   * `extract`. */
+  categoryKeys?: readonly string[];
+  /** Same, for the seats/pax field keys. */
+  seatsKeys?: readonly string[];
 }
 
 interface RankedEntry {
@@ -174,7 +185,14 @@ export function matchOperators(
   plans: Plan[],
   options: MatchOptions = {},
 ): MatchResult[] {
-  const req = (options.extract ?? defaultRequirementExtractor)(rfqFields);
+  const extract =
+    options.extract ??
+    ((f: Record<string, unknown>) =>
+      defaultRequirementExtractor(f, {
+        categoryKeys: options.categoryKeys,
+        seatsKeys: options.seatsKeys,
+      }));
+  const req = extract(rfqFields);
   const regionMap = options.regionMap ?? AIRPORT_REGION;
   const limit = options.limit ?? 10;
   const results: MatchResult[] = [];

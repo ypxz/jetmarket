@@ -132,7 +132,7 @@ describe("buildMachinerySeed", () => {
       {},
     );
     expect(byState["sent"]).toBe(1); // alpine-werkzeug, delivered
-    expect(byState["delayed"]).toBe(2); // nord-foerdertechnik + lowlands (free)
+    expect(byState["delayed"]).toBe(2); // piemonte-macchine + lowlands (free)
   });
 
   it("validates every listing against the machinery config", () => {

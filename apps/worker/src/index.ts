@@ -101,6 +101,9 @@ async function main() {
     // The active vertical's plan table — a machinery delay must not run
     // jets' 24h defaults (QA-221).
     plans: getVertical().fees.subscriptionPlans,
+    // Matching shape is vertical-driven too (fleet listing type, category
+    // attribute, RFQ field keys) — QA-229.
+    matching: getVertical().matching,
   };
   const pollMs = pollIntervalMs();
   console.log(`[worker] up — polling jobs every ${pollMs}ms`);

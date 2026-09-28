@@ -36,6 +36,24 @@ describe("fanoutRfq (memory mode)", () => {
     const owner = await mkOp("owner", "pro", true);
     const instant = await mkOp("instant", "pro", true);
     const delayed = await mkOp("delayed", "free", false);
+    const wrongFleet = await mkOp("wrong", "pro", true);
+
+    const mkCharter = (operatorId: string, category: string) =>
+      repo.createListing({
+        operatorId,
+        vertical: "jets",
+        type: "charter",
+        title: `Fleet ${operatorId} ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: { aircraftCategory: category, seats: 8 },
+      });
+    // QA-229: the RFQ form asks no category, so fan-out infers it from the
+    // listing — only operators proving a matching fleet entry can match.
+    await mkCharter(instant.id, "light");
+    await mkCharter(delayed.id, "light");
+    await mkCharter(wrongFleet.id, "heavy");
 
     const listing = await repo.createListing({
       operatorId: owner.id,
@@ -51,7 +69,7 @@ describe("fanoutRfq (memory mode)", () => {
       vertical: "jets",
       listingId: listing.id,
       buyerEmail: `b-${tag}@test.dev`,
-      // No category/seats requirements -> every candidate fits on score.
+      // No category/seats on the form — "light" is inferred from the listing.
       fields: { departure: "ZRH", arrival: "NCE" },
     });
 
@@ -62,6 +80,8 @@ describe("fanoutRfq (memory mode)", () => {
     expect(await repo.hasRfqMatch(rfq.id, instant.id)).toBe(true);
     expect(await repo.hasRfqMatch(rfq.id, delayed.id)).toBe(false);
     expect(await repo.hasRfqMatch(rfq.id, owner.id)).toBe(false);
+    // Wrong-category fleet: no light listing -> cannot prove fit.
+    expect(await repo.hasRfqMatch(rfq.id, wrongFleet.id)).toBe(false);
 
     // QA-221: the plan table handed to matching IS the vertical config's —
     // not defaultPlans(); a vertical changing rfqDelayHours actually applies.

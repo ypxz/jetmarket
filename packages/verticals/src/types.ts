@@ -115,6 +115,26 @@ export interface ComponentOverrides {
   ListingCard?: unknown;
 }
 
+/** RFQ fan-out matching shape — how this vertical describes fleet fit. */
+export interface MatchingConfig {
+  /** Listing type whose active rows describe an operator's fleet; omit to
+   * scan every type (machinery: a dealer's whole stock is its fleet). */
+  fleetListingType?: string;
+  /** Listing attribute mapped to FleetEntry.category
+   * (jets: "aircraftCategory"; machinery: "machineryCategory"). Also used to
+   * infer the requirement's category from the RFQ'd listing when the RFQ
+   * form itself doesn't ask for one. */
+  categoryAttribute?: string;
+  /** Listing attribute mapped to FleetEntry.seats; omit for seat-agnostic
+   * verticals (machinery). */
+  seatsAttribute?: string;
+  /** RFQ field keys consulted for the requested category, in order
+   * (defaults to the domain's built-in conventions). */
+  rfqCategoryKeys?: string[];
+  /** RFQ field keys consulted for seats/pax (defaults to the domain's). */
+  rfqSeatsKeys?: string[];
+}
+
 export interface VerticalConfig {
   slug: VerticalSlug;
   name: string;
@@ -139,4 +159,8 @@ export interface VerticalConfig {
    * Rows missing the attribute stay visible — only dated-and-past expires.
    */
   expiry?: { type: string; attributeKey: string };
+  /** RFQ fan-out matching shape (QA-229). Omitted fields fall back to the
+   * domain's built-in conventions (charter/aircraftCategory/seats + the
+   * documented RFQ field names). */
+  matching?: MatchingConfig;
 }

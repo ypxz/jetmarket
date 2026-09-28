@@ -27,6 +27,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         status: "new",
         listingId: null,
         ownerOperatorId: null,
+        listingAttributes: null,
         fields: {
           departure: "ZRH",
           arrival: "NCE",
@@ -159,6 +160,95 @@ describe("rfqFanout", () => {
     ]);
   });
 
+  it("infers the category from the listing and filters fleets by it (QA-229)", async () => {
+    const repo = fakeRepo({
+      loadRfq: async (id) => ({
+        id,
+        vertical: "machinery",
+        status: "new",
+        listingId: "l-x",
+        ownerOperatorId: null,
+        listingAttributes: { machineryCategory: "lathe" },
+        fields: { email: "buyer@x.com" }, // no category field on the form
+      }),
+      loadOperatorCandidates: async () => [
+        {
+          id: "lathe-dealer",
+          verified: true,
+          planId: "pro",
+          fleet: [{ listingId: "a", category: "lathe" }],
+        },
+        {
+          id: "press-dealer",
+          verified: true,
+          planId: "pro",
+          fleet: [{ listingId: "b", category: "press" }],
+        },
+        {
+          // No category-bearing stock — cannot prove fit, skipped.
+          id: "bare-dealer",
+          verified: true,
+          planId: "pro",
+          fleet: [{ listingId: "c" }],
+        },
+      ],
+    });
+    const d = deps(repo);
+    d.matching = {
+      categoryAttribute: "machineryCategory",
+      rfqCategoryKeys: ["machineryCategory"],
+    };
+    d.sql = sqlStub([]);
+
+    await rfqFanout(d, { rfqId: "r1" });
+
+    const rows = repo.calls["insertMatches"]![0] as {
+      operatorId: string;
+    }[];
+    expect(rows.map((r) => r.operatorId)).toEqual(["lathe-dealer"]);
+  });
+
+  it("honours vertical rfqCategoryKeys on the fields themselves (QA-229)", async () => {
+    const repo = fakeRepo({
+      loadRfq: async (id) => ({
+        id,
+        vertical: "machinery",
+        status: "new",
+        listingId: null,
+        ownerOperatorId: null,
+        listingAttributes: null,
+        fields: { machineryCategory: "press", email: "buyer@x.com" },
+      }),
+      loadOperatorCandidates: async () => [
+        {
+          id: "lathe-dealer",
+          verified: true,
+          planId: "pro",
+          fleet: [{ listingId: "a", category: "lathe" }],
+        },
+        {
+          id: "press-dealer",
+          verified: true,
+          planId: "pro",
+          fleet: [{ listingId: "b", category: "press" }],
+        },
+      ],
+    });
+    const d = deps(repo);
+    d.matching = {
+      categoryAttribute: "machineryCategory",
+      rfqCategoryKeys: ["machineryCategory"],
+    };
+    d.sql = sqlStub([]);
+
+    await rfqFanout(d, { rfqId: "r1" });
+
+    const rows = repo.calls["insertMatches"]![0] as {
+      operatorId: string;
+    }[];
+    expect(rows.map((r) => r.operatorId)).toEqual(["press-dealer"]);
+  });
+
   it("no-ops on a non-new rfq (closed/expired/already-matched)", async () => {
     const repo = fakeRepo({ loadRfq: async (id) => ({
       id,
@@ -166,6 +256,7 @@ describe("rfqFanout", () => {
       status: "closed",
       listingId: null,
       ownerOperatorId: null,
+      listingAttributes: null,
       fields: {},
     }) });
     const d = deps(repo);

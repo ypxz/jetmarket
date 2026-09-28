@@ -8,6 +8,7 @@ import {
   type Plan,
 } from "@jetmarket/domain";
 import type { Sql } from "postgres";
+import type { MatchingConfig } from "@jetmarket/verticals";
 import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
 import type { WorkerRepo } from "./repo";
 
@@ -16,6 +17,8 @@ export interface WorkerDeps {
   sql: Sql;
   email: EmailProvider;
   plans: Plan[];
+  /** Active vertical's fan-out matching shape (QA-229). */
+  matching?: MatchingConfig;
   analytics?: AnalyticsProvider;
   now?: () => Date;
 }
@@ -46,13 +49,31 @@ export async function rfqFanout(
   if (rfq.status !== "new") return;
 
   const now = at(deps);
-  const candidates = await deps.repo.loadOperatorCandidates(rfq.vertical);
-  const matches = matchOperators(rfq.fields, candidates, deps.plans, {
+  const candidates = await deps.repo.loadOperatorCandidates(
+    rfq.vertical,
+    deps.matching,
+  );
+  // The RFQ form may not ask for a category — an RFQ on a lathe listing wants
+  // lathe dealers. Infer it from the listing's category attribute; an
+  // explicit RFQ field wins (QA-229).
+  const reqFields = { ...rfq.fields };
+  const catAttr = deps.matching?.categoryAttribute;
+  if (catAttr && reqFields[catAttr] === undefined) {
+    const v = rfq.listingAttributes?.[catAttr];
+    if (typeof v === "string" && v) reqFields[catAttr] = v;
+  }
+  const matches = matchOperators(reqFields, candidates, deps.plans, {
     limit: 10,
     // The listing owner is notified directly by the web route — a self-match
     // would double-notify and let them quote their own RFQ.
     ...(rfq.ownerOperatorId
       ? { excludeOperatorIds: new Set([rfq.ownerOperatorId]) }
+      : {}),
+    ...(deps.matching?.rfqCategoryKeys
+      ? { categoryKeys: deps.matching.rfqCategoryKeys }
+      : {}),
+    ...(deps.matching?.rfqSeatsKeys
+      ? { seatsKeys: deps.matching.rfqSeatsKeys }
       : {}),
   });
 

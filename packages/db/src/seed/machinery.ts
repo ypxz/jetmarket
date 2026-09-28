@@ -180,7 +180,7 @@ export function buildMachinerySeed(now = new Date()): MachinerySeedData {
     {
       id: uid(1300),
       vertical: "machinery",
-      listingId: uid(1200), // alpine-werkzeug's DMG Mori milling centre
+      listingId: uid(1208), // ibérica-maquinaria's Okuma lathe (for_sale)
       buyerEmail: "procurement@bavaria-werk.example",
       fields: {
         deliveryPostcode: "80331",
@@ -189,28 +189,28 @@ export function buildMachinerySeed(now = new Date()): MachinerySeedData {
         email: "procurement@bavaria-werk.example",
       },
       status: "matched",
-      dedupeKey: "seed-rfq-dmg-mori",
+      dedupeKey: "seed-rfq-okuma-lathe",
     },
   ];
   const rfqMatchRows: NewRfqMatch[] = [
     {
       rfqId: uid(1300),
-      operatorId: uid(1101), // alpine-werkzeug — pro, delivered
-      listingId: uid(1200),
+      operatorId: uid(1101), // alpine-werkzeug — pro, delivered (runs a lathe)
+      listingId: uid(1208),
       state: "sent",
       deliverAt: new Date(now.getTime() - 3_600_000),
     },
     {
       rfqId: uid(1300),
-      operatorId: uid(1103), // nord-foerdertechnik — free, delayed
-      listingId: uid(1200),
+      operatorId: uid(1107), // piemonte-macchine — free + unverified, delayed
+      listingId: uid(1208),
       state: "delayed",
       deliverAt: new Date(now.getTime() + 23 * 3_600_000),
     },
     {
       rfqId: uid(1300),
       operatorId: uid(1105), // lowlands-forklifts — free + unverified, delayed
-      listingId: uid(1200),
+      listingId: uid(1208),
       state: "delayed",
       deliverAt: new Date(now.getTime() + 23 * 3_600_000),
     },

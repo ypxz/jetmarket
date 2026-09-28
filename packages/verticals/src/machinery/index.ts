@@ -205,6 +205,13 @@ export const machineryVertical: VerticalConfig = {
 
   copy: { namespace: "vertical.machinery" },
 
+  // A dealer's whole stock is its fleet (no fleetListingType); the RFQ form
+  // asks no category — it's inferred from the RFQ'd machine's categoryAttr.
+  matching: {
+    categoryAttribute: "machineryCategory",
+    rfqCategoryKeys: ["machineryCategory"],
+  },
+
   seo: {
     landingPages: [
       {
