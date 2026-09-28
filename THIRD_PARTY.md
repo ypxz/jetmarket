@@ -5,20 +5,20 @@ GPL/AGPL/SSPL/fair-code projects are read for ideas only.
 
 | Package / project | Version | License | Used for | Notes |
 |---|---|---|---|---|
-| Next.js | 15 | MIT | apps/web framework | |
+| Next.js | 15.5 | MIT | apps/web framework | |
 | React | 19 | MIT | UI | |
 | TypeScript | 5 | Apache-2 | all packages | |
 | pnpm | 9 | MIT | workspace | |
 | Tailwind CSS | 4 | MIT | styling (via template tokens) | |
 | shadcn/ui (Radix) | latest | MIT | UI primitives | |
-| next-intl | 3 | MIT | i18n | |
-| Drizzle ORM | latest | Apache-2 | packages/db | |
-| postgres.js | latest | Unlicense† | DB driver | †Unlicense is public-domain; flag if policy tightens — MIT `pg` is the fallback |
+| next-intl | 4 | MIT | i18n | |
+| Drizzle ORM | 0.45 | Apache-2 | packages/db | |
+| postgres.js | 3 | Unlicense† | DB driver | †Unlicense is public-domain; flag if policy tightens — MIT `pg` is the fallback |
 | zod | 3 | MIT | vertical attribute/RFQ schemas | |
-| Vitest | latest | MIT | unit + integration tests | |
-| Playwright | latest | Apache-2 | e2e | |
-| stripe (SDK) | latest | MIT | payments real adapter | tested vs stripe-mock |
-| nodemailer | latest | MIT | smtp email adapter | tested vs Mailpit |
+| Vitest | 5 | MIT | unit + integration tests | |
+| Playwright | 1.63 | Apache-2 | e2e | |
+| stripe (SDK) | 22 | MIT | payments real adapter | tested vs stripe-mock |
+| nodemailer | 9 | MIT | smtp email adapter | tested vs Mailpit |
 | stripe-mock | latest | MIT (Docker image) | contract tests | |
 | Mailpit | latest | MIT (Docker image) | dev SMTP | |
 | tsx / eslint / typescript-eslint / @vitest/coverage-v8 / @types/* / @tailwindcss/postcss | latest | MIT / ISC | dev tooling only — not shipped to runtime | audited 2026-09-27 |
