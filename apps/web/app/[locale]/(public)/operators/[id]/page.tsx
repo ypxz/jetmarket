@@ -1,5 +1,6 @@
 import { Badge, Card, CardBody, EmptyState, Grid, Stack } from "@jetmarket/ui";
 import { site } from "@jetmarket/config";
+import { cache } from "react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -17,7 +18,9 @@ const jsonLd = (data: object) =>
 
 const PAGE_SIZE = 48;
 
-async function load(id: string) {
+// generateMetadata and the page render share the fetch — cache() dedupes
+// per request (QA-242).
+const load = cache(async (id: string) => {
   const repo = await getRepo();
   const operator = await repo.getOperator(id);
   if (!operator) return null;
@@ -29,7 +32,7 @@ async function load(id: string) {
     ...browseExpiry(),
   });
   return { operator, listings };
-}
+});
 
 export async function generateMetadata({
   params,

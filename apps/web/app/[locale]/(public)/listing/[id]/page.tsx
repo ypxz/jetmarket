@@ -1,5 +1,6 @@
 import { Badge, Card, CardBody, CardHeader, CardTitle, Stack, buttonVariants } from "@jetmarket/ui";
 import { site } from "@jetmarket/config";
+import { cache } from "react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -17,14 +18,16 @@ import { siteUrl } from "@/lib/seo";
 const jsonLd = (data: object) =>
   JSON.stringify(data).replace(/</g, "\\u003c");
 
-async function load(id: string) {
+// generateMetadata and the page render both need the listing — cache()
+// dedupes the two repo reads per request (QA-242).
+const load = cache(async (id: string) => {
   const repo = await getRepo();
   const listing = await repo.getListing(id);
   // Expired dated inventory is gone for buyers — 404 like a withdrawn one.
   return listing?.status === "active" && !isExpiredListing(listing)
     ? listing
     : null;
-}
+});
 
 export async function generateMetadata({
   params,
