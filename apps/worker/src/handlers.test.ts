@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Sql } from "postgres";
 import type { EmailMessage } from "@jetmarket/providers/email/index";
 import { defaultPlans } from "@jetmarket/domain";
-import { deliverDueMatches, handleJob, rfqFanout } from "./handlers";
+import {
+  deliverDueMatches,
+  handleJob,
+  notifyExpirations,
+  rfqFanout,
+} from "./handlers";
 import type { WorkerDeps } from "./handlers";
 import type { WorkerRepo } from "./repo";
 
@@ -59,7 +64,14 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     expireRfqs: async (now) => {
       rec("expireRfqs", now);
-      return { rfqs: 0, quotes: 0 };
+      return { rfqs: [], quotes: [] };
+    },
+    loadOperatorEmails: async (ids) => {
+      rec("loadOperatorEmails", ids);
+      return ids.map((operatorId) => ({
+        operatorId,
+        email: `owner-${operatorId}@ops.example`,
+      }));
     },
     deliverDueMatches: async (now) => {
       rec("deliverDueMatches", now);
@@ -187,5 +199,64 @@ describe("handleJob dispatch", () => {
     await expect(
       handleJob(deps(fakeRepo()), "bogus", {}),
     ).rejects.toThrow(/unknown job kind/);
+  });
+});
+
+describe("notifyExpirations", () => {
+  it("emails each expired buyer and each declined-quote operator", async () => {
+    const repo = fakeRepo();
+    sent.length = 0;
+    await notifyExpirations(deps(repo), {
+      rfqs: [
+        { id: "r1", buyerEmail: "buyer@x.com", listingTitle: "G650 charter" },
+      ],
+      quotes: [
+        {
+          id: "q1",
+          rfqId: "r1",
+          operatorId: "op1",
+          amountMinor: 42000_00,
+          currency: "USD",
+          listingTitle: "G650 charter",
+        },
+        {
+          id: "q2",
+          rfqId: "r1",
+          operatorId: "op2",
+          amountMinor: 44000_00,
+          currency: "USD",
+          listingTitle: "G650 charter",
+        },
+      ],
+    });
+    expect(sent.map((m) => m.to)).toEqual([
+      "buyer@x.com",
+      "owner-op1@ops.example",
+      "owner-op2@ops.example",
+    ]);
+    expect(sent[0]!.subject).toContain("expired");
+    // one batched contact lookup, deduped operator ids
+    expect(repo.calls["loadOperatorEmails"]).toEqual([["op1", "op2"]]);
+  });
+
+  it("a bad address does not stop the rest of the sweep", async () => {
+    const repo = fakeRepo();
+    sent.length = 0;
+    const d = deps(repo);
+    d.email = {
+      send: async (m) => {
+        if (m.to === "buyer@x.com") throw new Error("smtp rejected");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    await notifyExpirations(d, {
+      rfqs: [
+        { id: "r1", buyerEmail: "buyer@x.com", listingTitle: null },
+        { id: "r2", buyerEmail: "buyer2@x.com", listingTitle: null },
+      ],
+      quotes: [],
+    });
+    expect(sent.map((m) => m.to)).toEqual(["buyer2@x.com"]);
   });
 });

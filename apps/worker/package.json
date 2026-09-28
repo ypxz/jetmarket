@@ -17,6 +17,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
+    "@jetmarket/config": "workspace:*",
     "@jetmarket/db": "workspace:*",
     "@jetmarket/domain": "workspace:*",
     "@jetmarket/providers": "workspace:*",

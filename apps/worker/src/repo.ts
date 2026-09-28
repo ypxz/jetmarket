@@ -1,5 +1,9 @@
-import { and, eq, lte } from "drizzle-orm";
-import { expireStaleRfqs, type Db } from "@jetmarket/db";
+import { and, eq, inArray, lte } from "drizzle-orm";
+import {
+  expireStaleRfqsDetailed,
+  type Db,
+  type ExpireResultDetailed,
+} from "@jetmarket/db";
 import {
   listings,
   operators,
@@ -35,8 +39,13 @@ export interface WorkerRepo {
   /** Flip due delayed matches to pending; returns their ids. */
   deliverDueMatches(now: Date): Promise<string[]>;
   /** Expiry sweep: stale open/quoted rfqs -> closed, their sent quotes ->
-   * declined (shares the one-pass SQL with the web DrizzleRepo). */
-  expireRfqs(now: Date): Promise<{ rfqs: number; quotes: number }>;
+   * declined (shares the one-pass SQL with the web DrizzleRepo). Returns the
+   * affected rows so the tick can notify buyers + operators. */
+  expireRfqs(now: Date): Promise<ExpireResultDetailed>;
+  /** operatorId -> owner email, for quote-expiry notifications. */
+  loadOperatorEmails(
+    operatorIds: string[],
+  ): Promise<{ operatorId: string; email: string }[]>;
   loadMatchContext(matchId: string): Promise<{
     matchId: string;
     rfqId: string;
@@ -172,7 +181,16 @@ export function createWorkerRepo(db: Db): WorkerRepo {
     },
 
     async expireRfqs(now) {
-      return expireStaleRfqs(db, now);
+      return expireStaleRfqsDetailed(db, now);
+    },
+
+    async loadOperatorEmails(operatorIds) {
+      if (!operatorIds.length) return [];
+      return db
+        .select({ operatorId: operators.id, email: users.email })
+        .from(operators)
+        .innerJoin(users, eq(operators.userId, users.id))
+        .where(inArray(operators.id, operatorIds));
     },
 
     async markMatchState(matchId, state) {

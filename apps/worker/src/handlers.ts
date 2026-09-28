@@ -1,11 +1,12 @@
 import type { EmailProvider } from "@jetmarket/providers/email";
+import { site } from "@jetmarket/config";
 import {
   deliverAt,
   matchOperators,
   type Plan,
 } from "@jetmarket/domain";
 import type { Sql } from "postgres";
-import { enqueueJob } from "@jetmarket/db";
+import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
 import type { WorkerRepo } from "./repo";
 
 export interface WorkerDeps {
@@ -83,6 +84,56 @@ export async function deliverDueMatches(deps: WorkerDeps): Promise<number> {
 }
 
 /**
+ * Expiry notifications — run right after the sweep. Buyers are unauthenticated
+ * so email is the only channel; an operator whose quote was silently declined
+ * by expiry learns why. Each send is fire-and-log: one bad address must not
+ * stop the rest of the sweep's notifications.
+ */
+export async function notifyExpirations(
+  deps: WorkerDeps,
+  expired: ExpireResultDetailed,
+): Promise<void> {
+  for (const rfq of expired.rfqs) {
+    try {
+      await deps.email.send({
+        to: rfq.buyerEmail,
+        subject: `Your request for “${rfq.listingTitle ?? "a listing"}” has expired`,
+        text: `Your request for "${rfq.listingTitle ?? "a listing"}" on ${site.name} expired without an accepted quote. You can submit a fresh request anytime.`,
+      });
+    } catch (e) {
+      console.warn(
+        `[worker] expiry email to buyer failed for rfq ${rfq.id}:`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+  if (expired.quotes.length) {
+    const contacts = await deps.repo.loadOperatorEmails([
+      ...new Set(expired.quotes.map((q) => q.operatorId)),
+    ]);
+    const emailByOperator = new Map(
+      contacts.map((c) => [c.operatorId, c.email] as const),
+    );
+    for (const q of expired.quotes) {
+      const to = emailByOperator.get(q.operatorId);
+      if (!to) continue;
+      try {
+        await deps.email.send({
+          to,
+          subject: `The RFQ for “${q.listingTitle ?? "a listing"}” expired`,
+          text: `The request you quoted on ${site.name} expired before the buyer accepted, so your quote was not selected.`,
+        });
+      } catch (e) {
+        console.warn(
+          `[worker] expiry email to operator ${q.operatorId} failed:`,
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+  }
+}
+
+/**
  * `email.quote_notification` { matchId }: send the operator an RFQ email via
  * the env-selected email adapter, then mark the match sent (failed on throw —
  * the job retries with backoff).
@@ -107,7 +158,7 @@ export async function quoteNotification(
     to: ctx.operatorEmail,
     subject: `New RFQ ${route}${pax}`.trim(),
     text:
-      `You have a new request for quotation on JetMarket.\n\n` +
+      `You have a new request for quotation on ${site.name}.\n\n` +
       `Route: ${route || "n/a"}${pax}\n` +
       `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
       `Buyer: ${ctx.buyerEmail}\n\n` +

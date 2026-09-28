@@ -9,7 +9,12 @@ import {
 } from "@jetmarket/db";
 import { defaultPlans } from "@jetmarket/domain";
 import { createEmailProvider } from "@jetmarket/providers/email";
-import { deliverDueMatches, handleJob, type WorkerDeps } from "./handlers";
+import {
+  deliverDueMatches,
+  handleJob,
+  notifyExpirations,
+  type WorkerDeps,
+} from "./handlers";
 import { createWorkerRepo } from "./repo";
 
 const JOB_KINDS = ["rfq.fanout", "email.quote_notification"] as const;
@@ -30,10 +35,12 @@ export function pollIntervalMs(env: NodeJS.ProcessEnv = process.env): number {
  * claim+handle a batch. */
 export async function tick(deps: WorkerDeps): Promise<number> {
   const expired = await deps.repo.expireRfqs(new Date());
-  if (expired.rfqs || expired.quotes)
+  if (expired.rfqs.length || expired.quotes.length) {
     console.log(
-      `[worker] expired ${expired.rfqs} rfq(s), declined ${expired.quotes} quote(s)`,
+      `[worker] expired ${expired.rfqs.length} rfq(s), declined ${expired.quotes.length} quote(s)`,
     );
+    await notifyExpirations(deps, expired);
+  }
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) console.log(`[worker] delivered ${delivered} delayed match(es)`);
