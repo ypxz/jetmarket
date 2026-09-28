@@ -365,3 +365,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 266 | ~15:20 | QA-280 | billing page hardcoded jets fee copy + literal $. feeNote now built from config successFeePct + vertical labels; prices formatMoney(plans.pro.currency) |
 | 267 | ~15:50 | QA-281 | TESTIDS.md drift: 3 duplicated stale table rows (rfqs/buyer-quotes/admin supersets appended not merged); consolidated + added ~12 ids the suite already asserts (signin-role, confirm-signin, delayed-teaser, facet-sort, date-range, back-to-search, banners) |
 | 268 | ~15:45 | QA-282 | vertical config-integrity tests (both verticals, generic): fees↔types, facet↔attribute parity, expiry/seo/plans/matching refs — catches a boot-then-crash config before render |
+| 269 | ~16:05 | QA-283 | demo-buyer token docs: seed comments + README now show the canonical #t= fragment form; README gains the seeded demo inbox path (was undiscoverable) |
