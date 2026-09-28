@@ -335,3 +335,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 - Repo contract made fully async; `REPO` env selects memory|postgres
   (defaults: DATABASE_URL set -> postgres). DrizzleRepo verified: full
   core-loop e2e green against seeded Postgres (60 listings).
+| 239 | ~17:20 | QA-253 | /api/vertical: Cache-Control public max-age=300 swr=600 (deployment-static config refetched on every client mount) |
