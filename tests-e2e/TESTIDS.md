@@ -14,7 +14,7 @@
 | Area | testid |
 |---|---|
 | sign-in | `signin-email`, `signin-submit`, `signin-devlink` |
-| operator dashboard | `onboarding-cta`, `operator-name`, `plan-badge`, `new-listing-cta` |
+| operator dashboard | `onboarding-cta`, `operator-name`, `plan-badge`, `new-listing-cta`, `operator-stats` (pro) / `stats-pro-gate` (free) |
 | onboarding form | `operator-name-input`, `operator-base-input`, `operator-fleet-input`, `operator-save` |
 | listing form | `listing-type`, `listing-title`, `listing-category`, `listing-model`, `listing-seats`, `listing-price`, `listing-from`, `listing-to`, `listing-date`, `listing-save`, `upgrade-cta` (402 surface) |
 | edit listing (`/app/listings/[id]/edit`) | `edit-title`, `edit-price`, `edit-attr-<key>` per dynamic field, `edit-save`, `edit-error`; dashboard CTA is `edit-listing-<id>` |

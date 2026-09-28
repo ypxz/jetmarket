@@ -681,16 +681,11 @@
       "statRfqs": "RFQs received",
       "statQuotes": "Quotes sent",
       "statWon": "Quotes won",
-      "statWinRate": "Win rate"
+      "statWinRate": "Win rate",
+      "statsProGateTitle": "Performance stats are a Pro feature",
+      "statsProGateBody": "RFQs received, quotes sent, win rate — unlock your operator funnel with Pro.",
+      "statsProGateCta": "Upgrade now"
     },
-    "welcome": "Welcome back",
-    "plan": "Plan",
-    "usage": "Usage this month",
-    "proGateTitle": "Pro feature",
-    "proGateBody": "This area needs the Pro plan. Upgrade to unlock it.",
-    "upgradeNow": "Upgrade now",
-    "proUnlockedTitle": "Pro unlocked",
-    "proUnlockedBody": "You are on Pro — the gated content renders here.",
     "onboarding": {
       "title": "Operator profile",
       "subtitle": "Profiles start unverified — our team reviews each one.",
