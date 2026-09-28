@@ -51,6 +51,27 @@ export function repoContract(
         operatorId: op.id,
       });
       expect(await repo.countOperatorListings(op.id)).toBe(1);
+      // Per-vertical plan cap: a foreign-vertical listing must not consume
+      // the count on a shared DB (QA-302).
+      await repo.createListing({
+        operatorId: op.id,
+        vertical: "machinery",
+        type: "for_sale",
+        title: `Foreign ${tag}`,
+        price: 5000,
+        currency: "EUR",
+        photos: [],
+        attributes: {},
+      });
+      expect(await repo.countOperatorListings(op.id, "jets")).toBe(1);
+      expect(await repo.countOperatorListings(op.id, "machinery")).toBe(1);
+      expect(await repo.countOperatorListings(op.id)).toBe(2);
+      expect(await repo.listListingCountsByOperator([op.id])).toEqual({
+        [op.id]: 2,
+      });
+      expect(
+        await repo.listListingCountsByOperator([op.id], "jets"),
+      ).toEqual({ [op.id]: 1 });
 
       const rfq = await repo.createRfq({
         vertical: "jets",
