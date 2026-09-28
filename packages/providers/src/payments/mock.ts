@@ -29,8 +29,10 @@ const id =
 export class MockPaymentsProvider implements PaymentsProvider {
   private readonly appUrl: string;
   private readonly nextId: (prefix: string) => string;
-  /** Received webhook payloads, for assertions in tests. */
+  /** Received webhook payloads, for assertions in tests. Rolling tail —
+   *  the singleton outlives the process (QA-359). */
   readonly events: PaymentEvent[] = [];
+  private static readonly MAX_EVENTS = 1000;
 
   constructor(opts: MockPaymentsOptions = {}) {
     this.appUrl = opts.appUrl ?? "http://localhost:3000";
@@ -88,6 +90,12 @@ export class MockPaymentsProvider implements PaymentsProvider {
           }
         : { kind: "ignored", type: body.type ?? "unknown" };
     this.events.push(event);
+    if (this.events.length > MockPaymentsProvider.MAX_EVENTS) {
+      this.events.splice(
+        0,
+        this.events.length - MockPaymentsProvider.MAX_EVENTS,
+      );
+    }
     return event;
   }
 }
