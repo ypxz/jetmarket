@@ -49,7 +49,11 @@ export async function generateMetadata({
       siteName: site.name,
       type: "website",
     },
-    twitter: { card: "summary", title: listing.title, description },
+    twitter: {
+      card: "summary_large_image",
+      title: listing.title,
+      description,
+    },
   };
 }
 

@@ -45,6 +45,15 @@ export async function generateMetadata({
       count: found.listings.length,
       siteName: site.name,
     }),
+    twitter: {
+      card: "summary_large_image",
+      title: found.operator.name,
+      description: t("metaDescription", {
+        name: found.operator.name,
+        count: found.listings.length,
+        siteName: site.name,
+      }),
+    },
   };
 }
 
