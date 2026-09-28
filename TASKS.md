@@ -356,3 +356,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 257 | ~20:40 | QA-271 | Operator nav link rendered only for operator/admin — buyers had no nav path to onboarding; now shown to any signed-in user (lands on becomeOperator CTA); e2e drives nav→/app→onboarding |
 | 258 | ~20:45 | QA-272 | GO_LIVE.md `docker build -f Dockerfile.web` pointed at a nonexistent file — the web image is repo-root `Dockerfile` (docs/deploy.md was already right) |
 | 259 | ~20:50 | QA-273 | seed/migrate CLIs hung forever if the seed threw mid-run (pool never ended) — try/finally around sql.end(); ported from the template fix |
+| 260 | ~21:00 | QA-274 | repo contract gap → real bug class: 6 unguarded uuid-array inputs (listUsers, listOperators.ids, listListingCountsByOperator, quotes.ids/rfqIds, retryJob) 22P02'd on junk ids; all guarded + shared contract test pins both impls |
