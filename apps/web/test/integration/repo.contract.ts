@@ -634,6 +634,64 @@ export function repoContract(
       ]);
     });
 
+    it("default sort puts pro operators' listings first (QA-191 priority placement)", async () => {
+      const repo = await factory();
+      const tag = `pro${Date.now().toString(36)}`;
+      const freeUser = await repo.createUser(`${tag}-f@test.dev`, "operator");
+      const freeOp = await repo.upsertOperator({
+        userId: freeUser.id,
+        name: "Free Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const proUser = await repo.createUser(`${tag}-p@test.dev`, "operator");
+      const proOp = await repo.upsertOperator({
+        userId: proUser.id,
+        name: "Pro Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      // The pro listing is OLDER — it still wins the default ordering.
+      const proListing = await repo.createListing({
+        operatorId: proOp.id,
+        vertical: "jets",
+        type: "charter",
+        title: `${tag} pro`,
+        price: 9000,
+        currency: "USD",
+        photos: [],
+        attributes: { aircraftCategory: "light" },
+      });
+      await new Promise((r) => setTimeout(r, 10));
+      const freeListing = await repo.createListing({
+        operatorId: freeOp.id,
+        vertical: "jets",
+        type: "charter",
+        title: `${tag} free`,
+        price: 1000,
+        currency: "USD",
+        photos: [],
+        attributes: { aircraftCategory: "light" },
+      });
+      const ids = [proListing.id, freeListing.id];
+
+      const featured = await repo.listListings({ ids, sort: "newest" });
+      expect(featured.map((l) => l.id)).toEqual([
+        proListing.id,
+        freeListing.id,
+      ]);
+      // Explicit price sort stays pure — pro boost doesn't leak into it.
+      const byPrice = await repo.listListings({ ids, sort: "price_asc" });
+      expect(byPrice.map((l) => l.id)).toEqual([
+        freeListing.id,
+        proListing.id,
+      ]);
+    });
+
     it("sweeps expired rfqs: past dateTo -> expired/closed, sent quotes -> declined", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

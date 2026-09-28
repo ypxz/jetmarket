@@ -151,12 +151,18 @@ class MemoryRepo implements Repo {
     // createdAt desc trails every sort for stable paging (QA-178).
     const byNewest = (a: Listing, b: Listing) =>
       b.createdAt.localeCompare(a.createdAt);
+    // Default ("newest") ordering honors the Pro plan's priority-placement
+    // feature: pro operators' listings sort first, then newest (QA-191).
+    const proRank = (l: Listing) =>
+      this.operators.get(l.operatorId)?.plan === "pro" ? 0 : 1;
+    const byFeatured = (a: Listing, b: Listing) =>
+      proRank(a) - proRank(b) || byNewest(a, b);
     const cmp =
       filter?.sort === "price_asc"
         ? (a: Listing, b: Listing) => a.price - b.price || byNewest(a, b)
         : filter?.sort === "price_desc"
           ? (a: Listing, b: Listing) => b.price - a.price || byNewest(a, b)
-          : byNewest;
+          : byFeatured;
     const out = this.filterListings(filter).sort(cmp);
     const start = filter?.offset ?? 0;
     return filter?.limit !== undefined

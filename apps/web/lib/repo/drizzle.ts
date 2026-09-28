@@ -401,7 +401,14 @@ export class DrizzleRepo implements Repo {
           ? [asc(listings.priceMinor), desc(listings.createdAt)]
           : filter?.sort === "price_desc"
             ? [desc(listings.priceMinor), desc(listings.createdAt)]
-            : [desc(listings.createdAt)]),
+            : [
+                // Default ("newest") ordering honors the Pro plan's
+                // priority-placement feature: pro operators' listings sort
+                // first, then newest (QA-191). Explicit price sorts stay
+                // pure — the caller asked for price order.
+                sql`case when (select o.plan from ${operators} o where o.id = ${listings.operatorId}) = 'pro' then 0 else 1 end`,
+                desc(listings.createdAt),
+              ]),
       )
       .$dynamic();
     if (filter?.limit !== undefined) q = q.limit(filter.limit);
