@@ -2,7 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
-import { emailProvider } from "@jetmarket/providers";
+import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { site } from "@jetmarket/config";
 
 const Body = z.object({
@@ -53,10 +53,17 @@ export async function POST(req: Request) {
       )}&t=${encodeURIComponent(r.accessToken)}`,
   );
   try {
+    const subject = `Your ${site.name} quote links`;
     await emailProvider().send({
       to: email,
-      subject: `Your ${site.name} quote links`,
+      subject,
       text: `Here are your request links:\n\n${lines.join("\n")}`,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: ["Here are your request links:"],
+        listItems: lines,
+      }),
     });
     logInfo("buyer.access_resent", { rfqs: rfqs.length });
   } catch (e) {

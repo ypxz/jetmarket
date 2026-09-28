@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
+import { brandedEmailHtml, captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
+import { site } from "@jetmarket/config";
 import { z } from "zod";
 import { buildRfqSchema, getVertical, nonContactFields } from "@jetmarket/verticals";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
@@ -117,10 +118,17 @@ export async function POST(req: Request) {
     // A provider blip must not 500 the buyer — the RFQ is already persisted
     // (a retry dedupes to 200 via dedupeKey, so the buyer never loses it).
     try {
+      const subject = `New RFQ on “${listing.title}”`;
+      const body = `${buyerName} sent a request. Details: ${JSON.stringify(publicFields)}`;
       await emailProvider().send({
         to: owner.email,
-        subject: `New RFQ on “${listing.title}”`,
-        text: `${buyerName} sent a request. Details: ${JSON.stringify(publicFields)}`,
+        subject,
+        text: body,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+        }),
       });
     } catch (e) {
       logWarn("rfq.owner_notify_failed", {
@@ -140,10 +148,19 @@ export async function POST(req: Request) {
     rfq.buyerEmail,
   )}&t=${encodeURIComponent(rfq.accessToken)}`;
   try {
+    const subject = `Your request for “${listing.title}” was sent`;
     await emailProvider().send({
       to: rfq.buyerEmail,
-      subject: `Your request for “${listing.title}” was sent`,
+      subject,
       text: `We sent your request to the seller and matching operators. Track their quotes here: ${inboxUrl}`,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [
+          "We sent your request to the seller and matching operators.",
+        ],
+        cta: { url: inboxUrl, label: "Track your quotes" },
+      }),
     });
   } catch (e) {
     logWarn("rfq.buyer_confirm_failed", {

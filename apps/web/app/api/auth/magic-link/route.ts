@@ -2,7 +2,7 @@ import { z } from "zod";
 import { site } from "@jetmarket/config";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
-import { emailProvider } from "@jetmarket/providers";
+import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { signMagicLink } from "@/lib/auth";
 
 const Body = z.object({
@@ -45,10 +45,17 @@ export async function POST(req: Request) {
 
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}`;
+  const subject = `Your ${site.name} sign-in link`;
   await emailProvider().send({
     to: email,
-    subject: `Your ${site.name} sign-in link`,
+    subject,
     text: `Sign in: ${link}`,
+    html: brandedEmailHtml({
+      siteName: site.name,
+      title: "Sign in",
+      paragraphs: ["Use the link below to sign in — it expires in 15 minutes."],
+      cta: { url: link, label: "Sign in" },
+    }),
   });
 
   // Dev/test only: also return the link so the flow is demoable without

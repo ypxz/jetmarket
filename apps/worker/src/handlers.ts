@@ -1,4 +1,5 @@
 import type { EmailProvider } from "@jetmarket/providers/email";
+import { brandedEmailHtml } from "@jetmarket/providers/email";
 import { site } from "@jetmarket/config";
 import {
   deliverAt,
@@ -123,10 +124,17 @@ export async function notifyExpirations(
 ): Promise<void> {
   for (const rfq of expired.rfqs) {
     try {
+      const subject = `Your request for “${rfq.listingTitle ?? "a listing"}” has expired`;
+      const body = `Your request for "${rfq.listingTitle ?? "a listing"}" on ${site.name} expired without an accepted quote. You can submit a fresh request anytime.`;
       await deps.email.send({
         to: rfq.buyerEmail,
-        subject: `Your request for “${rfq.listingTitle ?? "a listing"}” has expired`,
-        text: `Your request for "${rfq.listingTitle ?? "a listing"}" on ${site.name} expired without an accepted quote. You can submit a fresh request anytime.`,
+        subject,
+        text: body,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+        }),
       });
     } catch (e) {
       console.warn(
@@ -146,10 +154,17 @@ export async function notifyExpirations(
       const to = emailByOperator.get(q.operatorId);
       if (!to) continue;
       try {
+        const subject = `The RFQ for “${q.listingTitle ?? "a listing"}” expired`;
+        const body = `The request you quoted on ${site.name} expired before the buyer accepted, so your quote was not selected.`;
         await deps.email.send({
           to,
-          subject: `The RFQ for “${q.listingTitle ?? "a listing"}” expired`,
-          text: `The request you quoted on ${site.name} expired before the buyer accepted, so your quote was not selected.`,
+          subject,
+          text: body,
+          html: brandedEmailHtml({
+            siteName: site.name,
+            title: subject,
+            paragraphs: [body],
+          }),
         });
       } catch (e) {
         console.warn(
@@ -207,15 +222,27 @@ export async function quoteNotification(
   // Buyer contact stays masked until a deal closes (QA-152) — name only.
   const buyerName =
     typeof f["name"] === "string" && f["name"] ? f["name"] : "A buyer";
+  const subject = `New RFQ ${route}${pax}`.trim();
   await deps.email.send({
     to: ctx.operatorEmail,
-    subject: `New RFQ ${route}${pax}`.trim(),
+    subject,
     text:
       `You have a new request for quotation on ${site.name}.\n\n` +
       `Route: ${route || "n/a"}${pax}\n` +
       `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
       `Buyer: ${buyerName}\n\n` +
       `Open your operator inbox to send a quote.`,
+    html: brandedEmailHtml({
+      siteName: site.name,
+      title: subject,
+      paragraphs: [
+        `You have a new request for quotation on ${site.name}.`,
+        `Route: ${route || "n/a"}${pax}`,
+        `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}`,
+        `Buyer: ${buyerName}`,
+        "Open your operator inbox to send a quote.",
+      ],
+    }),
   });
   await deps.repo.markMatchState(matchId, "sent");
 }

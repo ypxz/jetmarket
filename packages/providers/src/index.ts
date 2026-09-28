@@ -16,7 +16,12 @@ export * as search from "./search";
 export * as analytics from "./analytics";
 
 export { authProvider, authProviderName, createAuthProvider } from "./auth";
-export { emailProvider, emailProviderName, createEmailProvider } from "./email";
+export {
+  brandedEmailHtml,
+  createEmailProvider,
+  emailProvider,
+  emailProviderName,
+} from "./email";
 export {
   storageProvider,
   storageProviderName,

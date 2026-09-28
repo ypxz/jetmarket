@@ -1,7 +1,7 @@
 import { defaultPlans, deliverAt, matchOperators } from "@jetmarket/domain";
 import { site } from "@jetmarket/config";
 import type { OperatorCandidate } from "@jetmarket/domain";
-import { emailProvider } from "@jetmarket/providers";
+import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
 import type { Listing, Repo, Rfq } from "@/lib/repo/types";
 
@@ -74,15 +74,27 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
     try {
+      const subject = `New RFQ ${route}${pax}`.trim();
       await emailProvider().send({
         to: user.email,
-        subject: `New RFQ ${route}${pax}`.trim(),
+        subject,
         text:
           `You have a new request for quotation on ${site.name}.\n\n` +
           `Route: ${route || "n/a"}${pax}\n` +
           `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
           `Buyer: ${buyerName}\n\n` +
           `Open your operator inbox to send a quote.`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [
+            `You have a new request for quotation on ${site.name}.`,
+            `Route: ${route || "n/a"}${pax}`,
+            `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}`,
+            `Buyer: ${buyerName}`,
+            "Open your operator inbox to send a quote.",
+          ],
+        }),
       });
     } catch (e) {
       logWarn("rfq.fanout_email_failed", {

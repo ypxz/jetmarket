@@ -1,10 +1,15 @@
 import { z } from "zod";
+import { site } from "@jetmarket/config";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { sweepStaleRfqs } from "@/lib/sweep";
-import { emailProvider, analyticsProvider } from "@jetmarket/providers";
+import {
+  brandedEmailHtml,
+  emailProvider,
+  analyticsProvider,
+} from "@jetmarket/providers";
 
 const CreateQuote = z.object({
   rfqId: z.string().min(1).max(64),
@@ -76,10 +81,21 @@ export async function POST(req: Request) {
   // (their retry would 409 on the live-quote guard). Operator sees the quote
   // in their inbox; the buyer's email can be resent later (QA-155).
   try {
+    const inboxUrl = `${process.env.APP_URL ?? new URL(req.url).origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}&t=${encodeURIComponent(rfq.accessToken)}`;
+    const quoteSubject = `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`;
     await emailProvider().send({
       to: rfq.buyerEmail,
-      subject: `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`,
-      text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${process.env.APP_URL ?? new URL(req.url).origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}&t=${encodeURIComponent(rfq.accessToken)}`,
+      subject: quoteSubject,
+      text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${inboxUrl}`,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: quoteSubject,
+        paragraphs: [
+          `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.`,
+          ...(data!.message ? [data!.message] : []),
+        ],
+        cta: { url: inboxUrl, label: "View and accept" },
+      }),
     });
   } catch (e) {
     logWarn("quote.buyer_notify_failed", {

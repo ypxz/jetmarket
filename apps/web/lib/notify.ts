@@ -1,5 +1,5 @@
 import { site } from "@jetmarket/config";
-import { emailProvider } from "@jetmarket/providers";
+import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
 import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
 
@@ -33,7 +33,16 @@ export async function notifyQuoteDeclined(
         : reason === "rfq-closed"
           ? `The buyer closed their request for "${title}" on ${site.name}, so your quote of ${quote.currency} ${quote.amount} was not selected this time.`
           : `The buyer declined your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}.`;
-    await emailProvider().send({ to: owner.email, subject, text: body });
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
   } catch (e) {
     logWarn("email.quote_declined_failed", {
       quoteId: quote.id,
@@ -54,10 +63,17 @@ export async function notifyBuyerQuoteWithdrawn(
   try {
     const listing = await repo.getListing(rfq.listingId);
     const title = listing?.title ?? "a listing";
+    const subject = `A quote for “${title}” was withdrawn`;
+    const body = `The operator withdrew their quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. Other quotes on your request are unaffected.`;
     await emailProvider().send({
       to: rfq.buyerEmail,
-      subject: `A quote for “${title}” was withdrawn`,
-      text: `The operator withdrew their quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. Other quotes on your request are unaffected.`,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
     });
   } catch (e) {
     logWarn("email.quote_withdrawn_failed", {
@@ -89,12 +105,19 @@ export async function notifyDealClosed(
         deal.invoiceStatus === "invoiced" && deal.invoiceRef
           ? ` A success-fee invoice for ${quote.currency} ${deal.feeAmount} (${deal.invoiceRef}) has been issued to your account.`
           : "";
+      const subject = `Your quote for “${title}” was accepted`;
+      const body =
+        `The buyer accepted your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
+        `Contact them at ${rfq.buyerEmail} to arrange fulfilment.${invoiceNote}`;
       await emailProvider().send({
         to: owner.email,
-        subject: `Your quote for “${title}” was accepted`,
-        text:
-          `The buyer accepted your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
-          `Contact them at ${rfq.buyerEmail} to arrange fulfilment.${invoiceNote}`,
+        subject,
+        text: body,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+        }),
       });
     }
   } catch (e) {
@@ -105,12 +128,19 @@ export async function notifyDealClosed(
   }
   try {
     const operator = await repo.getOperator(quote.operatorId);
+    const subject = `You accepted a quote for “${title}”`;
+    const body =
+      `You accepted ${operator?.name ?? "the operator"}'s quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
+      `The operator has been notified and will contact you to arrange fulfilment.`;
     await emailProvider().send({
       to: rfq.buyerEmail,
-      subject: `You accepted a quote for “${title}”`,
-      text:
-        `You accepted ${operator?.name ?? "the operator"}'s quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
-        `The operator has been notified and will contact you to arrange fulfilment.`,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
     });
   } catch (e) {
     logWarn("email.deal_closed_buyer_failed", {

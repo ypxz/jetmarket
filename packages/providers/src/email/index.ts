@@ -5,6 +5,7 @@ import { ResendEmailProvider, SmtpEmailProvider } from "./real";
 import { DEFAULT_FROM, type EmailProvider } from "./types";
 
 export * from "./types";
+export { brandedEmailHtml } from "./html";
 export { MockEmailProvider, readOutbox } from "./mock";
 export { ResendEmailProvider, SmtpEmailProvider } from "./real";
 
