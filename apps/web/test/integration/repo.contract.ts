@@ -460,6 +460,12 @@ export function repoContract(
       expect(queried.map((l) => l.title)).toEqual([
         `${tag} G650 for sale — reduced`,
       ]);
+
+      // Orphaned-RFQ listing ids ("" from set-null on delete) must not
+      // poison the ids lookup — Postgres would reject "" as uuid (QA-154).
+      const byIds = await repo.listListings({ ids: ["", b.id] });
+      expect(byIds.map((l) => l.id)).toEqual([b.id]);
+      expect(await repo.listListings({ ids: [""] })).toEqual([]);
     });
 
     it("paginates listings with limit/offset and countListings", async () => {

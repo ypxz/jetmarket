@@ -153,8 +153,12 @@ interface ListingFilter {
 function listingConds(filter?: ListingFilter) {
   const conds = [];
   if (filter?.ids) {
-    if (filter.ids.length === 0) return sql`false`;
-    conds.push(inArray(listings.id, filter.ids));
+    // Orphaned RFQs surface listingId "" (rfqs.listing_id is set null on
+    // listing delete) — drop empty ids or Postgres rejects the in-list with
+    // invalid uuid syntax and the whole inbox 500s (QA-154).
+    const ids = filter.ids.filter(Boolean);
+    if (ids.length === 0) return sql`false`;
+    conds.push(inArray(listings.id, ids));
   }
   if (filter?.operatorId) conds.push(eq(listings.operatorId, filter.operatorId));
   if (filter?.status) conds.push(eq(listings.status, filter.status));

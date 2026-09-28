@@ -221,6 +221,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 137 | ~03:55 | QA-151 | operator dashboard stats strip (RFQs received / quotes sent / won / win rate) via new countQuotes iface — Pro 'analytics' claim was vaporware |
 | 138 | ~04:10 | QA-152 | buyer contact masking: operator inbox API+page strip buyerEmail + email/tel fields (buyerName kept); owner-notify email + worker quote_notification mail no longer leak contact — fee-bypass closed until deal-close |
 | 139 | ~04:25 | QA-153 | buyerEmail case-insensitive end-to-end: stored lowercase at POST /api/rfqs; listRfqs/countRfqs filter + accept/decline compare normalized — mixed-case re-entry no longer yields empty inbox / 403 |
+| 140 | ~04:35 | QA-154 | orphaned rfqs.listing_id (set null on listing delete) mapped to "" — inArray(ids=[""]) would uuid-cast-error the whole inbox; repo filters empty ids now + contract test pins both impls |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)
