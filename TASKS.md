@@ -344,3 +344,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 245 | ~18:45 | QA-259 | checkout amountMinor → toMinorUnits(price, plans.pro.currency) — future-proof for 0-decimal billing currencies |
 | 246 | ~19:10 | QA-260 | signin-role-buyer/operator testids on role radios; flow helper uses getByTestId not label regex (i18n/copy-proof); TESTIDS gap closed |
 | 247 | ~19:15 | QA-261 | TESTIDS: plan-limit-banner marked resolved (upgrade-cta is the stable 402 contract); all doc'd gaps now closed |
+| 248 | ~19:20 | QA-262 | admin invoice paid/void emails include deal.currency — convention was currency-prefixed everywhere else |
