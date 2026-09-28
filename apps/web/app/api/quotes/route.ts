@@ -5,7 +5,7 @@ import { getRepo } from "@/lib/repo";
 import { emailProvider, analyticsProvider } from "@jetmarket/providers";
 
 const CreateQuote = z.object({
-  rfqId: z.string().min(1),
+  rfqId: z.string().min(1).max(64),
   amount: z.number().positive().max(1e9),
   message: z.string().max(2000).default(""),
 });

@@ -5,8 +5,8 @@ import { notifyQuoteDeclined } from "@/lib/notify";
 import { analyticsProvider } from "@jetmarket/providers";
 
 const Body = z.object({
-  buyerEmail: z.string().email(),
-  token: z.string().min(1),
+  buyerEmail: z.string().email().max(254),
+  token: z.string().min(1).max(256),
 });
 
 // Buyer declines a quote. Gated on the per-RFQ bearer token (QA-39) —

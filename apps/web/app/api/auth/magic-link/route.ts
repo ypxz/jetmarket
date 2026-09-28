@@ -6,7 +6,7 @@ import { emailProvider } from "@jetmarket/providers";
 import { signMagicLink } from "@/lib/auth";
 
 const Body = z.object({
-  email: z.string().email(),
+  email: z.string().email().max(254),
   role: z.enum(["buyer", "operator"]).default("buyer"),
 });
 

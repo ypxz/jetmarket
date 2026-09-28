@@ -10,14 +10,14 @@ import { getDbSql } from "@/lib/repo/drizzle";
 import { enqueueJob } from "@jetmarket/db";
 
 const CreateRfq = z.object({
-  listingId: z.string().min(1),
-  buyerEmail: z.string().email(),
+  listingId: z.string().min(1).max(64),
+  buyerEmail: z.string().email().max(254),
   fields: z.record(z.string(), z.unknown()).default({}),
   // honeypot — must stay empty; bots filling it are silently dropped.
-  website: z.string().optional(),
+  website: z.string().max(512).optional(),
   // captcha token from the widget (cf-turnstile-response) — mock provider
   // always passes; turnstile verifies server-side.
-  captchaToken: z.string().optional(),
+  captchaToken: z.string().max(4096).optional(),
 });
 
 /** Stable stringify: sorted object keys so field order never defeats dedupe. */

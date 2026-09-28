@@ -8,9 +8,9 @@ import { getRepo } from "@/lib/repo";
 import { emailProvider, paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 
 const Body = z.object({
-  buyerEmail: z.string().email(),
+  buyerEmail: z.string().email().max(254),
   // Per-RFQ bearer token from the buyer's email link (QA-39).
-  token: z.string().min(1),
+  token: z.string().min(1).max(256),
 });
 
 export async function POST(

@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 }
 
 const CreateListing = z.object({
-  type: z.string().min(1),
+  type: z.string().min(1).max(60),
   title: z.string().min(4).max(160),
   attributes: z.record(z.string(), z.unknown()).default({}),
   price: z.number().positive().max(1e9),
