@@ -213,6 +213,7 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 129 | ~02:30 | QA-143 | GET /api/listings: whitelist facets via listingFilterFor (was raw `f_*` → arbitrary jsonb paths); cap q at 200 chars; dedupe getRepo |
 | 130 | ~02:30 | QA-144 | e2e flake fix: core-loop.ui waits on /rfq/thanks URL before rfq-confirmation (cold-compile blew the 5s element window) |
 | 131 | ~02:40 | QA-145 | setDealInvoice CAS (expectedIn) — admin void/paid + accept-invoice no longer check-then-write; paid can't be voided by a race |
+| 132 | ~02:50 | QA-146 | email header injection: sanitizeHeaderValue strips CR/LF in to/from/subject/replyTo/tags at SMTP+Resend boundary (listing titles are operator-controlled) |
 | 4 | H+11:00 | — (no new findings) | QA-18..23 verified fixed | Re-verify on main: re-quote 201/409 (lifecycle spec green, 6 pass/1 skip); portal button on /app/billing for pro; mobile 390px header no-overlap + /app/rfqs + /admin zero hscroll; Mailpit shows `From: JetMarket <noreply@jetmarket.local>` under EMAIL_PROVIDER=smtp; oversized upload → 422 "image must be between 1 byte and 5 MB"; seed photos 200 after re-seed. og:image verified: `/en/listing/<id>` emits og:image → PNG 200 1200×630. `pnpm dev` boots honoring PORT. Screens: docs/screens/cycle4-* |
 
 ## Decisions we made for the human (mirrored to MORNING_REPORT)

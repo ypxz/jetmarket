@@ -3,6 +3,7 @@ import type { Transporter } from "nodemailer";
 import { todoGoLive } from "../errors";
 import {
   DEFAULT_FROM,
+  sanitizeHeaderValue,
   type EmailMessage,
   type EmailProvider,
   type SentEmail,
@@ -14,7 +15,7 @@ import {
  */
 export class SmtpEmailProvider implements EmailProvider {
   private readonly transport: Transporter;
-  private readonly from?: string;
+  private readonly from: string;
 
   constructor(opts: { smtpUrl: string; from?: string }) {
     this.transport = nodemailer.createTransport(opts.smtpUrl);
@@ -28,22 +29,25 @@ export class SmtpEmailProvider implements EmailProvider {
       throw new Error("email requires text or html body");
     }
     const info = await this.transport.sendMail({
-      from: message.from ?? this.from,
-      to: message.to,
-      subject: message.subject,
+      from: sanitizeHeaderValue(message.from ?? this.from),
+      to: sanitizeHeaderValue(message.to),
+      subject: sanitizeHeaderValue(message.subject),
       text: message.text,
       html: message.html,
-      replyTo: message.replyTo,
+      replyTo: message.replyTo && sanitizeHeaderValue(message.replyTo),
       headers: message.tags
         ? Object.fromEntries(
-            Object.entries(message.tags).map(([k, v]) => [`X-Tag-${k}`, v]),
+            Object.entries(message.tags).map(([k, v]) => [
+              `X-Tag-${k}`,
+              sanitizeHeaderValue(v),
+            ]),
           )
         : undefined,
     });
     return {
       id: info.messageId ?? `smtp-${Date.now()}`,
       to: message.to,
-      subject: message.subject,
+      subject: sanitizeHeaderValue(message.subject),
       at: new Date().toISOString(),
     };
   }
@@ -77,14 +81,17 @@ export class ResendEmailProvider implements EmailProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: message.from ?? this.opts.from ?? DEFAULT_FROM,
-        to: [message.to],
-        subject: message.subject,
+        from: sanitizeHeaderValue(message.from ?? this.opts.from ?? DEFAULT_FROM),
+        to: [sanitizeHeaderValue(message.to)],
+        subject: sanitizeHeaderValue(message.subject),
         text: message.text,
         html: message.html,
-        reply_to: message.replyTo,
+        reply_to: message.replyTo && sanitizeHeaderValue(message.replyTo),
         tags: message.tags
-          ? Object.entries(message.tags).map(([name, value]) => ({ name, value }))
+          ? Object.entries(message.tags).map(([name, value]) => ({
+              name,
+              value: sanitizeHeaderValue(value),
+            }))
           : undefined,
       }),
     });
@@ -95,7 +102,7 @@ export class ResendEmailProvider implements EmailProvider {
     return {
       id: body.id ?? `resend-${Date.now()}`,
       to: message.to,
-      subject: message.subject,
+      subject: sanitizeHeaderValue(message.subject),
       at: new Date().toISOString(),
     };
   }

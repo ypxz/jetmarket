@@ -24,6 +24,16 @@ export interface SentEmail {
   at: string;
 }
 
+/**
+ * RFC-5322 header values cannot contain CR/LF. Providers apply this to every
+ * header-bound field (to/from/replyTo/subject/tag values) so user-controlled
+ * strings — a listing title with an embedded newline, say — can't inject
+ * extra headers regardless of transport behaviour (QA-146).
+ */
+export function sanitizeHeaderValue(v: string): string {
+  return v.replace(/[\r\n]+/g, " ").trim();
+}
+
 export interface EmailProvider {
   send(message: EmailMessage): Promise<SentEmail>;
 }

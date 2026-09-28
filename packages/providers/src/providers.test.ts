@@ -9,6 +9,7 @@ import { MockAnalyticsProvider } from "./analytics/mock";
 import { NoopAnalyticsProvider } from "./analytics/real";
 import { authProviderName } from "./auth";
 import { emailProviderName } from "./email";
+import { sanitizeHeaderValue } from "./email/types";
 import { storageProviderName } from "./storage";
 import { paymentsProviderName } from "./payments";
 import type { SearchHit } from "./search/types";
@@ -147,5 +148,14 @@ describe("email From defaulting (QA-21)", () => {
       from: "Caller <caller@x.dev>",
     });
     expect(emlFrom(dir2, s3.id)).toBe("From: Caller <caller@x.dev>");
+  });
+});
+
+describe("sanitizeHeaderValue (QA-146)", () => {
+  it("strips CR/LF so user-controlled strings can't inject headers", () => {
+    expect(sanitizeHeaderValue('Jet "One"\r\nBcc: attacker@x.dev\r\n'))
+      .toBe('Jet "One" Bcc: attacker@x.dev');
+    expect(sanitizeHeaderValue("plain value")).toBe("plain value");
+    expect(sanitizeHeaderValue("a\n\nb")).toBe("a b");
   });
 });
