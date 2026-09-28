@@ -13,9 +13,16 @@ export function databaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   return env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
 }
 
-export function createDb(url: string = databaseUrl()) {
+export function createDb(
+  url: string = databaseUrl(),
+  env: NodeJS.ProcessEnv = process.env,
+) {
   const sql = postgres(url, {
     max: 10,
+    // Prepared statements break on transaction-mode poolers (PgBouncer,
+    // Supabase :6543). DB_PREPARED_STATEMENTS=0 is the documented escape
+    // hatch — see GO_LIVE.md.
+    prepare: env.DB_PREPARED_STATEMENTS !== "0",
     // Suppress NOTICE noise (e.g. "table exists") during migrate/seed runs.
     onnotice: () => {},
   });

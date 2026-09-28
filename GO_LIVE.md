@@ -23,7 +23,10 @@
    `docker build -f Dockerfile.worker -t jetmarket-worker .` (or Fly.io
    `fly launch` per service). Verified: web image boots + serves `/en` + `/api/health`.
 2. Point `DATABASE_URL`/`TEST_DATABASE_URL` at managed Postgres; run
-   `pnpm --filter @jetmarket/db migrate` + `seed` once.
+   `pnpm --filter @jetmarket/db migrate` + `seed` once. On a
+   transaction-mode pooler (PgBouncer, Supabase `:6543`) also set
+   `DB_PREPARED_STATEMENTS=0` — postgres.js prepares by default and the
+   pooler drops them.
 3. `VERTICAL=jets` (or your config folder), `APP_URL` to the public origin,
    `SESSION_SECRET` to a real random value, `ADMIN_EMAILS` to yours.
 4. `WORKER_POLL_MS` optional; the worker only needs `DATABASE_URL` — no web env.
