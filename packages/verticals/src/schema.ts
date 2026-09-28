@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ListingTypeSlug, VerticalConfig } from "./types";
+import type { FieldSchema, ListingTypeSlug, VerticalConfig } from "./types";
 
 /**
  * Compose the zod object validating `listings.attributes` for one listing type.
@@ -16,15 +16,29 @@ export function getAttributesSchema(
   return z.object(shape);
 }
 
+/** RFQ fields rendered for a given listing type — fields without
+ *  `appliesTo` show everywhere (QA-147). */
+export function rfqFieldsFor(
+  config: VerticalConfig,
+  listingType?: string,
+): FieldSchema[] {
+  if (!listingType) return config.rfqFields;
+  return config.rfqFields.filter(
+    (f) => !f.appliesTo || f.appliesTo.includes(listingType),
+  );
+}
+
 /**
  * Compose the zod object validating a buyer RFQ payload (`rfqs.fields` jsonb).
- * Optional fields accept "" from HTML forms as "absent".
+ * Optional fields accept "" from HTML forms as "absent". `listingType` scopes
+ * the schema to fields applicable to that listing's type.
  */
 export function buildRfqSchema(
   config: VerticalConfig,
+  listingType?: string,
 ): z.ZodObject<Record<string, z.ZodTypeAny>> {
   const shape: Record<string, z.ZodTypeAny> = {};
-  for (const field of config.rfqFields) {
+  for (const field of rfqFieldsFor(config, listingType)) {
     shape[field.key] = field.required
       ? field.schema
       : z.preprocess(

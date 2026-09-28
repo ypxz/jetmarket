@@ -55,8 +55,10 @@ export async function POST(req: Request) {
   const listing = await repo.getListing(listingId);
   if (!listing || listing.status !== "active") return err("listing not found", 404);
 
-  // RFQ payload shape comes from the active vertical's rfqFields config.
-  const parsed = buildRfqSchema(getVertical()).safeParse(fields);
+  // RFQ payload shape comes from the active vertical's rfqFields config,
+  // scoped to this listing's type — an aircraft_sale inquiry has no trip
+  // dates/passengers (QA-147).
+  const parsed = buildRfqSchema(getVertical(), listing.type).safeParse(fields);
   if (!parsed.success) return err("invalid fields", 422, parsed.error.issues);
 
   // Idempotent submit: dedupe key = sha256(listing|email|canonical fields).

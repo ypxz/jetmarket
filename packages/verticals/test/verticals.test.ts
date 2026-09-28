@@ -149,6 +149,29 @@ describe("buildRfqSchema (jets)", () => {
     expect(() => schema.parse({ ...valid, passengers: "0" })).toThrow();
     expect(() => schema.parse({ ...valid, departure: "" })).toThrow();
   });
+
+  it("scopes required fields by listing type (QA-147)", () => {
+    // An aircraft-sale inquiry has no trip: dateFrom/To, pax, route are
+    // absent from the schema — contact + optional budget only.
+    const sale = buildRfqSchema(jetsVertical, "aircraft_sale");
+    expect(() =>
+      sale.parse({ name: "Ada Buyer", email: "ada@example.com" }),
+    ).not.toThrow();
+    expect(() =>
+      sale.parse({ name: "Ada Buyer", email: "ada@example.com", departure: "ZRH" }),
+    ).not.toThrow(); // extra keys stripped, never required
+    // Charter still requires the trip fields.
+    expect(() =>
+      buildRfqSchema(jetsVertical, "charter").parse({
+        name: "Ada",
+        email: "a@b.c",
+      }),
+    ).toThrow();
+    // No listing type → unchanged (all fields).
+    expect(() => buildRfqSchema(jetsVertical).parse({
+      name: "Ada", email: "a@b.c",
+    })).toThrow();
+  });
 });
 
 describe("machinery scaffold", () => {

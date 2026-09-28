@@ -66,6 +66,10 @@ export interface FieldSchema {
   required: boolean;
   schema: z.ZodTypeAny;
   options?: FacetOption[];
+  /** Listing types this field renders for; absent = every type. Trip fields
+   *  (departure/dates/passengers) don't belong on an aircraft-sale inquiry —
+   *  QA-147. */
+  appliesTo?: ListingTypeSlug[];
   /** Optional grouping so related fields render together (e.g. "route", "contact"). */
   groupKey?: string;
   placeholderKey?: string;

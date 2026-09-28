@@ -1,4 +1,4 @@
-import { getVertical } from "@jetmarket/verticals";
+import { getVertical, rfqFieldsFor } from "@jetmarket/verticals";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { RfqForm, type RfqFieldView } from "@/components/rfq-form";
@@ -17,7 +17,10 @@ export default async function RfqPage({
   const listing = await repo.getListing(listingId);
   if (!listing || listing.status !== "active") notFound();
 
-  const fields: RfqFieldView[] = vertical.rfqFields.map((f) => ({
+  // Only the fields applicable to this listing's type render — a sale
+  // inquiry doesn't ask for trip dates (QA-147).
+  const scoped = rfqFieldsFor(vertical, listing.type);
+  const fields: RfqFieldView[] = scoped.map((f) => ({
     key: f.key,
     label: vt(f.labelKey),
     type: f.type,
@@ -35,7 +38,7 @@ export default async function RfqPage({
   }));
 
   const groupLabels: Record<string, string> = {};
-  for (const f of vertical.rfqFields) {
+  for (const f of scoped) {
     if (f.groupKey) groupLabels[f.groupKey] = t(`groups.${f.groupKey}`);
   }
 
