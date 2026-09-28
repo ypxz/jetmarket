@@ -874,7 +874,8 @@ async function seedMachinery(repo: MemoryRepo) {
   // Demo trail mirroring the pg seed (QA-237): an RFQ on ibérica's Okuma
   // lathe — delivered to alpine (pro) with a live quote, delayed for nord +
   // lowlands (free) — so mock-mode demos show the whole inbox loop. Buyer
-  // link: /quotes?email=procurement@bavaria-werk.example#t=demo-buyer-token.
+  // link: /quotes?email=procurement@bavaria-werk.example#t=demo-buyer-token-machinery
+  // (per-vertical suffix — the pg column has a unique index, QA-314).
   const rfq = await repo.createRfq({
     vertical: "machinery",
     listingId: okuma.id,
@@ -886,7 +887,7 @@ async function seedMachinery(repo: MemoryRepo) {
       email: "procurement@bavaria-werk.example",
     },
     dedupeKey: "seed-rfq-okuma-lathe",
-    accessToken: "demo-buyer-token",
+    accessToken: "demo-buyer-token-machinery",
   });
   const in23h = new Date(Date.now() + 23 * 3_600_000);
   await repo.createRfqMatches([

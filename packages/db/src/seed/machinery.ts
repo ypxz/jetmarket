@@ -193,8 +193,10 @@ export function buildMachinerySeed(now = new Date()): MachinerySeedData {
       status: "quoted",
       dedupeKey: "seed-rfq-okuma-lathe",
       // Fixed demo token — buyer inbox: /quotes?email=procurement@
-      // bavaria-werk.example#t=demo-buyer-token (dev-only data, QA-236).
-      accessToken: "demo-buyer-token",
+      // bavaria-werk.example#t=demo-buyer-token-machinery (dev-only data,
+      // QA-236). Per-vertical suffix keeps the unique access_token index
+      // satisfiable on a shared db (QA-314).
+      accessToken: "demo-buyer-token-machinery",
     },
   ];
   const rfqMatchRows: NewRfqMatch[] = [
