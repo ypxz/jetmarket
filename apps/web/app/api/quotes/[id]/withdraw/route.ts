@@ -1,5 +1,6 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
+import { notifyBuyerQuoteWithdrawn } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { analyticsProvider } from "@jetmarket/providers";
 
@@ -26,6 +27,8 @@ export async function POST(
   if (!(await repo.setQuoteStatus(id, "withdrawn", "sent"))) {
     return err("quote already transitioned", 409);
   }
+  const rfq = await repo.getRfq(quote.rfqId);
+  if (rfq) await notifyBuyerQuoteWithdrawn(repo, quote, rfq);
   analyticsProvider().track({
     name: "quote_withdrawn",
     props: { quoteId: quote.id, rfqId: quote.rfqId, operatorId: operator.id },

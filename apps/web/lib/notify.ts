@@ -36,3 +36,28 @@ export async function notifyQuoteDeclined(
     });
   }
 }
+
+/**
+ * Tell the buyer an operator withdrew a quote they had sent. Buyers are
+ * unauthenticated, so email is the only channel that reaches them.
+ */
+export async function notifyBuyerQuoteWithdrawn(
+  repo: Repo,
+  quote: Quote,
+  rfq: Rfq,
+): Promise<void> {
+  try {
+    const listing = await repo.getListing(rfq.listingId);
+    const title = listing?.title ?? "a listing";
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject: `A quote for “${title}” was withdrawn`,
+      text: `The operator withdrew their quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. Other quotes on your request are unaffected.`,
+    });
+  } catch (e) {
+    logWarn("email.quote_withdrawn_failed", {
+      quoteId: quote.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
