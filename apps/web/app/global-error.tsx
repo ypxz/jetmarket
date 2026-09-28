@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 /**
  * Root error boundary — last resort for crashes outside the locale tree.
  * Renders its own <html>/<body> since the root layout may have failed;
@@ -12,6 +14,16 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    navigator.sendBeacon(
+      "/api/client-error",
+      JSON.stringify({
+        digest: error.digest,
+        message: error.message.slice(0, 500),
+        path: window.location.pathname,
+      }),
+    );
+  }, [error]);
   return (
     <html lang="en">
       <body>
