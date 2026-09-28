@@ -1027,17 +1027,21 @@ export class DrizzleRepo implements Repo {
   }
   async listDeals(filter?: {
     operatorId?: string;
+    vertical?: string;
     limit?: number;
     offset?: number;
   }): Promise<Deal[]> {
-    // operatorId lives on the parent quote — join first so the filter is SQL.
-    const conds = filter?.operatorId
-      ? [eq(quotes.operatorId, filter.operatorId)]
-      : [];
+    // operatorId lives on the parent quote, vertical on the grandparent rfq —
+    // join both so the filters are SQL (QA-313).
+    const conds = [
+      ...(filter?.operatorId ? [eq(quotes.operatorId, filter.operatorId)] : []),
+      ...(filter?.vertical ? [eq(rfqs.vertical, filter.vertical)] : []),
+    ];
     let q = this.db
       .select({ deal: deals, quote: quotes })
       .from(deals)
       .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
       .where(conds.length ? and(...conds) : undefined)
       .orderBy(desc(deals.closedAt))
       .$dynamic();
@@ -1045,21 +1049,30 @@ export class DrizzleRepo implements Repo {
     if (filter?.offset) q = q.offset(filter.offset);
     return (await q).map((r) => toDeal(r.deal, r.quote));
   }
-  async countDeals(filter?: { operatorId?: string }): Promise<number> {
-    const conds = filter?.operatorId
-      ? [eq(quotes.operatorId, filter.operatorId)]
-      : [];
+  async countDeals(filter?: {
+    operatorId?: string;
+    vertical?: string;
+  }): Promise<number> {
+    const conds = [
+      ...(filter?.operatorId ? [eq(quotes.operatorId, filter.operatorId)] : []),
+      ...(filter?.vertical ? [eq(rfqs.vertical, filter.vertical)] : []),
+    ];
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(deals)
       .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
       .where(conds.length ? and(...conds) : undefined);
     return r?.n ?? 0;
   }
-  async sumDealFees(filter?: { operatorId?: string }): Promise<number> {
-    const conds = filter?.operatorId
-      ? [eq(quotes.operatorId, filter.operatorId)]
-      : [];
+  async sumDealFees(filter?: {
+    operatorId?: string;
+    vertical?: string;
+  }): Promise<number> {
+    const conds = [
+      ...(filter?.operatorId ? [eq(quotes.operatorId, filter.operatorId)] : []),
+      ...(filter?.vertical ? [eq(rfqs.vertical, filter.vertical)] : []),
+    ];
     const digits = minorDigitsExpr(deals.currency);
     const [r] = await this.db
       .select({
@@ -1067,6 +1080,7 @@ export class DrizzleRepo implements Repo {
       })
       .from(deals)
       .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
       .where(conds.length ? and(...conds) : undefined);
     return Number(r?.s ?? 0);
   }

@@ -376,15 +376,22 @@ export interface Repo {
 
   createDeal(d: Omit<Deal, "id" | "closedAt">): Promise<Deal>;
   getDeal(id: string): Promise<Deal | undefined>;
+  /** `vertical` scopes through deal → quote → rfq (deals carry no vertical
+   * column) — admin lists/aggregates must pass it on a shared DB so
+   * foreign-vertical deals don't leak into this deploy's ledger (QA-313). */
   listDeals(filter?: {
     operatorId?: string;
+    vertical?: string;
     limit?: number;
     offset?: number;
   }): Promise<Deal[]>;
-  countDeals(filter?: { operatorId?: string }): Promise<number>;
+  countDeals(filter?: { operatorId?: string; vertical?: string }): Promise<number>;
   /** All-deals fee aggregate in major units — page-scoped reduces lie once
-   * the ledger paginates (QA-171). */
-  sumDealFees(filter?: { operatorId?: string }): Promise<number>;
+   * the ledger paginates (QA-171). `vertical` scopes as on listDeals. */
+  sumDealFees(filter?: {
+    operatorId?: string;
+    vertical?: string;
+  }): Promise<number>;
   /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid).
    * `expectedIn` makes the write conditional on the current invoiceStatus —
    * returns false when the deal is already past it (admin void vs provider

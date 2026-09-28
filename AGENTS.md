@@ -105,7 +105,10 @@ every per-vertical row carries `vertical` and every surface must scope by
   claimable by every deploy's worker (deliberate).
 - Quotes/deals have no vertical column: resolve via `quote.rfqId →
   rfq.vertical`. Operator-facing deal/funnel lists stay deliberately
-  unscoped (a user's cross-vertical earnings are their business).
+  unscoped (a user's cross-vertical earnings are their business), but
+  ADMIN deal surfaces are scoped — `listDeals`/`countDeals`/`sumDealFees`
+  take `vertical` and the admin page + `/api/admin/deals` pass it
+  (QA-313).
 - Operators/users are global rows (no vertical). Fan-out candidates are
   scoped instead: `loadOperatorCandidates`/`fanoutRfq` exclude an operator
   whose book is entirely foreign-vertical (dealer elsewhere ≠ broker here);

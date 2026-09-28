@@ -591,21 +591,37 @@ class MemoryRepo implements Repo {
   }
   async listDeals(filter?: {
     operatorId?: string;
+    vertical?: string;
     limit?: number;
     offset?: number;
   }): Promise<Deal[]> {
     let out = [...this.deals.values()];
     if (filter?.operatorId) out = out.filter((d) => d.operatorId === filter.operatorId);
+    // Deals carry no vertical — resolve through quote → rfq (QA-313).
+    if (filter?.vertical) {
+      const v = filter.vertical;
+      out = out.filter((d) => {
+        const q = this.quotes.get(d.quoteId);
+        const r = q ? this.rfqs.get(q.rfqId) : undefined;
+        return r?.vertical === v;
+      });
+    }
     out = out.sort((a, b) => b.closedAt.localeCompare(a.closedAt));
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
     return out;
   }
-  async countDeals(filter?: { operatorId?: string }): Promise<number> {
+  async countDeals(filter?: {
+    operatorId?: string;
+    vertical?: string;
+  }): Promise<number> {
     return (await this.listDeals({ ...filter, limit: undefined, offset: undefined }))
       .length;
   }
-  async sumDealFees(filter?: { operatorId?: string }): Promise<number> {
+  async sumDealFees(filter?: {
+    operatorId?: string;
+    vertical?: string;
+  }): Promise<number> {
     return (await this.listDeals({ ...filter, limit: undefined, offset: undefined }))
       .reduce((s, d) => s + d.feeAmount, 0);
   }

@@ -1,6 +1,7 @@
 import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 export async function GET(req: Request) {
   const user = await requireUser("admin");
@@ -16,6 +17,9 @@ export async function GET(req: Request) {
   const dealRows = await repo.listDeals({
     limit: Number.isInteger(lim) && lim >= 1 ? Math.min(lim, 200) : 50,
     offset: Number.isInteger(off) && off >= 0 ? off : 0,
+    // Per-vertical ledger: another deploy's deals must not leak into this
+    // admin's list on a shared DB (QA-313) — same rule as jobs/rfqs (QA-296).
+    vertical: verticalSlug(),
   });
   // Two batched lookups instead of 2N per-row fetches (QA-103).
   const [quoteRows, opRows] = await Promise.all([

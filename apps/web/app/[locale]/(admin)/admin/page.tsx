@@ -31,9 +31,10 @@ export default async function AdminPage({
   const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs] =
     await Promise.all([
       repo.countOperators(),
-      repo.countDeals(),
+      // Deal ledger is per-vertical like the moderation queues (QA-313).
+      repo.countDeals({ vertical: verticalSlug() }),
       repo.listOperators({ limit: 100 }),
-      repo.sumDealFees(),
+      repo.sumDealFees({ vertical: verticalSlug() }),
       // Moderation queues are per-vertical: a shared DB hosts other
       // verticals' rows and admins only govern this deploy's (QA-294).
       repo.listListings({ limit: 50, vertical: verticalSlug() }),
@@ -48,6 +49,7 @@ export default async function AdminPage({
       repo.listDeals({
         limit: SEARCH_PAGE_SIZE,
         offset: (page - 1) * SEARCH_PAGE_SIZE,
+        vertical: verticalSlug(),
       }),
       repo.listListingCountsByOperator(
         operators.map((o) => o.id),

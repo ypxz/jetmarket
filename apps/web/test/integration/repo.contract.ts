@@ -1249,6 +1249,59 @@ export function repoContract(
       );
       expect(scopedDeals.length).toBeGreaterThanOrEqual(1);
 
+      // QA-313: admin deal list/count/fee-sum are per-vertical on a shared
+      // DB — a foreign-vertical deal (resolved deal→quote→rfq) must not
+      // enter this deploy's ledger.
+      const foreignListing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "machinery",
+        type: "for_sale",
+        title: `Foreign Deal ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const foreignRfq = await repo.createRfq({
+        vertical: "machinery",
+        listingId: foreignListing.id,
+        buyerEmail: `agg-f-${tag}@test.dev`,
+        fields: {},
+      });
+      const fq = await repo.createQuote({
+        rfqId: foreignRfq.id,
+        operatorId: op.id,
+        amount: 5000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.createDeal({
+        quoteId: fq.id,
+        operatorId: op.id,
+        amount: 5000,
+        currency: "USD",
+        feePct: 0.02,
+        feeAmount: 100,
+        invoiceStatus: "pending",
+      });
+      const jetsDeals = await repo.listDeals({
+        vertical: "jets",
+        limit: 1000,
+      });
+      expect(
+        await repo.listDeals({ vertical: "machinery", limit: 1000 }),
+      ).toHaveLength(1);
+      expect(jetsDeals.length).toBe(allDeals.length);
+      expect(await repo.countDeals({ vertical: "jets" })).toBe(
+        jetsDeals.length,
+      );
+      expect(await repo.countDeals()).toBe(jetsDeals.length + 1);
+      // same-operator foreign deal: vertical still wins over operatorId.
+      expect(
+        await repo.countDeals({ operatorId: op.id, vertical: "jets" }),
+      ).toBe(scopedDeals.length);
+      expect(await repo.sumDealFees({ vertical: "machinery" })).toBe(100);
+
       // Jobs queue: memory mode has no queue (always empty/no-op by design);
       // the shared assertion is shape-only — an array and false on unknown id.
       expect(Array.isArray(await repo.listJobs())).toBe(true);
