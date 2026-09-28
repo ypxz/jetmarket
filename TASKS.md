@@ -390,3 +390,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 291 | ~17:27 | QA-304 | pruneJobs + requeueStaleJobs gained vertical scope — a deploy's worker no longer erases/churns foreign-vertical job rows on a shared DB |
 | 292 | ~17:29 | QA-305 | all private-data GET routes now return noStore() (Cache-Control: private, no-store) — bearer/cookie JSON can't linger in shared caches |
 | 293 | ~17:36 | QA-306 | REAL BUG: countPendingRfqs leaked foreign delayed matches into the free-plan teaser count — vertical param added, inbox scopes, contract pins jets≠machinery |
+| 294 | ~17:45 | QA-307 | REAL BUG: fan-out candidates included foreign-vertical-only dealers (empty-fleet wildcard spammed machinery dealers onto jets RFQs) — workers + memory fanout now exclude foreign-book-only ops; zero-listing brokers still match |
