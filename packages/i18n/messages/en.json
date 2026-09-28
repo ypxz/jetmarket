@@ -54,6 +54,8 @@
     "emptyBody": "Loosen the filters or try a broader category — new listings go live daily.",
     "min": "Min",
     "max": "Max",
+    "dateFrom": "From",
+    "dateTo": "To",
     "sortLabel": "Sort by",
     "sortNewest": "Newest first",
     "sortPriceAsc": "Price: low to high",
@@ -232,7 +234,8 @@
         "from": "Departure",
         "to": "Arrival",
         "seats": "Seats",
-        "price": "Price"
+        "price": "Price",
+        "legDate": "Leg date"
       },
       "units": {
         "seats": "seats",

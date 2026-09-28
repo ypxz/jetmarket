@@ -132,6 +132,14 @@ export const jetsVertical: VerticalConfig = {
       attributeKey: "to",
     },
     {
+      // Empty-leg leg date — the flagship "fly this week" filter. Listings
+      // without a `date` attr (charter/sale) don't match a set range (strict).
+      key: "legDate",
+      labelKey: "facets.legDate",
+      type: "date-range",
+      attributeKey: "date",
+    },
+    {
       key: "seats",
       labelKey: "facets.seats",
       type: "number-range",

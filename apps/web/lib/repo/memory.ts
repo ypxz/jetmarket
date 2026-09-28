@@ -143,6 +143,7 @@ class MemoryRepo implements Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    facetDateRanges?: { key: string; from?: string; to?: string }[];
     ids?: string[];
     sort?: ListingSort;
     limit?: number;
@@ -177,6 +178,7 @@ class MemoryRepo implements Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    facetDateRanges?: { key: string; from?: string; to?: string }[];
     ids?: string[];
   }): Promise<number> {
     return this.filterListings(filter).length;
@@ -189,6 +191,7 @@ class MemoryRepo implements Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    facetDateRanges?: { key: string; from?: string; to?: string }[];
     ids?: string[];
   }): Listing[] {
     let out = [...this.listings.values()];
@@ -223,6 +226,18 @@ class MemoryRepo implements Repo {
           if (!Number.isFinite(n)) return false;
           if (r.min !== undefined && n < r.min) return false;
           if (r.max !== undefined && n > r.max) return false;
+          return true;
+        });
+      }
+    }
+    if (filter?.facetDateRanges) {
+      for (const r of filter.facetDateRanges) {
+        out = out.filter((l) => {
+          const v = l.attributes[r.key];
+          // ISO dates sort lexicographically; missing attr never matches.
+          if (typeof v !== "string") return false;
+          if (r.from !== undefined && v < r.from) return false;
+          if (r.to !== undefined && v > r.to) return false;
           return true;
         });
       }
@@ -576,6 +591,10 @@ async function seedJets(repo: MemoryRepo) {
     opIds.push(op.id);
     opUserIds.push(u.id);
   }
+  // Leg dates are relative to seed time so the demo always shows upcoming
+  // legs — hardcoded ISO dates would drift into the past (QA-215).
+  const inDays = (n: number) =>
+    new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const mk = async (
     operatorId: string,
     type: Listing["type"],
@@ -597,13 +616,13 @@ async function seedJets(repo: MemoryRepo) {
 
   await mk(opIds[0]!, "empty_leg", "Empty leg Zurich → Nice · Phenom 300", 4200, {
     aircraftCategory: "light", model: "Phenom 300", year: 2021, seats: 7,
-    rangeNm: 2000, from: "ZRH", to: "NCE", date: "2026-09-22",
+    rangeNm: 2000, from: "ZRH", to: "NCE", date: inDays(3),
   }, [
     await seedPhoto(`uploads/${opUserIds[0]}/seed-zrh-nce-phenom.svg`, "Phenom 300", 190),
   ]);
   await mk(opIds[0]!, "empty_leg", "Empty leg Geneva → London · CJ4", 6800, {
     aircraftCategory: "light", model: "Citation CJ4", year: 2019, seats: 8,
-    rangeNm: 2165, from: "GVA", to: "LTN", date: "2026-09-24",
+    rangeNm: 2165, from: "GVA", to: "LTN", date: inDays(6),
   });
   await mk(opIds[1]!, "charter", "Challenger 350 on-demand charter · Geneva", 8500, {
     aircraftCategory: "super_mid", model: "Challenger 350", year: 2020,
@@ -611,7 +630,7 @@ async function seedJets(repo: MemoryRepo) {
   });
   await mk(opIds[1]!, "empty_leg", "Empty leg Nice → Zurich · Challenger 350", 7400, {
     aircraftCategory: "super_mid", model: "Challenger 350", year: 2020,
-    seats: 9, rangeNm: 3200, from: "NCE", to: "ZRH", date: "2026-09-25",
+    seats: 9, rangeNm: 3200, from: "NCE", to: "ZRH", date: inDays(2),
   });
   await mk(opIds[2]!, "aircraft_sale", "Gulfstream G650 (2018) for sale", 38500000, {
     aircraftCategory: "ultra_long", model: "G650", year: 2018, seats: 14,
@@ -626,7 +645,7 @@ async function seedJets(repo: MemoryRepo) {
   });
   await mk(opIds[3]!, "empty_leg", "Empty leg London → Geneva · Praetor 600", 5900, {
     aircraftCategory: "mid", model: "Praetor 600", year: 2022, seats: 8,
-    rangeNm: 4018, from: "LTN", to: "GVA", date: "2026-09-23",
+    rangeNm: 4018, from: "LTN", to: "GVA", date: inDays(1),
   });
   await mk(opIds[3]!, "charter", "Praetor 600 charter · London Luton", 6300, {
     aircraftCategory: "mid", model: "Praetor 600", year: 2022, seats: 8,

@@ -48,7 +48,7 @@ export interface FacetConfig {
   /** Facet id; also the search-param name (e.g. "type", "aircraftCategory"). */
   key: string;
   labelKey: string;
-  type: "enum" | "number-range" | "text";
+  type: "enum" | "number-range" | "date-range" | "text";
   /**
    * attributes jsonb key this facet filters on. Omit for facets that filter
    * built-in Listing fields instead (key "type" -> listing.type,

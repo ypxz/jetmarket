@@ -23,6 +23,7 @@ export interface SearchParams {
 interface ParsedParams {
   exact: Record<string, string>;
   ranges: { f: FacetConfig; min?: number; max?: number }[];
+  dateRanges: { f: FacetConfig; from?: string; to?: string }[];
   type?: ListingType;
   query?: string;
   sort?: ListingSort;
@@ -34,6 +35,7 @@ function parseParams(params: SearchParams): ParsedParams {
   const vertical = getVertical();
   const exact: Record<string, string> = {};
   const ranges: { f: FacetConfig; min?: number; max?: number }[] = [];
+  const dateRanges: { f: FacetConfig; from?: string; to?: string }[] = [];
   let type: ListingType | undefined;
 
   for (const facet of vertical.facets) {
@@ -41,6 +43,16 @@ function parseParams(params: SearchParams): ParsedParams {
       const min = toNumber(str(params[`${facet.key}Min`]));
       const max = toNumber(str(params[`${facet.key}Max`]));
       if (min !== undefined || max !== undefined) ranges.push({ f: facet, min, max });
+      continue;
+    }
+    if (facet.type === "date-range") {
+      // `<key>From`/`<key>To` params; ISO-shaped strings only — anything else
+      // simply doesn't filter (same fail-open posture as unknown sort values).
+      const iso = (v: string | undefined) =>
+        v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined;
+      const from = iso(str(params[`${facet.key}From`]));
+      const to = iso(str(params[`${facet.key}To`]));
+      if (from || to) dateRanges.push({ f: facet, from, to });
       continue;
     }
     const raw = str(params[facet.key]);
@@ -60,6 +72,7 @@ function parseParams(params: SearchParams): ParsedParams {
   return {
     exact,
     ranges,
+    dateRanges,
     ...(type ? { type } : {}),
     ...(q ? { query: q } : {}),
     // Unknown sort values degrade to the newest-first default, not a 400.
@@ -85,6 +98,11 @@ function repoFilter(p: ParsedParams) {
     ...(min !== undefined ? { min } : {}),
     ...(max !== undefined ? { max } : {}),
   }));
+  const facetDateRanges = p.dateRanges.map(({ f, from, to }) => ({
+    key: f.attributeKey ?? f.key,
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+  }));
   return {
     status: "active" as const,
     vertical: getVertical().slug,
@@ -93,6 +111,7 @@ function repoFilter(p: ParsedParams) {
     ...(p.sort ? { sort: p.sort } : {}),
     ...(Object.keys(p.exact).length ? { facets: p.exact } : {}),
     ...(facetRanges.length ? { facetRanges } : {}),
+    ...(facetDateRanges.length ? { facetDateRanges } : {}),
   };
 }
 

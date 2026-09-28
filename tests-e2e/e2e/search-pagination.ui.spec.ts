@@ -91,3 +91,22 @@ test('listing page shows similar listings excluding itself', async ({
   );
   expect(hrefs).not.toContain(href);
 });
+
+// QA-215: jets "Leg date" date-range facet — the params <key>From/<key>To
+// filter on the listing's `date` attribute; legs outside the window drop out.
+test('search filters empty legs by leg-date range', async ({ page }) => {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const from = iso(new Date());
+  const to = iso(new Date(Date.now() + 86_400_000));
+  await page.goto(`/search?type=empty_leg&legDateFrom=${from}&legDateTo=${to}`);
+  // pg seed keys empty-leg dates to today+offset; only offset-1 legs land in
+  // [today, today+1] (LBG→NCE Challenger 650, NCE→ZRH Phenom 300).
+  const cards = page.getByTestId('listing-card');
+  await expect(cards).toHaveCount(2);
+  await expect(page.getByText('NCE → ZRH empty leg')).toBeVisible();
+  // A leg dated today+6 must not leak into the window.
+  await expect(page.getByText('ZRH → LTN empty leg')).toHaveCount(0);
+  // The sidebar's date inputs reflect the params so the form round-trips.
+  await expect(page.getByTestId('facet-legDate-from')).toHaveValue(from);
+  await expect(page.getByTestId('facet-legDate-to')).toHaveValue(to);
+});

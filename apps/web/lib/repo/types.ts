@@ -186,6 +186,12 @@ export interface Repo {
      * non-numeric values never match.
      */
     facetRanges?: { key: string; min?: number; max?: number }[];
+    /**
+     * ISO (YYYY-MM-DD) date ranges on attribute keys — string compare works
+     * because ISO dates sort lexicographically. Strict: a listing without the
+     * attribute never matches a set bound (QA-215).
+     */
+    facetDateRanges?: { key: string; from?: string; to?: string }[];
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
     /** Result order — `newest` (createdAt desc) is the default. */
@@ -203,6 +209,7 @@ export interface Repo {
     query?: string;
     facets?: Record<string, string>;
     facetRanges?: { key: string; min?: number; max?: number }[];
+    facetDateRanges?: { key: string; from?: string; to?: string }[];
   }): Promise<number>;
   updateListingStatus(
     id: string,

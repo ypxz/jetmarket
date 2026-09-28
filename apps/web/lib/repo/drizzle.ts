@@ -149,6 +149,7 @@ interface ListingFilter {
   query?: string;
   facets?: Record<string, string>;
   facetRanges?: { key: string; min?: number; max?: number }[];
+  facetDateRanges?: { key: string; from?: string; to?: string }[];
 }
 
 /** Shared WHERE builder so listListings/countListings never drift apart.
@@ -198,6 +199,15 @@ function listingConds(filter?: ListingFilter) {
       const num = sql`case when ${listings.attributes} ->> ${r.key} ~ '^-?[0-9]+(\\.[0-9]+)?$' then (${listings.attributes} ->> ${r.key})::numeric end`;
       if (r.min !== undefined) conds.push(sql`${num} >= ${r.min}`);
       if (r.max !== undefined) conds.push(sql`${num} <= ${r.max}`);
+    }
+  }
+  if (filter?.facetDateRanges) {
+    for (const r of filter.facetDateRanges) {
+      // `attributes->>key` is NULL for rows missing the attr — strict match,
+      // same as memory (QA-215). ISO text compares chronologically.
+      const v = sql`${listings.attributes} ->> ${r.key}`;
+      if (r.from !== undefined) conds.push(sql`${v} >= ${r.from}`);
+      if (r.to !== undefined) conds.push(sql`${v} <= ${r.to}`);
     }
   }
   return conds.length ? and(...conds) : undefined;

@@ -615,6 +615,34 @@ export function repoContract(
           facetRanges: [{ key: "model", min: 0 }],
         }),
       ).toBe(0);
+      // facetDateRanges (QA-215): ISO text bounds; missing attr never matches.
+      const withDate = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "empty_leg",
+        title: `${tag} dated-leg`,
+        price: 4200,
+        currency: "USD",
+        photos: [],
+        attributes: { date: "2026-10-15" },
+      });
+      const dated = await repo.listListings({
+        ...base,
+        facetDateRanges: [{ key: "date", from: "2026-10-01", to: "2026-10-31" }],
+      });
+      expect(dated.map((l) => l.id)).toEqual([withDate.id]);
+      expect(
+        await repo.countListings({
+          ...base,
+          facetDateRanges: [{ key: "date", to: "2026-10-31" }],
+        }),
+      ).toBe(1);
+      expect(
+        await repo.countListings({
+          ...base,
+          facetDateRanges: [{ key: "date", from: "2026-11-01" }],
+        }),
+      ).toBe(0);
     });
 
     it("returns listings newest-first (memory matches drizzle order)", async () => {

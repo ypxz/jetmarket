@@ -87,6 +87,29 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
                 </div>
               );
             }
+            if (f.type === "date-range") {
+              return (
+                <div key={f.key}>
+                  <Label>{vt(f.labelKey)}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      name={`${f.key}From`}
+                      type="date"
+                      aria-label={`${vt(f.labelKey)} ${t("dateFrom")}`}
+                      defaultValue={get(`${f.key}From`)}
+                      data-testid={`facet-${f.key}-from`}
+                    />
+                    <Input
+                      name={`${f.key}To`}
+                      type="date"
+                      aria-label={`${vt(f.labelKey)} ${t("dateTo")}`}
+                      defaultValue={get(`${f.key}To`)}
+                      data-testid={`facet-${f.key}-to`}
+                    />
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={f.key}>
                 <Label htmlFor={`f-${f.key}`}>{vt(f.labelKey)}</Label>
