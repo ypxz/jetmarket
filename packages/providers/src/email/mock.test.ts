@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -32,6 +32,31 @@ describe("MockEmailProvider", () => {
     expect(box[0]!.subject).toBe("Your magic link");
     expect(box[0]!.from).toBe("JetMarket <noreply@jetmarket.local>");
     expect(box[0]!.text).toContain("token=abc");
+  });
+
+  it("strips CR/LF from header fields — crafted subjects can't inject", async () => {
+    const dir = tmp();
+    const email = new MockEmailProvider({ outboxDir: dir });
+    const sent = await email.send({
+      to: "victim@x.com\r\nBcc: attacker@y.com",
+      subject: "Hi\r\nBcc: attacker@y.com",
+      replyTo: "me@x.com\nCc: evil@z.com",
+      text: "body",
+    });
+    const eml = readFileSync(join(dir, `${sent.id}.eml`), "utf8");
+    // No injected header lines — exactly the expected header names.
+    const headers = eml.split("\r\n\r\n")[0]!;
+    const names = headers.split("\r\n").map((l) => l.split(":")[0]);
+    expect(names).toEqual([
+      "From",
+      "To",
+      "Reply-To",
+      "Subject",
+      "Date",
+      "Content-Type",
+    ]);
+    expect(headers).toContain("Subject: Hi Bcc: attacker@y.com");
+    expect(sent.subject).toBe("Hi Bcc: attacker@y.com");
   });
 
   it("rejects messages without a body and returns [] for missing dirs", async () => {

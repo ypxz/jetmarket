@@ -18,6 +18,10 @@ export interface MockEmailOptions {
 
 export const DEFAULT_OUTBOX_DIR = "tmp/outbox";
 
+/** CR/LF can't survive into .eml headers — a crafted subject would inject
+ *  extra headers (added recipients, split body) into the mock file. */
+const headerSafe = (v: string) => v.replace(/[\r\n]+/g, " ").trim();
+
 /**
  * Mock email: writes each message as `<id>.eml` (RFC-822-ish) and `<id>.json`
  * (parsed fields) under the outbox dir. Deterministic, inspectable offline.
@@ -41,13 +45,16 @@ export class MockEmailProvider implements EmailProvider {
     const id = `${at.getTime().toString(36)}-${Math.random()
       .toString(36)
       .slice(2, 10)}`;
-    const from = message.from ?? this.from;
+    const from = headerSafe(message.from ?? this.from);
+    const to = headerSafe(message.to);
+    const subject = headerSafe(message.subject);
+    const replyTo = message.replyTo ? headerSafe(message.replyTo) : undefined;
     mkdirSync(this.dir, { recursive: true });
     const eml = [
       `From: ${from}`,
-      `To: ${message.to}`,
-      message.replyTo ? `Reply-To: ${message.replyTo}` : null,
-      `Subject: ${message.subject}`,
+      `To: ${to}`,
+      replyTo ? `Reply-To: ${replyTo}` : null,
+      `Subject: ${subject}`,
       `Date: ${at.toUTCString()}`,
       message.html ? `Content-Type: text/html; charset=utf-8` : `Content-Type: text/plain; charset=utf-8`,
       ``,
@@ -58,9 +65,13 @@ export class MockEmailProvider implements EmailProvider {
     writeFileSync(join(this.dir, `${id}.eml`), eml);
     writeFileSync(
       join(this.dir, `${id}.json`),
-      JSON.stringify({ id, ...message, from, at: at.toISOString() }, null, 2),
+      JSON.stringify(
+        { id, ...message, to, subject, replyTo, from, at: at.toISOString() },
+        null,
+        2,
+      ),
     );
-    return { id, to: message.to, subject: message.subject, at: at.toISOString() };
+    return { id, to, subject, at: at.toISOString() };
   }
 }
 
