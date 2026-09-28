@@ -26,5 +26,80 @@ services:
       - "1025:1025"   # SMTP
       - "8025:8025"   # web UI
 
+  # ---- app profile: one-command deployable product --------------------------
+  # `docker compose --profile app up --build` brings up web + worker + infra.
+  # First boot migrates and (idempotently) seeds the jets demo data; emails
+  # land in Mailpit (http://localhost:8025). Flip VERTICAL=machinery or the
+  # *_PROVIDER vars to taste — see .env.example.
+
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://jetmarket:jetmarket@postgres:5432/jetmarket
+      SESSION_SECRET: ${SESSION_SECRET:-compose-dev-not-a-secret}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      VERTICAL: ${VERTICAL:-jets}
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-mock}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      EMAIL_FROM: ${EMAIL_FROM:-JetMarket <noreply@jetmarket.local>}
+      SMTP_URL: smtp://mailpit:1025
+      PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-mock}
+      STRIPE_API_BASE: http://stripe-mock:12111
+      CAPTCHA_PROVIDER: ${CAPTCHA_PROVIDER:-mock}
+      SEARCH_PROVIDER: ${SEARCH_PROVIDER:-postgres}
+      ANALYTICS_PROVIDER: ${ANALYTICS_PROVIDER:-mock}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-mock}
+      STORAGE_DIR: /app/storage
+    ports:
+      - "3000:3000"
+    volumes:
+      - storage-data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      stripe-mock:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgres://jetmarket:jetmarket@postgres:5432/jetmarket
+      VERTICAL: ${VERTICAL:-jets}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      EMAIL_FROM: ${EMAIL_FROM:-JetMarket <noreply@jetmarket.local>}
+      SMTP_URL: smtp://mailpit:1025
+      STORAGE_DIR: /app/storage
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-1}
+    # Migrate, seed the demo vertical (idempotent; photos land on the shared
+    # volume so web's /storage route serves them), then start the poll loop.
+    command:
+      - sh
+      - -c
+      - |
+        pnpm --filter @jetmarket/db migrate &&
+        { [ "$$SEED_DEMO_DATA" = "1" ] && pnpm --filter @jetmarket/db seed || true; } &&
+        pnpm --filter @jetmarket/worker start
+    volumes:
+      - storage-data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
 volumes:
   pgdata:
+  storage-data:

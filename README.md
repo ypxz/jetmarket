@@ -21,6 +21,13 @@ pnpm --filter @jetmarket/worker dev   # optional: RFQ fan-out + expiry sweep (po
 
 All external services default to `mock` — see `.env.example`.
 
+One-command containerized run (web + worker + postgres + mailpit):
+
+```bash
+docker compose --profile app up --build   # http://localhost:3000, mail http://localhost:8025
+# SEED_DEMO_DATA=1 seeds the demo vertical on first boot (default); VERTICAL=machinery switches.
+```
+
 Tests: `pnpm test:all` (unit → integration → contract → e2e).
 Smoke vs any deploy: `pnpm smoke --url=https://…`.
 
