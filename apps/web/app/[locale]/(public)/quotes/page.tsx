@@ -41,10 +41,16 @@ function QuotesInner() {
     }
     // Token rides a header, not the query string — bearer tokens in URLs
     // persist in server logs, history and Referer (QA-156).
-    const res = await fetch(
-      `/api/buyer/quotes?email=${encodeURIComponent(email)}`,
-      { headers: { "x-rfq-token": token } },
-    );
+    let res: Response;
+    try {
+      res = await fetch(
+        `/api/buyer/quotes?email=${encodeURIComponent(email)}`,
+        { headers: { "x-rfq-token": token } },
+      );
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
     if (!res.ok) {
       const d = await readJson<{ error?: string }>(res);
       setMsg(d.error ?? tc("error"));
@@ -60,11 +66,17 @@ function QuotesInner() {
       setMsg(t("needEmail"));
       return;
     }
-    const res = await fetch("/api/buyer/access", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/buyer/access", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
     const d = await readJson<{ error?: string }>(res);
     setMsg(res.ok ? t("resendSent") : (d.error ?? tc("error")));
   }
@@ -81,11 +93,17 @@ function QuotesInner() {
   }, []); // mount-only: refresh via the search form
 
   async function accept(quoteId: string) {
-    const res = await fetch(`/api/quotes/${quoteId}/accept`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ buyerEmail: email, token }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`/api/quotes/${quoteId}/accept`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
     const data = await readJson<{ error?: string; deal: { id: string } }>(res);
     if (!res.ok) {
       setMsg(data.error ?? tc("error"));
@@ -96,11 +114,17 @@ function QuotesInner() {
   }
 
   async function decline(quoteId: string) {
-    const res = await fetch(`/api/quotes/${quoteId}/decline`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ buyerEmail: email, token }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`/api/quotes/${quoteId}/decline`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
     const data = await readJson<{ error?: string }>(res);
     if (!res.ok) {
       setMsg(data.error ?? tc("error"));

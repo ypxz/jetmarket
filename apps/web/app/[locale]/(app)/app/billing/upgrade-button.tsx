@@ -11,11 +11,17 @@ export function UpgradeButton() {
 
   async function upgrade() {
     setState("busy");
-    const res = await fetch("/api/billing/checkout", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ plan: "pro" }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan: "pro" }),
+      });
+    } catch {
+      setState("error");
+      return;
+    }
     if (!res.ok) {
       setState("error");
       return;

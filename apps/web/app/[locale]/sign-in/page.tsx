@@ -7,10 +7,12 @@ import { useState } from "react";
 
 export default function SignInPage() {
   const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"buyer" | "operator">("buyer");
   const [devLink, setDevLink] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [failed, setFailed] = useState(false);
   const error = useSearchParams().get("error");
   const errorMsg =
     error === "invalid-token"
@@ -21,11 +23,18 @@ export default function SignInPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/auth/magic-link", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, role }),
-    });
+    setFailed(false);
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+    } catch {
+      setFailed(true);
+      return;
+    }
     const data = await readJson<{ devLink?: string }>(res);
     setDevLink(data.devLink ?? null);
     setSent(true);
@@ -42,6 +51,15 @@ export default function SignInPage() {
           data-testid="signin-error"
         >
           {errorMsg}
+        </p>
+      ) : null}
+      {failed ? (
+        <p
+          className="mt-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
+          role="alert"
+          data-testid="signin-failed"
+        >
+          {tc("error")}
         </p>
       ) : null}
       <form onSubmit={submit} className="mt-6 space-y-4">

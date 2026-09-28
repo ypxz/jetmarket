@@ -13,8 +13,12 @@ export function VerifyButton({
   const t = useTranslations("admin");
   const router = useRouter();
   async function toggle() {
-    await fetch(`/api/admin/operators/${operatorId}/verify`, { method: "POST" });
-    router.refresh();
+    try {
+      await fetch(`/api/admin/operators/${operatorId}/verify`, { method: "POST" });
+      router.refresh();
+    } catch {
+      // network error — leave the row untouched; admin can retry
+    }
   }
   return (
     <button

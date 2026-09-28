@@ -15,12 +15,16 @@ export function ListingModButton({
   const t = useTranslations("admin");
   const router = useRouter();
   async function moderate() {
-    await fetch(`/api/admin/listings/${listingId}/status`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status: action }),
-    });
-    router.refresh();
+    try {
+      await fetch(`/api/admin/listings/${listingId}/status`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: action }),
+      });
+      router.refresh();
+    } catch {
+      // network error — leave the row untouched; admin can retry
+    }
   }
   return (
     <button

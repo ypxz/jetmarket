@@ -16,15 +16,22 @@ export function QuoteForm({ rfqId }: { rfqId: string }) {
     setSending(true);
     setError(null);
     const f = new FormData(e.currentTarget);
-    const res = await fetch("/api/quotes", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        rfqId,
-        amount: Number(f.get("amount")),
-        message: f.get("message"),
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          rfqId,
+          amount: Number(f.get("amount")),
+          message: f.get("message"),
+        }),
+      });
+    } catch {
+      setSending(false);
+      setError(t("failed"));
+      return;
+    }
     setSending(false);
     if (!res.ok) {
       setError((await readJson<{ error?: string }>(res)).error ?? t("failed"));

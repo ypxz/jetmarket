@@ -41,15 +41,21 @@ export default function OnboardingPage() {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const res = await fetch("/api/operators", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: f.get("name"),
-        baseAirport: f.get("baseAirport"),
-        fleetSummary: f.get("fleetSummary"),
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/operators", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: f.get("name"),
+          baseAirport: f.get("baseAirport"),
+          fleetSummary: f.get("fleetSummary"),
+        }),
+      });
+    } catch {
+      setError(t("failed"));
+      return;
+    }
     if (!res.ok) {
       setError((await readJson<{ error?: string }>(res)).error ?? t("failed"));
       return;

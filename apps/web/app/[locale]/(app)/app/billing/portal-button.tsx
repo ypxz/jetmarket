@@ -10,7 +10,13 @@ export function PortalButton() {
 
   async function openPortal() {
     setState("busy");
-    const res = await fetch("/api/billing/portal", { method: "POST" });
+    let res: Response;
+    try {
+      res = await fetch("/api/billing/portal", { method: "POST" });
+    } catch {
+      setState("error");
+      return;
+    }
     const data = await readJson<{ url?: string }>(res);
     if (!res.ok || !data.url) {
       setState("error");
