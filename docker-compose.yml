@@ -28,9 +28,24 @@ services:
 
   # ---- app profile: one-command deployable product --------------------------
   # `docker compose --profile app up --build` brings up web + worker + infra.
-  # First boot migrates and (idempotently) seeds the jets demo data; emails
+  # `migrate` is a dedicated one-shot: web/worker only start once it exits 0,
+  # so first boot never serves requests against a schema that doesn't exist
+  # yet (worker used to run migrate inline — web raced it and 500'd early).
+  # Seeding stays in worker (photos land on the shared storage volume); emails
   # land in Mailpit (http://localhost:8025). Flip VERTICAL=machinery or the
   # *_PROVIDER vars to taste — see .env.example.
+
+  migrate:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgres://jetmarket:jetmarket@postgres:5432/jetmarket
+    command: ["pnpm", "--filter", "@jetmarket/db", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   web:
     profiles: ["app"]
@@ -60,6 +75,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       mailpit:
         condition: service_started
       stripe-mock:
@@ -83,13 +100,14 @@ services:
       SMTP_URL: smtp://mailpit:1025
       STORAGE_DIR: /app/storage
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-1}
-    # Migrate, seed the demo vertical (idempotent; photos land on the shared
-    # volume so web's /storage route serves them), then start the poll loop.
+    # Seed the demo vertical (idempotent; photos land on the shared volume so
+    # web's /storage route serves them), then start the poll loop. Schema is
+    # guaranteed by the `migrate` service — do not re-add migrate here or the
+    # two migrators race on first boot.
     command:
       - sh
       - -c
       - |
-        pnpm --filter @jetmarket/db migrate &&
         { [ "$$SEED_DEMO_DATA" = "1" ] && pnpm --filter @jetmarket/db seed || true; } &&
         pnpm --filter @jetmarket/worker start
     volumes:
@@ -97,6 +115,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       mailpit:
         condition: service_started
 
