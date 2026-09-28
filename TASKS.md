@@ -363,3 +363,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 264 | ~17:35 | QA-278 | providers integration stale pins: QA-219's past-dated leg made totals 60→61 / 27→28; updated + comment tying expiry filtering to app layer |
 | 265 | ~18:10 | QA-279 | demo-buyer inbox e2e pin — seeded RFQ (demo-buyer-token) lands on payable $14.5k quote; token never echoed; wrong/missing token → []/401 |
 | 266 | ~15:20 | QA-280 | billing page hardcoded jets fee copy + literal $. feeNote now built from config successFeePct + vertical labels; prices formatMoney(plans.pro.currency) |
+| 267 | ~15:50 | QA-281 | TESTIDS.md drift: 3 duplicated stale table rows (rfqs/buyer-quotes/admin supersets appended not merged); consolidated + added ~12 ids the suite already asserts (signin-role, confirm-signin, delayed-teaser, facet-sort, date-range, back-to-search, banners) |
