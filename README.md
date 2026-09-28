@@ -9,6 +9,15 @@ Vertical modularity is the point: everything jet-specific lives in
 SEO pages). `machinery` is a second config folder proving the abstraction — switch
 with `VERTICAL=machinery`.
 
+**Shipped:** magic-link auth (HMAC, server-side revocation) · operator
+onboarding + listing CRUD with photos · config-driven facets + full-text
+search + pagination · buyer RFQ → vertical-scoped operator fan-out (verified
+instant / unverified delayed) → quotes → single-winner accept → success-fee
+invoice · lifecycle: decline / withdraw / close / expiry sweep · free/Pro
+plans with per-vertical caps + mock Stripe checkout/portal/webhook · admin
+console (verify operators, moderate listings, job retry, fee ledger) ·
+dark mode · mobile-responsive · 45+ Playwright e2e over jets + machinery.
+
 ## 5-minute run (mock mode, fully offline)
 
 ```bash
