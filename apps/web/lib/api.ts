@@ -34,12 +34,12 @@ const MAX_JSON_BODY_BYTES = 64 * 1024;
 export async function readBodyCapped(
   req: Request,
   maxBytes: number,
-): Promise<Uint8Array | null> {
+): Promise<Uint8Array<ArrayBuffer> | null> {
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > maxBytes) return null;
   const reader = req.body?.getReader();
   if (!reader) return new Uint8Array(0);
-  const chunks: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
   let received = 0;
   try {
     for (;;) {
