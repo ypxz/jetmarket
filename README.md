@@ -47,6 +47,7 @@ quote already on it:
 
 Tests: `pnpm test:all` (unit → integration → contract → e2e).
 Smoke vs any deploy: `pnpm smoke --url=https://…`.
+Production boot: `pnpm build && pnpm start` (see GO_LIVE.md).
 
 **Integration/e2e tests are destructive** (they drop the public schema) — they
 run against per-suite `*_test` databases (`jetmarket_test` for web+e2e,
