@@ -128,6 +128,8 @@ export const machineryVertical: VerticalConfig = {
       type: "date",
       required: false,
       groupKey: "dates",
+      // Rental window — meaningless on a purchase/auction inquiry (QA-150).
+      appliesTo: ["for_rent"],
       schema: ISO_DATE.optional(),
     },
     {
@@ -136,6 +138,7 @@ export const machineryVertical: VerticalConfig = {
       type: "date",
       required: false,
       groupKey: "dates",
+      appliesTo: ["for_rent"],
       schema: ISO_DATE.optional(),
     },
     {
