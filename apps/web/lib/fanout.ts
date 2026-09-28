@@ -64,6 +64,10 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
     .join(" → ");
   const pax = f["passengers"] ? ` — ${String(f["passengers"])} pax` : "";
   const opsById = new Map(ops.map((o) => [o.id, o]));
+  // Buyer contact stays masked until a deal closes (QA-152) — name only,
+  // same masking the worker's quote_notification applies in pg mode.
+  const buyerName =
+    typeof f["name"] === "string" && f["name"].trim() ? f["name"] : "A buyer";
   for (const m of matches) {
     if (m.delivery === "delayed") continue;
     const op = opsById.get(m.operatorId);
@@ -76,7 +80,8 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
         text:
           `You have a new request for quotation on ${site.name}.\n\n` +
           `Route: ${route || "n/a"}${pax}\n` +
-          `Buyer: ${rfq.buyerEmail}\n\n` +
+          `Dates: ${String(f["dateFrom"] ?? "")} – ${String(f["dateTo"] ?? "")}\n` +
+          `Buyer: ${buyerName}\n\n` +
           `Open your operator inbox to send a quote.`,
       });
     } catch (e) {
