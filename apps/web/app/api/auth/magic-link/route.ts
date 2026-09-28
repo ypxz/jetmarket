@@ -76,5 +76,8 @@ export async function POST(req: Request) {
   // (QA-177).
   const devLink =
     process.env.NODE_ENV === "production" ? undefined : link;
-  return ok({ sent: true, devLink, role: resolvedRole });
+  // No `role` in the response: resolvedRole flips to "admin" for
+  // ADMIN_EMAILS members, and echoing it would let an unauthenticated probe
+  // enumerate the admin roster (QA-301). Uniform {sent:true} for all.
+  return ok({ sent: true, devLink });
 }
