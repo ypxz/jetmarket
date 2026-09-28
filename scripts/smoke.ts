@@ -66,6 +66,23 @@ await check("GET /api/listings returns seeded listings", async () => {
     throw new Error("no listings");
 });
 
+// Operator profile + listing detail pages derive off the same seeded rows —
+// catches a broken dynamic route or a publicOperator regression on a deploy.
+await check("GET listing + operator pages render", async () => {
+  const listings = (await (await get("/api/listings?limit=1")).json()) as {
+    id: string;
+    operatorId: string;
+  }[];
+  const l = listings[0];
+  if (!l) throw new Error("no listings");
+  for (const path of [`/listing/${l.id}`, `/operators/${l.operatorId}`]) {
+    const res = await get(path);
+    if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+    if (!(await res.text()).includes("<h1"))
+      throw new Error(`${path} rendered without h1`);
+  }
+});
+
 await check("GET /robots.txt + /sitemap.xml", async () => {
   const robots = await get("/robots.txt");
   if (!robots.ok) throw new Error(`robots status ${robots.status}`);
