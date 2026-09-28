@@ -27,6 +27,9 @@
 3. `VERTICAL=jets` (or your config folder), `APP_URL` to the public origin,
    `SESSION_SECRET` to a real random value, `ADMIN_EMAILS` to yours.
 4. `WORKER_POLL_MS` optional; the worker only needs `DATABASE_URL` — no web env.
+5. Non-Docker hosts (bare VM, PaaS without the Dockerfile): `pnpm build`
+   then `PORT=<assigned> pnpm start` — the start script honors `$PORT`
+   (default 3000); the platform injects it (QA-309).
 
 ## Accounts to create (human-only — phone/card/identity required)
 
