@@ -1,5 +1,6 @@
 import type { EmailProvider } from "@jetmarket/providers/email";
 import { brandedEmailHtml } from "@jetmarket/providers/email";
+import type { AnalyticsProvider } from "@jetmarket/providers/analytics";
 import { site } from "@jetmarket/config";
 import {
   deliverAt,
@@ -15,6 +16,7 @@ export interface WorkerDeps {
   sql: Sql;
   email: EmailProvider;
   plans: Plan[];
+  analytics?: AnalyticsProvider;
   now?: () => Date;
 }
 
@@ -123,6 +125,7 @@ export async function notifyExpirations(
   expired: ExpireResultDetailed,
 ): Promise<void> {
   for (const rfq of expired.rfqs) {
+    deps.analytics?.track({ name: "rfq_expired", props: { rfqId: rfq.id } });
     try {
       const subject = `Your request for “${rfq.listingTitle ?? "a listing"}” has expired`;
       const body = `Your request for "${rfq.listingTitle ?? "a listing"}" on ${site.name} expired without an accepted quote. You can submit a fresh request anytime.`;
@@ -153,6 +156,10 @@ export async function notifyExpirations(
     for (const q of expired.quotes) {
       const to = emailByOperator.get(q.operatorId);
       if (!to) continue;
+      deps.analytics?.track({
+        name: "quote_expired",
+        props: { quoteId: q.id, operatorId: q.operatorId },
+      });
       try {
         const subject = `The RFQ for “${q.listingTitle ?? "a listing"}” expired`;
         const body = `The request you quoted on ${site.name} expired before the buyer accepted, so your quote was not selected.`;

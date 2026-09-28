@@ -9,6 +9,7 @@ import {
 } from "@jetmarket/db";
 import { defaultPlans } from "@jetmarket/domain";
 import { createEmailProvider } from "@jetmarket/providers/email";
+import { analyticsProvider } from "@jetmarket/providers";
 import {
   deliverDueMatches,
   handleJob,
@@ -96,6 +97,7 @@ async function main() {
     repo: createWorkerRepo(db),
     sql,
     email: createEmailProvider(),
+    analytics: analyticsProvider(),
     plans: defaultPlans(),
   };
   const pollMs = pollIntervalMs();

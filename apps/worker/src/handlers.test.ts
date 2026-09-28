@@ -346,6 +346,32 @@ describe("notifyExpirations", () => {
     expect(repo.calls["loadOperatorEmails"]).toEqual([["op1", "op2"]]);
   });
 
+  it("emits rfq_expired/quote_expired analytics when a sink is wired (QA-189)", async () => {
+    const repo = fakeRepo();
+    sent.length = 0;
+    const events: { name: string; props?: Record<string, unknown> }[] = [];
+    const d = deps(repo);
+    d.analytics = { track: (e) => void events.push(e) };
+    await notifyExpirations(d, {
+      rfqs: [
+        { id: "r9", buyerEmail: "buyer@x.com", listingTitle: "G650" },
+      ],
+      quotes: [
+        {
+          id: "q9",
+          rfqId: "r9",
+          operatorId: "op1",
+          amountMinor: 100_00,
+          currency: "USD",
+          listingTitle: "G650",
+        },
+      ],
+    });
+    expect(events.map((e) => e.name)).toEqual(["rfq_expired", "quote_expired"]);
+    expect(events[0]!.props?.rfqId).toBe("r9");
+    expect(events[1]!.props?.quoteId).toBe("q9");
+  });
+
   it("a bad address does not stop the rest of the sweep", async () => {
     const repo = fakeRepo();
     sent.length = 0;
