@@ -3,10 +3,10 @@ import { site } from "@jetmarket/config";
 import { clientIp, err, isUniqueViolation, ok, parseBody, rateLimit } from "@/lib/api";
 import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
-import { notifyQuoteDeclined } from "@/lib/notify";
+import { notifyDealClosed, notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { sweepStaleRfqs } from "@/lib/sweep";
-import { emailProvider, paymentsProvider, analyticsProvider } from "@jetmarket/providers";
+import { paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
@@ -139,14 +139,7 @@ export async function POST(
     });
   }
 
-  const operator = await repo.getOperator(quote.operatorId);
-  const owner = operator ? await repo.getUser(operator.userId) : undefined;
-  if (owner) {
-    await emailProvider().send({
-      to: owner.email,
-      subject: `Deal closed on “${listing?.title ?? "listing"}”`,
-      text: `Buyer accepted your quote of ${quote.currency} ${quote.amount}. Success fee (${(feePct * 100).toFixed(1)}%): ${quote.currency} ${deal.feeAmount}. Invoice ${deal.invoiceRef ? `ref ${deal.invoiceRef}` : "pending"}.`,
-    });
-  }
+  // Winner + buyer confirmations (QA-149); internally failure-safe.
+  await notifyDealClosed(repo, quote, rfq, deal);
   return ok({ quote: await repo.getQuote(id), deal });
 }

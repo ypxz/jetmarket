@@ -1,7 +1,7 @@
 import { site } from "@jetmarket/config";
 import { emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
-import type { Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
+import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
 
 /**
  * Tell the operator their quote was not selected — either the buyer declined
@@ -57,6 +57,59 @@ export async function notifyBuyerQuoteWithdrawn(
   } catch (e) {
     logWarn("email.quote_withdrawn_failed", {
       quoteId: quote.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
+ * Deal closed: the winning operator learns the sale landed (and the
+ * success-fee invoice ref when already issued); the buyer gets an
+ * acceptance confirmation — their only receipt, since buyers are
+ * unauthenticated (QA-149). Failures never fail the request.
+ */
+export async function notifyDealClosed(
+  repo: Repo,
+  quote: Quote,
+  rfq: Rfq,
+  deal: Deal,
+): Promise<void> {
+  const listing = await repo.getListing(rfq.listingId);
+  const title = listing?.title ?? "a listing";
+  try {
+    const operator = await repo.getOperator(quote.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (owner) {
+      const invoiceNote =
+        deal.invoiceStatus === "invoiced" && deal.invoiceRef
+          ? ` A success-fee invoice for ${quote.currency} ${deal.feeAmount} (${deal.invoiceRef}) has been issued to your account.`
+          : "";
+      await emailProvider().send({
+        to: owner.email,
+        subject: `Your quote for “${title}” was accepted`,
+        text:
+          `The buyer accepted your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
+          `Contact them at ${rfq.buyerEmail} to arrange fulfilment.${invoiceNote}`,
+      });
+    }
+  } catch (e) {
+    logWarn("email.deal_closed_operator_failed", {
+      dealId: deal.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+  try {
+    const operator = await repo.getOperator(quote.operatorId);
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject: `You accepted a quote for “${title}”`,
+      text:
+        `You accepted ${operator?.name ?? "the operator"}'s quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
+        `The operator has been notified and will contact you to arrange fulfilment.`,
+    });
+  } catch (e) {
+    logWarn("email.deal_closed_buyer_failed", {
+      dealId: deal.id,
       error: e instanceof Error ? e.message : String(e),
     });
   }
