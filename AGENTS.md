@@ -7,7 +7,8 @@ found the bug once; don't reintroduce it.
 
 ```bash
 pnpm lint                          # eslint + check:design + check:i18n (all packages)
-cd apps/web && pnpm exec tsc --noEmit
+pnpm typecheck                     # tsc --noEmit in EVERY package — a web-only tsc
+                                   # misses test files in verticals/worker (QA-263)
 cd apps/web && pnpm exec vitest run                    # unit
 TEST_DATABASE_URL=postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test \
   pnpm exec vitest run --config vitest.integration.config.ts test/integration/
