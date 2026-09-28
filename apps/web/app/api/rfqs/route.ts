@@ -45,12 +45,6 @@ export async function POST(req: Request) {
   const { listingId, buyerEmail, fields, website, captchaToken } = data!;
   if (website) return ok({ received: true }, 201); // honeypot hit: fake success
 
-  const captcha = await captchaProvider().verify(captchaToken, ip);
-  if (!captcha.success) {
-    logWarn("rfq.captcha_failed", { ip, reason: captcha.reason });
-    return err("verification failed — please retry", 403);
-  }
-
   const repo = await getRepo();
   const listing = await repo.getListing(listingId);
   if (!listing || listing.status !== "active") return err("listing not found", 404);
@@ -65,10 +59,25 @@ export async function POST(req: Request) {
   // Double-click, refresh-resubmit, or retried concurrent POSTs all collide
   // on the unique index instead of minting duplicate RFQs/owner emails.
   // Email is normalized at write — inbox lookup + accept/decline compare
-  // case-insensitively (QA-153).
+  // case-insensitively (QA-153). The dedupe read runs BEFORE captcha:
+  // turnstile tokens are single-use, so a retry of an already-persisted
+  // submit would fail the second siteverify and show "verification failed"
+  // to a buyer whose RFQ actually landed (QA-176).
   const dedupeKey = createHash("sha256")
     .update(`${listingId}|${buyerEmail.toLowerCase()}|${canonicalize(parsed.data)}`)
     .digest("hex");
+  const replay = await repo.getRfqByDedupeKey(dedupeKey);
+  if (replay) {
+    // Same response as the post-insert dedupe path — rfqId only, never the
+    // bearer token.
+    return ok({ received: true, rfqId: replay.id, deduped: true }, 200);
+  }
+
+  const captcha = await captchaProvider().verify(captchaToken, ip);
+  if (!captcha.success) {
+    logWarn("rfq.captcha_failed", { ip, reason: captcha.reason });
+    return err("verification failed — please retry", 403);
+  }
   let rfq;
   let deduped = false;
   try {

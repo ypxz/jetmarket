@@ -9,14 +9,33 @@ import { expect, request, test } from '@playwright/test';
 const run = Date.now();
 const IP = `203.0.113.${(run % 200) + 1}`;
 
+async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
+  const ctx = await request.newContext();
+  const res = await ctx.post('/api/auth/magic-link', { data: { email, role } });
+  expect(res.ok()).toBeTruthy();
+  const { devLink } = (await res.json()) as { devLink: string };
+  const cbUrl = new URL(devLink);
+  const cb = await ctx.post('/api/auth/callback', {
+    form: {
+      token: cbUrl.searchParams.get('token')!,
+      next: cbUrl.searchParams.get('next') ?? '/',
+    },
+  });
+  expect(cb.status()).toBeLessThan(400);
+  return ctx;
+}
+
 test('rfq abuse: captcha force-fail → 403, honeypot → fake 201, rate limit → 429', async () => {
   const ctx = await request.newContext({
     extraHTTPHeaders: { 'x-forwarded-for': IP },
   });
 
-  // Captcha failure short-circuits before the repo is touched — a bogus
-  // listingId still 403s rather than 404ing.
-  const denied = await ctx.post('/api/rfqs', {
+  // A bogus listing 404s before captcha runs — listing existence is public
+  // (ids sit in /listing/[id] URLs), so pre-captcha probing leaks nothing,
+  // and the dedupe read must precede captcha because turnstile tokens are
+  // single-use (a legit retry would otherwise surface "verification failed"
+  // after its RFQ already persisted — QA-176).
+  const missing = await ctx.post('/api/rfqs', {
     data: {
       listingId: 'no-such-listing',
       buyerEmail: 'bot@x.test',
@@ -24,7 +43,52 @@ test('rfq abuse: captcha force-fail → 403, honeypot → fake 201, rate limit �
       captchaToken: 'force-fail',
     },
   });
+  expect(missing.status()).toBe(404);
+
+  // Real listing, valid fields, dead captcha token → 403.
+  const operator = await login(`e2e-abuse-op-${run}@jetmarket.local`, 'operator');
+  await operator.post('/api/operators', {
+    data: { name: `Abuse Ops ${run}`, baseAirport: 'LSZH' },
+  });
+  const lres = await operator.post('/api/listings', {
+    data: {
+      type: 'charter',
+      title: `Abuse Charter ${run}`,
+      price: 20000,
+      currency: 'USD',
+      photos: [],
+      attributes: { aircraftCategory: 'light', model: 'PC-24', seats: 6 },
+    },
+  });
+  const listingId = ((await lres.json()) as { id: string }).id;
+  const fields = {
+    departure: 'ZRH',
+    arrival: 'NCE',
+    dateFrom: '2026-10-01',
+    dateTo: '2026-10-03',
+    passengers: 4,
+    budgetUsd: 25000,
+    name: 'Abuse Buyer',
+    email: `abuse-${run}@x.test`,
+  };
+  const denied = await ctx.post('/api/rfqs', {
+    data: { listingId, buyerEmail: `abuse-${run}@x.test`, fields, captchaToken: 'force-fail' },
+  });
   expect(denied.status()).toBe(403);
+
+  // QA-176 pin: a replayed submission dedupes to 200 even when the captcha
+  // token is dead — the first POST persisted the RFQ.
+  const first = await ctx.post('/api/rfqs', {
+    data: { listingId, buyerEmail: `abuse-${run}@x.test`, fields },
+  });
+  expect(first.status()).toBe(201);
+  const replay = await ctx.post('/api/rfqs', {
+    data: { listingId, buyerEmail: `abuse-${run}@x.test`, fields, captchaToken: 'force-fail' },
+  });
+  expect(replay.status()).toBe(200);
+  const replayed = (await replay.json()) as { deduped?: boolean; accessToken?: string };
+  expect(replayed.deduped).toBe(true);
+  expect(replayed.accessToken).toBeUndefined();
 
   // Honeypot: silently fake-accepted (no RFQ persisted).
   const spam = await ctx.post('/api/rfqs', {
