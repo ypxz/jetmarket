@@ -261,7 +261,7 @@ export function repoContract(
         vertical: "jets",
         listingId: listing.id,
         buyerEmail: `b-${tag}@test.dev`,
-        fields: { from: "ZRH", to: "NCE" },
+        fields: { from: "ZRH", to: "NCE", dateTo: "2020-01-01" },
       });
 
       await repo.createRfqMatches([
@@ -283,6 +283,14 @@ export function repoContract(
       expect((await repo.listRfqs({ operatorId: matched.id })).map((r) => r.id)).toContain(rfq.id);
       expect(await repo.countRfqs({ operatorId: matched.id })).toBe(1);
       expect((await repo.listRfqs({ operatorId: delayedOp.id })).map((r) => r.id)).not.toContain(rfq.id);
+
+      // QA-225: the undelivered match is countable for the upsell teaser —
+      // only for its operator, and not for terminal RFQs.
+      expect(await repo.countPendingRfqs(delayedOp.id)).toBe(1);
+      expect(await repo.countPendingRfqs(matched.id)).toBe(0);
+      expect(await repo.countPendingRfqs(owner.id)).toBe(0);
+      await repo.expireRfqs(new Date(Date.now() + 86400000).toISOString());
+      expect(await repo.countPendingRfqs(delayedOp.id)).toBe(0);
     });
 
     it("enforces plan listing counts and subscription round-trips", async () => {

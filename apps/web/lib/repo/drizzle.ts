@@ -677,6 +677,24 @@ export class DrizzleRepo implements Repo {
     return r?.n ?? 0;
   }
 
+  async countPendingRfqs(operatorId: string): Promise<number> {
+    // 'delayed' state already encodes deliverAt > now — the worker sweep
+    // promotes due rows. Terminal rfqs (closed covers iface 'expired',
+    // plus spam) don't count toward the teaser.
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(rfqMatches)
+      .innerJoin(rfqs, eq(rfqMatches.rfqId, rfqs.id))
+      .where(
+        and(
+          eq(rfqMatches.operatorId, operatorId),
+          eq(rfqMatches.state, "delayed"),
+          sql`${rfqs.status} NOT IN ('closed', 'spam')`,
+        ),
+      );
+    return r?.n ?? 0;
+  }
+
   async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
     // 'delayed' is the only undelivered state — pending AND post-notification
     // (sent/failed) both grant access, else the RFQ disappears from the inbox

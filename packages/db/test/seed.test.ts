@@ -76,6 +76,19 @@ describe("buildJetsSeed", () => {
     const byOp = new Map(seed.listingRows.map((l) => [l.operatorId, true]));
     for (const o of seed.opRows) expect(byOp.has(o.id!)).toBe(true);
   });
+
+  it("seeds a demo RFQ trail: delivered to pro, delayed for free ops", () => {
+    expect(seed.rfqRows).toHaveLength(1);
+    const byState = seed.rfqMatchRows.reduce<Record<string, number>>(
+      (m, r) => {
+        m[r.state!] = (m[r.state!] ?? 0) + 1;
+        return m;
+      },
+      {},
+    );
+    expect(byState["sent"]).toBe(1); // geneva-executive, delivered instantly
+    expect(byState["delayed"]).toBe(2); // swiss-aircharter + helvetic (free)
+  });
 });
 
 import { machineryVertical } from "@jetmarket/verticals";
@@ -92,7 +105,12 @@ describe("buildMachinerySeed", () => {
 
   it("ids do not collide with the jets seed counter space", () => {
     const jetsIds = new Set(
-      [...seed.userRows, ...seed.opRows, ...seed.listingRows].map((r) => r.id),
+      [
+        ...seed.userRows,
+        ...seed.opRows,
+        ...seed.listingRows,
+        ...seed.rfqRows,
+      ].map((r) => r.id),
     );
     for (const r of [...mseed.userRows, ...mseed.opRows, ...mseed.listingRows]) {
       expect(jetsIds.has(r.id!)).toBe(false);

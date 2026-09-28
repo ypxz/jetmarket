@@ -291,6 +291,12 @@ export interface Repo {
     since?: string;
   }): Promise<number>;
   /**
+   * Delayed fan-out matches not yet due for this operator — RFQs a free-plan
+   * operator can't see yet (the Pro "quote first" delay). Feeds inbox upsell
+   * copy; terminal RFQs (closed/expired/spam) don't count.
+   */
+  countPendingRfqs(operatorId: string): Promise<number>;
+  /**
    * Expiry sweep: open/quoted rfqs whose `fields.dateTo` (YYYY-MM-DD) is
    * strictly before `cutoff` -> "expired"; their still-"sent" quotes ->
    * "declined". Returns affected counts.

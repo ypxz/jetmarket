@@ -1,6 +1,7 @@
 import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { Pager } from "@/components/pager";
+import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
@@ -60,6 +61,16 @@ export default async function RfqInboxPage({
   // Buyer contact fields stay masked pre-deal — the marketplace intro is
   // the fee (QA-152). The buyer's email reaches the winner via email only.
   const vertical = verticalConfig();
+  // Free-plan fan-out delay (QA-225): delayed matches are invisible until
+  // due — surface the count so the delay becomes an upsell, not silence.
+  const [pendingRfqs, rfqDelayHours] =
+    operator.plan === "free"
+      ? [
+          await repo.countPendingRfqs(operator.id),
+          vertical.fees.subscriptionPlans.find((p) => p.rfqDelayHours)
+            ?.rfqDelayHours ?? 24,
+        ]
+      : [0, 24];
   const rfqRows = rfqsPage.map((r) => {
     const listing = listingById.get(r.listingId) ?? null;
     return {
@@ -72,6 +83,22 @@ export default async function RfqInboxPage({
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      {pendingRfqs > 0 ? (
+        <div
+          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface p-4"
+          data-testid="delayed-rfq-teaser"
+        >
+          <p className="text-sm">
+            {t("delayedTeaser", { count: pendingRfqs, hours: rfqDelayHours })}
+          </p>
+          <Link
+            href="/app/billing"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+          >
+            {t("delayedTeaserCta")}
+          </Link>
+        </div>
+      ) : null}
       {total === 0 ? (
         <p className="mt-6 rounded-md border border-dashed border-border p-6 text-sm text-muted" data-testid="rfq-empty">
           {t("empty")}

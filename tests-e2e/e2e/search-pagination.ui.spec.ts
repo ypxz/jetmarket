@@ -166,6 +166,20 @@ test('operator dashboard flags expired listings as hidden', async ({
   ).toBeVisible();
 });
 
+// QA-225: delayed fan-out matches are invisible until due — the free-plan
+// inbox must still surface them as an upsell, not silence. The pg seed gives
+// Swiss AirCharter (free) one delayed match on the demo ZRH→NCE RFQ.
+test('free operator inbox shows the delayed-RFQ teaser', async ({ page }) => {
+  await signUpAndLogin(page, 'fly@swissaircharter.example', 'operator');
+  await page.goto('/app/rfqs');
+  await expect(page.getByTestId('delayed-rfq-teaser')).toBeVisible();
+  await expect(page.getByTestId('delayed-rfq-teaser')).toContainText(
+    '1 buyer request lands in your inbox in 24h',
+  );
+  // And the delayed RFQ itself stays out of the list until due.
+  await expect(page.getByTestId('rfq-empty')).toBeVisible();
+});
+
 // QA-222: the similar-listings rail keeps the search context alive — its
 // cards carry the same ?from, so a detour through a sibling still returns
 // to the buyer's filtered search.

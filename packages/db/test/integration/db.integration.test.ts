@@ -77,22 +77,22 @@ describe("jets seed", () => {
       now: new Date("2026-09-15T00:00:00Z"),
     });
     expect(first.operators).toBe(15);
-    expect(first.listings).toBe(60);
+    expect(first.listings).toBe(61);
 
     const counts = await client.db
       .select({ n: dsql<number>`count(*)::int` })
       .from(listings);
-    expect(counts[0]!.n).toBe(60);
+    expect(counts[0]!.n).toBe(61);
 
     const second = await seedJets(client.db, {
       storageDir: "tmp/test-storage",
       now: new Date("2026-09-16T00:00:00Z"),
     });
-    expect(second.listings).toBe(60);
+    expect(second.listings).toBe(61);
     const after = await client.db
       .select({ n: dsql<number>`count(*)::int` })
       .from(listings);
-    expect(after[0]!.n).toBe(60); // upsert, not duplicate
+    expect(after[0]!.n).toBe(61); // upsert, not duplicate
   });
 
   it("seeds verified/pro mix + active listings", async () => {
@@ -103,7 +103,7 @@ describe("jets seed", () => {
       .select({ n: dsql<number>`count(*)::int` })
       .from(listings)
       .where(eq(listings.status, "active"));
-    expect(active[0]!.n).toBe(60);
+    expect(active[0]!.n).toBe(61);
   });
 });
 

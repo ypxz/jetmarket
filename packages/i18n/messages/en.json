@@ -653,7 +653,9 @@
       "withdraw": "Withdraw",
       "withdrawing": "Withdrawing…",
       "notOpen": "This request is {status} — quoting is closed.",
-      "noQuotes": "No quotes yet"
+      "noQuotes": "No quotes yet",
+      "delayedTeaser": "{count, plural, one {# buyer request lands in your inbox in {hours}h} other {# buyer requests land in your inbox in {hours}h}} — Pro operators quote immediately.",
+      "delayedTeaserCta": "Upgrade to Pro"
     },
     "billing": {
       "title": "Plan & billing",

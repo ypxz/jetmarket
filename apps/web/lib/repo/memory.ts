@@ -412,6 +412,22 @@ class MemoryRepo implements Repo {
     return out.length;
   }
 
+  /** Delayed = match exists but deliverAt is still in the future. */
+  async countPendingRfqs(operatorId: string): Promise<number> {
+    const nowMs = Date.now();
+    let n = 0;
+    for (const [rfqId, forRfq] of this.rfqMatches) {
+      const m = forRfq.get(operatorId);
+      if (!m?.deliverAt || m.deliverAt.getTime() <= nowMs) continue;
+      const status = this.rfqs.get(rfqId)?.status;
+      if (status === "closed" || status === "expired" || status === "spam") {
+        continue;
+      }
+      n++;
+    }
+    return n;
+  }
+
   async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {
     const quote: Quote = { ...q, id: uid("quo"), status: "sent", createdAt: now() };
     this.quotes.set(quote.id, quote);

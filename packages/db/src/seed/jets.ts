@@ -11,8 +11,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../client";
-import { listings, operators, users } from "../schema";
-import type { NewListing, NewOperator, NewUser } from "../schema";
+import { listings, operators, rfqMatches, rfqs, users } from "../schema";
+import type {
+  NewListing,
+  NewOperator,
+  NewRfq,
+  NewRfqMatch,
+  NewUser,
+} from "../schema";
 
 const uid = (n: number): string =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -168,6 +174,8 @@ export interface JetsSeedData {
   userRows: NewUser[];
   opRows: NewOperator[];
   listingRows: NewListing[];
+  rfqRows: NewRfq[];
+  rfqMatchRows: NewRfqMatch[];
 }
 
 /**
@@ -280,7 +288,53 @@ export function buildJetsSeed(now = new Date()): JetsSeedData {
       `seed generated ${listingTotal} listings, expected ${JETS_SEED_COUNTS.listings}`,
     );
   }
-  return { userRows, opRows, listingRows };
+  // Demo RFQ trail so seeded inboxes aren't empty: one delivered match on a
+  // pro operator (visible RFQ row) plus two delayed matches on free-tier ops
+  // (QA-225: they feed the "requests landing in Nh" upsell teaser).
+  const rfqRows: NewRfq[] = [
+    {
+      id: uid(300),
+      vertical: "jets",
+      listingId: uid(200), // alpine-jet's first charter
+      buyerEmail: "charter@geneva-pe.example",
+      fields: {
+        departure: "ZRH",
+        arrival: "NCE",
+        dateFrom: isoDateIn(3, now),
+        dateTo: isoDateIn(4, now),
+        passengers: 4,
+        name: "Demo Buyer",
+        email: "charter@geneva-pe.example",
+      },
+      status: "matched",
+      dedupeKey: "seed-rfq-zrh-nce",
+    },
+  ];
+  const rfqMatchRows: NewRfqMatch[] = [
+    {
+      rfqId: uid(300),
+      operatorId: uid(102), // geneva-executive — pro, delivered
+      listingId: uid(200),
+      state: "sent",
+      deliverAt: new Date(now.getTime() - 3_600_000),
+    },
+    {
+      rfqId: uid(300),
+      operatorId: uid(105), // swiss-aircharter — free, delayed
+      listingId: uid(200),
+      state: "delayed",
+      deliverAt: new Date(now.getTime() + 23 * 3_600_000),
+    },
+    {
+      rfqId: uid(300),
+      operatorId: uid(107), // helvetic-skyways — free + unverified, delayed
+      listingId: uid(200),
+      state: "delayed",
+      deliverAt: new Date(now.getTime() + 23 * 3_600_000),
+    },
+  ];
+
+  return { userRows, opRows, listingRows, rfqRows, rfqMatchRows };
 }
 
 export interface SeedResult {
@@ -288,6 +342,7 @@ export interface SeedResult {
   operators: number;
   listings: number;
   photos: number;
+  rfqs: number;
 }
 
 export const JETS_SEED_COUNTS = { operators: 15, listings: 61 } as const;
@@ -311,7 +366,8 @@ export async function seedJets(
   const storageDir =
     opts.storageDir ??
     (process.env.STORAGE_DIR ? resolve(process.env.STORAGE_DIR) : webStorage);
-  const { userRows, opRows, listingRows } = buildJetsSeed(now);
+  const { userRows, opRows, listingRows, rfqRows, rfqMatchRows } =
+    buildJetsSeed(now);
 
   // Photo placeholders on the storage mock's filesystem.
   let photos = 0;
@@ -367,6 +423,28 @@ export async function seedJets(
           },
         });
     }
+    for (const row of rfqRows) {
+      await tx
+        .insert(rfqs)
+        .values(row)
+        .onConflictDoUpdate({
+          target: rfqs.id,
+          set: {
+            listingId: row.listingId,
+            fields: row.fields,
+            status: row.status,
+            dedupeKey: row.dedupeKey,
+          },
+        });
+    }
+    if (rfqMatchRows.length) {
+      await tx
+        .insert(rfqMatches)
+        .values(rfqMatchRows)
+        .onConflictDoNothing({
+          target: [rfqMatches.rfqId, rfqMatches.operatorId],
+        });
+    }
   });
 
   return {
@@ -374,5 +452,6 @@ export async function seedJets(
     operators: opRows.length,
     listings: listingRows.length,
     photos,
+    rfqs: rfqRows.length,
   };
 }
