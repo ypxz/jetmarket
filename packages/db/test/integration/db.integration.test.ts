@@ -1,11 +1,17 @@
 /**
  * Integration test vs the compose Postgres (`pnpm db:up`). Runs migrations,
  * the idempotent jets seed, a job-claim cycle, and the RFQ→match→quote→deal
- * foreign-key chain. Set DATABASE_URL to point elsewhere to reuse.
+ * foreign-key chain. Runs against its own `jetmarket_db_test` database
+ * (DB_TEST_DATABASE_URL to override) — never DATABASE_URL's dev/prod db,
+ * whose schema this suite drops (QA-139).
  */
 import { eq, sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, databaseUrl, type DbClient } from "../../src/client";
+import {
+  ensureTestDatabase,
+  testDatabaseUrlFrom,
+} from "../../src/test-db";
 import { claimJobs, completeJob, enqueueJob, failJob } from "../../src/jobs";
 import { runMigrations } from "../../src/migrate";
 import {
@@ -20,8 +26,13 @@ import { seedJets } from "../../src/seed/jets";
 
 let client: DbClient;
 
+const testUrl =
+  process.env.DB_TEST_DATABASE_URL ??
+  testDatabaseUrlFrom(databaseUrl(), "_db_test");
+
 beforeAll(async () => {
-  client = createDb(databaseUrl());
+  await ensureTestDatabase(testUrl);
+  client = createDb(testUrl);
   // Fresh slate: drop everything so the migration proves it builds from zero.
   await client.sql`drop schema public cascade`;
   await client.sql`create schema public`;

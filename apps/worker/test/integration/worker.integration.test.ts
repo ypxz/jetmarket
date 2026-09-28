@@ -3,9 +3,11 @@ import {
   createDb,
   databaseUrl,
   enqueueJob,
+  ensureTestDatabase,
   pruneJobs,
   runMigrations,
   seedJets,
+  testDatabaseUrlFrom,
 } from "@jetmarket/db";
 import {
   rfqMatches,
@@ -25,7 +27,12 @@ import { deliverDueMatches, rfqFanout } from "../../src/handlers";
 import { createWorkerRepo } from "../../src/repo";
 import { tick } from "../../src/index";
 
-const { db, sql } = createDb(process.env.DATABASE_URL ?? databaseUrl());
+// Isolated `*_worker_test` database — the suite drops the public schema, so
+// it must never touch DATABASE_URL's dev/prod database (QA-139).
+const testUrl =
+  process.env.WORKER_TEST_DATABASE_URL ??
+  testDatabaseUrlFrom(databaseUrl(), "_worker_test");
+const { db, sql } = createDb(testUrl);
 const outboxDir = mkdtempSync(join(tmpdir(), "jm-worker-outbox-"));
 const email = new MockEmailProvider({ outboxDir });
 const deps = () => ({
@@ -36,6 +43,7 @@ const deps = () => ({
 });
 
 beforeAll(async () => {
+  await ensureTestDatabase(testUrl);
   await sql`drop schema public cascade`;
   await sql`create schema public`;
   await runMigrations(sql);
@@ -191,9 +199,24 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(live!.status).toBe("sent");
   });
 
+  it("completes a notification whose match is gone (no retry)", async () => {
+    // Cascade-deleted rfq/operator or a stale payload — the email is
+    // permanently undeliverable, so the job must complete, not retry.
+    const jobId = await enqueueJob(sql, "email.quote_notification", {
+      matchId: randomUUID(),
+    });
+    for (let i = 0; i < 5; i++) {
+      await tick(deps());
+      const row = await sql<{ status: string }[]>`
+        select status from jobs where id = ${jobId}`;
+      if (row[0]!.status === "done") return;
+    }
+    throw new Error("gone-match notification job never completed");
+  });
+
   it("retries a bad payload to failed after max attempts", async () => {
     const jobId = await enqueueJob(sql, "email.quote_notification", {
-      matchId: randomUUID(), // not a real match -> handler throws
+      // missing matchId -> handler throws on payload validation
     });
     // The job competes for the claim batch with earlier notifications —
     // tick until it has been claimed and failed at least once.
@@ -205,7 +228,7 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       if (row[0]!.last_error) break;
     }
     expect(["pending", "failed"]).toContain(row[0]!.status);
-    expect(row[0]!.last_error).toContain("not found");
+    expect(row[0]!.last_error).toContain("matchId");
   });
 
   it("prunes old terminal jobs but keeps recent + pending ones", async () => {

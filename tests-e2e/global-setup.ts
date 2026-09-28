@@ -19,6 +19,19 @@ const testDatabaseUrl =
   adminUrl.replace(/\/[^/?]+(\?.*)?$/, '/jetmarket_test');
 const testDbName = new URL(testDatabaseUrl).pathname.replace(/^\//, '');
 
+// The e2e web server gets DATABASE_URL=testDatabaseUrl — seeds, RFQs and jobs
+// land there. Refuse a non-`*_test` name so e2e can never run against the dev
+// database (QA-139: TEST_DATABASE_URL=…/jetmarket once polluted dev data).
+if (
+  process.env.ALLOW_DESTRUCTIVE_TEST_DB !== '1' &&
+  !testDbName.endsWith('_test')
+) {
+  throw new Error(
+    `[e2e setup] refusing to run e2e against database "${testDbName}" ` +
+      '(expected a *_test database; set ALLOW_DESTRUCTIVE_TEST_DB=1 to override)',
+  );
+}
+
 function dbPkgHasScript(script: string) {
   try {
     const pkg = JSON.parse(

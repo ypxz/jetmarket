@@ -147,7 +147,15 @@ export async function quoteNotification(
     throw new Error("email.quote_notification payload requires matchId: string");
   }
   const ctx = await deps.repo.loadMatchContext(matchId);
-  if (!ctx) throw new Error(`rfq_match ${matchId} not found`);
+  // A match row can be gone by claim time (its rfq/operator was deleted —
+  // cascade) or the id never existed (bad payload). Retrying can never fix
+  // that, so complete the job instead of burning attempts to `failed`.
+  if (!ctx) {
+    console.warn(
+      `[worker] quote_notification: rfq_match ${matchId} gone — skipping`,
+    );
+    return;
+  }
 
   const f = ctx.rfqFields;
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]

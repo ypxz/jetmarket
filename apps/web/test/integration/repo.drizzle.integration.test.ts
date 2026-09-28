@@ -4,7 +4,14 @@
  * by migrations in beforeAll — never point this at a database you care about.
  * Skips cleanly when Postgres is unreachable (CI without compose).
  */
-import { createDb, runMigrations, schema, type DbClient } from "@jetmarket/db";
+import {
+  assertTestDatabaseUrl,
+  createDb,
+  ensureTestDatabase,
+  runMigrations,
+  schema,
+  type DbClient,
+} from "@jetmarket/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleRepo } from "../../lib/repo/drizzle";
@@ -14,8 +21,15 @@ const url =
   process.env.TEST_DATABASE_URL ??
   "postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test";
 
-// Probe once at module load so unreachable Postgres skips instead of failing.
-const probe = createDb(url);
+// Fail loudly before any drop if TEST_DATABASE_URL points at a non-test db
+// (QA-139 — a misplaced URL here once nuked the dev database).
+assertTestDatabaseUrl(url);
+
+// Probe the admin db at module load so unreachable Postgres skips cleanly
+// (the test db itself may not exist yet — beforeAll creates it).
+const admin = new URL(url);
+admin.pathname = "/postgres";
+const probe = createDb(admin.toString());
 const reachable = await probe.sql`select 1`
   .then(() => true)
   .catch(() => false)
@@ -25,6 +39,7 @@ let client: DbClient | undefined;
 
 beforeAll(async () => {
   if (!reachable) return;
+  await ensureTestDatabase(url);
   client = createDb(url);
   await client.sql`drop schema public cascade`;
   await client.sql`create schema public`;
