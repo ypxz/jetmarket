@@ -90,6 +90,23 @@ SEO landing pages, copy namespace — all read `getVertical()` /
 `verticalConfig()`. `VERTICAL=machinery` must boot with zero code changes;
 its e2e spec proves it.
 
+**Shared-DB isolation (QA-293..302):** two deploys may share one Postgres —
+every per-vertical row carries `vertical` and every surface must scope by
+`verticalSlug()`:
+
+- List reads: pass `vertical` to `listRfqs`/`countRfqs`/`listListings`/
+  `countOperatorListings`/`listListingCountsByOperator` (inbox, dashboard,
+  admin, buyer self-service, sitemap, OG images).
+- Single-row reads/mutations: after `getRfq`/`getListing`/`getJob`, 404 when
+  `row.vertical !== verticalSlug()` — apply BEFORE any CAS/mutation so a
+  rejected request can't already have flipped state.
+- Worker: `WorkerDeps.vertical` is required; `claimJobs`, `expireRfqs`,
+  fan-out queries all take it. `jobs.vertical IS NULL` = legacy/unscoped —
+  claimable by every deploy's worker (deliberate).
+- Quotes/deals have no vertical column: resolve via `quote.rfqId →
+  rfq.vertical`. Operator-facing deal/funnel lists stay deliberately
+  unscoped (a user's cross-vertical earnings are their business).
+
 ## DB / migrations
 
 Append-only `packages/db/migrations/NNNN_*.sql` — never edit an applied one;
