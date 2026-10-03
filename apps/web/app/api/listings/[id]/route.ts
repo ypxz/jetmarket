@@ -1,9 +1,11 @@
 import { getAttributesSchema } from "@jetmarket/verticals";
+import { storageProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
+import { logWarn } from "@/lib/log";
 import { isExpiredListing } from "@/lib/search";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
@@ -120,5 +122,32 @@ export async function PATCH(
     }
   }
   if (Object.keys(patch).length) await repo.updateListing(id, patch);
+  if (patch.photos !== undefined) {
+    // Orphan sweep: keys dropped by a photos replace would leak objects in
+    // storage otherwise (data-growth scoping, same class as job pruning).
+    // A key survives while ANY of the operator's listings still references
+    // it — the same upload can be shared across their listings. Best-effort
+    // like notify: a failed delete must not fail the PATCH.
+    const dropped = listing.photos.filter((k) => !patch.photos!.includes(k));
+    if (dropped.length) {
+      try {
+        const siblings = await repo.listListings({ operatorId: operator.id });
+        const referenced = new Set(siblings.flatMap((l) => l.photos));
+        const storage = storageProvider();
+        for (const key of dropped) {
+          if (referenced.has(key)) continue;
+          try {
+            await storage.delete(key);
+          } catch {
+            logWarn("storage.orphan_delete_failed", { key });
+          }
+        }
+      } catch (e) {
+        logWarn("storage.orphan_sweep_failed", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+  }
   return ok(await repo.getListing(id));
 }
