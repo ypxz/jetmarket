@@ -78,6 +78,7 @@ export class MockPaymentsProvider implements PaymentsProvider {
       customerId?: string;
       subscriptionId?: string;
       metadata?: Record<string, string>;
+      created?: number;
     };
     const event: PaymentEvent =
       body.type === "subscription.activated" ||
@@ -87,6 +88,9 @@ export class MockPaymentsProvider implements PaymentsProvider {
             customerId: body.customerId ?? "",
             subscriptionId: body.subscriptionId ?? "",
             metadata: body.metadata,
+            // Pass `created` through so mock-mode webhook tests can exercise
+            // the repo's stale-event gate (QA-384).
+            created: body.created,
           }
         : { kind: "ignored", type: body.type ?? "unknown" };
     this.events.push(event);

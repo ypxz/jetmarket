@@ -56,5 +56,12 @@ describe("MockPaymentsProvider", () => {
     const other = await p.handleWebhook(JSON.stringify({ type: "charge.x" }));
     expect(other).toEqual({ kind: "ignored", type: "charge.x" });
     expect(p.events).toHaveLength(2);
+
+    // QA-384: `created` passes through so the stale-event gate is
+    // exercisable against the mock webhook.
+    const stamped = await p.handleWebhook(
+      JSON.stringify({ type: "subscription.canceled", created: 1_700_000_000 }),
+    );
+    expect(stamped).toMatchObject({ created: 1_700_000_000 });
   });
 });
