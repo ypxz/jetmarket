@@ -23,6 +23,8 @@ interface Rfq {
   concierge?: boolean;
   buyerEmail: string;
   createdAt: string;
+  // Operators the request actually reached (delayed matches don't count).
+  deliveredTo: number;
   listing: { id: string; title: string; currency: string; browseable?: boolean } | null;
   // Echo of the request's own spec fields ("Departure: TEB"), built
   // server-side in vertical field order — contact fields excluded.
@@ -252,6 +254,11 @@ function QuotesInner() {
                 {r.requestFields?.length ? (
                   <p className="mt-1 text-xs text-muted" data-testid={`rfq-echo-${r.id}`}>
                     {r.requestFields.map((f) => `${f.label}: ${f.value}`).join(" · ")}
+                  </p>
+                ) : null}
+                {r.deliveredTo > 0 ? (
+                  <p className="mt-1 text-xs text-muted" data-testid={`rfq-delivered-${r.id}`}>
+                    {t("deliveredTo", { count: r.deliveredTo })}
                   </p>
                 ) : null}
                 {!r.concierge &&

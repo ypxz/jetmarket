@@ -151,8 +151,12 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   const buyerRfqs = (await buyerQuotes.json()) as {
     quotes: { id: string; status: string }[];
     requestFields?: { label: string; value: string }[];
+    deliveredTo?: number;
   }[];
   expect(buyerRfqs[0]?.quotes.map((q) => q.id)).toContain(quoteId);
+  // QA-401: inbox carries the delivered-operator count (0 pre-fan-out here —
+  // e2e runs no worker, so the count field itself is what we pin).
+  expect(typeof buyerRfqs[0]?.deliveredTo).toBe('number');
   // Inbox echoes the request's own spec fields (QA-241) — labels resolved
   // from the vertical config, contact fields excluded.
   const echo = buyerRfqs[0]?.requestFields ?? [];

@@ -126,8 +126,15 @@ test('concierge: token-gated $49 expedite flips a delayed match instantly', asyn
       { headers: { 'x-rfq-token': RFQ_TOKEN } },
     );
     expect(inbox.ok()).toBeTruthy();
-    const rows = (await inbox.json()) as { id: string; concierge?: boolean }[];
-    expect(rows.find((r) => r.id === rfqId)?.concierge).toBe(true);
+    const rows = (await inbox.json()) as {
+      id: string;
+      concierge?: boolean;
+      deliveredTo?: number;
+    }[];
+    const row = rows.find((r) => r.id === rfqId);
+    expect(row?.concierge).toBe(true);
+    // QA-401: the just-delivered match shows in the buyer's "In N inboxes".
+    expect(row?.deliveredTo).toBe(1);
 
     // Effect: the delayed match flipped to pending — visible + notify job.
     expect(await inboxHasRfq(op, rfqId)).toBe(true);

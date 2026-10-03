@@ -702,6 +702,23 @@ export class DrizzleRepo implements Repo {
     return r?.n ?? 0;
   }
 
+  /** Delivered = every state except 'delayed' — the same read rule the
+   *  operator inbox applies to match visibility. */
+  async countDeliveredMatches(rfqIds: string[]): Promise<Record<string, number>> {
+    if (!rfqIds.length) return {};
+    const rows = await this.db
+      .select({ rfqId: rfqMatches.rfqId, n: sql<number>`count(*)::int` })
+      .from(rfqMatches)
+      .where(
+        and(
+          inArray(rfqMatches.rfqId, rfqIds),
+          ne(rfqMatches.state, "delayed"),
+        ),
+      )
+      .groupBy(rfqMatches.rfqId);
+    return Object.fromEntries(rows.map((r) => [r.rfqId, r.n]));
+  }
+
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;

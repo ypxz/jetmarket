@@ -138,7 +138,8 @@
       "ctaBusy": "Processing…",
       "done": "Concierge active",
       "error": "Payment failed"
-    }
+    },
+    "deliveredTo": "In {count, plural, one {# operator’s inbox} other {# operators’ inboxes}}"
   },
   "design": {
     "title": "Design system",

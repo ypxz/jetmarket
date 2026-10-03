@@ -44,9 +44,13 @@ export async function GET(req: Request) {
   // Batched: one listing + one quote + one operator lookup for the whole
   // inbox — was ~3 queries per quote row (QA-103). Buyers legitimately see
   // every quote on their own RFQs.
-  const [listingRows, quoteRows] = await Promise.all([
+  const rfqIds = rfqs.map((r) => r.id);
+  const [listingRows, quoteRows, deliveredCounts] = await Promise.all([
     repo.listListings({ ids: [...new Set(rfqs.map((r) => r.listingId))] }),
-    repo.listQuotes({ rfqIds: rfqs.map((r) => r.id) }),
+    repo.listQuotes({ rfqIds }),
+    // "In N operator inboxes" — the buyer's proof their request went out,
+    // and the concierge purchase's receipt on the page (QA-401).
+    repo.countDeliveredMatches(rfqIds),
   ]);
   const opById = new Map(
     (
@@ -88,6 +92,7 @@ export async function GET(req: Request) {
       // strip the bearer token — callers proved inbox access to get here,
       // but there's no reason to echo it back
       ...{ ...rfq, accessToken: undefined },
+      deliveredTo: deliveredCounts[rfq.id] ?? 0,
       requestFields: requestFieldsOf(rfq.listingId, rfq.fields),
       listing: (() => {
         const l = listingById.get(rfq.listingId) ?? null;

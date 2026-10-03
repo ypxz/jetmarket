@@ -616,6 +616,81 @@ export function repoContract(
       expect(mine.map((r) => r.id)).toEqual([r3.id, r2.id, r1.id]);
     });
 
+    it("countDeliveredMatches counts due rows only, batched (QA-401)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`dm-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "DM Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `DM Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const u2 = await repo.createUser(`dm2-${tag}@test.dev`, "operator");
+      const op2 = await repo.upsertOperator({
+        userId: u2.id,
+        name: "DM2 Air",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const mkRfq = (suffix: string) =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: `dm-${suffix}-${tag}@test.dev`,
+          fields: {},
+        });
+      const deliveredRfq = await mkRfq("d");
+      const mixedRfq = await mkRfq("m");
+      const emptyRfq = await mkRfq("e");
+      const future = new Date(Date.now() + 60_000);
+      await repo.createRfqMatches([
+        { rfqId: deliveredRfq.id, operatorId: op.id, listingId: listing.id },
+        { rfqId: mixedRfq.id, operatorId: op.id, listingId: listing.id },
+        {
+          rfqId: mixedRfq.id,
+          operatorId: op2.id,
+          listingId: listing.id,
+          deliverAt: future,
+        },
+      ]);
+
+      const counts = await repo.countDeliveredMatches([
+        deliveredRfq.id,
+        mixedRfq.id,
+        emptyRfq.id,
+        // pg binds uuid[] — a real-but-unmatched id proves the miss path.
+        crypto.randomUUID(),
+      ]);
+      expect(counts[deliveredRfq.id]).toBe(1);
+      // The delayed match is NOT delivered yet — same visibility rule the
+      // operator inbox applies.
+      expect(counts[mixedRfq.id]).toBe(1);
+      expect(counts[emptyRfq.id] ?? 0).toBe(0);
+      expect(counts[crypto.randomUUID()] ?? 0).toBe(0);
+      expect(await repo.countDeliveredMatches([])).toEqual({});
+
+      // After expedite the delayed row joins the delivered count.
+      await repo.expediteRfq(mixedRfq.id);
+      expect(
+        (await repo.countDeliveredMatches([mixedRfq.id]))[mixedRfq.id],
+      ).toBe(2);
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

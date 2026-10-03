@@ -286,6 +286,16 @@ export interface Repo {
    * concierge flip delivers it too); memory counts `deliverAt > now`.
    */
   countRfqPendingMatches(rfqId: string): Promise<number>;
+  /**
+   * Delivered-match counts per RFQ (the inverse side of
+   * `countRfqPendingMatches`): pg counts every state besides 'delayed' —
+   * pending rows ARE delivered, the notify job only flips them to 'sent';
+   * memory counts `!deliverAt || deliverAt <= now`, the same visibility
+   * rule `matchVisible` uses. Batch shape: one call covers a whole buyer
+   * inbox page without an N+1 (QA-401 — the inbox tells the buyer how many
+   * operators actually received the request).
+   */
+  countDeliveredMatches(rfqIds: string[]): Promise<Record<string, number>>;
   /** Buyer concierge purchase: atomically set `concierge` on a LIVE RFQ and
    *  flip its still-delayed matches to deliverable (pg: state pending at
    *  deliver_at now; memory: deliverAt now). Returns `applied: false` when

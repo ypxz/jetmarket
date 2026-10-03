@@ -474,6 +474,20 @@ class MemoryRepo implements Repo {
     return n;
   }
 
+  /** Delivered = matchVisible's rule — due (or absent) deliverAt counts. */
+  async countDeliveredMatches(rfqIds: string[]): Promise<Record<string, number>> {
+    const now = Date.now();
+    const out: Record<string, number> = {};
+    for (const rfqId of rfqIds) {
+      let n = 0;
+      for (const m of this.rfqMatches.get(rfqId)?.values() ?? []) {
+        if (!m.deliverAt || m.deliverAt.getTime() <= now) n++;
+      }
+      if (n) out[rfqId] = n;
+    }
+    return out;
+  }
+
   async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
     return this.matchVisible(rfqId, operatorId);
   }
