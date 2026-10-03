@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-import { emailProvider } from "@jetmarket/providers";
+import { analyticsProvider, emailProvider } from "@jetmarket/providers";
 import { applyPaymentEvent } from "../../lib/billing";
 import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Repo, Rfq, Operator } from "../../lib/repo/types";
@@ -174,5 +174,26 @@ describe("applyPaymentEvent concierge branch", () => {
         metadata: { kind: "concierge", rfqId: rfq.id },
       }),
     ).toBe(false);
+  });
+
+  it("emits concierge_purchased once — a replayed event never double-counts", async () => {
+    const trackSpy = vi.spyOn(analyticsProvider(), "track");
+    try {
+      const event = {
+        kind: "payment.completed" as const,
+        customerId: "cust",
+        metadata: { kind: "concierge", rfqId: rfq.id },
+      };
+      expect(await applyPaymentEvent(repo, event)).toBe(true);
+      expect(trackSpy).toHaveBeenCalledWith({
+        name: "concierge_purchased",
+        props: { rfqId: rfq.id, amountUsd: 49 },
+      });
+      trackSpy.mockClear();
+      expect(await applyPaymentEvent(repo, event)).toBe(false);
+      expect(trackSpy).not.toHaveBeenCalled();
+    } finally {
+      trackSpy.mockRestore();
+    }
   });
 });
