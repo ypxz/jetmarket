@@ -84,6 +84,23 @@ export function buildRfqSchema(
           });
         }
       }
+      // A `*To` that already passed is dead on arrival: the expiry sweep
+      // kills it (same UTC-day rule) AFTER fan-out, so operators get pinged
+      // for a request that can't be quoted. Reject it instead (QA-363).
+      // Only window ENDS are checked — a `*From` already past is a trip in
+      // progress, which is still fulfillable.
+      const today = new Date().toISOString().slice(0, 10);
+      for (const key of dateKeys) {
+        if (!key.endsWith("To")) continue;
+        const v = data[key];
+        if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && v < today) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "is already in the past",
+          });
+        }
+      }
     });
 }
 

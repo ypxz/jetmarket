@@ -142,11 +142,14 @@ describe("getAttributesSchema (jets)", () => {
 });
 
 describe("buildRfqSchema (jets)", () => {
+  // RFQ windows must stay in the future — a past `*To` is rejected (QA-363).
+  const isoIn = (days: number) =>
+    new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
   const valid = {
     departure: "Zurich",
     arrival: "Nice",
-    dateFrom: "2026-10-10",
-    dateTo: "2026-10-12",
+    dateFrom: isoIn(10),
+    dateTo: isoIn(12),
     passengers: "4",
     budgetUsd: "",
     name: "Ada Buyer",
@@ -200,11 +203,27 @@ describe("buildRfqSchema (jets)", () => {
     ).toThrow();
     // and a window that ends before it starts
     expect(() =>
-      schema.parse({ ...valid, dateFrom: "2026-10-12", dateTo: "2026-10-10" }),
+      schema.parse({ ...valid, dateFrom: isoIn(12), dateTo: isoIn(10) }),
     ).toThrow();
     // equal bounds are a valid single-day window
     expect(() =>
-      schema.parse({ ...valid, dateFrom: "2026-10-10", dateTo: "2026-10-10" }),
+      schema.parse({ ...valid, dateFrom: isoIn(10), dateTo: isoIn(10) }),
+    ).not.toThrow();
+  });
+
+  it("rejects a `*To` already past but keeps in-progress windows (QA-363)", () => {
+    const schema = buildRfqSchema(jetsVertical, "charter");
+    // window ended before today — the expiry sweep would kill it post-fanout
+    expect(() =>
+      schema.parse({ ...valid, dateFrom: isoIn(-14), dateTo: isoIn(-1) }),
+    ).toThrow();
+    // started yesterday, ends later — a trip in progress stays valid
+    expect(() =>
+      schema.parse({ ...valid, dateFrom: isoIn(-1), dateTo: isoIn(3) }),
+    ).not.toThrow();
+    // today itself is still inside the window
+    expect(() =>
+      schema.parse({ ...valid, dateFrom: isoIn(-1), dateTo: isoIn(0) }),
     ).not.toThrow();
   });
 
