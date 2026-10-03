@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { brandedEmailHtml, captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
-import { site } from "@jetmarket/config";
+import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
 import { z } from "zod";
 import { buildRfqSchema, getVertical, nonContactFields, rfqFieldLabels } from "@jetmarket/verticals";
 import { verticalMessages } from "@/lib/vertical";
@@ -168,17 +168,27 @@ export async function POST(req: Request) {
   const inboxUrl = `${appUrl}/quotes?email=${encodeURIComponent(
     rfq.buyerEmail,
   )}#t=${encodeURIComponent(rfq.accessToken)}`;
+  // Concierge upsell travels in the same mail — the thanks page's concierge
+  // card resolves the bearer token out of the fragment (#t= per AGENTS).
+  const conciergeUrl =
+    `${appUrl}/rfq/thanks?id=${encodeURIComponent(rfq.id)}` +
+    `&email=${encodeURIComponent(rfq.buyerEmail)}` +
+    `#t=${encodeURIComponent(rfq.accessToken)}`;
+  const upsell =
+    `Need answers faster? Concierge expedite ($${CONCIERGE_PRICE_USD}) puts ` +
+    `your request in front of every matching operator right now: ${conciergeUrl}`;
   try {
     const subject = `Your request for “${listing.title}” was sent`;
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,
-      text: `We sent your request to the seller and matching operators. Track their quotes here: ${inboxUrl}`,
+      text: `We sent your request to the seller and matching operators. Track their quotes here: ${inboxUrl} ${upsell}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
         paragraphs: [
           "We sent your request to the seller and matching operators.",
+          upsell,
         ],
         cta: { url: inboxUrl, label: "Track your quotes" },
       }),

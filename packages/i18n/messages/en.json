@@ -767,7 +767,8 @@
     "colListing": "Listing",
     "colCreated": "Created",
     "markSpam": "Mark spam",
-    "noRfqs": "No RFQs yet."
+    "noRfqs": "No RFQs yet.",
+    "concierge": "Concierge: {count} expedites · {total} revenue"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

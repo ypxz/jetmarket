@@ -490,6 +490,7 @@ class MemoryRepo implements Repo {
     vertical?: string;
     statusNot?: Rfq["status"][];
     since?: string;
+    concierge?: boolean;
   }): Promise<number> {
     let out = await this.listRfqs({
       ...filter,
@@ -502,6 +503,7 @@ class MemoryRepo implements Repo {
     }
     // ISO strings compare lexicographically — same convention as expiry cutoffs.
     if (filter?.since) out = out.filter((r) => r.createdAt >= filter.since!);
+    if (filter?.concierge) out = out.filter((r) => r.concierge === true);
     return out.length;
   }
 

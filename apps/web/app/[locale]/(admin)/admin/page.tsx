@@ -1,3 +1,4 @@
+import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { Badge } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
@@ -28,7 +29,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -39,6 +40,8 @@ export default async function AdminPage({
       // verticals' rows and admins only govern this deploy's (QA-294).
       repo.listListings({ limit: 50, vertical: verticalSlug() }),
       repo.listRfqs({ limit: 50, vertical: verticalSlug() }),
+      // Concierge expedites are platform revenue too — count alongside fees.
+      repo.countRfqs({ vertical: verticalSlug(), concierge: true }),
     ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
@@ -141,6 +144,12 @@ export default async function AdminPage({
             total: formatMoney(feeTotal, siteCurrency),
           })}
         </h2>
+        <p className="mt-1 text-sm text-muted" data-testid="admin-concierge-stat">
+          {t("concierge", {
+            count: conciergeCount,
+            total: formatMoney(CONCIERGE_PRICE_USD * conciergeCount, "USD"),
+          })}
+        </p>
         <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm" data-testid="fee-ledger">
           <thead className="border-b border-border text-muted">
             <tr>

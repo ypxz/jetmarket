@@ -106,6 +106,11 @@ describe("analytics events on money routes (mock sink)", async () => {
     expect(confirm).toBeTruthy();
     expect(confirm!.text).toContain("/quotes?");
     expect(confirm!.text).toContain("t=");
+    // Concierge upsell rides the same mail — deep link to the thanks-page
+    // card, bearer token in the fragment (never the query).
+    expect(confirm!.text).toContain("/rfq/thanks?id=");
+    expect(confirm!.text).toContain("$49");
+    expect(confirm!.text).toContain("#t=");
     // Submitted fields stay out of the confirmation (bogus-address safety).
     expect(confirm!.text).not.toContain("E2E Buyer");
   });

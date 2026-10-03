@@ -513,6 +513,10 @@ export function repoContract(
         buyerEmail: `cb-${tag}@test.dev`,
         fields: {},
       });
+      const conciergeBefore = await repo.countRfqs({
+        vertical: "jets",
+        concierge: true,
+      });
       await repo.createRfqMatches([
         { rfqId: rfq.id, operatorId: instantOp.id, listingId: listing.id },
         {
@@ -532,6 +536,20 @@ export function repoContract(
       expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(true);
       // Teaser count drops to zero — expedited matches are no longer pending.
       expect(await repo.countPendingRfqs(delayedOp.id)).toBe(0);
+      // Concierge filter: the expedited RFQ joins the revenue count; a plain
+      // one never does (admin dashboard stat, QA-394).
+      expect(
+        await repo.countRfqs({ vertical: "jets", concierge: true }),
+      ).toBe(conciergeBefore + 1);
+      await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `plain-${tag}@test.dev`,
+        fields: {},
+      });
+      expect(
+        await repo.countRfqs({ vertical: "jets", concierge: true }),
+      ).toBe(conciergeBefore + 1);
 
       // Idempotent — a second purchase/webhook replay never re-flips.
       const again = await repo.expediteRfq(rfq.id);

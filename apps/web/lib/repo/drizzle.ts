@@ -751,6 +751,7 @@ export class DrizzleRepo implements Repo {
     vertical?: string;
     statusNot?: RfqStatus[];
     since?: string;
+    concierge?: boolean;
   }): Promise<number> {
     // iface statuses -> db vocabulary (open -> new; expired -> closed).
     const bannedDb = filter?.statusNot?.map((s) =>
@@ -775,6 +776,7 @@ export class DrizzleRepo implements Repo {
         conds.push(eq(rfqs.vertical, filter.vertical));
       if (statusCond) conds.push(statusCond);
       if (sinceCond) conds.push(sinceCond);
+      if (filter.concierge) conds.push(eq(rfqs.concierge, true));
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(rfqs)
@@ -789,6 +791,7 @@ export class DrizzleRepo implements Repo {
       conds.push(eq(rfqs.vertical, filter.vertical));
     if (statusCond) conds.push(statusCond);
     if (sinceCond) conds.push(sinceCond);
+    if (filter?.concierge) conds.push(eq(rfqs.concierge, true));
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(rfqs)

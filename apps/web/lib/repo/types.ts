@@ -329,6 +329,8 @@ export interface Repo {
     statusNot?: RfqStatus[];
     /** ISO timestamp — only rows created at/after this instant count. */
     since?: string;
+    /** Only count concierge-expedited RFQs (admin revenue stat). */
+    concierge?: boolean;
   }): Promise<number>;
   /**
    * Delayed fan-out matches not yet due for this operator — RFQs a free-plan
