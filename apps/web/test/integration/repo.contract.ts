@@ -231,17 +231,22 @@ export function repoContract(
       );
       expect((await repo.getQuote(quote.id))?.status).toBe("accepted");
 
+      // QA-386: a fractional fee rate must round-trip exactly — pg used to
+      // store fee_pct numeric(5,2) and read 0.015 back as 0.02.
       const deal = await repo.createDeal({
         quoteId: quote.id,
         operatorId: op.id,
         amount: 20000,
         currency: "USD",
-        feePct: 0.03,
-        feeAmount: 600,
+        feePct: 0.015,
+        feeAmount: 300,
         invoiceStatus: "pending",
       });
       expect(deal.quoteId).toBe(quote.id);
-      expect(await repo.listDeals({ operatorId: op.id })).toHaveLength(1);
+      expect(deal.feePct).toBe(0.015);
+      const deals = await repo.listDeals({ operatorId: op.id });
+      expect(deals).toHaveLength(1);
+      expect(deals[0]!.feePct).toBe(0.015);
     });
 
     it("dedupe replays only against a live twin; terminal RFQs re-mint", async () => {

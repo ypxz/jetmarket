@@ -195,7 +195,7 @@ export const deals = pgTable("deals", {
     .unique()
     .references(() => quotes.id, { onDelete: "cascade" }),
   closedAt: timestamp("closed_at", { withTimezone: true }).notNull(),
-  feePct: numeric("fee_pct", { precision: 5, scale: 2, mode: "number" }).notNull(),
+  feePct: numeric("fee_pct", { precision: 6, scale: 4, mode: "number" }).notNull(),
   feeAmountMinor: bigint("fee_amount_minor", { mode: "number" }).notNull(),
   currency: text("currency").notNull().default("USD"),
   invoiceStatus: text("invoice_status", {
