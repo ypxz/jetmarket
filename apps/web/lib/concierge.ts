@@ -1,5 +1,9 @@
-import { analyticsProvider } from "@jetmarket/providers";
-import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
+import {
+  analyticsProvider,
+  brandedEmailHtml,
+  emailProvider,
+} from "@jetmarket/providers";
+import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
 import { enqueueJob } from "@jetmarket/db";
 import { emailRfqMatches } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
@@ -31,16 +35,16 @@ export async function applyConciergePaid(
       amountUsd: CONCIERGE_PRICE_USD,
     },
   });
+  const rfq = await repo.getRfq(rfqId);
   if (repoBackend() === "postgres") {
     // Flip recipients get the same quote_notification job the delayed-match
     // sweep enqueues; the sweep also backstops a crash between flip and
     // enqueue (unnotifiedPendingMatches dedupes both paths).
-    const vertical = (await repo.getRfq(rfqId))?.vertical;
     for (const m of res.matches) {
       try {
         await enqueueJob(getDbSql(), "email.quote_notification",
           { matchId: m.id },
-          { vertical },
+          { vertical: rfq?.vertical },
         );
       } catch (e) {
         logWarn("rfq.concierge_notify_enqueue_failed", {
@@ -50,20 +54,58 @@ export async function applyConciergePaid(
         });
       }
     }
-  } else if (res.matches.length) {
+  } else if (res.matches.length && rfq) {
     // Memory mode has no worker — the buyer just paid for instant delivery,
     // so the flipped operators get the same email inline (QA-89 parity).
-    const rfq = await repo.getRfq(rfqId);
-    const listing = rfq?.listingId
+    const listing = rfq.listingId
       ? await repo.getListing(rfq.listingId)
       : undefined;
-    if (rfq) {
-      await emailRfqMatches(
-        repo,
-        rfq,
-        listing?.title,
-        res.matches.map((m) => m.operatorId),
-      );
+    await emailRfqMatches(
+      repo,
+      rfq,
+      listing?.title,
+      res.matches.map((m) => m.operatorId),
+    );
+  }
+  // Buyer receipt: the paying buyer is otherwise the only party who hears
+  // nothing — operators get priority mail, admin sees revenue, but the $49
+  // buyer's only channel is email. Confirm what they bought + deep-link
+  // back to the inbox (bearer token in the fragment per AGENTS). Non-fatal.
+  if (rfq?.buyerEmail && rfq.accessToken) {
+    try {
+      const listingTitle = rfq.listingId
+        ? (await repo.getListing(rfq.listingId))?.title
+        : undefined;
+      const title = listingTitle ?? "your request";
+      const origin =
+        process.env.APP_URL?.replace(/\/+$/, "") ?? `https://${site.domain}`;
+      const inboxUrl =
+        `${origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}` +
+        `#t=${encodeURIComponent(rfq.accessToken)}`;
+      const delivered = res.matches.length;
+      const subject = `Concierge active — “${title}” is in every matching operator's inbox`;
+      const paid = `You paid $${CONCIERGE_PRICE_USD} for Concierge expedite on ${site.name}.`;
+      const what = delivered > 0
+        ? `We just delivered your request for “${title}” to ` +
+          `${delivered} matching operator${delivered === 1 ? "" : "s"} — ` +
+          `quotes usually follow quickly.`
+        : `Your request for “${title}” is already in every matching operator's inbox.`;
+      const track = `Track quotes here: ${inboxUrl}`;
+      await emailProvider().send({
+        to: rfq.buyerEmail,
+        subject,
+        text: `${paid}\n\n${what}\n\n${track}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [paid, what, track],
+        }),
+      });
+    } catch (e) {
+      logWarn("email.concierge_receipt_failed", {
+        rfqId,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
   return true;

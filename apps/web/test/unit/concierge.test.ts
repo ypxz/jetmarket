@@ -120,16 +120,35 @@ describe("POST /api/rfqs/[id]/concierge", () => {
     expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(true);
     // ... and the operator got the same "new RFQ" email as instant fan-out,
     // flagged as a paid expedite (QA-396).
-    expect(sendSpy).toHaveBeenCalledTimes(1);
-    expect(sendSpy.mock.calls[0]?.[0]?.to).toContain("cdel-");
-    expect(sendSpy.mock.calls[0]?.[0]?.subject).toContain("New RFQ");
-    expect(sendSpy.mock.calls[0]?.[0]?.text).toContain(
+    const toOp = sendSpy.mock.calls.find((c: unknown[]) =>
+      /cdel-/.test((c[0] as { to?: string })?.to ?? ""),
+    );
+    expect(toOp?.[0]?.subject).toContain("New RFQ");
+    expect(toOp?.[0]?.text).toContain(
       "Priority request — the buyer paid for immediate delivery.",
     );
+    // ... and the paying buyer got their concierge receipt — the only
+    // channel a buyer has (QA-398): $49 confirm + deep link back to the
+    // inbox, bearer token in the fragment.
+    const receipt = sendSpy.mock.calls.find(
+      (c: unknown[]) => (c[0] as { to?: string })?.to === rfq.buyerEmail,
+    );
+    expect(receipt?.[0]?.subject).toContain("Concierge active");
+    expect(receipt?.[0]?.text).toContain("$49");
+    expect(receipt?.[0]?.text).toContain(
+      `/quotes?email=${encodeURIComponent(rfq.buyerEmail)}`,
+    );
+    expect(receipt?.[0]?.text).toContain(`#t=${rfq.accessToken}`);
   });
 
   it("is idempotent — a second purchase returns the flag without re-notifying", async () => {
     await post(rfq.id, body());
+    // First purchase: operator mail + exactly one buyer receipt (QA-398).
+    expect(
+      sendSpy.mock.calls.filter(
+        (c: unknown[]) => (c[0] as { to?: string })?.to === rfq.buyerEmail,
+      ),
+    ).toHaveLength(1);
     sendSpy.mockClear();
     const res = await post(rfq.id, body());
     expect(res.status).toBe(200);
