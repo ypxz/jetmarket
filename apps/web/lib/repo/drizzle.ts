@@ -734,7 +734,10 @@ export class DrizzleRepo implements Repo {
               : []),
           ),
         )
-        .orderBy(desc(rfqs.createdAt))
+        // Operator inbox: paid concierge expedites answer first — burying one
+        // under newer unpaid RFQs defeats the $49 promise (QA-400). Other
+        // surfaces (buyer/admin) keep plain newest-first.
+        .orderBy(desc(rfqs.concierge), desc(rfqs.createdAt))
         .$dynamic();
       if (filter.limit !== undefined) q = q.limit(filter.limit);
       if (filter.offset) q = q.offset(filter.offset);

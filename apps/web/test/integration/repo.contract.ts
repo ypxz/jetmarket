@@ -567,6 +567,55 @@ export function repoContract(
       expect(dead.applied).toBe(false);
     });
 
+    it("operator inbox sorts concierge RFQs first; other lists stay newest-first (QA-400)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`sort-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "Sort Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Sort Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const buyer = `sb-${tag}@test.dev`;
+      const mk = () =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: buyer,
+          fields: {},
+        });
+      // Millisecond gaps keep the newest-first assertions deterministic.
+      const r1 = await mk(); // oldest — becomes concierge
+      await new Promise((r) => setTimeout(r, 10));
+      const r2 = await mk();
+      await new Promise((r) => setTimeout(r, 10));
+      const r3 = await mk(); // newest
+
+      await repo.expediteRfq(r1.id);
+
+      // Operator surface: paid expedite leads even though it's the oldest.
+      const inbox = await repo.listRfqs({ operatorId: op.id });
+      expect(inbox.map((r) => r.id)).toEqual([r1.id, r3.id, r2.id]);
+
+      // Buyer surface: same RFQs keep plain newest-first — the concierge
+      // flag is an operator-priority signal, not the buyer's sort key.
+      const mine = await repo.listRfqs({ buyerEmail: buyer });
+      expect(mine.map((r) => r.id)).toEqual([r3.id, r2.id, r1.id]);
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

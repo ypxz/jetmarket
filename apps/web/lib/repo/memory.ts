@@ -445,7 +445,13 @@ class MemoryRepo implements Repo {
         (r) => opListingIds.has(r.listingId) || this.matchVisible(r.id, opId),
       );
     }
-    out = out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // Operator inbox: concierge expedites sort first — the buyer paid for
+    // immediate attention (QA-400); buyer/admin lists stay newest-first.
+    out = out.sort(
+      (a, b) =>
+        (filter?.operatorId ? Number(b.concierge) - Number(a.concierge) : 0) ||
+        b.createdAt.localeCompare(a.createdAt),
+    );
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
     return out;
