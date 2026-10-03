@@ -105,6 +105,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         operatorName: "Alpine Jet",
         rfqFields: { departure: "ZRH", arrival: "NCE", passengers: 6 },
         buyerEmail: "buyer@x.com",
+        rfqConcierge: false,
         listingTitle: "Phenom 300 charter",
       };
     },
@@ -376,6 +377,7 @@ describe("handleJob dispatch", () => {
           phone: "+49 0000",
         },
         buyerEmail: "ada@x.com",
+        rfqConcierge: false,
         listingTitle: "Okuma LB-EX II lathe",
       }),
     });
@@ -398,6 +400,8 @@ describe("handleJob dispatch", () => {
     expect(mail.text).not.toContain("Route:");
     expect(mail.text).not.toContain("ada@x.com");
     expect(mail.text).not.toContain("+49 0000");
+    // Not concierge — no paid-priority line.
+    expect(mail.text).not.toContain("Priority request");
   });
 
   it("masks renamed contact keys when contactKeys is configured (QA-308)", async () => {
@@ -415,6 +419,7 @@ describe("handleJob dispatch", () => {
           budgetEur: 1000,
         },
         buyerEmail: "secret@buyer.example",
+        rfqConcierge: false,
         listingTitle: "Lathe",
       }),
     });
@@ -431,6 +436,33 @@ describe("handleJob dispatch", () => {
     expect(mail.text).not.toContain("+00 111");
   });
 
+  it("flags concierge expedites — operators see the paid priority line (QA-396)", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "pending",
+        rfqStatus: "new",
+        operatorEmail: "ops@alpinejet.example",
+        operatorName: "Alpine Jet",
+        rfqFields: { departure: "ZRH", arrival: "NCE" },
+        buyerEmail: "buyer@x.com",
+        rfqConcierge: true,
+        listingTitle: "Phenom 300 charter",
+      }),
+    });
+    sent.length = 0;
+    await handleJob(deps(repo), "email.quote_notification", {
+      matchId: "m9",
+    });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toContain("New RFQ");
+    expect(sent[0]!.text).toContain(
+      "Priority request — the buyer paid for immediate delivery.",
+    );
+    expect(sent[0]!.html ?? "").toContain("Priority request");
+  });
+
   it("skips the send when the match is already sent (retry dedup, QA-161)", async () => {
     const repo = fakeRepo({
       loadMatchContext: async (id: string) => ({
@@ -442,6 +474,7 @@ describe("handleJob dispatch", () => {
         operatorName: "Alpine Jet",
         rfqFields: {},
         buyerEmail: "buyer@x.com",
+        rfqConcierge: false,
         listingTitle: null,
       }),
     });
@@ -464,6 +497,7 @@ describe("handleJob dispatch", () => {
         operatorName: "Alpine Jet",
         rfqFields: {},
         buyerEmail: "buyer@x.com",
+        rfqConcierge: false,
         listingTitle: null,
       }),
     });

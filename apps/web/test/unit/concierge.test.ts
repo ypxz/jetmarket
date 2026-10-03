@@ -118,10 +118,14 @@ describe("POST /api/rfqs/[id]/concierge", () => {
     expect(after?.concierge).toBe(true);
     // The paid-for delivery: the delayed match is visible immediately.
     expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(true);
-    // ... and the operator got the same "new RFQ" email as instant fan-out.
+    // ... and the operator got the same "new RFQ" email as instant fan-out,
+    // flagged as a paid expedite (QA-396).
     expect(sendSpy).toHaveBeenCalledTimes(1);
     expect(sendSpy.mock.calls[0]?.[0]?.to).toContain("cdel-");
     expect(sendSpy.mock.calls[0]?.[0]?.subject).toContain("New RFQ");
+    expect(sendSpy.mock.calls[0]?.[0]?.text).toContain(
+      "Priority request — the buyer paid for immediate delivery.",
+    );
   });
 
   it("is idempotent — a second purchase returns the flag without re-notifying", async () => {
@@ -186,9 +190,15 @@ describe("applyPaymentEvent concierge branch", () => {
       };
       expect(await applyPaymentEvent(repo, event)).toBe(true);
       expect(trackSpy).toHaveBeenCalledWith({
-        name: "concierge_purchased",
-        props: { rfqId: rfq.id, amountUsd: 49 },
+        name: "rfq_concierge_paid",
+        props: { rfqId: rfq.id, delivered: 1, amountUsd: 49 },
       });
+      // One event per purchase — no second revenue event for the same flip.
+      expect(
+        trackSpy.mock.calls.filter(
+          (c) => (c[0] as { name?: string }).name === "rfq_concierge_paid",
+        ),
+      ).toHaveLength(1);
       trackSpy.mockClear();
       expect(await applyPaymentEvent(repo, event)).toBe(false);
       expect(trackSpy).not.toHaveBeenCalled();

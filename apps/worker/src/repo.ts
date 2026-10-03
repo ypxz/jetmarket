@@ -75,6 +75,9 @@ export interface WorkerRepo {
     operatorName: string;
     rfqFields: Record<string, unknown>;
     buyerEmail: string;
+    /** Buyer paid for concierge expedite — the operator email flags it as
+     * a priority request (QA-396). */
+    rfqConcierge: boolean;
     /** Title of the RFQ'd listing — the notification subject under
      * non-route verticals (QA-234). */
     listingTitle: string | null;
@@ -278,6 +281,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           rfqFields: rfqs.fields,
           rfqStatus: rfqs.status,
           buyerEmail: rfqs.buyerEmail,
+          rfqConcierge: rfqs.concierge,
           listingTitle: listings.title,
         })
         .from(rfqMatches)

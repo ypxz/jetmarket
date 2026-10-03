@@ -269,6 +269,15 @@ export default async function AdminPage({
                 </td>
                 <td className="py-2 pr-4" data-testid={`admin-rfq-status-${r.id}`}>
                   {r.status}
+                  {r.concierge ? (
+                    <Badge
+                      variant="success"
+                      className="ml-1"
+                      data-testid={`admin-rfq-concierge-${r.id}`}
+                    >
+                      {t("conciergeBadge")}
+                    </Badge>
+                  ) : null}
                 </td>
                 <td className="py-2 pr-4 text-muted">
                   {new Date(r.createdAt).toLocaleDateString("en-US")}

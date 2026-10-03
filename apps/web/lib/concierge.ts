@@ -1,4 +1,5 @@
 import { analyticsProvider } from "@jetmarket/providers";
+import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { enqueueJob } from "@jetmarket/db";
 import { emailRfqMatches } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
@@ -20,9 +21,15 @@ export async function applyConciergePaid(
   const res = await repo.expediteRfq(rfqId);
   if (!res.applied) return false;
   logInfo("rfq.concierge_paid", { rfqId, delivered: res.matches.length });
+  // The funnel's only paid-buyer revenue event — amount rides the props so
+  // a revenue report needs no join back to config.
   analyticsProvider().track({
     name: "rfq_concierge_paid",
-    props: { rfqId, delivered: res.matches.length },
+    props: {
+      rfqId,
+      delivered: res.matches.length,
+      amountUsd: CONCIERGE_PRICE_USD,
+    },
   });
   if (repoBackend() === "postgres") {
     // Flip recipients get the same quote_notification job the delayed-match

@@ -768,7 +768,8 @@
     "colCreated": "Created",
     "markSpam": "Mark spam",
     "noRfqs": "No RFQs yet.",
-    "concierge": "Concierge: {count} expedites · {total} revenue"
+    "concierge": "Concierge: {count} expedites · {total} revenue",
+    "conciergeBadge": "Concierge"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

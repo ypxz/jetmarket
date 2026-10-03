@@ -19,17 +19,7 @@ export async function applyPaymentEvent(
     if (event.metadata?.kind !== "concierge") return false;
     const rfqId = event.metadata?.rfqId;
     if (!rfqId) return false;
-    const applied = await applyConciergePaid(repo, rfqId);
-    if (applied) {
-      // Revenue event — the funnel's only paid-buyer signal (plan events
-      // cover operators). Idempotent: a replayed event CASes to applied=false
-      // and never double-counts.
-      analyticsProvider().track({
-        name: "concierge_purchased",
-        props: { rfqId, amountUsd: 49 },
-      });
-    }
-    return applied;
+    return applyConciergePaid(repo, rfqId);
   }
   const operatorId = event.metadata?.operatorId ?? event.customerId;
   if (!operatorId) return false;

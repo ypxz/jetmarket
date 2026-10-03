@@ -291,11 +291,16 @@ export async function quoteNotification(
   const subject = ["New RFQ", route, ctx.listingTitle]
     .filter(Boolean)
     .join(" — ");
+  // Concierge RFQs are paid expedites — flag them so operators quote first.
+  const priorityLine = ctx.rfqConcierge
+    ? "Priority request — the buyer paid for immediate delivery."
+    : null;
   await deps.email.send({
     to: ctx.operatorEmail,
     subject,
     text:
       `You have a new request for quotation on ${site.name}.\n\n` +
+      `${priorityLine ? `${priorityLine}\n\n` : ""}` +
       `${detailLines.join("\n")}\n` +
       `Buyer: ${buyerName}\n\n` +
       `Open your operator inbox to send a quote.`,
@@ -304,6 +309,7 @@ export async function quoteNotification(
       title: subject,
       paragraphs: [
         `You have a new request for quotation on ${site.name}.`,
+        ...(priorityLine ? [priorityLine] : []),
         ...detailLines,
         `Buyer: ${buyerName}`,
         "Open your operator inbox to send a quote.",

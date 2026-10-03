@@ -155,6 +155,11 @@ export async function emailRfqMatches(
     .filter(Boolean)
     .join(" → ");
   const subject = ["New RFQ", route, listingTitle].filter(Boolean).join(" — ");
+  // Concierge RFQs are paid expedites — flag them so operators quote first
+  // (same line the worker's email.quote_notification adds in pg mode).
+  const priorityLine = rfq.concierge
+    ? "Priority request — the buyer paid for immediate delivery."
+    : null;
   for (const operatorId of operatorIds) {
     const op = opsById?.get(operatorId) ?? (await repo.getOperator(operatorId));
     const user = op ? await repo.getUser(op.userId) : undefined;
@@ -165,6 +170,7 @@ export async function emailRfqMatches(
         subject,
         text:
           `You have a new request for quotation on ${site.name}.\n\n` +
+          `${priorityLine ? `${priorityLine}\n\n` : ""}` +
           `${detailLines.join("\n")}\n` +
           `Buyer: ${buyerName}\n\n` +
           `Open your operator inbox to send a quote.`,
@@ -173,6 +179,7 @@ export async function emailRfqMatches(
           title: subject,
           paragraphs: [
             `You have a new request for quotation on ${site.name}.`,
+            ...(priorityLine ? [priorityLine] : []),
             ...detailLines,
             `Buyer: ${buyerName}`,
             "Open your operator inbox to send a quote.",
