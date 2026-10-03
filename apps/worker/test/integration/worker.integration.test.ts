@@ -35,6 +35,10 @@ import { tick } from "../../src/index";
 
 // Isolated `*_worker_test` database — the suite drops the public schema, so
 // it must never touch DATABASE_URL's dev/prod database (QA-139).
+// RFQ windows must stay in the future — a past dateTo is expired by the
+// sweep mid-test (QA-360).
+const isoIn = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 const testUrl =
   process.env.WORKER_TEST_DATABASE_URL ??
   testDatabaseUrlFrom(databaseUrl(), "_worker_test");
@@ -75,8 +79,8 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       departure: "ZRH",
       arrival: "NCE",
       passengers: 6,
-      dateFrom: "2026-10-01",
-      dateTo: "2026-10-01",
+      dateFrom: isoIn(14),
+      dateTo: isoIn(14),
       name: "B",
       email: "buyer@x.com",
     });
@@ -148,8 +152,8 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       departure: "NCE",
       arrival: "LTN",
       passengers: 4,
-      dateFrom: "2026-10-02",
-      dateTo: "2026-10-02",
+      dateFrom: isoIn(15),
+      dateTo: isoIn(15),
       name: "B",
       email: "buyer@x.com",
     });

@@ -9,6 +9,11 @@ import { MockAnalyticsProvider } from "@jetmarket/providers/analytics";
 const outboxDir = mkdtempSync(join(tmpdir(), "jm-analytics-outbox-"));
 process.env.EMAIL_OUTBOX_DIR = outboxDir;
 
+// RFQ windows must stay in the future — a past dateTo is expired by the
+// memory-mode lazy sweep on subsequent route calls (QA-360).
+const isoIn = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
 // Operator session + analytics sink, shared by the route-handler tests below.
 // The mock sink replaces the globalThis singleton so route imports can stay
 // untouched.
@@ -80,8 +85,8 @@ describe("analytics events on money routes (mock sink)", async () => {
         fields: {
           departure: "ZRH",
           arrival: "NCE",
-          dateFrom: "2026-10-01",
-          dateTo: "2026-10-03",
+          dateFrom: isoIn(14),
+          dateTo: isoIn(16),
           passengers: 4,
           name: "E2E Buyer",
           email: "buyer@x.example",

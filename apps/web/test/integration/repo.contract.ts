@@ -6,6 +6,11 @@ import { describe, expect, it } from "vitest";
 import type { Repo } from "../../lib/repo/types";
 import { isUniqueViolation } from "../../lib/api";
 
+// RFQ windows must stay in the future — a past dateTo is expired by the
+// lazy sweep on subsequent repo reads in memory mode (QA-360).
+const isoIn = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
 export function repoContract(
   name: string,
   factory: () => Promise<Repo>,
@@ -80,8 +85,8 @@ export function repoContract(
         fields: {
           departure: "ZRH",
           arrival: "NCE",
-          dateFrom: "2026-10-01",
-          dateTo: "2026-10-03",
+          dateFrom: isoIn(14),
+          dateTo: isoIn(16),
           passengers: 2,
           name: "B Uyer",
           email: `buyer-${tag}@test.dev`,

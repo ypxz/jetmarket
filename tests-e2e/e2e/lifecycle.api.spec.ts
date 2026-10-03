@@ -3,6 +3,7 @@
 // double-action 409). RFQ expiry itself is worker-side (expireStaleRfqs CTE)
 // and covered by apps/worker unit tests.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
+import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
 // buckets across the whole suite run (and across runs when reused), so
@@ -86,8 +87,8 @@ test('lifecycle: decline → withdraw → accept → mark-paid, with 403/409 edg
         fields: {
           departure: 'ZRH',
           arrival: 'NCE',
-          dateFrom: '2026-10-01',
-          dateTo: '2026-10-03',
+          dateFrom: isoDateIn(14),
+          dateTo: isoDateIn(16),
           passengers: 4,
           budgetUsd: 25000 + rfqSeq,
           name: 'LC Buyer',

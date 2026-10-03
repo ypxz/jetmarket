@@ -7,6 +7,11 @@ export const tid = (name: string) => `[data-testid="${name}"]`;
 /** Prefix matcher for id-suffixed testids like rfq-<id>, quote-<id>. */
 export const tidPrefix = (name: string) => `[data-testid^="${name}"]`;
 
+/** ISO date `days` from today — fixtures must stay in the future or the
+ *  expiry sweep / browse-expiry gate treats them as dead (QA-360). */
+export const isoDateIn = (days: number, from = new Date()) =>
+  new Date(from.getTime() + days * 86_400_000).toISOString().slice(0, 10);
+
 /**
  * Sign in via the mock magic link. In mock mode POST /api/auth/magic-link
  * returns `devLink` (also rendered on /sign-in as data-testid="signin-devlink")
@@ -128,7 +133,7 @@ export async function fillDynamicFields(page: Page, values: Record<string, strin
     }
     if (await el.inputValue()) continue;
     if (type === 'number') await el.fill('4');
-    else if (type === 'date') await el.fill('2026-10-01');
+    else if (type === 'date') await el.fill(isoDateIn(14));
     else if (type === 'email') await el.fill('e2e@jetmarket.local');
     else await el.fill('e2e');
   }
@@ -156,7 +161,7 @@ export async function fillRfqForm(page: Page, email: string) {
     if (type === 'email') await el.fill(email);
     else if (type === 'tel') await el.fill('+41 79 000 00 00');
     else if (type === 'number') await el.fill('4');
-    else if (type === 'date') await el.fill('2026-10-01');
+    else if (type === 'date') await el.fill(isoDateIn(14));
     else if (tag === 'textarea') await el.fill('e2e notes');
     else await el.fill('e2e');
   }

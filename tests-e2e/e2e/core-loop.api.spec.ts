@@ -6,6 +6,7 @@
 // { devLink } in mock mode → GET devLink sets the jm_session cookie inside
 // this request context.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
+import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
 // buckets across the whole suite run (and across runs when reused), so
@@ -85,7 +86,7 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
     type: 'empty_leg',
     title: `E2E Empty Leg ${run}`,
     price: 9500,
-    attributes: { from: 'ZRH', to: 'NCE', date: '2026-10-01' },
+    attributes: { from: 'ZRH', to: 'NCE', date: isoDateIn(14) },
   });
   expect(l2.status()).toBe(201);
 
@@ -110,8 +111,8 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
       fields: {
         departure: 'ZRH',
         arrival: 'NCE',
-        dateFrom: '2026-10-01',
-        dateTo: '2026-10-03',
+        dateFrom: isoDateIn(14),
+        dateTo: isoDateIn(16),
         passengers: 4,
         budgetUsd: 45000,
         name: 'Buyer Test',

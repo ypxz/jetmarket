@@ -14,6 +14,11 @@ import type { WorkerRepo } from "./repo";
 import { machineryVertical, rfqFieldLabels } from "@jetmarket/verticals";
 import en from "@jetmarket/i18n/messages/en.json";
 
+// Fixture RFQ windows stay in the future — a stale window is dead input the
+// sweeps would legitimately expire (QA-360).
+const isoIn = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
 function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
   calls: Record<string, unknown[]>;
 } {
@@ -34,8 +39,8 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
           departure: "ZRH",
           arrival: "NCE",
           passengers: 6,
-          dateFrom: "2026-10-01",
-          dateTo: "2026-10-01",
+          dateFrom: isoIn(14),
+          dateTo: isoIn(14),
           email: "buyer@x.com",
         },
       };

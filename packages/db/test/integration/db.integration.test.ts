@@ -24,6 +24,11 @@ import {
 } from "../../src/schema";
 import { seedJets } from "../../src/seed/jets";
 
+// RFQ windows stay in the future — matches the app-level expiry semantics
+// these rows feed (QA-360).
+const isoIn = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
 let client: DbClient;
 
 const testUrl =
@@ -198,8 +203,8 @@ describe("rfq -> match -> quote -> deal chain", () => {
           departure: "ZRH",
           arrival: "NCE",
           passengers: 4,
-          dateFrom: "2026-10-01",
-          dateTo: "2026-10-01",
+          dateFrom: isoIn(14),
+          dateTo: isoIn(14),
           email: "buyer@example.com",
           name: "Test Buyer",
         },

@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test';
 import {
   createListing,
   createOperatorProfile,
+  isoDateIn,
   signUpAndLogin,
   step,
   tid,
@@ -60,7 +61,7 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       type: 'empty_leg',
       title: `E2E UI Empty Leg ${run}`,
       price: '9500',
-      fields: { aircraftCategory: 'mid', model: 'Citation XLS', seats: '8', year: '2019', from: 'ZRH', to: 'NCE', date: '2026-10-01' },
+      fields: { aircraftCategory: 'mid', model: 'Citation XLS', seats: '8', year: '2019', from: 'ZRH', to: 'NCE', date: isoDateIn(14) },
     });
     await expect(operator).toHaveURL(/\/app/);
   });
@@ -95,8 +96,8 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       if (!buyer.url().includes('/rfq/thanks')) {
         // hydration can re-render inputs post-fill — refill inside the retry
         await buyer.getByTestId('rfq-field-arrival').fill('NCE');
-        await buyer.getByTestId('rfq-field-dateFrom').fill('2026-10-01');
-        await buyer.getByTestId('rfq-field-dateTo').fill('2026-10-02');
+        await buyer.getByTestId('rfq-field-dateFrom').fill(isoDateIn(14));
+        await buyer.getByTestId('rfq-field-dateTo').fill(isoDateIn(15));
         await buyer.getByTestId('rfq-field-passengers').fill('4');
         await buyer.getByTestId('rfq-field-budgetUsd').fill('45000');
         await buyer.getByTestId('rfq-field-name').fill('E2E Buyer');

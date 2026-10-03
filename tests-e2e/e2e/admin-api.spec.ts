@@ -2,6 +2,7 @@
 // RFQ spam moderation, deals list — plus logout revocation and the
 // uploads MIME guard, which had zero coverage until this spec.
 import { expect, request, test } from '@playwright/test';
+import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
 // buckets across the whole suite run (and across runs when reused), so
@@ -149,8 +150,8 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
       fields: {
         departure: 'ZRH',
         arrival: 'GVA',
-        dateFrom: '2026-10-05',
-        dateTo: '2026-10-06',
+        dateFrom: isoDateIn(30),
+        dateTo: isoDateIn(31),
         passengers: 2,
         budgetUsd: 30001 + (run % 1000),
         name: 'Adm Buyer',
@@ -191,8 +192,8 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
       fields: {
         departure: 'ZRH',
         arrival: 'MXP',
-        dateFrom: '2026-10-10',
-        dateTo: '2026-10-11',
+        dateFrom: isoDateIn(40),
+        dateTo: isoDateIn(41),
         passengers: 3,
         budgetUsd: 31001 + (run % 1000),
         name: 'Adm Buyer',
