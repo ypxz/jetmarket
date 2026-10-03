@@ -23,7 +23,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.9",
     "postgres": "^3.4.9",
     "stripe": "^22.6.1"
   },
