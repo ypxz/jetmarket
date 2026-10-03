@@ -29,6 +29,11 @@ test('buyer sign-in can reach onboarding and becomes an operator', async ({
     await page.goto('/');
     await page.locator('nav').getByRole('link', { name: 'Operator' }).click();
     await expect(page.getByTestId('onboarding-cta')).toBeVisible();
+    // QA-391: "My quotes" is the buyer-scoped inbox — a buyer sees it, an
+    // operator must not (their sent quotes live on /app/rfqs).
+    await expect(
+      page.locator('nav').getByRole('link', { name: 'My quotes' }),
+    ).toBeVisible();
   });
 
   await step('onboarding promotes the account to operator', async () => {
@@ -39,5 +44,9 @@ test('buyer sign-in can reach onboarding and becomes an operator', async ({
     // Post-submit the same session lands on the operator dashboard — the
     // promotion is effective immediately (role is re-read per request).
     await expect(page.getByTestId('operator-name')).toBeVisible();
+    // Now an operator: the buyer-only "My quotes" nav link disappears.
+    await expect(
+      page.locator('nav').getByRole('link', { name: 'My quotes' }),
+    ).toHaveCount(0);
   });
 });

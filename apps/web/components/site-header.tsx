@@ -43,12 +43,18 @@ export async function SiteHeader() {
               {t("admin")}
             </Link>
           ) : null}
-          <Link
-            href="/quotes"
-            className="shrink-0 text-muted hover:text-foreground"
-          >
-            {t("myQuotes")}
-          </Link>
+          {/* Buyer-scoped inbox: it lists requests+quotes received for a
+              buyerEmail — meaningless to operators (their sent quotes live
+              on /app/rfqs) and admins. Show to anon + buyer users only
+              (QA-391). */}
+          {user?.role === "operator" || user?.role === "admin" ? null : (
+            <Link
+              href="/quotes"
+              className="shrink-0 text-muted hover:text-foreground"
+            >
+              {t("myQuotes")}
+            </Link>
+          )}
           <ThemeToggle label={t("theme")} />
           {user ? (
             <>
