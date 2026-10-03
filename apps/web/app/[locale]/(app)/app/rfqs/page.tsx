@@ -41,8 +41,13 @@ export default async function RfqInboxPage({
       </main>
     );
   }
+  // "Needs a quote" filter (QA-402): only RFQs this operator hasn't quoted
+  // yet — the daily-driver view; "all" keeps the full delivered inbox.
+  const f = Array.isArray(params.f) ? params.f[0] : params.f;
+  const needsOnly = f === "needs";
   const total = await repo.countRfqs({
     operatorId: operator.id,
+    needsQuote: needsOnly || undefined,
     vertical: verticalSlug(),
   });
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
@@ -50,6 +55,7 @@ export default async function RfqInboxPage({
   const page = Number.isInteger(n) && n >= 1 ? Math.min(n, pages) : 1;
   const rfqsPage = await repo.listRfqs({
     operatorId: operator.id,
+    needsQuote: needsOnly || undefined,
     vertical: verticalSlug(),
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
@@ -94,6 +100,27 @@ export default async function RfqInboxPage({
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <div className="mt-4 flex gap-2" data-testid="rfq-filter">
+        {(
+          [
+            ["all", t("filterAll")],
+            ["needs", t("filterNeeds")],
+          ] as const
+        ).map(([key, label]) => (
+          <Link
+            key={key}
+            href={key === "needs" ? "/app/rfqs?f=needs" : "/app/rfqs"}
+            data-testid={`filter-${key}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              needsOnly === (key === "needs")
+                ? "bg-primary text-primary-foreground font-medium"
+                : "border border-border bg-background text-muted"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+      </div>
       {pendingRfqs > 0 ? (
         <div
           className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface p-4"

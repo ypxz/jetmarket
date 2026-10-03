@@ -310,6 +310,11 @@ export interface Repo {
     buyerEmail?: string;
     /** Listing owner OR an operator with a delivered (pending) rfq_match. */
     operatorId?: string;
+    /** Operator inbox "needs a quote" (QA-402): only meaningful with
+     * `operatorId` — excludes RFQs where that operator already has a live
+     * quote (`sent`/`accepted`). Declined/withdrawn quotes don't hide the
+     * RFQ: there's no live quote in play, so it still needs action. */
+    needsQuote?: boolean;
     /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
     vertical?: string;
     /** Page slice applied after other filters, newest-first. */
@@ -340,6 +345,9 @@ export interface Repo {
   countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    /** Same "needs a quote" exclusion as listRfqs — pagination totals must
+     * match the filtered page (QA-402). */
+    needsQuote?: boolean;
     /** Scope to one vertical — matches listRfqs (QA-293). */
     vertical?: string;
     /** Exclude these iface statuses (e.g. "closed" counts only live RFQs). */

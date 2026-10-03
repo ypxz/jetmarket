@@ -421,6 +421,7 @@ class MemoryRepo implements Repo {
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    needsQuote?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
@@ -444,6 +445,20 @@ class MemoryRepo implements Repo {
       out = out.filter(
         (r) => opListingIds.has(r.listingId) || this.matchVisible(r.id, opId),
       );
+      // "Needs a quote": hide RFQs the operator already has a live quote on
+      // (sent/accepted) — declined/withdrawn leave it needing action (QA-402).
+      if (filter.needsQuote) {
+        const quoted = new Set(
+          [...this.quotes.values()]
+            .filter(
+              (q) =>
+                q.operatorId === opId &&
+                (q.status === "sent" || q.status === "accepted"),
+            )
+            .map((q) => q.rfqId),
+        );
+        out = out.filter((r) => !quoted.has(r.id));
+      }
     }
     // Operator inbox: concierge expedites sort first — the buyer paid for
     // immediate attention (QA-400); buyer/admin lists stay newest-first.
@@ -518,6 +533,7 @@ class MemoryRepo implements Repo {
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    needsQuote?: boolean;
     vertical?: string;
     statusNot?: Rfq["status"][];
     since?: string;

@@ -137,11 +137,22 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   const rfqs = (await inbox.json()) as { id: string }[];
   expect(rfqs.map((r) => r.id)).toContain(rfqId);
 
+  // QA-402: unquoted → present in ?needs=1; once quoted it drops out of the
+  // needs-a-quote view but stays in the full inbox.
+  const needsBefore = await operator.get('/api/operator/rfqs?needs=1');
+  expect((await needsBefore.json()).map((r: { id: string }) => r.id)).toContain(rfqId);
+
   const quote = await operator.post('/api/quotes', {
     data: { rfqId, amount: QUOTE_AMOUNT, message: `E2E quote ${run}` },
   });
   expect(quote.status()).toBe(201);
   const quoteId = ((await quote.json()) as { id: string }).id;
+
+  const needsAfter = await operator.get('/api/operator/rfqs?needs=1');
+  const afterIds = (await needsAfter.json()).map((r: { id: string }) => r.id);
+  expect(afterIds).not.toContain(rfqId);
+  const stillListed = await operator.get('/api/operator/rfqs');
+  expect((await stillListed.json()).map((r: { id: string }) => r.id)).toContain(rfqId);
 
   // --- buyer: sees quote, accepts → deal + fee ------------------------------
   const buyerQuotes = await publicCtx.get(

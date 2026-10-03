@@ -24,6 +24,8 @@ export async function GET(req: Request) {
   const off = Number(url.searchParams.get("offset"));
   const rfqs = await repo.listRfqs({
     operatorId: operator.id,
+    // ?needs=1 — only RFQs without a live quote from this operator (QA-402).
+    needsQuote: url.searchParams.get("needs") === "1" || undefined,
     // Shared-DB deployments host >1 vertical: machinery RFQs masked with
     // jets field defs would leak buyer contacts (QA-294).
     vertical: verticalSlug(),

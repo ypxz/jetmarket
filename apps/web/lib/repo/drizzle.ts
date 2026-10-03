@@ -722,6 +722,7 @@ export class DrizzleRepo implements Repo {
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    needsQuote?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
@@ -748,6 +749,18 @@ export class DrizzleRepo implements Repo {
             or(eq(listings.operatorId, filter.operatorId), matched),
             ...(filter.vertical
               ? [eq(rfqs.vertical, filter.vertical)]
+              : []),
+            ...(filter.needsQuote
+              ? [
+                  // "Needs a quote": no live quote from THIS operator —
+                  // declined/withdrawn don't hide the RFQ (QA-402).
+                  sql`not exists (
+                    select 1 from quotes q
+                    where q.rfq_id = ${rfqs.id}
+                      and q.operator_id = ${filter.operatorId}
+                      and q.status in ('sent','accepted')
+                  )`,
+                ]
               : []),
           ),
         )
@@ -779,6 +792,7 @@ export class DrizzleRepo implements Repo {
   async countRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;
+    needsQuote?: boolean;
     vertical?: string;
     statusNot?: RfqStatus[];
     since?: string;
@@ -808,6 +822,15 @@ export class DrizzleRepo implements Repo {
       if (statusCond) conds.push(statusCond);
       if (sinceCond) conds.push(sinceCond);
       if (filter.concierge) conds.push(eq(rfqs.concierge, true));
+      if (filter.needsQuote)
+        conds.push(
+          sql`not exists (
+            select 1 from quotes q
+            where q.rfq_id = ${rfqs.id}
+              and q.operator_id = ${filter.operatorId}
+              and q.status in ('sent','accepted')
+          )`,
+        );
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(rfqs)
