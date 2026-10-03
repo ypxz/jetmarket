@@ -80,14 +80,6 @@ export async function POST(
     await repo.setRfqStatus(rfq.id, "quoted", ["closed"]);
     return err("quote already transitioned", 409);
   }
-  for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
-    if (q.id !== id && q.status === "sent") {
-      if (await repo.setQuoteStatus(q.id, "declined", "sent")) {
-        await notifyQuoteDeclined(repo, q, rfq, "competing-accepted");
-      }
-    }
-  }
-
   const listing = parentListing;
   const feePct = listing ? successFeePctFor(listing.type) : 0.03;
   // Fee in integer minor units — float math on majors loses cents at edges,
@@ -130,6 +122,18 @@ export async function POST(
       });
     }
     throw e;
+  }
+
+  // Decline the losing sent quotes only AFTER the deal exists — a transient
+  // createDeal failure rolls the RFQ+winner back above, and a sibling
+  // declined before that point would stay dead (with a "not selected"
+  // email) on an RFQ that never closed (QA-392).
+  for (const q of await repo.listQuotes({ rfqId: rfq.id })) {
+    if (q.id !== id && q.status === "sent") {
+      if (await repo.setQuoteStatus(q.id, "declined", "sent")) {
+        await notifyQuoteDeclined(repo, q, rfq, "competing-accepted");
+      }
+    }
   }
 
   analyticsProvider().track({

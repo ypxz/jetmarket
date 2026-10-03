@@ -314,7 +314,18 @@ describe("POST /api/rfqs/[id]/close (QA-182)", () => {
 describe("POST /api/quotes/[id]/accept transient deal failure (QA-310)", () => {
   it("rolls the CAS flips back so a buyer retry still completes", async () => {
     const repo = await getMemoryRepo();
-    const { rfq, quote, buyerEmail } = await fixture(repo);
+    const { rfq, quote, buyerEmail, otherOp } = await fixture(repo);
+    // A second live quote on the same RFQ — QA-392: the rollback path must
+    // leave it 'sent'. Declines run only after the deal exists, so a
+    // transient failure can't orphan a sibling (and its operator doesn't
+    // get a phantom "not selected" email for a deal that never minted).
+    const sibling = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: otherOp.id,
+      amount: 8000,
+      currency: "USD",
+      message: "",
+    });
 
     const spy = vi
       .spyOn(repo, "createDeal")
@@ -331,6 +342,7 @@ describe("POST /api/quotes/[id]/accept transient deal failure (QA-310)", () => {
     // 'sent', so the retry takes the normal path instead of a dead 409.
     expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
     expect((await repo.getQuote(quote.id))?.status).toBe("sent");
+    expect((await repo.getQuote(sibling.id))?.status).toBe("sent");
 
     const retry = await acceptQuote(
       post({ buyerEmail, token: rfq.accessToken }),
@@ -339,5 +351,8 @@ describe("POST /api/quotes/[id]/accept transient deal failure (QA-310)", () => {
     expect(retry.status).toBe(200);
     expect((await repo.getQuote(quote.id))?.status).toBe("accepted");
     expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+    // Post-deal decline loop: the sibling is declined exactly once, now that
+    // the deal actually exists.
+    expect((await repo.getQuote(sibling.id))?.status).toBe("declined");
   });
 });
