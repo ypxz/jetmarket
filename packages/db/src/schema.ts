@@ -269,6 +269,41 @@ export const jobs = pgTable(
   (t) => [index("jobs_claim_idx").on(t.status, t.runAt)],
 );
 
+export const searchAlerts = pgTable(
+  "search_alerts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vertical: text("vertical").notNull(),
+    email: text("email").notNull(),
+    /** Raw /search URL params — re-applied through listingFilterFor at match
+     *  time, so only whitelisted facet keys can ever filter (QA-403). */
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    /** Confirm + unsubscribe bearer (emailed links only). */
+    token: text("token").notNull().unique(),
+    /** hash(vertical | email | canonical params) — same search re-subscribes
+     *  one row with a rotated token, never a stack of duplicates. */
+    dedupeKey: text("dedupe_key").notNull().unique(),
+    status: text("status", { enum: ["pending", "active", "off"] })
+      .notNull()
+      .default("pending"),
+    /** Matched listing ids queued during the per-alert mail cooldown — the
+     *  next digest carries them. */
+    pendingIds: jsonb("pending_ids").$type<string[]>().notNull().default([]),
+    lastAlertedAt: timestamp("last_alerted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("search_alerts_due_idx")
+      .on(t.vertical, t.status, t.lastAlertedAt)
+      .where(sql`${t.status} = 'active'`),
+  ],
+);
+
 export const magicLinksUsed = pgTable("magic_links_used", {
   sig: text("sig").primaryKey(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -283,11 +318,13 @@ export type QuoteRow = typeof quotes.$inferSelect;
 export type DealRow = typeof deals.$inferSelect;
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;
+export type SearchAlertRow = typeof searchAlerts.$inferSelect;
 
 export type NewUser = typeof users.$inferInsert;
 export type NewOperator = typeof operators.$inferInsert;
 export type NewListing = typeof listings.$inferInsert;
 export type NewRfq = typeof rfqs.$inferInsert;
+export type NewSearchAlert = typeof searchAlerts.$inferInsert;
 export type NewRfqMatch = typeof rfqMatches.$inferInsert;
 export type NewQuote = typeof quotes.$inferInsert;
 export type NewDeal = typeof deals.$inferInsert;

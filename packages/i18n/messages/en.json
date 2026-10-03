@@ -67,7 +67,16 @@
     "sortLabel": "Sort by",
     "sortNewest": "Newest first",
     "sortPriceAsc": "Price: low to high",
-    "sortPriceDesc": "Price: high to low"
+    "sortPriceDesc": "Price: high to low",
+    "alertTitle": "Alert me",
+    "alertEmail": "Your email",
+    "alertSubmit": "Save this search",
+    "alertSending": "Saving…",
+    "alertSent": "Saved — check your email to confirm the alert.",
+    "alertError": "Could not save the alert — try again.",
+    "alertConfirmed": "Alert confirmed — new matching listings will be emailed to you.",
+    "alertUnsubscribed": "Search alert unsubscribed.",
+    "alertInvalid": "That alert link is invalid or already used."
   },
   "seo": {
     "listingsHeading": "Available listings",

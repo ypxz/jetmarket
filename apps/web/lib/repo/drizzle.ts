@@ -27,6 +27,7 @@ import type {
   Repo,
   Rfq,
   RfqStatus,
+  SearchAlert,
   Subscription,
   User,
   UserRole,
@@ -44,6 +45,7 @@ const {
   subscriptions,
   jobs,
   magicLinksUsed,
+  searchAlerts,
 } = schema;
 
 const iso = (d: Date | null | undefined): string =>
@@ -130,6 +132,19 @@ function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
   };
 }
 
+function toSearchAlert(r: typeof searchAlerts.$inferSelect): SearchAlert {
+  return {
+    id: r.id,
+    vertical: r.vertical,
+    email: r.email,
+    params: r.params,
+    token: r.token,
+    status: r.status as SearchAlert["status"],
+    pendingIds: r.pendingIds,
+    lastAlertedAt: r.lastAlertedAt ? iso(r.lastAlertedAt) : null,
+  };
+}
+
 type DealRow = typeof deals.$inferSelect;
 type QuoteRow = typeof quotes.$inferSelect;
 function toDeal(d: DealRow, q: QuoteRow): Deal {
@@ -154,6 +169,19 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Non-uuid ids can only come from non-db impls/tests — miss, don't 22P02. */
 const isUuid = (v: string) => UUID_RE.test(v);
+
+/** Local 23505 sniff — lib/api's version would make repo ↔ api a cycle. */
+function isUniqueViolation(e: unknown): boolean {
+  for (let cur: unknown = e; cur instanceof Error; cur = cur.cause) {
+    if (
+      cur.message.includes("duplicate key") ||
+      cur.message.includes("23505") ||
+      (cur as { code?: string }).code === "23505"
+    )
+      return true;
+  }
+  return false;
+}
 
 interface ListingFilter {
   ids?: string[];
@@ -1226,6 +1254,112 @@ export class DrizzleRepo implements Repo {
       .where(eq(subscriptions.operatorId, operatorId))
       .limit(1);
     return r ? toSubscription(r) : undefined;
+  }
+
+  // --- saved-search alerts (QA-403) --------------------------------------
+
+  async createSearchAlert(input: {
+    vertical: string;
+    email: string;
+    params: Record<string, unknown>;
+    token: string;
+    dedupeKey: string;
+  }): Promise<{ alert: SearchAlert; created: boolean }> {
+    // Dedupe key decides insert vs re-subscribe: an existing row gets a
+    // ROTATED token (older emailed links die), an 'off' row re-opens to
+    // 'pending' (re-opt-in must re-confirm), 'active'/'pending' keep status.
+    const rotate = async () => {
+      const [r] = await this.db
+        .update(searchAlerts)
+        .set({
+          token: input.token,
+          email: input.email.toLowerCase(),
+          params: input.params,
+          status: sql`case when ${searchAlerts.status} = 'off' then 'pending' else ${searchAlerts.status} end`,
+        })
+        .where(eq(searchAlerts.dedupeKey, input.dedupeKey))
+        .returning();
+      return { alert: toSearchAlert(r!), created: false };
+    };
+    const [existing] = await this.db
+      .select({ id: searchAlerts.id })
+      .from(searchAlerts)
+      .where(eq(searchAlerts.dedupeKey, input.dedupeKey))
+      .limit(1);
+    if (existing) return rotate();
+    try {
+      const [row] = await this.db
+        .insert(searchAlerts)
+        .values({
+          vertical: input.vertical,
+          email: input.email.toLowerCase(),
+          params: input.params,
+          token: input.token,
+          dedupeKey: input.dedupeKey,
+        })
+        .returning();
+      return { alert: toSearchAlert(row!), created: true };
+    } catch (e) {
+      // Concurrent first-subscribe won the unique race — rotate instead.
+      if (isUniqueViolation(e)) return rotate();
+      throw e;
+    }
+  }
+
+  async confirmSearchAlert(token: string): Promise<SearchAlert | null> {
+    const [r] = await this.db
+      .update(searchAlerts)
+      .set({ status: "active" })
+      .where(
+        and(eq(searchAlerts.token, token), eq(searchAlerts.status, "pending")),
+      )
+      .returning();
+    return r ? toSearchAlert(r) : null;
+  }
+
+  async unsubscribeSearchAlert(token: string): Promise<boolean> {
+    const r = await this.db
+      .update(searchAlerts)
+      .set({ status: "off" })
+      .where(
+        and(eq(searchAlerts.token, token), ne(searchAlerts.status, "off")),
+      );
+    return (r.count ?? 0) > 0;
+  }
+
+  async listSearchAlerts(filter: {
+    vertical: string;
+    status?: SearchAlert["status"];
+  }): Promise<SearchAlert[]> {
+    const rows = await this.db
+      .select()
+      .from(searchAlerts)
+      .where(
+        and(
+          eq(searchAlerts.vertical, filter.vertical),
+          ...(filter.status ? [eq(searchAlerts.status, filter.status)] : []),
+        ),
+      );
+    return rows.map(toSearchAlert);
+  }
+
+  async appendSearchAlertPending(alertId: string, listingId: string) {
+    if (!isUuid(alertId) || !isUuid(listingId)) return;
+    // Distinct append: only add when the id isn't already queued.
+    await this.db.execute(sql`
+      update search_alerts
+      set pending_ids = pending_ids || ${JSON.stringify([listingId])}::jsonb
+      where id = ${alertId}
+        and not (pending_ids @> ${JSON.stringify([listingId])}::jsonb)
+    `);
+  }
+
+  async markSearchAlerted(id: string) {
+    if (!isUuid(id)) return;
+    await this.db
+      .update(searchAlerts)
+      .set({ lastAlertedAt: new Date(), pendingIds: [] })
+      .where(eq(searchAlerts.id, id));
   }
 }
 

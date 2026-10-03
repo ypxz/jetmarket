@@ -1,0 +1,175 @@
+// Saved-search alerts (QA-403) end-to-end: a buyer subscribes their /search
+// filter set via POST /api/search-alerts, confirms via the emailed link,
+// then a matching listing activation lands a digest in their mailbox.
+// Cooldown: a second activation inside the window queues on pending_ids
+// instead of re-mailing; unsubscribe kills the flow.
+//
+// Fixtures ride HTTP only (subscribe/confirm/listing routes) — the alert
+// row is what the feature writes; no seeded SQL fixture needed beyond the
+// same teardown the other specs use (own rows only).
+import { expect, request, test } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import postgres from 'postgres';
+
+// Isolated rate-limit bucket for this spec file (QA-289).
+test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' } });
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '..', '..');
+// Mock email writes under the process cwd — the dev server roots at
+// apps/web, but CLI-driven runs can land under the repo root (same dir set
+// as helpers/outbox.ts).
+const OUTBOX_DIRS = [
+  path.join(repoRoot, 'apps', 'web', 'tmp', 'outbox'),
+  path.join(repoRoot, 'tmp', 'outbox'),
+];
+
+const run = Date.now().toString(36);
+const BUYER = `e2e-alert-buyer-${run}@jetmarket.local`;
+const OP_EMAIL = `e2e-alert-op-${run}@jetmarket.local`;
+
+const testDb =
+  process.env.TEST_DATABASE_URL ??
+  'postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test';
+
+/** Latest mock outbox file addressed to `email`, or null. */
+function latestMailTo(email: string): string | null {
+  for (const dir of OUTBOX_DIRS) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.eml'))
+      .map((f) => path.join(dir, f))
+      .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    for (const file of files) {
+      const body = fs.readFileSync(file, 'utf8');
+      if (body.toLowerCase().includes(email.toLowerCase())) return body;
+    }
+  }
+  return null;
+}
+
+async function login(email: string, role?: 'operator') {
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+  });
+  const res = await ctx.post('/api/auth/magic-link', { data: { email, role } });
+  expect(res.ok()).toBeTruthy();
+  const { devLink } = (await res.json()) as { devLink: string };
+  const cbUrl = new URL(devLink);
+  const cb = await ctx.post('/api/auth/callback', {
+    form: {
+      token: cbUrl.searchParams.get('token')!,
+      next: cbUrl.searchParams.get('next') ?? '/',
+    },
+  });
+  expect(cb.status()).toBeLessThan(400);
+  return ctx;
+}
+
+test('search alerts: subscribe → confirm → activation digest → unsubscribe (QA-403)', async () => {
+  test.setTimeout(90_000);
+  const sql = postgres(testDb);
+  const tag = `e2e-alert-${run}`;
+  const listingId = crypto.randomUUID();
+  const listingId2 = crypto.randomUUID();
+
+  try {
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+    });
+
+    // 1. Subscribe — pending row + confirm mail (dev echo carries the link).
+    const sub = await anon.post('/api/search-alerts', {
+      data: { email: BUYER, params: { type: 'charter' } },
+    });
+    expect(sub.status()).toBe(200);
+    const { created, devConfirmUrl } = (await sub.json()) as {
+      created: boolean;
+      devConfirmUrl?: string;
+    };
+    expect(created).toBe(true);
+    expect(devConfirmUrl).toContain('/api/search-alerts/confirm?token=');
+    const confirmPath = new URL(devConfirmUrl!).pathname +
+      new URL(devConfirmUrl!).search;
+    const token = new URL(devConfirmUrl!).searchParams.get('token')!;
+
+    const [row] = await sql`
+      select status from search_alerts where dedupe_key <> '' and email = ${BUYER}`;
+    expect(row?.status).toBe('pending');
+
+    // 2. Confirm — redirect lands on the saved search itself.
+    const conf = await anon.get(confirmPath, { maxRedirects: 0 });
+    expect([301, 302, 303, 307, 308]).toContain(conf.status());
+    const loc = conf.headers()['location']!;
+    expect(loc).toContain('/search');
+    expect(loc).toContain('type=charter');
+    expect(loc).toContain('alert=confirmed');
+    const [row2] = await sql`
+      select status from search_alerts where email = ${BUYER}`;
+    expect(row2?.status).toBe('active');
+
+    // 3. Matching activation → digest mail to the buyer.
+    const op = await login(OP_EMAIL, 'operator');
+    const opRes = await op.post('/api/operators', {
+      data: { name: `E2E Alert Ops ${run}`, baseAirport: 'LSZH' },
+    });
+    expect(opRes.status()).toBe(201);
+    await sql`
+      insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+      select ${listingId}, id, 'jets', 'charter', ${`E2E Alert Charter ${run}`},
+             1200000, 'USD', 'active', '{}', '[]'
+      from operators where user_id = (select id from users where email = ${OP_EMAIL})`;
+    // Activation hook only fires through the route — flip via draft→active.
+    await sql`update listings set status = 'draft' where id = ${listingId}`;
+    const act = await op.patch(`/api/listings/${listingId}`, {
+      data: { status: 'active' },
+    });
+    expect(act.status()).toBe(200);
+
+    // Digest mail lands in the mock outbox.
+    let mail: string | null = null;
+    for (let i = 0; i < 20 && !mail; i++) {
+      mail = latestMailTo(BUYER);
+      if (!mail || !mail.includes('saved search')) mail = null;
+      if (!mail) await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(mail, 'expected a saved-search digest mail').toBeTruthy();
+    expect(mail!).toContain(`E2E Alert Charter ${run}`);
+
+    // 4. Cooldown: a second activation queues instead of re-mailing.
+    const [stamped] = await sql`
+      select last_alerted_at from search_alerts where email = ${BUYER}`;
+    expect(stamped?.last_alerted_at).not.toBeNull();
+    await sql`
+      insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+      select ${listingId2}, id, 'jets', 'charter', ${`E2E Alert Charter Two ${run}`},
+             900000, 'USD', 'draft', '{}', '[]'
+      from operators where user_id = (select id from users where email = ${OP_EMAIL})`;
+    const act2 = await op.patch(`/api/listings/${listingId2}`, {
+      data: { status: 'active' },
+    });
+    expect(act2.status()).toBe(200);
+    const [queued] = await sql`
+      select pending_ids from search_alerts where email = ${BUYER}`;
+    expect(queued?.pending_ids).toContain(listingId2);
+
+    // 5. Unsubscribe — link works, status flips, redirect flags the banner.
+    const unsub = await anon.get(
+      `/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`,
+      { maxRedirects: 0 },
+    );
+    expect(unsub.headers()['location']).toContain('alert=unsubscribed');
+    const [row3] = await sql`
+      select status from search_alerts where email = ${BUYER}`;
+    expect(row3?.status).toBe('off');
+  } finally {
+    await sql`delete from search_alerts where email = ${BUYER}`;
+    await sql`delete from listings where id in (${listingId}, ${listingId2})`;
+    await sql`delete from operators where user_id in (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email in (${BUYER}, ${OP_EMAIL})`;
+    await sql.end();
+  }
+});

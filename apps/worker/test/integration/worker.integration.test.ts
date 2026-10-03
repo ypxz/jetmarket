@@ -14,6 +14,7 @@ import {
   rfqMatches,
   rfqs,
   quotes,
+  searchAlerts,
   users,
   operators,
   listings,
@@ -29,6 +30,7 @@ import {
   deliverDueMatches,
   recoverUnfanoutedRfqs,
   rfqFanout,
+  searchAlertFlush,
 } from "../../src/handlers";
 import { createWorkerRepo } from "../../src/repo";
 import { tick } from "../../src/index";
@@ -443,6 +445,71 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(remainingIds.has(recentDone)).toBe(true);
     expect(remainingIds.has(recentFailed)).toBe(true);
     expect(remainingIds.has(oldPending)).toBe(true);
+  });
+
+  it("flushes matured saved-search backlogs as one digest (QA-403)", async () => {
+    // Backlog accumulates web-side inside the mail cooldown; once the
+    // window matures the tick sweep mails a single digest and clears it.
+    const [listing] = await db
+      .select({ id: listings.id, title: listings.title })
+      .from(listings)
+      .limit(1);
+    const stale = new Date(Date.now() - 21 * 3_600_000);
+    const fresh = new Date();
+    const staleId = randomUUID();
+    const freshId = randomUUID();
+    await db.insert(searchAlerts).values([
+      {
+        id: staleId,
+        vertical: "jets",
+        email: "digest-buyer@x.com",
+        params: { type: "charter" },
+        token: `tok-${staleId}`,
+        dedupeKey: `int-stale-${randomUUID()}`,
+        status: "active",
+        pendingIds: [listing!.id],
+        lastAlertedAt: stale,
+      },
+      {
+        id: freshId,
+        vertical: "jets",
+        email: "cooldown-buyer@x.com",
+        params: {},
+        token: `tok-${freshId}`,
+        dedupeKey: `int-fresh-${randomUUID()}`,
+        status: "active",
+        pendingIds: [listing!.id],
+        lastAlertedAt: fresh, // still inside the window — must not flush
+      },
+    ]);
+
+    const flushed = await searchAlertFlush(deps());
+    expect(flushed).toBe(1);
+
+    const outbox = readOutbox(outboxDir);
+    const digest = outbox.find((m) => m.to === "digest-buyer@x.com");
+    expect(digest).toBeDefined();
+    expect(digest!.subject).toContain("saved search");
+    expect(digest!.text).toContain(listing!.title);
+    expect(digest!.text).toContain(`unsubscribe?token=tok-${staleId}`);
+    expect(outbox.find((m) => m.to === "cooldown-buyer@x.com")).toBeUndefined();
+
+    const [staleRow] = await db
+      .select()
+      .from(searchAlerts)
+      .where(eq(searchAlerts.id, staleId));
+    expect(staleRow!.pendingIds).toEqual([]);
+    expect(staleRow!.lastAlertedAt!.getTime()).toBeGreaterThan(
+      stale.getTime(),
+    );
+    const [freshRow] = await db
+      .select()
+      .from(searchAlerts)
+      .where(eq(searchAlerts.id, freshId));
+    expect(freshRow!.pendingIds).toEqual([listing!.id]);
+
+    await db.delete(searchAlerts).where(eq(searchAlerts.id, staleId));
+    await db.delete(searchAlerts).where(eq(searchAlerts.id, freshId));
   });
 
   it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {

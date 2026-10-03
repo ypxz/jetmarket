@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { FacetSidebar } from "@/components/facet-sidebar";
 import { ListingCard } from "@/components/listing-card";
 import { Pager } from "@/components/pager";
+import { SearchAlertForm } from "@/components/search-alert-form";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { searchListingsPage } from "@/lib/search";
@@ -42,15 +43,48 @@ export default async function SearchPage({
     ).map((o) => [o.id, publicOperator(o)] as const),
   );
 
+  // Confirm/unsubscribe land back on /search with ?alert=<state> — it is
+  // page furniture, not part of the saved filter set (QA-403).
+  const alertState = params["alert"];
+  const savedParams = Object.fromEntries(
+    Object.entries(params).filter(([k]) => k !== "alert"),
+  );
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+      {alertState === "confirmed" ? (
+        <p className="mt-3 rounded-md border border-border bg-surface px-3 py-2 text-sm" data-testid="search-alert-confirmed">
+          {t("alertConfirmed")}
+        </p>
+      ) : null}
+      {alertState === "unsubscribed" ? (
+        <p className="mt-3 rounded-md border border-border bg-surface px-3 py-2 text-sm" data-testid="search-alert-off">
+          {t("alertUnsubscribed")}
+        </p>
+      ) : null}
+      {alertState === "invalid" ? (
+        <p className="mt-3 rounded-md border border-border bg-surface px-3 py-2 text-sm" data-testid="search-alert-invalid">
+          {t("alertInvalid")}
+        </p>
+      ) : null}
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         <FacetSidebar params={params} />
         <section className="min-w-0 flex-1">
           <p className="mb-3 text-sm text-muted" data-testid="search-results-count">
             {t("results", { count: total })}
           </p>
+          <div className="mb-4">
+            <SearchAlertForm
+              params={savedParams}
+              title={t("alertTitle")}
+              emailPlaceholder={t("alertEmail")}
+              submitLabel={t("alertSubmit")}
+              sendingLabel={t("alertSending")}
+              sentLabel={t("alertSent")}
+              errorLabel={t("alertError")}
+            />
+          </div>
           {listings.length === 0 ? (
             <EmptyState title={t("emptyTitle")} body={t("emptyBody")} />
           ) : (

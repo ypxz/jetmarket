@@ -114,6 +114,86 @@ export async function rfqFanout(
   }
 }
 
+/** Search-alert digest cadence must mirror the web-side cooldown —
+ * pending_ids only ever accumulates inside that window (QA-403). */
+export const SEARCH_ALERT_COOLDOWN_MS = 20 * 60 * 60 * 1000;
+
+/**
+ * Saved-search digest flush (QA-403): matches landing inside an alert's
+ * cooldown queue onto `pending_ids`; once the window matures this sweep
+ * mails ONE digest (not one mail per activation) and clears the queue.
+ * Matching ran web-side at activation time — the worker only needs the
+ * backlog + titles, never the facet filter.
+ */
+export async function searchAlertFlush(deps: WorkerDeps): Promise<number> {
+  const matured = await deps.repo.alertBacklogs(
+    deps.vertical,
+    new Date(at(deps).getTime() - SEARCH_ALERT_COOLDOWN_MS),
+  );
+  let flushed = 0;
+  const origin = `https://${site.domain}`;
+  for (const alert of matured) {
+    try {
+      const rows = await deps.repo.loadDigestListings(
+        alert.pendingIds,
+        deps.vertical,
+      );
+      const live = rows.filter((r) => r.status === "active");
+      // A fully-delisted backlog just clears — nothing worth mailing.
+      if (!live.length) {
+        await deps.repo.markSearchAlerted(alert.id);
+        continue;
+      }
+      const searchUrl = new URL(`${origin}/search`);
+      for (const [k, v] of Object.entries(alert.params)) {
+        for (const item of Array.isArray(v) ? v : [v]) {
+          if (item !== undefined && item !== null)
+            searchUrl.searchParams.append(k, String(item));
+        }
+      }
+      const unsub = `${origin}/api/search-alerts/unsubscribe?token=${encodeURIComponent(alert.token)}`;
+      const first = live[0]!.title;
+      const subject =
+        live.length === 1
+          ? `New listing matches your saved search — “${first}”`
+          : `${live.length} new listings match your saved search`;
+      const lines = live.map((l) => `${l.title} — ${origin}/listing/${l.id}`);
+      await deps.email.send({
+        to: alert.email,
+        subject,
+        text: [
+          `New listings on ${site.name} match your saved search:`,
+          "",
+          ...lines,
+          "",
+          `Your search: ${searchUrl.toString()}`,
+          `Unsubscribe: ${unsub}`,
+        ].join("\n"),
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [
+            `New listings on ${site.name} match your saved search:`,
+            ...lines,
+            `Unsubscribe: ${unsub}`,
+          ],
+          cta: { url: searchUrl.toString(), label: "See matching listings" },
+        }),
+      });
+      await deps.repo.markSearchAlerted(alert.id);
+      flushed += 1;
+    } catch (e) {
+      // One bad row must not stall the sweep — it stays queued and retries
+      // next poll (mark is post-send so a send failure can't lose the backlog).
+      logWarn("worker.search_alert_flush_failed", {
+        alertId: alert.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return flushed;
+}
+
 /**
  * Delayed-match sweep — run each poll iteration (and standalone): flip due
  * `delayed` matches to `pending` and enqueue their notification jobs.

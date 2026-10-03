@@ -6,7 +6,9 @@ import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { logWarn } from "@/lib/log";
+import { appOrigin } from "@/lib/origin";
 import { isExpiredListing } from "@/lib/search";
+import { alertSavedSearches } from "@/lib/search-alerts";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
@@ -111,6 +113,12 @@ export async function PATCH(
       // cap enforces atomically under an operator row lock (QA-63 made it
       // check-then-act; concurrent creates could still slip past).
       await repo.updateListingStatus(id, data!.status, { cap });
+      if (data!.status === "active" && listing.status !== "active") {
+        // Reactivation is an alert event too (QA-403) — paused/draft →
+        // active surfaces the listing to saved searches again.
+        const fresh = await repo.getListing(id);
+        if (fresh) await alertSavedSearches(repo, fresh, appOrigin(req));
+      }
     } catch (e) {
       if (e instanceof PlanCapError) {
         return err(

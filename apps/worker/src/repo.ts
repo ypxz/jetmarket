@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import {
   expireStaleRfqsDetailed,
   type Db,
@@ -9,6 +9,7 @@ import {
   operators,
   rfqMatches,
   rfqs,
+  searchAlerts,
   users,
 } from "@jetmarket/db/schema";
 import type { OperatorCandidate } from "@jetmarket/domain";
@@ -86,6 +87,31 @@ export interface WorkerRepo {
     listingTitle: string | null;
   } | null>;
   markMatchState(matchId: string, state: "sent" | "failed"): Promise<void>;
+  /** Saved-search alerts whose queued match backlog has matured past the
+   * cooldown window — active rows only, scoped to this deploy's vertical
+   * (QA-403). Params/token go back to the mail flush verbatim; matching
+   * itself already ran web-side when the listing activated. */
+  alertBacklogs(
+    vertical: string,
+    olderThan: Date,
+    limit?: number,
+  ): Promise<
+    {
+      id: string;
+      email: string;
+      params: Record<string, unknown>;
+      token: string;
+      pendingIds: string[];
+    }[]
+  >;
+  /** Listing titles for digest mail — id+title only, active status kept so
+   * the flush can drop delisted rows from the backlog. */
+  loadDigestListings(
+    ids: string[],
+    vertical: string,
+  ): Promise<{ id: string; title: string; status: string }[]>;
+  /** Post-send: stamp last_alerted_at and flush pending_ids. */
+  markSearchAlerted(id: string): Promise<void>;
 }
 
 export function createWorkerRepo(db: Db): WorkerRepo {
@@ -316,6 +342,51 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         .update(rfqMatches)
         .set({ state })
         .where(eq(rfqMatches.id, matchId));
+    },
+
+    async alertBacklogs(vertical, olderThan, limit = 100) {
+      const rows = await db
+        .select({
+          id: searchAlerts.id,
+          email: searchAlerts.email,
+          params: searchAlerts.params,
+          token: searchAlerts.token,
+          pendingIds: searchAlerts.pendingIds,
+        })
+        .from(searchAlerts)
+        .where(
+          and(
+            eq(searchAlerts.vertical, vertical),
+            eq(searchAlerts.status, "active"),
+            sql`jsonb_array_length(${searchAlerts.pendingIds}) > 0`,
+            or(
+              isNull(searchAlerts.lastAlertedAt),
+              lt(searchAlerts.lastAlertedAt, olderThan),
+            ),
+          ),
+        )
+        .limit(limit);
+      return rows;
+    },
+
+    async loadDigestListings(ids, vertical) {
+      if (!ids.length) return [];
+      return db
+        .select({ id: listings.id, title: listings.title, status: listings.status })
+        .from(listings)
+        .where(
+          and(
+            inArray(listings.id, ids),
+            eq(listings.vertical, vertical),
+          ),
+        );
+    },
+
+    async markSearchAlerted(id) {
+      await db
+        .update(searchAlerts)
+        .set({ lastAlertedAt: new Date(), pendingIds: [] })
+        .where(eq(searchAlerts.id, id));
     },
   };
 }

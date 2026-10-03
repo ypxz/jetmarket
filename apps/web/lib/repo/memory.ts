@@ -10,6 +10,7 @@ import type {
   Quote,
   Repo,
   Rfq,
+  SearchAlert,
   Subscription,
   User,
   UserRole,
@@ -745,6 +746,95 @@ class MemoryRepo implements Repo {
   }
   async getSubscription(operatorId: string) {
     return this.subscriptions.get(operatorId);
+  }
+
+  // --- saved-search alerts (QA-403) --------------------------------------
+
+  private searchAlertRows = new Map<string, SearchAlert>();
+  private searchAlertDedupe = new Map<string, string>(); // dedupeKey -> alertId
+
+  async createSearchAlert(input: {
+    vertical: string;
+    email: string;
+    params: Record<string, unknown>;
+    token: string;
+    dedupeKey: string;
+  }): Promise<{ alert: SearchAlert; created: boolean }> {
+    const email = input.email.toLowerCase();
+    const hitId = this.searchAlertDedupe.get(input.dedupeKey);
+    if (hitId) {
+      // Re-subscribe: rotate token (old emailed links die); an 'off' row
+      // re-opens to 'pending'; 'active'/'pending' keep status. Sync between
+      // the read and the writes (no await) — see createRfq dedupe.
+      const row = this.searchAlertRows.get(hitId);
+      if (row) {
+        row.token = input.token;
+        row.email = email;
+        row.params = input.params;
+        if (row.status === "off") row.status = "pending";
+        return { alert: row, created: false };
+      }
+    }
+    const alert: SearchAlert = {
+      id: uid("sa"),
+      vertical: input.vertical,
+      email,
+      params: input.params,
+      token: input.token,
+      status: "pending",
+      pendingIds: [],
+      lastAlertedAt: null,
+    };
+    this.searchAlertRows.set(alert.id, alert);
+    this.searchAlertDedupe.set(input.dedupeKey, alert.id);
+    return { alert, created: true };
+  }
+
+  async confirmSearchAlert(token: string): Promise<SearchAlert | null> {
+    for (const row of this.searchAlertRows.values()) {
+      if (row.token === token) {
+        if (row.status !== "pending") return null;
+        row.status = "active";
+        return row;
+      }
+    }
+    return null;
+  }
+
+  async unsubscribeSearchAlert(token: string): Promise<boolean> {
+    for (const row of this.searchAlertRows.values()) {
+      if (row.token === token) {
+        if (row.status === "off") return false;
+        row.status = "off";
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async listSearchAlerts(filter: {
+    vertical: string;
+    status?: SearchAlert["status"];
+  }): Promise<SearchAlert[]> {
+    return [...this.searchAlertRows.values()].filter(
+      (r) =>
+        r.vertical === filter.vertical &&
+        (filter.status === undefined || r.status === filter.status),
+    );
+  }
+
+  async appendSearchAlertPending(alertId: string, listingId: string) {
+    const row = this.searchAlertRows.get(alertId);
+    if (row && !row.pendingIds.includes(listingId))
+      row.pendingIds.push(listingId);
+  }
+
+  async markSearchAlerted(id: string) {
+    const row = this.searchAlertRows.get(id);
+    if (row) {
+      row.lastAlertedAt = now();
+      row.pendingIds = [];
+    }
   }
 }
 

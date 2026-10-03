@@ -5,7 +5,9 @@ import { requireUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT } from "@/lib/fees";
 import { getRepo } from "@/lib/repo";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
+import { appOrigin } from "@/lib/origin";
 import { listingFilterFor, SEARCH_PAGE_SIZE } from "@/lib/search";
+import { alertSavedSearches } from "@/lib/search-alerts";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { analyticsProvider } from "@jetmarket/providers";
 
@@ -140,5 +142,10 @@ export async function POST(req: Request) {
       vertical: listing.vertical,
     },
   });
+  // Saved-search fan-out (QA-403): a fresh listing landing 'active' is an
+  // alert event — match/mail/backlog inside, non-fatal by contract.
+  if (listing.status === "active") {
+    await alertSavedSearches(repo, listing, appOrigin(req));
+  }
   return ok(listing, 201);
 }

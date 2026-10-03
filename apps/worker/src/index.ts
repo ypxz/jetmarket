@@ -20,6 +20,7 @@ import {
   handleJob,
   notifyExpirations,
   recoverUnfanoutedRfqs,
+  searchAlertFlush,
   type WorkerDeps,
 } from "./handlers";
 import { logError, logInfo } from "./log";
@@ -53,6 +54,11 @@ export async function tick(deps: WorkerDeps): Promise<number> {
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });
+
+  // Saved-search backlogs matured past the mail cooldown (QA-403).
+  const alertsFlushed = await searchAlertFlush(deps);
+  if (alertsFlushed)
+    logInfo("worker.search_alerts_flushed", { count: alertsFlushed });
 
   // Persisted RFQs whose fan-out job never landed (route enqueue threw
   // post-write, QA-168) — re-enqueue past the grace window.

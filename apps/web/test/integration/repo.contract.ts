@@ -773,6 +773,87 @@ export function repoContract(
       ).toBe(2);
     });
 
+    it("saved-search alert lifecycle: dedupe, confirm-once, unsubscribe (QA-403)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const input = (email: string, token: string, dedupeKey: string) => ({
+        vertical: "jets",
+        email,
+        params: { type: "charter", f_aircraftCategory: "light" },
+        token,
+        dedupeKey,
+      });
+      const key = `sa-${tag}`;
+
+      const first = await repo.createSearchAlert(
+        input(`sa-${tag}@test.dev`, "tok1", key),
+      );
+      expect(first.created).toBe(true);
+      expect(first.alert.status).toBe("pending");
+
+      // Confirm flips once; a replayed link no-ops (idempotent CAS).
+      const confirmed = await repo.confirmSearchAlert("tok1");
+      expect(confirmed?.id).toBe(first.alert.id);
+      expect(confirmed?.status).toBe("active");
+      expect(await repo.confirmSearchAlert("tok1")).toBeNull();
+      expect(await repo.confirmSearchAlert("nope")).toBeNull();
+
+      // Re-subscribing the same dedupeKey rotates the token but keeps the
+      // row + status — the older emailed confirm link is dead.
+      const dup = await repo.createSearchAlert(
+        input(`sa-${tag}@test.dev`, "tok2", key),
+      );
+      expect(dup.created).toBe(false);
+      expect(dup.alert.id).toBe(first.alert.id);
+      expect(dup.alert.status).toBe("active");
+      expect(await repo.confirmSearchAlert("tok1")).toBeNull();
+
+      // Vertical scoping + status filter.
+      const jetsAlerts = await repo.listSearchAlerts({ vertical: "jets" });
+      expect(jetsAlerts.some((a) => a.id === first.alert.id)).toBe(true);
+      expect(
+        (await repo.listSearchAlerts({ vertical: "machinery" })).some(
+          (a) => a.id === first.alert.id,
+        ),
+      ).toBe(false);
+      expect(
+        (
+          await repo.listSearchAlerts({ vertical: "jets", status: "pending" })
+        ).some((a) => a.id === first.alert.id),
+      ).toBe(false);
+
+      // Cooldown backlog: distinct append, flush on mark. pg binds uuid[],
+      // so pending ids must be real uuids even though this impl can't
+      // validate they point at listings.
+      const pend1 = crypto.randomUUID();
+      const pend2 = crypto.randomUUID();
+      await repo.appendSearchAlertPending(first.alert.id, pend1);
+      await repo.appendSearchAlertPending(first.alert.id, pend2);
+      await repo.appendSearchAlertPending(first.alert.id, pend1); // dup
+      let row = (await repo.listSearchAlerts({ vertical: "jets" })).find(
+        (a) => a.id === first.alert.id,
+      )!;
+      expect(row.pendingIds).toEqual([pend1, pend2]);
+      await repo.markSearchAlerted(first.alert.id);
+      row = (await repo.listSearchAlerts({ vertical: "jets" })).find(
+        (a) => a.id === first.alert.id,
+      )!;
+      expect(row.pendingIds).toEqual([]);
+      expect(row.lastAlertedAt).not.toBeNull();
+
+      // Unsubscribe flips off; re-subscribe re-arms to pending (re-confirm).
+      expect(await repo.unsubscribeSearchAlert("tok2")).toBe(true);
+      expect(await repo.unsubscribeSearchAlert("tok2")).toBe(false);
+      const resub = await repo.createSearchAlert(
+        input(`sa-${tag}@test.dev`, "tok3", key),
+      );
+      expect(resub.alert.status).toBe("pending");
+      // And now tok3 is the live confirm link.
+      expect(
+        (await repo.confirmSearchAlert("tok3"))?.status,
+      ).toBe("active");
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

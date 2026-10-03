@@ -126,6 +126,22 @@ export interface Deal {
   closedAt: string;
 }
 
+/** Saved-search alert (QA-403): a buyer's whitelisted /search filter set +
+ * confirm/unsubscribe bearer. `pendingIds` queues matched listings during
+ * the per-alert mail cooldown and flushes with the next digest. */
+export type SearchAlertStatus = "pending" | "active" | "off";
+export interface SearchAlert {
+  id: string;
+  vertical: string;
+  email: string;
+  /** Raw /search params — only ever re-applied through listingFilterFor. */
+  params: Record<string, unknown>;
+  token: string;
+  status: SearchAlertStatus;
+  pendingIds: string[];
+  lastAlertedAt: string | null;
+}
+
 export interface Subscription {
   id: string;
   operatorId: string;
@@ -341,6 +357,34 @@ export interface Repo {
       deliverAt?: Date;
     }[],
   ): Promise<void>;
+  /**
+   * Saved-search subscribe (QA-403). dedupeKey (hash of vertical+email+
+   * canonical params) makes re-subscribing idempotent: an existing row gets
+   * a ROTATED token (older emailed links die), 'off' rows go back to
+   * 'pending' (re-opt-in must re-confirm), 'active'/'pending' keep status.
+   * `created` is false on the dedupe path.
+   */
+  createSearchAlert(input: {
+    vertical: string;
+    email: string;
+    params: Record<string, unknown>;
+    token: string;
+    dedupeKey: string;
+  }): Promise<{ alert: SearchAlert; created: boolean }>;
+  /** Confirm-link CAS: pending→active. Returns the flipped row (the route
+   *  needs `params` to redirect onto the saved search) or null when the
+   *  token is unknown / already active / unsubscribed. */
+  confirmSearchAlert(token: string): Promise<SearchAlert | null>;
+  /** Unsubscribe-link CAS: any non-'off' status → 'off'. */
+  unsubscribeSearchAlert(token: string): Promise<boolean>;
+  listSearchAlerts(filter: {
+    vertical: string;
+    status?: SearchAlertStatus;
+  }): Promise<SearchAlert[]>;
+  /** Queue a matched listing during the mail cooldown — distinct append. */
+  appendSearchAlertPending(alertId: string, listingId: string): Promise<void>;
+  /** Stamp lastAlertedAt=now and flush the pending queue (post-send). */
+  markSearchAlerted(id: string): Promise<void>;
   /** RFQ rows matching the same filter shape, ignoring limit/offset. */
   countRfqs(filter?: {
     buyerEmail?: string;

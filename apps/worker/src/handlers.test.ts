@@ -8,6 +8,7 @@ import {
   handleJob,
   notifyExpirations,
   rfqFanout,
+  searchAlertFlush,
 } from "./handlers";
 import type { WorkerDeps } from "./handlers";
 import type { WorkerRepo } from "./repo";
@@ -112,6 +113,17 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     markMatchState: async (id, s) => {
       rec("markMatchState", [id, s]);
+    },
+    alertBacklogs: async (v, olderThan) => {
+      rec("alertBacklogs", { vertical: v, olderThan });
+      return [];
+    },
+    loadDigestListings: async (ids, v) => {
+      rec("loadDigestListings", { ids, vertical: v });
+      return [];
+    },
+    markSearchAlerted: async (id) => {
+      rec("markSearchAlerted", id);
     },
     ...over,
   };
@@ -339,6 +351,61 @@ describe("deliverDueMatches", () => {
     expect(
       enqueued.map((e) => (e.payload as { matchId: string }).matchId),
     ).toEqual(["m-due-1", "m-due-2", "m-stranded-9"]);
+  });
+});
+
+describe("searchAlertFlush", () => {
+  it("mails one digest for matured backlogs and clears the queue (QA-403)", async () => {
+    sent.length = 0;
+    const repo = fakeRepo({
+      alertBacklogs: async () => [
+        {
+          id: "a1",
+          email: "buyer@x.com",
+          params: { type: "charter" },
+          token: "tok-a1",
+          pendingIds: ["l1", "l2", "l-gone"],
+        },
+      ],
+      loadDigestListings: async () => [
+        { id: "l1", title: "Phenom 300", status: "active" },
+        { id: "l2", title: "Citation CJ4", status: "active" },
+        // l-gone never returns — delisted rows drop out of the digest.
+      ],
+    });
+    const n = await searchAlertFlush(deps(repo));
+    expect(n).toBe(1);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.to).toBe("buyer@x.com");
+    expect(sent[0]!.subject).toContain("2 new listings");
+    expect(sent[0]!.text).toContain("Phenom 300");
+    expect(sent[0]!.text).toContain("unsubscribe?token=tok-a1");
+    expect(repo.calls["markSearchAlerted"]).toEqual(["a1"]);
+  });
+
+  it("clears a fully-delisted backlog silently; a send failure keeps it queued", async () => {
+    sent.length = 0;
+    const repo = fakeRepo({
+      alertBacklogs: async () => [
+        { id: "a-dead", email: "x@x.com", params: {}, token: "t1", pendingIds: ["l1"] },
+        { id: "a-fail", email: "y@y.com", params: {}, token: "t2", pendingIds: ["l2"] },
+      ],
+      loadDigestListings: async (ids) =>
+        (ids as string[]).includes("l1")
+          ? [{ id: "l1", title: "Gone Jet", status: "archived" }]
+          : [{ id: "l2", title: "Live Jet", status: "active" }],
+    });
+    const d = deps(repo);
+    const realSend = d.email.send;
+    d.email.send = async (m) => {
+      if (m.to === "y@y.com") throw new Error("smtp rejected");
+      return realSend(m);
+    };
+    const n = await searchAlertFlush(d);
+    expect(n).toBe(0);
+    expect(sent).toHaveLength(0);
+    // a-dead cleared without mail; a-fail stays queued (mark skipped).
+    expect(repo.calls["markSearchAlerted"]).toEqual(["a-dead"]);
   });
 });
 
