@@ -113,12 +113,6 @@ export async function PATCH(
       // cap enforces atomically under an operator row lock (QA-63 made it
       // check-then-act; concurrent creates could still slip past).
       await repo.updateListingStatus(id, data!.status, { cap });
-      if (data!.status === "active" && listing.status !== "active") {
-        // Reactivation is an alert event too (QA-403) — paused/draft →
-        // active surfaces the listing to saved searches again.
-        const fresh = await repo.getListing(id);
-        if (fresh) await alertSavedSearches(repo, fresh, appOrigin(req));
-      }
     } catch (e) {
       if (e instanceof PlanCapError) {
         return err(
@@ -130,6 +124,24 @@ export async function PATCH(
     }
   }
   if (Object.keys(patch).length) await repo.updateListing(id, patch);
+
+  // Saved-search alerts (QA-403/404): run the probe on the FINAL row —
+  // after both the status write and the attribute patch, so a
+  // reactivate+edit PATCH matches on the new data and an attribute/price
+  // edit on an already-live listing can newly satisfy a saved filter
+  // (a price cut into a saved range would otherwise never mail).
+  const becameActive = data!.status === "active" && listing.status !== "active";
+  const liveEdit =
+    listing.status === "active" &&
+    (patch.attributes !== undefined ||
+      patch.price !== undefined ||
+      patch.title !== undefined);
+  if (becameActive || liveEdit) {
+    const fresh = await repo.getListing(id);
+    if (fresh?.status === "active") {
+      await alertSavedSearches(repo, fresh, appOrigin(req));
+    }
+  }
   if (patch.photos !== undefined) {
     // Orphan sweep: keys dropped by a photos replace would leak objects in
     // storage otherwise (data-growth scoping, same class as job pruning).

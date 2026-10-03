@@ -21,6 +21,7 @@ import { POST as subscribePost } from "../../app/api/search-alerts/route";
 import { GET as confirmGet } from "../../app/api/search-alerts/confirm/route";
 import { GET as unsubscribeGet } from "../../app/api/search-alerts/unsubscribe/route";
 import { POST as createListing } from "../../app/api/listings/route";
+import { PATCH as patchListing } from "../../app/api/listings/[id]/route";
 
 const subscribe = (body: unknown) =>
   subscribePost(
@@ -221,6 +222,38 @@ describe("activation matching", () => {
     const row = alerts.find((a) => a.id === id)!;
     const created2 = (await res2.json()) as { id: string };
     expect(row.pendingIds).toEqual([created2.id]);
+  });
+
+  it("editing a live listing INTO a saved range mails the alert (QA-404)", async () => {
+    await confirmedAlert("edit@test.dev", {
+      type: "charter",
+      priceMax: "10000",
+    });
+    await opFixture();
+    sendSpy.mockClear();
+    // Listing starts above the saved cap → no mail at create.
+    const res = await postListing(mkListing("Pricey Jet"));
+    expect(res.status).toBe(201);
+    const { id } = (await res.json()) as { id: string };
+    expect(
+      sendSpy.mock.calls.filter((c: unknown[]) => toOf(c) === "edit@test.dev"),
+    ).toHaveLength(0);
+
+    // Price cut into the range → the edit itself is an alert event.
+    const pres = await patchListing(
+      new Request(`http://test.local/api/listings/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ price: 9000 }),
+      }),
+      { params: Promise.resolve({ id }) },
+    );
+    expect(pres.status).toBe(200);
+    const digest = sendSpy.mock.calls.find(
+      (c: unknown[]) => toOf(c) === "edit@test.dev",
+    );
+    expect(digest).toBeDefined();
+    expect(subjectOf(digest!)).toContain("Pricey Jet");
   });
 
   it("non-matching + pending-status alerts get nothing", async () => {
