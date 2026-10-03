@@ -1,9 +1,12 @@
 name: ci
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
+  # Automatic push/PR triggers disabled 2026-10-03 (user directive): the org's
+  # GitHub Actions spend limit is exhausted, so every run failed in ~3s anyway.
+  # Local verification (lint/typecheck/unit/e2e) still gates every push.
+  # To restore CI: raise the Actions spend limit in GitHub org billing, then
+  # restore: push {branches: [main]}, pull_request, check_suite/workflow_run.
 
 concurrency:
   group: ci-${{ github.ref }}
