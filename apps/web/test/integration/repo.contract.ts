@@ -822,6 +822,19 @@ export function repoContract(
         ).some((a) => a.id === first.alert.id),
       ).toBe(false);
 
+      // Buyer-inbox filter (QA-405): email scopes the same list; a second
+      // mailbox's alert never leaks into the first mailbox's view.
+      const other = await repo.createSearchAlert(
+        input(`sa-other-${tag}@test.dev`, "tok-other", "k-other"),
+      );
+      const mine = await repo.listSearchAlerts({
+        vertical: "jets",
+        email: `sa-${tag}@test.dev`,
+      });
+      expect(mine.some((a) => a.id === first.alert.id)).toBe(true);
+      expect(mine.some((a) => a.id === other.alert.id)).toBe(false);
+      expect(mine[0]!.createdAt).toBeTruthy();
+
       // Cooldown backlog: distinct append, flush on mark. pg binds uuid[],
       // so pending ids must be real uuids even though this impl can't
       // validate they point at listings.

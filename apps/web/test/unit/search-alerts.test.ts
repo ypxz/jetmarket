@@ -22,6 +22,8 @@ import { GET as confirmGet } from "../../app/api/search-alerts/confirm/route";
 import { GET as unsubscribeGet } from "../../app/api/search-alerts/unsubscribe/route";
 import { POST as createListing } from "../../app/api/listings/route";
 import { PATCH as patchListing } from "../../app/api/listings/[id]/route";
+import { GET as buyerAlertsGet } from "../../app/api/buyer/search-alerts/route";
+import { POST as alertOffPost } from "../../app/api/search-alerts/[id]/off/route";
 
 const subscribe = (body: unknown) =>
   subscribePost(
@@ -270,5 +272,83 @@ describe("activation matching", () => {
           toOf(c) === "cat@test.dev" || toOf(c) === "pend@test.dev",
       ),
     ).toHaveLength(0);
+  });
+});
+
+describe("buyer self-service (QA-405)", () => {
+  async function buyerRfq(email: string) {
+    const listing = await repo.createListing({
+      operatorId: "op_x",
+      vertical: "jets",
+      type: "charter",
+      title: `BQ ${Math.random().toString(36).slice(2, 6)}`,
+      price: 1,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    return repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: email,
+      fields: { name: "B" },
+    });
+  }
+  const listAlerts = (email: string, token: string | null) =>
+    buyerAlertsGet(
+      new Request(
+        `http://test.local/api/buyer/search-alerts?email=${email}`,
+        { headers: token ? { "x-rfq-token": token } : {} },
+      ),
+    );
+  const turnOff = (id: string, email: string, token: string) =>
+    alertOffPost(
+      new Request(
+        `http://test.local/api/search-alerts/${id}/off?email=${email}`,
+        { method: "POST", headers: { "x-rfq-token": token } },
+      ),
+      { params: Promise.resolve({ id }) },
+    );
+
+  it("lists the mailbox's alerts behind the RFQ bearer token", async () => {
+    const rfq = await buyerRfq("self@test.dev");
+    await confirmedAlert("self@test.dev", { type: "charter" });
+    await confirmedAlert("self@test.dev", { aircraftCategory: "heavy" });
+    await confirmedAlert("other@test.dev", { type: "charter" });
+
+    // No token / wrong token → 401; the mailbox's own token lists only
+    // its own two alerts (the other mailbox's row never leaks).
+    expect((await listAlerts("self@test.dev", null)).status).toBe(401);
+    expect((await listAlerts("self@test.dev", "bogus")).status).toBe(401);
+    const res = await listAlerts("self@test.dev", rfq.accessToken);
+    expect(res.status).toBe(200);
+    const rows = (await res.json()) as {
+      id: string;
+      status: string;
+      params: Record<string, unknown>;
+    }[];
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.status === "active")).toBe(true);
+    expect(rows.some((r) => "token" in r)).toBe(false); // bearer stays server-side
+    expect(rows.map((r) => r.params.type ?? "")).toContain("charter");
+  });
+
+  it("turns off its own alert; other mailbox's id 404s", async () => {
+    const rfq = await buyerRfq("off2@test.dev");
+    const mine = await confirmedAlert("off2@test.dev", { type: "charter" });
+    const alien = await confirmedAlert("alien@test.dev", { type: "charter" });
+
+    const bad = await turnOff(alien.id, "off2@test.dev", rfq.accessToken);
+    expect(bad.status).toBe(404);
+    const res = await turnOff(mine.id, "off2@test.dev", rfq.accessToken);
+    expect(res.status).toBe(200);
+    const row = (await repo.listSearchAlerts({ vertical: "jets", email: "off2@test.dev" })).find(
+      (a) => a.id === mine.id,
+    )!;
+    expect(row.status).toBe("off");
+    // Off alerts no longer mail.
+    const resub = await listAlerts("off2@test.dev", rfq.accessToken);
+    const rows = (await resub.json()) as { status: string }[];
+    expect(rows[0]!.status).toBe("off");
   });
 });

@@ -148,7 +148,16 @@
       "done": "Concierge active",
       "error": "Payment failed"
     },
-    "deliveredTo": "In {count, plural, one {# operator’s inbox} other {# operators’ inboxes}}"
+    "deliveredTo": "In {count, plural, one {# operator’s inbox} other {# operators’ inboxes}}",
+    "alertsTitle": "Your saved searches",
+    "alertsAll": "all listings",
+    "alertOpen": "Open search",
+    "alertOff": "Turn off",
+    "alertState": {
+      "pending": "Awaiting confirmation",
+      "active": "On",
+      "off": "Off"
+    }
   },
   "design": {
     "title": "Design system",

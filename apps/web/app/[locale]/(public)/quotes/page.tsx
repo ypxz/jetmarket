@@ -1,6 +1,7 @@
 "use client";
 
 import { ConciergeUpsell } from "@/components/concierge-upsell";
+import { SavedSearchesList } from "@/components/saved-searches-list";
 import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
@@ -335,6 +336,7 @@ function QuotesInner() {
           </ul>
         )
       ) : null}
+      {rfqs ? <SavedSearchesList email={email} token={token} /> : null}
     </main>
   );
 }

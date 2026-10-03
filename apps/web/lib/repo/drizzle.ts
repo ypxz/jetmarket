@@ -142,6 +142,7 @@ function toSearchAlert(r: typeof searchAlerts.$inferSelect): SearchAlert {
     status: r.status as SearchAlert["status"],
     pendingIds: r.pendingIds,
     lastAlertedAt: r.lastAlertedAt ? iso(r.lastAlertedAt) : null,
+    createdAt: iso(r.createdAt),
   };
 }
 
@@ -1330,6 +1331,7 @@ export class DrizzleRepo implements Repo {
   async listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlert["status"];
+    email?: string;
   }): Promise<SearchAlert[]> {
     const rows = await this.db
       .select()
@@ -1338,6 +1340,7 @@ export class DrizzleRepo implements Repo {
         and(
           eq(searchAlerts.vertical, filter.vertical),
           ...(filter.status ? [eq(searchAlerts.status, filter.status)] : []),
+          ...(filter.email ? [eq(searchAlerts.email, filter.email)] : []),
         ),
       );
     return rows.map(toSearchAlert);

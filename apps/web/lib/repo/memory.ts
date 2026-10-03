@@ -784,6 +784,7 @@ class MemoryRepo implements Repo {
       status: "pending",
       pendingIds: [],
       lastAlertedAt: null,
+      createdAt: now(),
     };
     this.searchAlertRows.set(alert.id, alert);
     this.searchAlertDedupe.set(input.dedupeKey, alert.id);
@@ -815,11 +816,13 @@ class MemoryRepo implements Repo {
   async listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlert["status"];
+    email?: string;
   }): Promise<SearchAlert[]> {
     return [...this.searchAlertRows.values()].filter(
       (r) =>
         r.vertical === filter.vertical &&
-        (filter.status === undefined || r.status === filter.status),
+        (filter.status === undefined || r.status === filter.status) &&
+        (filter.email === undefined || r.email === filter.email),
     );
   }
 

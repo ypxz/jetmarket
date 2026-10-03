@@ -140,6 +140,7 @@ export interface SearchAlert {
   status: SearchAlertStatus;
   pendingIds: string[];
   lastAlertedAt: string | null;
+  createdAt: string;
 }
 
 export interface Subscription {
@@ -380,6 +381,8 @@ export interface Repo {
   listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlertStatus;
+    /** Buyer self-service inbox: one mailbox's alerts only. */
+    email?: string;
   }): Promise<SearchAlert[]>;
   /** Queue a matched listing during the mail cooldown — distinct append. */
   appendSearchAlertPending(alertId: string, listingId: string): Promise<void>;
