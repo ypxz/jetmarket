@@ -5,6 +5,7 @@ import {
   createListing,
   createOperatorProfile,
   fillRfqForm,
+  isoDateIn,
   signUpAndLogin,
   step,
   tidPrefix,
@@ -93,5 +94,43 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
     const quote = rfq.locator(tidPrefix('quote-')).first();
     await expect(quote).toContainText('declined');
     await expect(quote.locator(tidPrefix('accept-'))).toHaveCount(0);
+  });
+
+  await step('closed zero-quote RFQ shows no waiting copy (QA-379)', async () => {
+    // A request that ends before any quote arrives must not keep saying
+    // "Waiting for operator quotes…" — the line used to render for every
+    // zero-quote RFQ including closed ones.
+    const lres = await buyer.request.get(
+      `/api/listings?q=${encodeURIComponent(LISTING_TITLE)}&limit=1`,
+    );
+    const listing = (await lres.json())[0];
+    const rres = await buyer.request.post('/api/rfqs', {
+      data: {
+        listingId: listing.id,
+        buyerEmail: BUYER_EMAIL,
+        fields: {
+          departure: 'ZRH',
+          arrival: 'LTN',
+          dateFrom: isoDateIn(20),
+          dateTo: isoDateIn(21),
+          passengers: 5,
+          name: 'Second Close',
+          email: BUYER_EMAIL,
+        },
+      },
+    });
+    const created = await rres.json();
+    await buyer.request.post(`/api/rfqs/${created.rfqId}/close`, {
+      data: { buyerEmail: BUYER_EMAIL, token: created.accessToken },
+    });
+    // The inbox is token-scoped — load the second RFQ via its own #t= link.
+    // Leave the page first: a hash-only goto doesn't remount it and the
+    // mount-only token reader would keep the first RFQ's token.
+    await buyer.goto('about:blank');
+    await buyer.goto(`/quotes?email=${encodeURIComponent(BUYER_EMAIL)}#t=${created.accessToken}`);
+    const closedEmpty = buyer.locator(tidPrefix('buyer-rfq-')).first();
+    await expect(closedEmpty).toContainText('closed');
+    await expect(closedEmpty).toContainText('Second Close');
+    await expect(closedEmpty).not.toContainText('Waiting for operator quotes');
   });
 });

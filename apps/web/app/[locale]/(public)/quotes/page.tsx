@@ -246,9 +246,11 @@ function QuotesInner() {
                     {r.requestFields.map((f) => `${f.label}: ${f.value}`).join(" · ")}
                   </p>
                 ) : null}
-                {r.quotes.length === 0 ? (
+                {r.quotes.length === 0 &&
+                ["open", "matched", "quoted"].includes(r.status) ? (
                   <p className="mt-2 text-sm text-muted">{t("waiting")}</p>
-                ) : (
+                ) : null}
+                {r.quotes.length > 0 ? (
                   <ul className="mt-3 space-y-2">
                     {r.quotes.map((q) => (
                       <li key={q.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface p-3" data-testid={`quote-${q.id}`}>
@@ -284,7 +286,7 @@ function QuotesInner() {
                       </li>
                     ))}
                   </ul>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>
