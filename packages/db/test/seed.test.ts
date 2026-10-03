@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { jetsVertical } from "@jetmarket/verticals";
 import { validateNewListing } from "@jetmarket/domain";
-import { buildJetsSeed, JETS_SEED_COUNTS } from "../src/seed/jets";
+import { buildJetsSeed, JETS_SEED_COUNTS, photoSvg } from "../src/seed/jets";
 
 const seed = buildJetsSeed(new Date("2026-09-15T00:00:00Z"));
 
@@ -104,7 +104,11 @@ describe("buildJetsSeed", () => {
 });
 
 import { machineryVertical } from "@jetmarket/verticals";
-import { buildMachinerySeed, MACHINERY_SEED_COUNTS } from "../src/seed/machinery";
+import {
+  buildMachinerySeed,
+  MACHINERY_SEED_COUNTS,
+  photoSvg as machineryPhotoSvg,
+} from "../src/seed/machinery";
 
 describe("buildMachinerySeed", () => {
   const mseed = buildMachinerySeed();
@@ -182,6 +186,35 @@ describe("buildMachinerySeed", () => {
     // rent listings carry monthlyRentEur
     for (const l of mseed.listingRows.filter((r) => r.type === "for_rent")) {
       expect(l.attributes?.["monthlyRentEur"]).toBeGreaterThan(0);
+    }
+  });
+});
+
+// QA-361: photo captions must stay inside the 800-wide viewBox — a single
+// <text> with a long title clipped on both edges.
+describe("photoSvg captions", () => {
+  const titles = [
+    ...seed.listingRows.map((l) => l.title),
+    ...mseedTitles(),
+  ];
+  function mseedTitles() {
+    return buildMachinerySeed().listingRows.map((l) => l.title);
+  }
+  it.each([
+    ["jets", photoSvg],
+    ["machinery", machineryPhotoSvg],
+  ] as const)("%s: every <text> line fits the viewBox", (_name, svg) => {
+    for (const title of titles) {
+      const out = svg(title, 0);
+      const lines = [...out.matchAll(/<text[^>]*>([^<]+)<\/text>/g)].map(
+        (m) => m[1],
+      );
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of lines) {
+        // ~53 chars fit at font-size 24; 40 keeps slack for wide glyphs.
+        expect(line?.length ?? 0, `${title} -> ${line}`).toBeLessThanOrEqual(40);
+      }
+      if (title.includes(" — ")) expect(lines.length).toBeGreaterThanOrEqual(2);
     }
   });
 });

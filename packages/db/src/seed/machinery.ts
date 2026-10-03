@@ -246,14 +246,25 @@ function photoKey(ownerUserId: string, listingN: number, photo: number): string 
   return `uploads/${ownerUserId}/seed-l${listingN}-p${photo}.svg`;
 }
 
-function photoSvg(title: string, variant: number): string {
+export function photoSvg(title: string, variant: number): string {
   const hues = [35, 200, 160, 215, 280, 10];
   const h = hues[variant % hues.length];
+  // Split the caption on " — " so long titles fit the 800-wide viewBox —
+  // a single <text> clipped on both edges (QA-361).
+  const split = title.lastIndexOf(" — ");
+  const lines =
+    split > 0 ? [title.slice(0, split), title.slice(split + 3)] : [title];
+  const captions = lines
+    .map(
+      (line, i) =>
+        `  <text x="400" y="${lines.length > 1 ? 344 + i * 36 : 360}" font-family="system-ui" font-size="24" fill="hsl(${h},30%,85%)" text-anchor="middle">${line}</text>`,
+    )
+    .join("\n");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
   <rect width="800" height="450" fill="hsl(${h},45%,18%)"/>
   <rect x="180" y="230" width="440" height="70" rx="8" stroke="hsl(${h},60%,70%)" stroke-width="6" fill="none"/>
   <circle cx="400" cy="200" r="20" fill="hsl(${h},60%,70%)"/>
-  <text x="400" y="360" font-family="system-ui" font-size="26" fill="hsl(${h},30%,85%)" text-anchor="middle">${title}</text>
+${captions}
 </svg>`;
 }
 
