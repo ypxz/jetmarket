@@ -290,8 +290,13 @@ export const searchAlerts = pgTable(
       .notNull()
       .default("pending"),
     /** Matched listing ids queued during the per-alert mail cooldown — the
-     *  next digest carries them. */
+     *  next digest carries them. 'daily' rows queue EVERY match here
+     *  (QA-406): they never instant-mail, the matured-backlog sweep is
+     *  their only delivery path. */
     pendingIds: jsonb("pending_ids").$type<string[]>().notNull().default([]),
+    freq: text("freq", { enum: ["instant", "daily"] })
+      .notNull()
+      .default("instant"),
     lastAlertedAt: timestamp("last_alerted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

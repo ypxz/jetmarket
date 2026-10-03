@@ -130,6 +130,9 @@ export interface Deal {
  * confirm/unsubscribe bearer. `pendingIds` queues matched listings during
  * the per-alert mail cooldown and flushes with the next digest. */
 export type SearchAlertStatus = "pending" | "active" | "off";
+/** 'instant' mails at match time (cooldown batches); 'daily' never
+ *  instant-mails — every match queues into the matured-backlog digest. */
+export type SearchAlertFreq = "instant" | "daily";
 export interface SearchAlert {
   id: string;
   vertical: string;
@@ -141,6 +144,7 @@ export interface SearchAlert {
   pendingIds: string[];
   lastAlertedAt: string | null;
   createdAt: string;
+  freq: SearchAlertFreq;
 }
 
 export interface Subscription {
@@ -371,6 +375,8 @@ export interface Repo {
     params: Record<string, unknown>;
     token: string;
     dedupeKey: string;
+    /** Omitted = 'instant'. A dedupe re-subscribe adopts the new freq. */
+    freq?: SearchAlertFreq;
   }): Promise<{ alert: SearchAlert; created: boolean }>;
   /** Confirm-link CAS: pending→active. Returns the flipped row (the route
    *  needs `params` to redirect onto the saved search) or null when the

@@ -143,6 +143,7 @@ function toSearchAlert(r: typeof searchAlerts.$inferSelect): SearchAlert {
     pendingIds: r.pendingIds,
     lastAlertedAt: r.lastAlertedAt ? iso(r.lastAlertedAt) : null,
     createdAt: iso(r.createdAt),
+    freq: r.freq as SearchAlert["freq"],
   };
 }
 
@@ -1265,6 +1266,7 @@ export class DrizzleRepo implements Repo {
     params: Record<string, unknown>;
     token: string;
     dedupeKey: string;
+    freq?: SearchAlert["freq"];
   }): Promise<{ alert: SearchAlert; created: boolean }> {
     // Dedupe key decides insert vs re-subscribe: an existing row gets a
     // ROTATED token (older emailed links die), an 'off' row re-opens to
@@ -1276,6 +1278,8 @@ export class DrizzleRepo implements Repo {
           token: input.token,
           email: input.email.toLowerCase(),
           params: input.params,
+          // Latest subscribe wins cadence too (dedupe key ignores freq).
+          freq: input.freq ?? "instant",
           status: sql`case when ${searchAlerts.status} = 'off' then 'pending' else ${searchAlerts.status} end`,
         })
         .where(eq(searchAlerts.dedupeKey, input.dedupeKey))
@@ -1297,6 +1301,7 @@ export class DrizzleRepo implements Repo {
           params: input.params,
           token: input.token,
           dedupeKey: input.dedupeKey,
+          freq: input.freq ?? "instant",
         })
         .returning();
       return { alert: toSearchAlert(row!), created: true };

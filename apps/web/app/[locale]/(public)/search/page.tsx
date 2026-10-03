@@ -83,6 +83,8 @@ export default async function SearchPage({
               sendingLabel={t("alertSending")}
               sentLabel={t("alertSent")}
               errorLabel={t("alertError")}
+              freqInstantLabel={t("alertFreqInstant")}
+              freqDailyLabel={t("alertFreqDaily")}
             />
           </div>
           {listings.length === 0 ? (

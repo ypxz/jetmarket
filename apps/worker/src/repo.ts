@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, lte, sql } from "drizzle-orm";
 import {
   expireStaleRfqsDetailed,
   type Db,
@@ -359,10 +359,14 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             eq(searchAlerts.vertical, vertical),
             eq(searchAlerts.status, "active"),
             sql`jsonb_array_length(${searchAlerts.pendingIds}) > 0`,
-            or(
-              isNull(searchAlerts.lastAlertedAt),
-              lt(searchAlerts.lastAlertedAt, olderThan),
-            ),
+            // Maturity anchor: last mail, else subscription time. 'daily'
+            // rows NEVER have last_alerted_at until their first flush —
+            // without the coalesce they'd flush at the very next tick and
+            // batch nothing (QA-406). Instant rows can't accumulate a
+            // backlog without a prior mail, so coalesce ≢ their behavior.
+            // Bound as a typed literal — postgres.js rejects JS Date values
+            // inside raw sql fragments (QA-403 hit the same trap).
+            sql`coalesce(${searchAlerts.lastAlertedAt}, ${searchAlerts.createdAt}) < ${olderThan.toISOString()}::timestamptz`,
           ),
         )
         .limit(limit);

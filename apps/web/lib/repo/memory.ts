@@ -759,6 +759,7 @@ class MemoryRepo implements Repo {
     params: Record<string, unknown>;
     token: string;
     dedupeKey: string;
+    freq?: SearchAlert["freq"];
   }): Promise<{ alert: SearchAlert; created: boolean }> {
     const email = input.email.toLowerCase();
     const hitId = this.searchAlertDedupe.get(input.dedupeKey);
@@ -771,6 +772,7 @@ class MemoryRepo implements Repo {
         row.token = input.token;
         row.email = email;
         row.params = input.params;
+        row.freq = input.freq ?? "instant";
         if (row.status === "off") row.status = "pending";
         return { alert: row, created: false };
       }
@@ -785,6 +787,7 @@ class MemoryRepo implements Repo {
       pendingIds: [],
       lastAlertedAt: null,
       createdAt: now(),
+      freq: input.freq ?? "instant",
     };
     this.searchAlertRows.set(alert.id, alert);
     this.searchAlertDedupe.set(input.dedupeKey, alert.id);

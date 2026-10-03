@@ -835,6 +835,22 @@ export function repoContract(
       expect(mine.some((a) => a.id === other.alert.id)).toBe(false);
       expect(mine[0]!.createdAt).toBeTruthy();
 
+      // Cadence (QA-406): default 'instant', explicit 'daily' round-trips,
+      // and a dedupe re-subscribe adopts the new freq (latest wins — the
+      // key ignores freq so it can never fork two rows).
+      expect(first.alert.freq).toBe("instant");
+      const daily = await repo.createSearchAlert({
+        ...input(`sa-d-${tag}@test.dev`, "tok-d", "k-d"),
+        freq: "daily",
+      });
+      expect(daily.alert.freq).toBe("daily");
+      const refreq = await repo.createSearchAlert({
+        ...input(`sa-d-${tag}@test.dev`, "tok-d2", "k-d"),
+        freq: "instant",
+      });
+      expect(refreq.created).toBe(false);
+      expect(refreq.alert.freq).toBe("instant");
+
       // Cooldown backlog: distinct append, flush on mark. pg binds uuid[],
       // so pending ids must be real uuids even though this impl can't
       // validate they point at listings.

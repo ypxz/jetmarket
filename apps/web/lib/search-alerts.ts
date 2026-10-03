@@ -135,7 +135,9 @@ export async function alertSavedSearches(
           alert.lastAlertedAt !== null &&
           Date.now() - Date.parse(alert.lastAlertedAt) <
             SEARCH_ALERT_COOLDOWN_MS;
-        if (inCooldown) {
+        // 'daily' cadence (QA-406) queues EVERY match into pending_ids —
+        // the worker's matured-backlog flush is its only delivery path.
+        if (alert.freq === "daily" || inCooldown) {
           await repo.appendSearchAlertPending(alert.id, listing.id);
           continue;
         }

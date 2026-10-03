@@ -32,6 +32,7 @@ export async function GET(req: Request) {
         id: a.id,
         params: a.params,
         status: a.status,
+        freq: a.freq,
         createdAt: a.createdAt,
       })),
     ),

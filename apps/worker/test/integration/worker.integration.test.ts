@@ -19,7 +19,7 @@ import {
   operators,
   listings,
 } from "@jetmarket/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -458,6 +458,8 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     const fresh = new Date();
     const staleId = randomUUID();
     const freshId = randomUUID();
+    const dailyOldId = randomUUID();
+    const dailyNewId = randomUUID();
     await db.insert(searchAlerts).values([
       {
         id: staleId,
@@ -481,10 +483,37 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
         pendingIds: [listing!.id],
         lastAlertedAt: fresh, // still inside the window — must not flush
       },
+      {
+        // QA-406: 'daily' rows have NULL last_alerted_at by construction —
+        // the window anchors on created_at instead, else they'd flush at
+        // the next tick and batch nothing.
+        id: dailyOldId,
+        vertical: "jets",
+        email: "daily-old@x.com",
+        params: {},
+        token: `tok-${dailyOldId}`,
+        dedupeKey: `int-daily-old-${randomUUID()}`,
+        status: "active",
+        pendingIds: [listing!.id],
+        freq: "daily",
+        createdAt: stale,
+      },
+      {
+        id: dailyNewId,
+        vertical: "jets",
+        email: "daily-new@x.com",
+        params: {},
+        token: `tok-${dailyNewId}`,
+        dedupeKey: `int-daily-new-${randomUUID()}`,
+        status: "active",
+        pendingIds: [listing!.id],
+        freq: "daily",
+        createdAt: fresh, // young subscription — holds its window
+      },
     ]);
 
     const flushed = await searchAlertFlush(deps());
-    expect(flushed).toBe(1);
+    expect(flushed).toBe(2);
 
     const outbox = readOutbox(outboxDir);
     const digest = outbox.find((m) => m.to === "digest-buyer@x.com");
@@ -508,8 +537,20 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       .where(eq(searchAlerts.id, freshId));
     expect(freshRow!.pendingIds).toEqual([listing!.id]);
 
-    await db.delete(searchAlerts).where(eq(searchAlerts.id, staleId));
-    await db.delete(searchAlerts).where(eq(searchAlerts.id, freshId));
+    // Daily: matured-by-created_at flushes; a young subscription holds.
+    expect(outbox.find((m) => m.to === "daily-old@x.com")).toBeDefined();
+    expect(outbox.find((m) => m.to === "daily-new@x.com")).toBeUndefined();
+    const [dailyNewRow] = await db
+      .select()
+      .from(searchAlerts)
+      .where(eq(searchAlerts.id, dailyNewId));
+    expect(dailyNewRow!.pendingIds).toEqual([listing!.id]);
+
+    await db
+      .delete(searchAlerts)
+      .where(
+        inArray(searchAlerts.id, [staleId, freshId, dailyOldId, dailyNewId]),
+      );
   });
 
   it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {

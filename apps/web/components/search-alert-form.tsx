@@ -16,6 +16,8 @@ export function SearchAlertForm({
   sendingLabel,
   sentLabel,
   errorLabel,
+  freqInstantLabel,
+  freqDailyLabel,
 }: {
   params: Record<string, string | string[] | undefined>;
   title: string;
@@ -24,6 +26,8 @@ export function SearchAlertForm({
   sendingLabel: string;
   sentLabel: string;
   errorLabel: string;
+  freqInstantLabel: string;
+  freqDailyLabel: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,11 +42,12 @@ export function SearchAlertForm({
     setError(null);
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email") ?? "").trim();
+    const freq = String(fd.get("freq") ?? "instant");
     try {
       const res = await fetch("/api/search-alerts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, params }),
+        body: JSON.stringify({ email, params, freq }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
@@ -85,6 +90,27 @@ export function SearchAlertForm({
         className="min-w-0 flex-1 sm:max-w-56"
         data-testid="search-alert-email"
       />
+      <span className="flex items-center gap-2 text-xs text-muted">
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            name="freq"
+            value="instant"
+            defaultChecked
+            data-testid="search-alert-freq-instant"
+          />
+          {freqInstantLabel}
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            name="freq"
+            value="daily"
+            data-testid="search-alert-freq-daily"
+          />
+          {freqDailyLabel}
+        </label>
+      </span>
       <Button
         type="submit"
         disabled={busy || !ready}

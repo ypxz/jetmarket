@@ -76,7 +76,9 @@
     "alertError": "Could not save the alert — try again.",
     "alertConfirmed": "Alert confirmed — new matching listings will be emailed to you.",
     "alertUnsubscribed": "Search alert unsubscribed.",
-    "alertInvalid": "That alert link is invalid or already used."
+    "alertInvalid": "That alert link is invalid or already used.",
+    "alertFreqInstant": "Instant",
+    "alertFreqDaily": "Daily digest"
   },
   "seo": {
     "listingsHeading": "Available listings",
@@ -157,6 +159,10 @@
       "pending": "Awaiting confirmation",
       "active": "On",
       "off": "Off"
+    },
+    "alertFreq": {
+      "instant": "instant",
+      "daily": "daily digest"
     }
   },
   "design": {

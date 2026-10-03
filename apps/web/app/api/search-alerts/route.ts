@@ -16,6 +16,9 @@ const Subscribe = z.object({
   // Raw /search params; only whitelisted keys are ever re-applied via
   // listingFilterFor, so unknown extras are inert.
   params: z.record(z.string(), z.unknown()).default({}),
+  // 'daily' queues every match into the next matured-backlog digest
+  // instead of instant-mailing (QA-406).
+  freq: z.enum(["instant", "daily"]).default("instant"),
 });
 
 /**
@@ -62,6 +65,7 @@ export async function POST(req: Request) {
     params,
     token,
     dedupeKey: searchAlertDedupeKey(verticalSlug(), email, params),
+    freq: parsed.data!.freq,
   });
 
   const appUrl = appOrigin(req);

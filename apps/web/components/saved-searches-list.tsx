@@ -8,6 +8,7 @@ interface SavedSearch {
   id: string;
   params: Record<string, unknown>;
   status: "pending" | "active" | "off";
+  freq: "instant" | "daily";
   createdAt: string;
 }
 
@@ -96,7 +97,7 @@ export function SavedSearchesList({
             >
               <div className="min-w-0">
                 <span className="text-xs text-muted">
-                  {t(`alertState.${a.status}`)} ·{" "}
+                  {t(`alertState.${a.status}`)} · {t(`alertFreq.${a.freq}`)} ·{" "}
                 </span>
                 <span className="break-all text-muted">
                   {Object.entries(a.params)

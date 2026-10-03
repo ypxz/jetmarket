@@ -258,6 +258,40 @@ describe("activation matching", () => {
     expect(subjectOf(digest!)).toContain("Pricey Jet");
   });
 
+  it("'daily' alerts never instant-mail — every match queues (QA-406)", async () => {
+    const res = await subscribe({
+      email: "daily@test.dev",
+      params: { type: "charter" },
+      freq: "daily",
+    });
+    expect(res.status).toBe(200);
+    const { devConfirmUrl } = (await res.json()) as {
+      devConfirmUrl?: string;
+    };
+    const token = new URL(devConfirmUrl!).searchParams.get("token")!;
+    await confirm(token);
+    const alert = (
+      await repo.listSearchAlerts({ vertical: "jets" })
+    ).find((a) => a.token === token)!;
+    expect(alert.freq).toBe("daily");
+    await opFixture();
+    sendSpy.mockClear();
+
+    const created = await postListing(mkListing("Daily Jet"));
+    expect(created.status).toBe(201);
+    // No instant mail — the match went straight into pending_ids for the
+    // worker's matured-backlog digest.
+    expect(
+      sendSpy.mock.calls.filter((c: unknown[]) => toOf(c) === "daily@test.dev"),
+    ).toHaveLength(0);
+    const row = (
+      await repo.listSearchAlerts({ vertical: "jets" })
+    ).find((a) => a.token === token)!;
+    const { id } = (await created.json()) as { id: string };
+    expect(row.pendingIds).toEqual([id]);
+    expect(row.lastAlertedAt).toBeNull();
+  });
+
   it("non-matching + pending-status alerts get nothing", async () => {
     await confirmedAlert("cat@test.dev", { aircraftCategory: "heavy" });
     // Pending (never confirmed) — must NOT mail even when it matches.
