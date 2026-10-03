@@ -40,9 +40,13 @@ Use dedicated `E2E_PORT`s: playwright's `reuseExistingServer` will otherwise
 latch onto a stale dev server with an old module graph and give false failures.
 `global-setup.ts` refuses to run against a reused server whose `/api/health`
 reports a different `backend`/`vertical` than the suite needs (QA-289) — if it
-errors, kill the stale `next dev` on the port. Never run `pnpm build` while
-`next dev` is up: they share `apps/web/.next` and the build truncates dev
-chunks → transient `MODULE_NOT_FOUND` 500s (QA-367). Kill dev first. Specs pin `workers: 1` in
+errors, kill the stale `next dev` on the port. Only ONE next process may
+use `apps/web/.next` at a time — `pnpm build` alongside `next dev`, or two
+`next dev` instances (e.g. a manual dev server while an e2e run boots its
+own), clobber each other's chunks → `MODULE_NOT_FOUND` 500s and wedged
+next-servers burning CPU (QA-367/378 — an e2e suite ate it mid-run). Kill
+every dev server before builds or e2e, or give the second a separate
+checkout. Specs pin `workers: 1` in
 `playwright.config.ts` and isolate rate-limit buckets with a per-file
 `fly-client-ip` header.
 
