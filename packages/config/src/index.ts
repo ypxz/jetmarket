@@ -1,4 +1,4 @@
 export { site } from "./site";
 export type { Site } from "./site";
-export { plans } from "./plans";
+export { plans, CONCIERGE_PRICE_USD } from "./plans";
 export type { BillingPlan, PlanId } from "./plans";

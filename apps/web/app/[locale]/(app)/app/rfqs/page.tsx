@@ -125,12 +125,19 @@ export default async function RfqInboxPage({
               >
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{listing?.title ?? t("listingFallback")}</div>
-                  <Badge
-                    variant={rfqStateVariant(r.status)}
-                    data-testid={`rfq-state-${r.id}`}
-                  >
-                    {tc(`rfqState.${r.status}`)}
-                  </Badge>
+                  <span className="flex items-center gap-2">
+                    {r.concierge ? (
+                      <Badge variant="success" data-testid={`rfq-concierge-${r.id}`}>
+                        {t("conciergeBadge")}
+                      </Badge>
+                    ) : null}
+                    <Badge
+                      variant={rfqStateVariant(r.status)}
+                      data-testid={`rfq-state-${r.id}`}
+                    >
+                      {tc(`rfqState.${r.status}`)}
+                    </Badge>
+                  </span>
                 </div>
                 <p className="mt-1 text-sm text-muted">
                   {t("from", {

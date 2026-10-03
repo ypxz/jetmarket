@@ -64,4 +64,32 @@ describe("MockPaymentsProvider", () => {
     );
     expect(stamped).toMatchObject({ created: 1_700_000_000 });
   });
+
+  it("normalizes payment.completed for one-off (concierge) charges", async () => {
+    const p = payments();
+    const ps = await p.createPaymentSession({
+      amountMinor: 4900,
+      currency: "USD",
+      email: "b@x.dev",
+      description: "concierge",
+      successUrl: "http://x/s",
+      cancelUrl: "http://x/c",
+      metadata: { kind: "concierge", rfqId: "r1" },
+    });
+    expect(ps.url).toContain("mock-payment");
+    expect(ps.url).toContain("amount=4900");
+
+    const ev = await p.handleWebhook(
+      JSON.stringify({
+        type: "payment.completed",
+        customerId: "b@x.dev",
+        metadata: { kind: "concierge", rfqId: "r1" },
+      }),
+    );
+    expect(ev).toEqual({
+      kind: "payment.completed",
+      customerId: "b@x.dev",
+      metadata: { kind: "concierge", rfqId: "r1" },
+    });
+  });
 });

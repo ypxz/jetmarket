@@ -101,6 +101,9 @@ export const rfqs = pgTable(
       .notNull()
       .default({}),
     dedupeKey: text("dedupe_key"),
+    // Buyer concierge ($49/request): paid expedite — delayed fan-out matches
+    // deliver immediately instead of after the free-plan delay.
+    concierge: boolean("concierge").notNull().default(false),
     status: text("status", {
       enum: ["new", "matched", "quoted", "closed", "spam"],
     })

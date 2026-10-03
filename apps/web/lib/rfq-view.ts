@@ -25,6 +25,7 @@ export function operatorRfqView(
     status: rfq.status,
     createdAt: rfq.createdAt,
     buyerName: typeof rfq.fields["name"] === "string" ? rfq.fields["name"] : null,
+    concierge: rfq.concierge,
     fields: nonContactFields(vertical, listingType, rfq.fields),
   };
 }

@@ -6,6 +6,7 @@ import type {
   InvoiceRequest,
   PaymentEvent,
   PaymentsProvider,
+  PaymentSessionRequest,
   PortalSession,
 } from "./types";
 
@@ -46,6 +47,16 @@ export class MockPaymentsProvider implements PaymentsProvider {
     return {
       id: sid,
       url: `${this.appUrl}/billing/mock-checkout?session=${sid}&plan=${encodeURIComponent(req.plan)}`,
+    };
+  }
+
+  async createPaymentSession(
+    req: PaymentSessionRequest,
+  ): Promise<CheckoutSession> {
+    const sid = this.nextId("ps");
+    return {
+      id: sid,
+      url: `${this.appUrl}/billing/mock-payment?session=${sid}&amount=${req.amountMinor}`,
     };
   }
 
@@ -92,7 +103,14 @@ export class MockPaymentsProvider implements PaymentsProvider {
             // the repo's stale-event gate (QA-384).
             created: body.created,
           }
-        : { kind: "ignored", type: body.type ?? "unknown" };
+        : body.type === "payment.completed"
+          ? {
+              kind: "payment.completed",
+              customerId: body.customerId ?? "",
+              metadata: body.metadata,
+              created: body.created,
+            }
+          : { kind: "ignored", type: body.type ?? "unknown" };
     this.events.push(event);
     if (this.events.length > MockPaymentsProvider.MAX_EVENTS) {
       this.events.splice(

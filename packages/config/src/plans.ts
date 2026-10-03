@@ -22,3 +22,7 @@ export const plans: Record<PlanId, BillingPlan> = {
   free: { id: "free", currency: "USD" },
   pro: { id: "pro", currency: "USD" },
 };
+
+/** Buyer concierge — the marketplace's own per-request fee ($49 expedite).
+ *  Charged in USD like Pro even on a EUR-currency vertical. */
+export const CONCIERGE_PRICE_USD = 49;

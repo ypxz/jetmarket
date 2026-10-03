@@ -103,6 +103,7 @@ function toRfq(r: typeof rfqs.$inferSelect): Rfq {
     accessToken: r.accessToken,
     fields: r.fields,
     status: (r.status === "new" ? "open" : r.status) as RfqStatus,
+    concierge: r.concierge,
     createdAt: iso(r.createdAt),
   };
 }
@@ -599,7 +600,10 @@ export class DrizzleRepo implements Repo {
   }
 
   async createRfq(
-    r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
+    r: Omit<
+      Rfq,
+      "id" | "createdAt" | "status" | "accessToken" | "concierge"
+    > & {
       dedupeKey?: string;
       accessToken?: string;
     },
@@ -658,6 +662,34 @@ export class DrizzleRepo implements Repo {
       )
       .returning({ id: rfqs.id });
     return rows.length > 0;
+  }
+  async expediteRfq(id: string) {
+    if (!isUuid(id)) return { applied: false, matches: [] };
+    return this.db.transaction(async (tx) => {
+      const flipped = await tx
+        .update(rfqs)
+        .set({ concierge: true })
+        .where(
+          and(
+            eq(rfqs.id, id),
+            eq(rfqs.concierge, false),
+            inArray(rfqs.status, ["new", "matched", "quoted"]),
+          ),
+        )
+        .returning({ id: rfqs.id });
+      if (flipped.length === 0) return { applied: false, matches: [] };
+      // Every still-delayed match of this RFQ is due NOW — the concierge
+      // purchase skips the free-plan delay window. Pending rows are already
+      // deliverable; sent/failed ones stay untouched.
+      const matches = await tx
+        .update(rfqMatches)
+        .set({ state: "pending", deliverAt: new Date() })
+        .where(
+          and(eq(rfqMatches.rfqId, id), eq(rfqMatches.state, "delayed")),
+        )
+        .returning({ id: rfqMatches.id, operatorId: rfqMatches.operatorId });
+      return { applied: true, matches };
+    });
   }
   async listRfqs(filter?: {
     buyerEmail?: string;

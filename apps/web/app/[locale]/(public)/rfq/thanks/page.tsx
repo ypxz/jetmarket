@@ -1,5 +1,7 @@
 import { Card, CardBody } from "@jetmarket/ui";
 import { getTranslations } from "next-intl/server";
+import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
+import { ConciergeCard } from "./concierge-card";
 import { ThanksQuotesLink } from "./quotes-link";
 
 export default async function RfqThanksPage({
@@ -30,6 +32,20 @@ export default async function RfqThanksPage({
           <ThanksQuotesLink email={email} label={t("viewQuotes")} />
         </CardBody>
       </Card>
+      {id && email ? (
+        <ConciergeCard
+          rfqId={id}
+          email={email}
+          labels={{
+            title: t("concierge.title"),
+            body: t("concierge.body"),
+            cta: t("concierge.cta", { price: `$${CONCIERGE_PRICE_USD}` }),
+            busy: t("concierge.ctaBusy"),
+            done: t("concierge.done"),
+            error: t("concierge.error"),
+          }}
+        />
+      ) : null}
     </main>
   );
 }

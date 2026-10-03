@@ -105,7 +105,15 @@
     "viewQuotes": "View my requests & quotes",
     "honeypotHint": "Leave this field empty",
     "error": "Could not send your request — check the fields and try again.",
-    "rateLimited": "Too many requests — try again later."
+    "rateLimited": "Too many requests — try again later.",
+    "concierge": {
+      "title": "Get answers faster",
+      "body": "Concierge delivers your request to every matching operator right now — including operators on the free plan who would otherwise see it after the delay window.",
+      "cta": "Expedite my request — {price}",
+      "ctaBusy": "Processing…",
+      "done": "Concierge active — your request is in every matching operator's inbox now.",
+      "error": "Payment failed — try again."
+    }
   },
   "quotes": {
     "title": "My requests & quotes",
@@ -123,7 +131,14 @@
     "resend": "Email me my links",
     "resendSent": "If that email has requests, the links are on the way.",
     "close": "Close request",
-    "closedMsg": "Request closed — operators with open quotes were notified."
+    "closedMsg": "Request closed — operators with open quotes were notified.",
+    "conciergeBadge": "Concierge",
+    "concierge": {
+      "cta": "Expedite — {price}",
+      "ctaBusy": "Processing…",
+      "done": "Concierge active",
+      "error": "Payment failed"
+    }
   },
   "design": {
     "title": "Design system",
@@ -665,7 +680,8 @@
       "notOpen": "This request is {status} — quoting is closed.",
       "noQuotes": "No quotes yet",
       "delayedTeaser": "{count, plural, one {# buyer request lands in your inbox in {hours}h} other {# buyer requests land in your inbox in {hours}h}} — Pro operators quote immediately.",
-      "delayedTeaserCta": "Upgrade to Pro"
+      "delayedTeaserCta": "Upgrade to Pro",
+      "conciergeBadge": "Concierge"
     },
     "billing": {
       "title": "Plan & billing",

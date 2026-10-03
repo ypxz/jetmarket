@@ -351,7 +351,10 @@ class MemoryRepo implements Repo {
   private rfqDedupe = new Map<string, string>(); // dedupeKey -> rfqId
 
   async createRfq(
-    r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
+    r: Omit<
+      Rfq,
+      "id" | "createdAt" | "status" | "accessToken" | "concierge"
+    > & {
       dedupeKey?: string;
       accessToken?: string;
     },
@@ -372,6 +375,7 @@ class MemoryRepo implements Repo {
       ...rest,
       id: uid("rfq"),
       status: "open",
+      concierge: false,
       accessToken: accessToken ?? crypto.randomUUID(),
       createdAt: now(),
     };
@@ -392,6 +396,27 @@ class MemoryRepo implements Repo {
     if (!rfq || !expectedIn.includes(rfq.status)) return false;
     this.rfqs.set(id, { ...rfq, status });
     return true;
+  }
+  async expediteRfq(id: string) {
+    const rfq = this.rfqs.get(id);
+    if (!rfq || rfq.concierge || !LIVE_RFQ_STATUSES.has(rfq.status)) {
+      return { applied: false, matches: [] };
+    }
+    // Check-to-write is synchronous — a parallel call can't interleave the
+    // flag set with the match flip (same QA-333 rule as every mutator).
+    rfq.concierge = true;
+    const matches: { id: string; operatorId: string }[] = [];
+    for (const [operatorId, m] of this.rfqMatches.get(id) ?? []) {
+      // Still-delayed = deliverAt strictly in the future; already-due rows
+      // are visible anyway and need no flip.
+      if (m.deliverAt && m.deliverAt.getTime() > Date.now()) {
+        m.deliverAt = new Date();
+        // Memory matches have no row id — operatorId is the key callers
+        // need (pg returns real match ids for job payloads instead).
+        matches.push({ id: operatorId, operatorId });
+      }
+    }
+    return { applied: true, matches };
   }
   async listRfqs(filter?: {
     buyerEmail?: string;

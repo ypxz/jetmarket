@@ -1,5 +1,7 @@
 "use client";
 
+import { ConciergeUpsell } from "@/components/concierge-upsell";
+import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -18,6 +20,7 @@ interface Quote {
 interface Rfq {
   id: string;
   status: string;
+  concierge?: boolean;
   buyerEmail: string;
   createdAt: string;
   listing: { id: string; title: string; currency: string; browseable?: boolean } | null;
@@ -230,6 +233,11 @@ function QuotesInner() {
                   </div>
                   <span className="flex items-center gap-3">
                     <span className="text-xs text-muted" data-testid={`rfq-state-${r.id}`}>{tc(`rfqState.${r.status}`)}</span>
+                    {r.concierge ? (
+                      <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-success" data-testid={`concierge-badge-${r.id}`}>
+                        {t("concierge.done")}
+                      </span>
+                    ) : null}
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button
                         onClick={() => closeRfq(r.id)}
@@ -245,6 +253,34 @@ function QuotesInner() {
                   <p className="mt-1 text-xs text-muted" data-testid={`rfq-echo-${r.id}`}>
                     {r.requestFields.map((f) => `${f.label}: ${f.value}`).join(" · ")}
                   </p>
+                ) : null}
+                {!r.concierge &&
+                ["open", "matched", "quoted"].includes(r.status) ? (
+                  <div className="mt-2">
+                    <ConciergeUpsell
+                      rfqId={r.id}
+                      buyerEmail={r.buyerEmail}
+                      concierge={!!r.concierge}
+                      status={r.status}
+                      token={token}
+                      onApplied={() =>
+                        setRfqs(
+                          (prev) =>
+                            prev?.map((x) =>
+                              x.id === r.id ? { ...x, concierge: true } : x,
+                            ) ?? prev,
+                        )
+                      }
+                      labels={{
+                        cta: t("concierge.cta", {
+                          price: `$${CONCIERGE_PRICE_USD}`,
+                        }),
+                        busy: t("concierge.ctaBusy"),
+                        done: t("concierge.done"),
+                        error: t("concierge.error"),
+                      }}
+                    />
+                  </div>
                 ) : null}
                 {r.quotes.length === 0 &&
                 ["open", "matched", "quoted"].includes(r.status) ? (

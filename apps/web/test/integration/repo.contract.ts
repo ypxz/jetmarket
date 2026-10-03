@@ -478,6 +478,73 @@ export function repoContract(
       expect(await repo.countPendingRfqs(delayedOp.id)).toBe(1); // foreign rfq has no dateTo — survives expiry
     });
 
+    it("expediteRfq: concierge delivers delayed matches; terminal/repeat flips reject", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mk = async (n: string) => {
+        const u = await repo.createUser(`${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: false,
+          plan: "free",
+        });
+      };
+      const [owner, instantOp, delayedOp] = await Promise.all([
+        mk("cowner"),
+        mk("cinstant"),
+        mk("cdelayed"),
+      ]);
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Concierge Jet ${tag}`,
+        price: 7000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `cb-${tag}@test.dev`,
+        fields: {},
+      });
+      await repo.createRfqMatches([
+        { rfqId: rfq.id, operatorId: instantOp.id, listingId: listing.id },
+        {
+          rfqId: rfq.id,
+          operatorId: delayedOp.id,
+          deliverAt: new Date(Date.now() + 60_000),
+        },
+      ]);
+      expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(false);
+
+      const res = await repo.expediteRfq(rfq.id);
+      expect(res.applied).toBe(true);
+      // Only the still-delayed match flipped — the instant one was already
+      // deliverable and must not be re-notified.
+      expect(res.matches.map((m) => m.operatorId)).toEqual([delayedOp.id]);
+      expect((await repo.getRfq(rfq.id))?.concierge).toBe(true);
+      expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(true);
+      // Teaser count drops to zero — expedited matches are no longer pending.
+      expect(await repo.countPendingRfqs(delayedOp.id)).toBe(0);
+
+      // Idempotent — a second purchase/webhook replay never re-flips.
+      const again = await repo.expediteRfq(rfq.id);
+      expect(again.applied).toBe(false);
+      expect(again.matches).toEqual([]);
+
+      // Terminal RFQs can't be expedited — a closed request must not take
+      // money for dead matches.
+      await repo.setRfqStatus(rfq.id, "closed", ["matched"]);
+      const dead = await repo.expediteRfq(rfq.id);
+      expect(dead.applied).toBe(false);
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

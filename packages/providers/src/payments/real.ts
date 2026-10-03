@@ -6,6 +6,7 @@ import type {
   InvoiceRequest,
   PaymentEvent,
   PaymentsProvider,
+  PaymentSessionRequest,
   PortalSession,
 } from "./types";
 
@@ -78,6 +79,30 @@ export class StripePaymentsProvider implements PaymentsProvider {
       subscription_data: {
         metadata: { operatorId: req.operatorId, plan: req.plan },
       },
+    });
+    return { id: session.id, url: session.url ?? "" };
+  }
+
+  async createPaymentSession(
+    req: PaymentSessionRequest,
+  ): Promise<CheckoutSession> {
+    const session = await this.stripe.checkout.sessions.create({
+      mode: "payment",
+      customer_email: req.email,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: req.currency.toLowerCase(),
+            unit_amount: req.amountMinor,
+            product_data: { name: req.description },
+          },
+        },
+      ],
+      success_url: req.successUrl,
+      cancel_url: req.cancelUrl,
+      metadata: req.metadata,
+      payment_intent_data: { metadata: req.metadata },
     });
     return { id: session.id, url: session.url ?? "" };
   }
@@ -160,6 +185,20 @@ export class StripePaymentsProvider implements PaymentsProvider {
           customerId: String(sub.customer),
           subscriptionId: sub.id,
           metadata: sub.metadata,
+          created: event.created,
+        };
+      }
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        // Only mode=payment sessions are one-off charges — subscription-mode
+        // sessions flow through customer.subscription.* above.
+        if (session.mode !== "payment") {
+          return { kind: "ignored", type: `${event.type}:${session.mode}` };
+        }
+        return {
+          kind: "payment.completed",
+          customerId: String(session.customer ?? ""),
+          metadata: session.metadata ?? undefined,
           created: event.created,
         };
       }

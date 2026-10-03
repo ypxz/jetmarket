@@ -22,6 +22,18 @@ export interface PortalSession {
   url: string;
 }
 
+export interface PaymentSessionRequest {
+  amountMinor: number;
+  currency: string;
+  email?: string;
+  description: string;
+  successUrl: string;
+  cancelUrl: string;
+  /** What the payment buys — e.g. { kind: "concierge", rfqId } — echoed
+   *  back on the payment.completed webhook event. */
+  metadata?: Record<string, string>;
+}
+
 /** Normalized subscription event emitted by handleWebhook. */
 export type PaymentEvent =
   | {
@@ -36,6 +48,14 @@ export type PaymentEvent =
       kind: "subscription.canceled";
       customerId: string;
       subscriptionId: string;
+      metadata?: Record<string, string>;
+      created?: number;
+    }
+  | {
+      /** One-off payment succeeded (mode=payment checkout) — metadata
+       *  carries what was bought ({ kind: "concierge", rfqId }). */
+      kind: "payment.completed";
+      customerId: string;
       metadata?: Record<string, string>;
       created?: number;
     }
@@ -72,6 +92,9 @@ export interface PaymentsProvider {
     customerId: string;
     returnUrl: string;
   }): Promise<PortalSession>;
+  /** One-off hosted checkout (mode=payment) — buyer-side charges like
+   *  concierge; normalizes to `payment.completed` via the webhook. */
+  createPaymentSession(req: PaymentSessionRequest): Promise<CheckoutSession>;
   /** Success-fee invoice — one-off, send_invoice collection. */
   createInvoice(req: InvoiceRequest): Promise<Invoice>;
   /** Verify + normalize a webhook payload (raw body + signature header). */

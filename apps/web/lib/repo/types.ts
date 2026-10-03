@@ -79,6 +79,9 @@ export interface Rfq {
   /** Bearer token in the buyer's email link — gates quote view/accept/decline. */
   accessToken: string;
   fields: Record<string, unknown>;
+  /** Buyer concierge ($49/request): paid expedite — delayed fan-out matches
+   *  deliver immediately instead of after the free-plan delay. */
+  concierge: boolean;
   status: RfqStatus;
   createdAt: string;
 }
@@ -252,7 +255,10 @@ export interface Repo {
   ): Promise<Record<string, number>>;
 
   createRfq(
-    r: Omit<Rfq, "id" | "createdAt" | "status" | "accessToken"> & {
+    r: Omit<
+      Rfq,
+      "id" | "createdAt" | "status" | "accessToken" | "concierge"
+    > & {
       /** sha256 natural key — collides only with a LIVE twin (open/matched/
        * quoted); inserting over a terminal RFQ mints a fresh row (QA-228). */
       dedupeKey?: string;
@@ -273,6 +279,16 @@ export interface Repo {
     status: RfqStatus,
     expectedIn: RfqStatus[],
   ): Promise<boolean>;
+  /** Buyer concierge purchase: atomically set `concierge` on a LIVE RFQ and
+   *  flip its still-delayed matches to deliverable (pg: state pending at
+   *  deliver_at now; memory: deliverAt now). Returns `applied: false` when
+   *  the RFQ is terminal/already concierge — the paid flag is set once and
+   *  never unset, and only live RFQs can be expedited (a closed/expired one
+   *  must not take money for a dead request). The flipped match rows carry
+   *  operatorId so callers can notify (pg: worker jobs; memory: inline). */
+  expediteRfq(
+    id: string,
+  ): Promise<{ applied: boolean; matches: { id: string; operatorId: string }[] }>;
   listRfqs(filter?: {
     buyerEmail?: string;
     /** Listing owner OR an operator with a delivered (pending) rfq_match. */

@@ -17,6 +17,7 @@ const rfq: Rfq = {
   listingId: "l1",
   buyerEmail: "buyer@example.com",
   accessToken: "secret-token",
+  concierge: false,
   fields: {
     name: "Buyer Person",
     email: "buyer@example.com",

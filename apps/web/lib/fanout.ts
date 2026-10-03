@@ -5,7 +5,7 @@ import { verticalConfig, verticalMessages } from "@/lib/vertical";
 import type { OperatorCandidate } from "@jetmarket/domain";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
-import type { Listing, Repo, Rfq } from "@/lib/repo/types";
+import type { Listing, Operator, Repo, Rfq } from "@/lib/repo/types";
 
 /**
  * Memory-mode RFQ fan-out — the worker only exists in pg mode, so mock demos
@@ -109,10 +109,32 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
 
   // Instant matches get the same notification email the worker sends in pg
   // mode; delayed matches stay silent until due (mock outbox has no sweep).
-  const f = rfq.fields;
   const opsById = new Map(ops.map((o) => [o.id, o]));
-  // Buyer contact stays masked until a deal closes (QA-152) — name only,
-  // same masking the worker's quote_notification applies in pg mode.
+  await emailRfqMatches(
+    repo,
+    rfq,
+    listing.title,
+    matches.filter((m) => m.delivery !== "delayed").map((m) => m.operatorId),
+    opsById,
+  );
+}
+
+/**
+ * The "new RFQ" operator email — identical to the worker's
+ * `email.quote_notification` build in pg mode (QA-234 field lines, QA-152
+ * name-only masking). `opsById` lets the caller reuse already-loaded
+ * operator rows; missing entries are fetched one at a time.
+ */
+export async function emailRfqMatches(
+  repo: Repo,
+  rfq: Rfq,
+  listingTitle: string | undefined,
+  operatorIds: string[],
+  opsById?: Map<string, Operator>,
+) {
+  const vertical = verticalConfig();
+  const f = rfq.fields;
+  // Buyer contact stays masked until a deal closes (QA-152) — name only.
   const buyerName =
     typeof f["name"] === "string" && f["name"].trim() ? f["name"] : "A buyer";
   // Field detail lines mirror the worker's email (QA-234): the vertical's
@@ -132,10 +154,9 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
     .filter(Boolean)
     .join(" → ");
-  const subject = ["New RFQ", route, listing.title].filter(Boolean).join(" — ");
-  for (const m of matches) {
-    if (m.delivery === "delayed") continue;
-    const op = opsById.get(m.operatorId);
+  const subject = ["New RFQ", route, listingTitle].filter(Boolean).join(" — ");
+  for (const operatorId of operatorIds) {
+    const op = opsById?.get(operatorId) ?? (await repo.getOperator(operatorId));
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
     try {
@@ -159,9 +180,9 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
         }),
       });
     } catch (e) {
-      logWarn("rfq.fanout_email_failed", {
+      logWarn("rfq.match_email_failed", {
         rfqId: rfq.id,
-        operatorId: m.operatorId,
+        operatorId,
         error: e instanceof Error ? e.message : String(e),
       });
     }

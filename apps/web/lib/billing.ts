@@ -1,17 +1,26 @@
 import { analyticsProvider } from "@jetmarket/providers";
 import type { PaymentEvent } from "@jetmarket/providers/payments";
+import { applyConciergePaid } from "./concierge";
 import type { Plan, Repo } from "./repo/types";
 
 /**
  * Apply a normalized provider payment event to the repo.
  * `subscription.activated` upgrades the operator + upserts the subscription
  * record; `subscription.canceled` downgrades to free and marks canceled.
+ * `payment.completed` is a one-off buyer charge — kind=concierge expedites
+ * the RFQ it paid for; anything else is acknowledged-but-unactioned.
  */
 export async function applyPaymentEvent(
   repo: Repo,
   event: PaymentEvent,
 ): Promise<boolean> {
   if (event.kind === "ignored") return false;
+  if (event.kind === "payment.completed") {
+    if (event.metadata?.kind !== "concierge") return false;
+    const rfqId = event.metadata?.rfqId;
+    if (!rfqId) return false;
+    return applyConciergePaid(repo, rfqId);
+  }
   const operatorId = event.metadata?.operatorId ?? event.customerId;
   if (!operatorId) return false;
 
