@@ -123,9 +123,13 @@ export default function SignInPage() {
           ) : null}
         </div>
       ) : null}
-      <p className="mt-8 text-xs text-muted">
-        {t("adminTip", { email: "admin@jetmarket.local" })}
-      </p>
+      {/* Demo hint — dev/mock only. In production this would hand every
+          visitor the seeded admin address (QA-387). */}
+      {process.env.NODE_ENV !== "production" ? (
+        <p className="mt-8 text-xs text-muted">
+          {t("adminTip", { email: "admin@jetmarket.local" })}
+        </p>
+      ) : null}
     </main>
   );
 }
