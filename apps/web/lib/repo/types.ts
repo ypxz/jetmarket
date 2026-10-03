@@ -279,6 +279,13 @@ export interface Repo {
     status: RfqStatus,
     expectedIn: RfqStatus[],
   ): Promise<boolean>;
+  /**
+   * Matches of this RFQ still awaiting delivery — the thing a concierge
+   * purchase actually buys. pg counts `state='delayed'` (a row whose
+   * deliverAt passed but the worker hasn't flipped yet still counts — the
+   * concierge flip delivers it too); memory counts `deliverAt > now`.
+   */
+  countRfqPendingMatches(rfqId: string): Promise<number>;
   /** Buyer concierge purchase: atomically set `concierge` on a LIVE RFQ and
    *  flip its still-delayed matches to deliverable (pg: state pending at
    *  deliver_at now; memory: deliverAt now). Returns `applied: false` when

@@ -691,6 +691,17 @@ export class DrizzleRepo implements Repo {
       return { applied: true, matches };
     });
   }
+
+  /** Still undelivered = state 'delayed' — clock-stale rows count too: the
+   *  concierge flip delivers them regardless of when the worker last ran. */
+  async countRfqPendingMatches(rfqId: string): Promise<number> {
+    const [r] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(rfqMatches)
+      .where(and(eq(rfqMatches.rfqId, rfqId), eq(rfqMatches.state, "delayed")));
+    return r?.n ?? 0;
+  }
+
   async listRfqs(filter?: {
     buyerEmail?: string;
     operatorId?: string;

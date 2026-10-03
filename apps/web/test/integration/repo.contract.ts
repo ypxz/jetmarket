@@ -526,6 +526,9 @@ export function repoContract(
         },
       ]);
       expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(false);
+      // Only the still-delayed match is deliverable — the instant one never
+      // counts toward what a concierge purchase would buy (QA-397).
+      expect(await repo.countRfqPendingMatches(rfq.id)).toBe(1);
 
       const res = await repo.expediteRfq(rfq.id);
       expect(res.applied).toBe(true);
@@ -536,6 +539,7 @@ export function repoContract(
       expect(await repo.hasRfqMatch(rfq.id, delayedOp.id)).toBe(true);
       // Teaser count drops to zero — expedited matches are no longer pending.
       expect(await repo.countPendingRfqs(delayedOp.id)).toBe(0);
+      expect(await repo.countRfqPendingMatches(rfq.id)).toBe(0);
       // Concierge filter: the expedited RFQ joins the revenue count; a plain
       // one never does (admin dashboard stat, QA-394).
       expect(

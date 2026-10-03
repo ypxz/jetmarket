@@ -141,6 +141,38 @@ describe("POST /api/rfqs/[id]/concierge", () => {
     await repo.setRfqStatus(rfq.id, "closed", ["matched"]);
     expect((await post(rfq.id, body())).status).toBe(409);
   });
+
+  it("409s when nothing is left to expedite — $49 must deliver something (QA-397)", async () => {
+    // Fresh RFQ whose only match is already delivered (no deliverAt).
+    const listing = await repo.createListing({
+      operatorId: owner.id,
+      vertical: "jets",
+      type: "charter",
+      title: "Instant Jet",
+      price: 8000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const rfq2 = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: "cb-instant@test.dev",
+      fields: { name: "Buyer" },
+    });
+    await repo.createRfqMatches([
+      { rfqId: rfq2.id, operatorId: delayedOp.id, listingId: listing.id },
+    ]);
+    expect(await repo.countRfqPendingMatches(rfq2.id)).toBe(0);
+    const res = await post(rfq2.id, {
+      buyerEmail: rfq2.buyerEmail,
+      token: rfq2.accessToken,
+    });
+    expect(res.status).toBe(409);
+    // No charge happened — no concierge flag, no email.
+    expect((await repo.getRfq(rfq2.id))?.concierge).toBe(false);
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("applyPaymentEvent concierge branch", () => {

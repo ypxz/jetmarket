@@ -457,6 +457,17 @@ class MemoryRepo implements Repo {
     return !!m && (!m.deliverAt || m.deliverAt.getTime() <= Date.now());
   }
 
+  /** Still undelivered = deliverAt strictly in the future (matchVisible's
+   *  inverse on the same rows — the concierge-delivery set). */
+  async countRfqPendingMatches(rfqId: string): Promise<number> {
+    const now = Date.now();
+    let n = 0;
+    for (const m of this.rfqMatches.get(rfqId)?.values() ?? []) {
+      if (m.deliverAt && m.deliverAt.getTime() > now) n++;
+    }
+    return n;
+  }
+
   async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
     return this.matchVisible(rfqId, operatorId);
   }

@@ -4,6 +4,7 @@
 // settles into the "active" state. /quotes then shows the concierge badge
 // instead of the upsell.
 import { expect, test } from '@playwright/test';
+import postgres from 'postgres';
 import {
   createListing,
   createOperatorProfile,
@@ -14,6 +15,10 @@ import {
 
 // Isolated rate-limit bucket per spec file (QA-289).
 test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.16.9' } });
+
+const testDb =
+  process.env.TEST_DATABASE_URL ??
+  'postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test';
 
 const run = Date.now().toString(36);
 const OPERATOR_EMAIL = `e2e-ui-concierge-ops-${run}@jetmarket.local`;
@@ -76,6 +81,29 @@ test('buyer expedites a live RFQ from the thanks page; /quotes badges it', async
     // `#t=...` — the bearer token never left the browser; carry it to /quotes.
     token = url.hash;
     expect(token).toContain('#t=');
+  });
+
+  await step('a still-delayed match exists for the concierge to deliver', async () => {
+    // No worker runs mid-e2e — the RFQ's fan-out job stays queued, so a
+    // zero-match RFQ would have nothing to expedite (QA-397 409s that case).
+    // Give the RFQ one delayed match against a seeded operator, like the
+    // api spec's self-contained fixture.
+    const sql = postgres(testDb);
+    try {
+      const [listing] = await sql`
+        select id, operator_id from listings where title = ${LISTING_TITLE}`;
+      expect(listing).toBeTruthy();
+      const [op] = await sql`
+        select id from operators where id <> ${listing!.operator_id}
+        order by created_at limit 1`;
+      expect(op).toBeTruthy();
+      await sql`
+        insert into rfq_matches (rfq_id, operator_id, listing_id, state, deliver_at)
+        values (${rfqId}, ${op!.id}, ${listing!.id}, 'delayed',
+                ${new Date(Date.now() + 23 * 3_600_000)})`;
+    } finally {
+      await sql.end();
+    }
   });
 
   await step('the thanks page offers concierge and the click activates it', async () => {

@@ -51,6 +51,12 @@ export async function POST(
   if (!["open", "matched", "quoted"].includes(rfq.status)) {
     return err("rfq is no longer open", 409);
   }
+  // Nothing to expedite = nothing to sell: every fan-out match already
+  // delivered (pro/verified-only fan-out, or the delay already elapsed) or
+  // none exist — a $49 charge would deliver zero value (QA-397).
+  if ((await repo.countRfqPendingMatches(rfq.id)) === 0) {
+    return err("nothing left to expedite — every match already delivered", 409);
+  }
 
   const origin = appOrigin(req);
   const email = encodeURIComponent(rfq.buyerEmail);
