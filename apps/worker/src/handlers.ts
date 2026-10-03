@@ -88,13 +88,19 @@ export async function rfqFanout(
       : {}),
   });
 
+  // A concierge RFQ was already paid for instant delivery — every match
+  // goes out now, free/unverified included (QA-399). The buyer can pay in
+  // the window between POST /api/rfqs and this job's claim; the flag on the
+  // row is the thing that makes "instant" true at fan-out time.
+  const instant = rfq.concierge;
   const inserted = await deps.repo.insertMatches(
     matches.map((m) => ({
       rfqId: rfq.id,
       operatorId: m.operatorId,
       listingId: m.listingId,
-      state: m.delivery === "instant" ? "pending" : "delayed",
-      deliverAt: m.delivery === "instant" ? now : deliverAt(m, now),
+      state: instant || m.delivery === "instant" ? "pending" : "delayed",
+      deliverAt:
+        instant || m.delivery === "instant" ? now : deliverAt(m, now),
     })),
   );
   await deps.repo.markRfqMatched(rfq.id);

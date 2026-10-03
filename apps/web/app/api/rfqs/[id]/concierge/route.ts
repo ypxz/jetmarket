@@ -53,8 +53,15 @@ export async function POST(
   }
   // Nothing to expedite = nothing to sell: every fan-out match already
   // delivered (pro/verified-only fan-out, or the delay already elapsed) or
-  // none exist — a $49 charge would deliver zero value (QA-397).
-  if ((await repo.countRfqPendingMatches(rfq.id)) === 0) {
+  // none exist — a $49 charge would deliver zero value (QA-397). An 'open'
+  // RFQ is exempt: its fan-out job hasn't inserted match rows yet
+  // (markRfqMatched never moves 'open' back), and the paid flag makes that
+  // pending fan-out deliver instantly (QA-399) — the thanks-page CTA is
+  // exactly this window.
+  if (
+    rfq.status !== "open" &&
+    (await repo.countRfqPendingMatches(rfq.id)) === 0
+  ) {
     return err("nothing left to expedite — every match already delivered", 409);
   }
 

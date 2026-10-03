@@ -35,6 +35,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         listingId: null,
         ownerOperatorId: null,
         listingAttributes: null,
+        concierge: false,
         fields: {
           departure: "ZRH",
           arrival: "NCE",
@@ -170,6 +171,34 @@ describe("rfqFanout", () => {
     ]);
   });
 
+  it("concierge RFQ delivers EVERY match instantly — even free/unverified (QA-399)", async () => {
+    // The buyer paid before this job was claimed: the flag on the row, not
+    // the operator's plan, decides "instant" at fan-out time.
+    const repo = fakeRepo({
+      loadRfq: async (id) => ({
+        ...(await fakeRepo().loadRfq(id))!,
+        concierge: true,
+      }),
+    });
+    const enqueued: { kind: string; payload: unknown }[] = [];
+    const d = deps(repo);
+    d.sql = sqlStub(enqueued);
+
+    await rfqFanout(d, { rfqId: "r1" });
+
+    const rows = repo.calls["insertMatches"]![0] as {
+      operatorId: string;
+      state: string;
+    }[];
+    expect(rows.map((r) => r.state)).toEqual(["pending", "pending"]);
+    // Every match notifies — the free op isn't waiting the 24h delay.
+    expect(enqueued.map((e) => e.kind)).toEqual([
+      "email.quote_notification",
+      "email.quote_notification",
+    ]);
+    expect(repo.calls["markRfqMatched"]).toEqual(["r1"]);
+  });
+
   it("infers the category from the listing and filters fleets by it (QA-229)", async () => {
     const repo = fakeRepo({
       loadRfq: async (id) => ({
@@ -179,6 +208,7 @@ describe("rfqFanout", () => {
         listingId: "l-x",
         ownerOperatorId: null,
         listingAttributes: { machineryCategory: "lathe" },
+        concierge: false,
         fields: { email: "buyer@x.com" }, // no category field on the form
       }),
       loadOperatorCandidates: async () => [
@@ -228,6 +258,7 @@ describe("rfqFanout", () => {
         ownerOperatorId: null,
         listingAttributes: null,
         fields: { machineryCategory: "press", email: "buyer@x.com" },
+        concierge: false,
       }),
       loadOperatorCandidates: async () => [
         {
@@ -267,6 +298,7 @@ describe("rfqFanout", () => {
       listingId: null,
       ownerOperatorId: null,
       listingAttributes: null,
+      concierge: false,
       fields: {},
     }) });
     const d = deps(repo);

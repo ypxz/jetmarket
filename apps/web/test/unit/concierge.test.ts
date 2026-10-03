@@ -161,8 +161,40 @@ describe("POST /api/rfqs/[id]/concierge", () => {
     expect((await post(rfq.id, body())).status).toBe(409);
   });
 
+  it("allows a paid expedite in the fan-out window — 'open' + zero matches yet (QA-399)", async () => {
+    // The thanks-page CTA hits exactly here: POST /api/rfqs enqueued
+    // rfq.fanout but no match rows exist yet. 'open' = pre-fan-out, so the
+    // pending count can't be the arbiter — the flag makes the pending job
+    // deliver instantly.
+    const listing = await repo.createListing({
+      operatorId: owner.id,
+      vertical: "jets",
+      type: "charter",
+      title: "Window Jet",
+      price: 8000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const rfq0 = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: "cb-window@test.dev",
+      fields: { name: "Buyer" },
+    });
+    expect(rfq0.status).toBe("open");
+    expect(await repo.countRfqPendingMatches(rfq0.id)).toBe(0);
+    const res = await post(rfq0.id, {
+      buyerEmail: rfq0.buyerEmail,
+      token: rfq0.accessToken,
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).concierge).toBe(true);
+  });
+
   it("409s when nothing is left to expedite — $49 must deliver something (QA-397)", async () => {
-    // Fresh RFQ whose only match is already delivered (no deliverAt).
+    // Post-fan-out ('matched') RFQ whose only match is already delivered
+    // (no deliverAt) — there is genuinely nothing left to buy.
     const listing = await repo.createListing({
       operatorId: owner.id,
       vertical: "jets",
@@ -182,6 +214,7 @@ describe("POST /api/rfqs/[id]/concierge", () => {
     await repo.createRfqMatches([
       { rfqId: rfq2.id, operatorId: delayedOp.id, listingId: listing.id },
     ]);
+    await repo.setRfqStatus(rfq2.id, "matched", ["open"]);
     expect(await repo.countRfqPendingMatches(rfq2.id)).toBe(0);
     const res = await post(rfq2.id, {
       buyerEmail: rfq2.buyerEmail,

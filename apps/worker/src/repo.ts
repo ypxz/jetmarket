@@ -27,6 +27,9 @@ export interface WorkerRepo {
      * category from them when the RFQ form doesn't ask for one (QA-229). */
     listingAttributes: Record<string, unknown> | null;
     fields: Record<string, unknown>;
+    /** Buyer paid for concierge expedite — fan-out must deliver instantly,
+     *  even for free/unverified matches (QA-399). */
+    concierge: boolean;
   } | null>;
   loadOperatorCandidates(
     vertical: string,
@@ -97,6 +100,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           ownerOperatorId: listings.operatorId,
           listingAttributes: listings.attributes,
           fields: rfqs.fields,
+          concierge: rfqs.concierge,
         })
         .from(rfqs)
         .leftJoin(listings, eq(rfqs.listingId, listings.id))

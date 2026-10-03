@@ -106,6 +106,43 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(jobs.length).toBe(pending.length);
   });
 
+  it("a concierge RFQ fans out ALL matches pending — paid instant beats plan (QA-399)", async () => {
+    // The buyer can pay inside the create→claim window: the flag row-load
+    // is what makes 'instant' true at fan-out time, not the operator plan.
+    const rfqId = await insertRfq({
+      departure: "ZRH",
+      arrival: "NCE",
+      passengers: 6,
+      dateFrom: isoIn(14),
+      dateTo: isoIn(14),
+      name: "B",
+      email: "buyer@x.com",
+    });
+    await db
+      .update(rfqs)
+      .set({ concierge: true })
+      .where(eq(rfqs.id, rfqId));
+
+    await rfqFanout(deps(), { rfqId });
+
+    const matches = await db
+      .select()
+      .from(rfqMatches)
+      .where(eq(rfqMatches.rfqId, rfqId));
+    expect(matches.length).toBeGreaterThan(0);
+    // free/unverified ops that would be 'delayed' on a plain RFQ are all
+    // pending now — the $49 purchase can't strand them in the delay window.
+    expect(matches.every((m) => m.state === "pending")).toBe(true);
+    const ids = new Set(matches.map((m) => m.id));
+    const jobs = await sql<{ mid: string }[]>`
+      select payload::json->>'matchId' as mid from jobs
+      where kind = 'email.quote_notification'`;
+    // Jobs from sibling tests share the table — filter to this RFQ's matches.
+    expect(jobs.map((j) => j.mid).filter((id) => ids.has(id)).sort()).toEqual(
+      [...ids].sort(),
+    );
+  });
+
   it("excludes foreign-vertical dealers, keeps zero-listing brokers (QA-307)", async () => {
     // Shared-DB fan-out: a dealer whose whole book is machinery must NOT be
     // matched into a jets RFQ; an operator with no listings anywhere stays
