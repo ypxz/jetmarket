@@ -192,6 +192,9 @@ export async function GET(req: Request) {
             const o = opById.get(q.operatorId);
             return o
               ? {
+                  // QA-490: links the offer card to /operators/<id> —
+                  // the trust-check dead-end on the comparison page.
+                  id: q.operatorId,
                   ...o,
                   dealsClosed: dealCounts[q.operatorId] ?? 0,
                   // QA-472: a suspended operator's offer can't be

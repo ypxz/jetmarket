@@ -112,6 +112,12 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     await expect(quoteCard.locator(tidPrefix('quote-stale-'))).toContainText(
       /before/i,
     );
+
+    // QA-490: the offer card links through to the operator's public
+    // profile — the trust-check that used to dead-end on a name.
+    const profile = quoteCard.locator('a[data-testid^="quote-op-profile-"]');
+    await expect(profile).toBeVisible();
+    expect(await profile.getAttribute('href')).toContain('/operators/');
   });
 
   await step('the amendment survives a reload', async () => {

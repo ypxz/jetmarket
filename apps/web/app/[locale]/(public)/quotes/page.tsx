@@ -5,6 +5,7 @@ import { SavedSearchesList } from "@/components/saved-searches-list";
 import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Suspense, useRef, useState } from "react";
@@ -19,6 +20,8 @@ interface Quote {
   createdAt: string;
   updatedAt: string;
   operator: {
+    /** QA-490: profile link target — /operators/<id>. */
+    id?: string;
     name: string;
     verified: boolean;
     dealsClosed?: number;
@@ -621,6 +624,23 @@ function QuotesInner() {
                             {(q.operator?.ratingCount ?? 0) > 0
                               ? ` · ${t("ratingAvg", { avg: q.operator!.ratingAvg!.toFixed(1), count: q.operator!.ratingCount! })}`
                               : ""}
+                            {/* QA-490: trust-check path — the card showed
+                                name + stats but the public profile with
+                                fleet/response-time sat unreachable.
+                                Suspended operators' profiles 404, so the
+                                link drops to plain text then. */}
+                            {q.operator?.id && !q.operator.unavailable ? (
+                              <>
+                                {" "}
+                                <Link
+                                  href={`/operators/${q.operator.id}`}
+                                  className="text-primary underline"
+                                  data-testid={`quote-op-profile-${q.id}`}
+                                >
+                                  {t("viewProfile")}
+                                </Link>
+                              </>
+                            ) : null}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                           {/* QA-451: once-ever 1-5 rating, in place. */}
