@@ -1195,7 +1195,22 @@ export class DrizzleRepo implements Repo {
                 sql`case when ${rfqs.status} in ('new', 'matched', 'quoted') then 0 else 1 end asc`,
               ]
             : []),
-          ...(filter?.operatorId ? [desc(rfqs.concierge)] : []),
+          ...(filter?.operatorId
+            ? [
+                desc(rfqs.concierge),
+                // QA-520: a live unanswered counter outranks recency (but
+                // never a paid concierge expedite) — the hottest lead in
+                // the funnel shouldn't sink below the fold. No-op for an
+                // operator with nothing countered, so it's always on.
+                sql`case when exists (
+                  select 1 from quotes q
+                  where q.rfq_id = ${rfqs.id}
+                    and q.operator_id = ${filter.operatorId}
+                    and q.status = 'sent'
+                    and q.countered_at is not null
+                ) then 0 else 1 end asc`,
+              ]
+            : []),
           ...(filter?.sort === "deadline" &&
           (filter.operatorId || filter.buyerEmail)
             ? [

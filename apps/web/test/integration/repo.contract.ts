@@ -640,7 +640,9 @@ export function repoContract(
       const pulled = (await repo.getQuote(counterTarget!.id))!;
       expect(pulled.counterAmount).toBeUndefined();
       expect(pulled.counteredAt).toBeUndefined();
-      expect(pulled.updatedAt).toBe(untouched);
+      // The withdraw doesn't bump updatedAt either — it still carries
+      // the revise's stamp, nothing newer (a pull isn't a revision).
+      expect(pulled.updatedAt).toBe(met!.updatedAt);
       expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(false);
       expect(await repo.clearQuoteCounter("nope")).toBe(false);
       // Withdrawn ≠ spent — a fresh counter round opens.
@@ -961,6 +963,74 @@ export function repoContract(
       // flag is an operator-priority signal, not the buyer's sort key.
       const mine = await repo.listRfqs({ buyerEmail: buyer });
       expect(mine.map((r) => r.id)).toEqual([r3.id, r2.id, r1.id]);
+    });
+
+    it("countered RFQs lead the operator inbox after concierge (QA-520)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`cs-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "CS Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `CS Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const mk = (n: string) =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: `cs-${n}-${tag}@test.dev`,
+          fields: {},
+        });
+      // Millisecond gaps keep the newest-first assertions deterministic.
+      const countered = await mk("hot"); // oldest — gets the counter
+      await new Promise((r) => setTimeout(r, 10));
+      const paid = await mk("paid"); // concierge expedite — still leads
+      await new Promise((r) => setTimeout(r, 10));
+      const fresh = await mk("fresh"); // newest, plain
+      await repo.expediteRfq(paid.id);
+      const q = await repo.createQuote({
+        rfqId: countered.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "",
+      });
+
+      // No counter yet: concierge leads, then plain newest-first.
+      expect(
+        (await repo.listRfqs({ operatorId: op.id })).map((r) => r.id),
+      ).toEqual([paid.id, fresh.id, countered.id]);
+
+      await repo.counterQuote(q!.id, 8000);
+
+      // The countered row jumps recency but never the paid expedite —
+      // money on the table outranks "newest", not the $49 promise.
+      expect(
+        (await repo.listRfqs({ operatorId: op.id })).map((r) => r.id),
+      ).toEqual([paid.id, countered.id, fresh.id]);
+
+      // Answered (revise clears the counter) → the row sinks back.
+      await repo.reviseQuote(q!.id, op.id, {
+        amount: 8500,
+        currency: "USD",
+        message: "",
+      });
+      expect(
+        (await repo.listRfqs({ operatorId: op.id })).map((r) => r.id),
+      ).toEqual([paid.id, fresh.id, countered.id]);
     });
 
     it("needsQuote hides RFQs the operator already quoted (QA-402)", async () => {

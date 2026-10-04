@@ -288,6 +288,15 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
   // and a fresh round opens: the buyer comes back at 9,100.
   await step('operator declines the counter; buyer re-counters 9,100', async () => {
     await operator.goto('/app/rfqs');
+    // QA-520: the Countered chip advertises the hot lead — "Countered (1)"
+    // — and the countered row leads the list even though it's the oldest.
+    await expect(operator.getByTestId('filter-countered')).toContainText(
+      '(1)',
+    );
+    const firstRow = operator
+      .locator('li[data-testid^="rfq-"]')
+      .first();
+    await expect(firstRow).toContainText(LISTING_TITLE);
     const item = operator
       .locator('li[data-testid^="rfq-"]')
       .filter({ hasText: LISTING_TITLE })

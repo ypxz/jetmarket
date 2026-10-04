@@ -764,11 +764,33 @@ class MemoryRepo implements Repo {
     const deadlineSort =
       filter?.sort === "deadline" &&
       (filter?.operatorId !== undefined || filter?.buyerEmail !== undefined);
+    // QA-520: an unanswered buyer counter outranks recency (but never a
+    // paid concierge expedite) — the hottest lead shouldn't sink below
+    // the fold. Always on for the op inbox; no-op when nothing's
+    // countered. Same predicate as the ?f=countered filter.
+    const counteredRfqIds =
+      filter?.operatorId === undefined
+        ? null
+        : new Set(
+            [...this.quotes.values()]
+              .filter(
+                (q) =>
+                  q.operatorId === filter.operatorId &&
+                  q.status === "sent" &&
+                  q.counteredAt !== undefined,
+              )
+              .map((q) => q.rfqId),
+          );
+    const counteredArm = (r: Rfq) =>
+      counteredRfqIds?.has(r.id) ? 0 : 1;
     out = out.sort((a, b) => {
       // Concierge stays the top rank wherever it's visible (operator
       // inbox) — a paid expedite outranks liveness too (QA-443 order).
       const conciergeArm = filter?.operatorId
         ? Number(b.concierge) - Number(a.concierge)
+        : 0;
+      const counterDiff = filter?.operatorId
+        ? counteredArm(a) - counteredArm(b)
         : 0;
       const createdArm = b.createdAt.localeCompare(a.createdAt);
       if (deadlineSort) {
@@ -778,6 +800,7 @@ class MemoryRepo implements Repo {
         if (la === 0) {
           return (
             conciergeArm ||
+            counterDiff ||
             rfqDeadlineAt(a).getTime() - rfqDeadlineAt(b).getTime() ||
             createdArm
           );
@@ -785,9 +808,9 @@ class MemoryRepo implements Repo {
         // Terminal group: parity with drizzle — concierge rank still
         // applies within it, then createdAt-desc (the deadline arm is
         // meaningless on dead rows, QA-448).
-        return conciergeArm || createdArm;
+        return conciergeArm || counterDiff || createdArm;
       }
-      return conciergeArm || createdArm;
+      return conciergeArm || counterDiff || createdArm;
     });
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);

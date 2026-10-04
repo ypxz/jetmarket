@@ -112,21 +112,30 @@ export default async function RfqInboxPage({
   const rfqIds = rfqsPage.map((r) => r.id);
   // pendingRfqs powers the free-plan delayed-RFQ teaser (QA-225) — delayed
   // matches are invisible until due, so the count becomes the upsell.
-  const [listingRows, quoteRows, pendingRfqs] = await Promise.all([
-    repo.listListings({
-      ids: [
-        ...new Set(
-          rfqsPage
-            .map((r) => r.listingId)
-            .filter((x): x is string => x !== null),
-        ),
-      ],
-    }),
-    repo.listQuotes({ rfqIds, operatorId: operator.id }),
-    operator.plan === "free"
-      ? repo.countPendingRfqs(operator.id, verticalSlug())
-      : 0,
-  ]);
+  const [listingRows, quoteRows, pendingRfqs, counteredCount] =
+    await Promise.all([
+      repo.listListings({
+        ids: [
+          ...new Set(
+            rfqsPage
+              .map((r) => r.listingId)
+              .filter((x): x is string => x !== null),
+          ),
+        ],
+      }),
+      repo.listQuotes({ rfqIds, operatorId: operator.id }),
+      operator.plan === "free"
+        ? repo.countPendingRfqs(operator.id, verticalSlug())
+        : 0,
+      // QA-520: count badge on the Countered chip — the hot leads
+      // shouldn't need a filter switch to be visible at a glance.
+      repo.countRfqs({
+        operatorId: operator.id,
+        listingId: listingFilter,
+        counteredOnly: true,
+        vertical: verticalSlug(),
+      }),
+    ]);
   // QA-416 "New" badge: rows created after the last inbox visit (never
   // visited → everything is new). One stamp covers owned + matched
   // deliveries — owned RFQs have no match row by design (self-match is
@@ -214,7 +223,9 @@ export default async function RfqInboxPage({
                   : "border border-border bg-background text-muted"
               }`}
             >
-              {label}
+              {key === "countered" && counteredCount > 0
+                ? `${label} (${counteredCount})`
+                : label}
             </Link>
           );
         })}
