@@ -165,6 +165,22 @@ export interface ListingReport {
   resolvedAt: string | null;
 }
 
+/** QA-529: a buyer flag on a quote — the report surface the demand side
+ *  lacked (off-platform contact in the message is THE fee-circumvention
+ *  vector). Reporter is the RFQ's buyerEmail — bearer-token proven; buyers
+ *  rarely hold sessions so no user id exists to key on. */
+export type QuoteReportStatus = "open" | "dismissed";
+export interface QuoteReport {
+  id: string;
+  quoteId: string;
+  reporterEmail: string;
+  reason: string;
+  note: string | null;
+  status: QuoteReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
 export type QuoteStatus = "sent" | "accepted" | "declined" | "withdrawn";
 /** Buyer-supplied decline reasons (QA-508) — enum keys, never free text:
  *  ops see structured feedback and every surface localizes the label. */
@@ -1074,6 +1090,31 @@ export interface Repo {
     rfqId?: string;
     limit?: number;
   }): Promise<RfqReport[]>;
+
+  /** QA-529: buyer flags a quote they received — one OPEN report per
+   *  (quote, reporter email); a repeat flag returns null (route 409s)
+   *  instead of stacking queue rows; a dismissed report doesn't block a
+   *  fresh flag. */
+  createQuoteReport(input: {
+    quoteId: string;
+    reporterEmail: string;
+    reason: string;
+    note?: string;
+  }): Promise<QuoteReport | null>;
+  /** Admin report queue — newest first, optionally scoped to one status
+   *  and one vertical (via the quote→rfq join). */
+  listQuoteReports(opts?: {
+    status?: QuoteReportStatus;
+    vertical?: string;
+    limit?: number;
+  }): Promise<QuoteReport[]>;
+  /** Admin dismisses a quote flag — CAS on status='open'; false when
+   *  nothing open was found. */
+  resolveQuoteReport(id: string): Promise<boolean>;
+  /** Bulk-dismiss every open report one address filed — the buyer-block
+   *  route sweeps a flagged spammer's accusations with their demand
+   *  (QA-465 analog, keyed by email since quote reports have no user id). */
+  resolveQuoteReportsByReporter(email: string): Promise<number>;
 
   /** QA-467: append-only moderation audit trail. Every enforcement route
    *  appends after its write (non-fatal — never lets auditability fail a

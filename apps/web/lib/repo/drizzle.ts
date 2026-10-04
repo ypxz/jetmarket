@@ -30,6 +30,8 @@ import type {
   Plan,
   Quote,
   QuoteDeclineReason,
+  QuoteReport,
+  QuoteReportStatus,
   QuoteStatus,
   QuoteTemplate,
   Repo,
@@ -63,6 +65,7 @@ const {
   listingReports,
   blockedEmails,
   rfqReports,
+  quoteReports,
   adminEvents,
 } = schema;
 
@@ -208,6 +211,21 @@ function toBlockedEmail(r: typeof blockedEmails.$inferSelect): BlockedEmail {
     reason: r.reason,
     createdBy: r.createdBy,
     createdAt: iso(r.createdAt),
+  };
+}
+
+function toQuoteReport(
+  r: typeof quoteReports.$inferSelect,
+): QuoteReport {
+  return {
+    id: r.id,
+    quoteId: r.quoteId,
+    reporterEmail: r.reporterEmail,
+    reason: r.reason,
+    note: r.note,
+    status: r.status as QuoteReportStatus,
+    createdAt: iso(r.createdAt),
+    resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
   };
 }
 
@@ -2371,6 +2389,70 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(rfqReports.createdAt))
       .limit(Math.min(filter.limit ?? 100, 200));
     return rows.map((r) => toRfqReport(r.report));
+  }
+
+  async createQuoteReport(input: {
+    quoteId: string;
+    reporterEmail: string;
+    reason: string;
+    note?: string;
+  }): Promise<QuoteReport | null> {
+    // QA-529: the partial unique (open rows only) is the dedupe — a
+    // repeat flag conflicts and returns null; a dismissed one re-arms.
+    const rows = await this.db
+      .insert(quoteReports)
+      .values({
+        quoteId: input.quoteId,
+        reporterEmail: input.reporterEmail,
+        reason: input.reason,
+        note: input.note ?? null,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return rows[0] ? toQuoteReport(rows[0]) : null;
+  }
+
+  async listQuoteReports(opts?: {
+    status?: QuoteReportStatus;
+    vertical?: string;
+    limit?: number;
+  }): Promise<QuoteReport[]> {
+    const conds = [];
+    if (opts?.status) conds.push(eq(quoteReports.status, opts.status));
+    // Reports carry no vertical — scope through quote→rfq (QA-470 rule).
+    if (opts?.vertical) conds.push(eq(rfqs.vertical, opts.vertical));
+    const rows = await this.db
+      .select({ report: quoteReports })
+      .from(quoteReports)
+      .innerJoin(quotes, eq(quoteReports.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(quoteReports.createdAt))
+      .limit(Math.min(opts?.limit ?? 100, 200));
+    return rows.map((r) => toQuoteReport(r.report));
+  }
+
+  async resolveQuoteReport(id: string): Promise<boolean> {
+    const rows = await this.db
+      .update(quoteReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(and(eq(quoteReports.id, id), eq(quoteReports.status, "open")))
+      .returning({ id: quoteReports.id });
+    return rows.length > 0;
+  }
+
+  async resolveQuoteReportsByReporter(email: string): Promise<number> {
+    const rows = await this.db
+      .update(quoteReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(
+          sql`lower(${quoteReports.reporterEmail}) = ${email.toLowerCase()}`,
+          eq(quoteReports.status, "open"),
+        ),
+      )
+      .returning({ id: quoteReports.id });
+    return rows.length;
   }
 
   async logAdminEvent(

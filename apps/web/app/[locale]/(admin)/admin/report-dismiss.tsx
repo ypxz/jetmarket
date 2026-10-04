@@ -5,8 +5,14 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { sendAction } from "@/lib/fetch-action";
 
-/** QA-461: dismisses a flag in the admin report queue (CAS — repeat 409s). */
-export function DismissReportButton({ reportId }: { reportId: string }) {
+/** Shared dismiss control — one endpoint per report surface (QA-529). */
+function DismissButton({
+  endpoint,
+  testid,
+}: {
+  endpoint: string;
+  testid: string;
+}) {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -17,9 +23,7 @@ export function DismissReportButton({ reportId }: { reportId: string }) {
     if (pending) return;
     setPending(true);
     try {
-      const e = await sendAction(`/api/admin/reports/${reportId}/dismiss`, {
-        fallback: tc("error"),
-      });
+      const e = await sendAction(endpoint, { fallback: tc("error") });
       if (e) {
         setError(e);
         return;
@@ -35,20 +39,36 @@ export function DismissReportButton({ reportId }: { reportId: string }) {
       <button
         onClick={dismiss}
         disabled={pending}
-        data-testid={`dismiss-report-${reportId}`}
+        data-testid={testid}
         className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50"
       >
         {pending ? t("dismissingReport") : t("dismissReport")}
       </button>
       {error ? (
-        <p
-          role="alert"
-          className="text-xs text-danger"
-          data-testid={`dismiss-report-error-${reportId}`}
-        >
+        <span role="alert" className="text-xs text-[color:var(--color-danger)]">
           {error}
-        </p>
+        </span>
       ) : null}
     </span>
+  );
+}
+
+/** QA-461: dismisses a flag in the admin report queue (CAS — repeat 409s). */
+export function DismissReportButton({ reportId }: { reportId: string }) {
+  return (
+    <DismissButton
+      endpoint={`/api/admin/reports/${reportId}/dismiss`}
+      testid={`dismiss-report-${reportId}`}
+    />
+  );
+}
+
+/** QA-529: same dismiss for the buyer quote-flag queue. */
+export function DismissQuoteReportButton({ reportId }: { reportId: string }) {
+  return (
+    <DismissButton
+      endpoint={`/api/admin/quote-reports/${reportId}/dismiss`}
+      testid={`dismiss-quote-report-${reportId}`}
+    />
   );
 }

@@ -4456,6 +4456,123 @@ export function repoContract(
       ).not.toContain(doomed!.id);
     });
 
+    it("quote reports: dedupe by email, vertical join, dismiss CAS, reporter sweep (QA-529)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const op = await repo.upsertOperator({
+        userId: (await repo.createUser(`qrep-op-${tag}@test.dev`, "operator")).id,
+        name: `QRep Ops ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const buyerEmail = `qrep-b-${tag}@test.dev`;
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail,
+        fields: {},
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "",
+      });
+      // A machinery twin — the vertical join must drop it from the
+      // jets-scoped queue (shared-DB rule, QA-293).
+      const fRfq = await repo.createRfq({
+        vertical: "machinery",
+        listingId: null,
+        buyerEmail: `qrep-f-${tag}@test.dev`,
+        fields: {},
+      });
+      const fQuote = await repo.createQuote({
+        rfqId: fRfq.id,
+        operatorId: op.id,
+        amount: 8000,
+        currency: "EUR",
+        message: "",
+      });
+
+      // File + dedupe: a second OPEN flag from the same address returns
+      // null; a different reporter on the same quote files fine; email
+      // casing folds into one reporter.
+      const r1 = await repo.createQuoteReport({
+        quoteId: quote.id,
+        reporterEmail: buyerEmail,
+        reason: "off_platform",
+        note: "call me at +41 79 555",
+      });
+      expect(r1).not.toBeNull();
+      expect(r1!.status).toBe("open");
+      expect(r1!.resolvedAt).toBeNull();
+      expect(
+        await repo.createQuoteReport({
+          quoteId: quote.id,
+          reporterEmail: buyerEmail.toUpperCase(),
+          reason: "scam",
+        }),
+      ).toBeNull();
+      const r2 = await repo.createQuoteReport({
+        quoteId: quote.id,
+        reporterEmail: `qrep-b2-${tag}@test.dev`,
+        reason: "scam",
+      });
+      expect(r2).not.toBeNull();
+      const rf = await repo.createQuoteReport({
+        quoteId: fQuote.id,
+        reporterEmail: `qrep-f-${tag}@test.dev`,
+        reason: "spam",
+      });
+      expect(rf).not.toBeNull();
+
+      // Queue: newest-first, status + vertical scoped via quote→rfq.
+      const open = await repo.listQuoteReports({ status: "open" });
+      expect(open.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r1!.id, r2!.id, rf!.id]),
+      );
+      const jetsOnly = await repo.listQuoteReports({
+        status: "open",
+        vertical: "jets",
+      });
+      expect(jetsOnly.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r1!.id, r2!.id]),
+      );
+      expect(jetsOnly.map((r) => r.id)).not.toContain(rf!.id);
+
+      // Dismiss CAS: once → true + stamp; again → false.
+      expect(await repo.resolveQuoteReport(r1!.id)).toBe(true);
+      expect(await repo.resolveQuoteReport(r1!.id)).toBe(false);
+      expect(
+        (await repo.listQuoteReports({ status: "dismissed" })).map(
+          (r) => r.id,
+        ),
+      ).toContain(r1!.id);
+      // A dismissed flag doesn't block a fresh one (re-flag allowed).
+      const r3 = await repo.createQuoteReport({
+        quoteId: quote.id,
+        reporterEmail: buyerEmail,
+        reason: "other",
+      });
+      expect(r3).not.toBeNull();
+
+      // Reporter sweep (the buyer-block analog): clears every OPEN flag
+      // the address filed, case-folded, nothing else.
+      expect(
+        await repo.resolveQuoteReportsByReporter(buyerEmail.toUpperCase()),
+      ).toBe(1);
+      const stillOpen = await repo.listQuoteReports({ status: "open" });
+      expect(stillOpen.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r2!.id, rf!.id]),
+      );
+      expect(
+        await repo.resolveQuoteReportsByReporter(buyerEmail),
+      ).toBe(0);
+    });
+
     it("blocked emails: idempotent block, case-fold, unblock (QA-463)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

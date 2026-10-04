@@ -51,9 +51,13 @@ export async function POST(req: Request) {
   // listing flags leave the queue too — weaponized reports shouldn't keep
   // demanding admin attention after the account is dead.
   const reporter = await repo.findUserByEmail(email);
-  const reportsCleared = reporter
+  const listingReportsCleared = reporter
     ? await repo.resolveListingReportsByReporter(reporter.id)
     : 0;
+  // QA-529: quote flags key the reporter by email — sweep them too.
+  const reportsCleared =
+    listingReportsCleared +
+    (await repo.resolveQuoteReportsByReporter(email));
   logInfo("admin.buyer_blocked", {
     adminId: user.id,
     email,

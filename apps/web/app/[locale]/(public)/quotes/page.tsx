@@ -118,6 +118,14 @@ function QuotesInner() {
   const [counterDraft, setCounterDraft] = useState("");
   // QA-521: optional one-line note riding the counter.
   const [counterNote, setCounterNote] = useState("");
+  // QA-529: which quote's report picker is open; the reported set swaps
+  // the control for a "Reported" line (a re-flag would only 409).
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("off_platform");
+  const [reportNote, setReportNote] = useState("");
+  const [reportedIds, setReportedIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   // QA-486: one in-flight mutation at a time. Every action below raced a
   // double-click before — accept/close/extend 409'd harmlessly, but a
   // second PATCH succeeded and re-mailed every delivered operator. The ref
@@ -399,6 +407,124 @@ function QuotesInner() {
     setCounterNote("");
     setMsg(t("counteredMsg"));
     await load();
+  }
+
+  // QA-529: flag a received quote for admin review — the demand-side
+  // surface that was missing ("call me at…" fee circumvention, scam,
+  // abuse). Same mailbox proof as every other buyer action; a dedupe
+  // 409 still lands the "Reported" state since the flag exists either way.
+  const report = (quoteId: string) =>
+    withBusy(() => reportImpl(quoteId));
+
+  async function reportImpl(quoteId: string) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/quotes/${quoteId}/report`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          buyerEmail: email,
+          token,
+          reason: reportReason,
+          ...(reportNote.trim() ? { note: reportNote.trim() } : {}),
+        }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    if (!res.ok && res.status !== 409) {
+      setMsg(errText(data, tc("error")));
+      return;
+    }
+    setReportedIds((prev) => new Set(prev).add(quoteId));
+    setReportingId(null);
+    setReportNote("");
+    setMsg(t("reportedMsg"));
+  }
+
+  const QUOTE_REPORT_REASONS = [
+    "off_platform",
+    "scam",
+    "spam",
+    "abusive",
+    "other",
+  ] as const;
+
+  function reportControls(q: Quote) {
+    if (reportedIds.has(q.id)) {
+      return (
+        <span
+          className="text-xs text-muted"
+          data-testid={`reported-${q.id}`}
+        >
+          {t("reportedDone")}
+        </span>
+      );
+    }
+    if (reportingId === q.id) {
+      return (
+        <span
+          className="flex flex-wrap items-center gap-1"
+          data-testid={`report-picker-${q.id}`}
+        >
+          <span className="text-xs text-muted">{t("reportTitle")}</span>
+          {QUOTE_REPORT_REASONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => setReportReason(r)}
+              disabled={busy}
+              data-testid={`report-reason-${r}-${q.id}`}
+              className={`rounded-md border px-2 py-1 text-xs ${
+                reportReason === r
+                  ? "border-primary bg-surface font-medium"
+                  : "border-border bg-background"
+              }`}
+            >
+              {t(`reportReason.${r}`)}
+            </button>
+          ))}
+          <input
+            value={reportNote}
+            onChange={(e) => setReportNote(e.target.value)}
+            maxLength={500}
+            placeholder={t("reportNotePlaceholder")}
+            aria-label={t("reportNotePlaceholder")}
+            data-testid={`report-note-${q.id}`}
+            className="w-40 rounded-md border border-border bg-background px-2 py-1 text-xs"
+          />
+          <button
+            onClick={() => report(q.id)}
+            disabled={busy}
+            data-testid={`report-send-${q.id}`}
+            className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {t("reportSend")}
+          </button>
+          <button
+            onClick={() => setReportingId(null)}
+            data-testid={`report-cancel-${q.id}`}
+            className="text-xs text-muted underline"
+          >
+            {t("cancelEdit")}
+          </button>
+        </span>
+      );
+    }
+    return (
+      <button
+        onClick={() => {
+          setReportingId(q.id);
+          setReportReason("off_platform");
+        }}
+        disabled={busy}
+        data-testid={`report-${q.id}`}
+        className="text-xs text-muted underline"
+      >
+        {t("report")}
+      </button>
+    );
   }
 
   // QA-518: pull a live counter off the table — the cleared round lets
@@ -991,6 +1117,10 @@ function QuotesInner() {
                               </ul>
                             </div>
                           ) : null}
+                          {/* QA-529: report this offer — the admin queue
+                              surface for fee-circumvention/abuse; stays
+                              available on terminal quotes too. */}
+                          <div className="mt-1">{reportControls(q)}</div>
                         </div>
                         {q.status === "sent" &&
                         ["open", "matched", "quoted"].includes(r.status) ? (

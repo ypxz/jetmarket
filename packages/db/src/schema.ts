@@ -522,6 +522,35 @@ export const rfqReports = pgTable(
   ],
 );
 
+// QA-529: buyer flag on a quote — reporter is the requester's email
+// (bearer-token proven; buyers rarely hold sessions), not a user id.
+export const quoteReports = pgTable(
+  "quote_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    reporterEmail: text("reporter_email").notNull(),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    status: text("status", { enum: ["open", "dismissed"] })
+      .notNull()
+      .default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // One open flag per (quote, reporter) — dismissed re-arms (QA-461 shape).
+    uniqueIndex("quote_reports_open_dedupe")
+      .on(t.quoteId, sql`lower(${t.reporterEmail})`)
+      .where(sql`status = 'open'`),
+    index("quote_reports_status_idx").on(t.status, t.createdAt),
+  ],
+);
+
 // QA-524: private per-operator note on a visible RFQ. Composite PK on
 // (operator, rfq) — one note per pair; clearing the note deletes the row.
 export const operatorRfqNotes = pgTable(

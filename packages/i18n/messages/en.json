@@ -490,6 +490,19 @@
       "declined": "declined — the ask still stands",
       "accepted": "accepted — deal closed",
       "expired": "closed with the request"
+    },
+    "report": "Report",
+    "reportTitle": "Report this offer",
+    "reportSend": "Send report",
+    "reportedMsg": "Reported — our team will review.",
+    "reportedDone": "Reported",
+    "reportNotePlaceholder": "optional detail (max 500 chars)",
+    "reportReason": {
+      "off_platform": "Contact off-platform",
+      "scam": "Scam / fraud",
+      "spam": "Spam",
+      "abusive": "Abusive",
+      "other": "Other"
     }
   },
   "design": {
@@ -1325,7 +1338,11 @@
     "colAction": "Action",
     "colTarget": "Target",
     "noActivity": "No moderation activity yet.",
-    "closeRfq": "Close request"
+    "closeRfq": "Close request",
+    "quoteReports": "Quote flags ({count})",
+    "noQuoteReports": "No open quote flags.",
+    "colQuote": "Quote",
+    "colOnRfq": "Request"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

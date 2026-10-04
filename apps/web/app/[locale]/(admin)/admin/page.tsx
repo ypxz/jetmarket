@@ -18,7 +18,10 @@ import {
 } from "./mark-paid";
 import { RfqCloseButton, RfqSpamButton } from "./rfq-mod-button";
 import { BuyerBlockButton } from "./buyer-block-button";
-import { DismissReportButton } from "./report-dismiss";
+import {
+  DismissQuoteReportButton,
+  DismissReportButton,
+} from "./report-dismiss";
 import { SuspendButton, VerifyButton } from "./verify-button";
 
 export default async function AdminPage({
@@ -36,7 +39,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, modEvents] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, quoteReports, modEvents] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -57,6 +60,12 @@ export default async function AdminPage({
       }),
       // QA-463: blocked buyer addresses — the RFQ rows show their state.
       repo.listBlockedEmails(),
+      // QA-529: buyer quote flags — same open-report queue, second surface.
+      repo.listQuoteReports({
+        status: "open",
+        vertical: verticalSlug(),
+        limit: 50,
+      }),
       // QA-467: append-only moderation feed — newest first, this vertical.
       repo.listAdminEvents({ vertical: verticalSlug(), limit: 30 }),
     ]);
@@ -64,7 +73,7 @@ export default async function AdminPage({
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? Math.min(rawPage, dealPages) : 1;
   // Wave 2: the lookups that hang off wave-1 rows.
-  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows, rfqFlagCounts, rfqFlagRows] =
+  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows, rfqFlagCounts, rfqFlagRows, reportQuoteRows] =
     await Promise.all([
       repo.listDeals({
         limit: SEARCH_PAGE_SIZE,
@@ -97,6 +106,11 @@ export default async function AdminPage({
       // QA-470: the flag detail behind the badge — reason/note/reporter
       // rows a moderator reads before spam-marking.
       repo.listRfqReports({ vertical: verticalSlug(), limit: 30 }),
+      // QA-529: quote flag rows join their quote (amount, operator) — the
+      // RFQ/listing context resolves in the next wave.
+      repo.listQuotes({
+        ids: [...new Set(quoteReports.map((r) => r.quoteId))],
+      }),
     ]);
   // QA-470: flag rows join their RFQ (status + buyer), the reporter's
   // email, and the RFQ's listing title in one batched wave.
@@ -108,6 +122,23 @@ export default async function AdminPage({
     ids: [
       ...new Set(
         rfqFlagRfqRows
+          .map((r) => r.listingId)
+          .filter((x): x is string => x !== null),
+      ),
+    ],
+  });
+  // QA-529 wave-3 joins: quote-flag rows resolve the request (title,
+  // buyer) and the flagged operator in one batched pass.
+  const [reportQuoteRfqRows, reportQuoteOpRows] = await Promise.all([
+    repo.listRfqs({ ids: [...new Set(reportQuoteRows.map((q) => q.rfqId))] }),
+    repo.listOperators({
+      ids: [...new Set(reportQuoteRows.map((q) => q.operatorId))],
+    }),
+  ]);
+  const reportQuoteListingRows = await repo.listListings({
+    ids: [
+      ...new Set(
+        reportQuoteRfqRows
           .map((r) => r.listingId)
           .filter((x): x is string => x !== null),
       ),
@@ -167,6 +198,20 @@ export default async function AdminPage({
   );
   const modEventEmails = new Map(
     modEventUserRows.map((u) => [u.id, u.email] as const),
+  );
+  // QA-529: flag row -> quote -> rfq/listing/operator maps (batch, no
+  // per-row lookups).
+  const reportQuotes = new Map(
+    reportQuoteRows.map((q) => [q.id, q] as const),
+  );
+  const reportQuoteRfqs = new Map(
+    reportQuoteRfqRows.map((r) => [r.id, r] as const),
+  );
+  const reportQuoteListings = new Map(
+    reportQuoteListingRows.map((l) => [l.id, l] as const),
+  );
+  const reportQuoteOps = new Map(
+    reportQuoteOpRows.map((o) => [o.id, o] as const),
   );
   const LIVE_RFQ: ReadonlySet<string> = new Set(["open", "matched", "quoted"]);
   const blockedEmails = new Set(
@@ -420,6 +465,74 @@ export default async function AdminPage({
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table></div>
+        )}
+      </section>
+
+      {/* QA-529: buyer flags on received quotes — the fee-circumvention
+          / abuse queue, resolved through quote → rfq → listing. */}
+      <section className="mt-10" data-testid="admin-quote-reports">
+        <h2 className="text-lg font-semibold">
+          {t("quoteReports", { count: quoteReports.length })}
+        </h2>
+        {quoteReports.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{t("noQuoteReports")}</p>
+        ) : (
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colQuote")}</th>
+              <th className="py-2 pr-4">{t("colOnRfq")}</th>
+              <th className="py-2 pr-4">{t("colOperator")}</th>
+              <th className="py-2 pr-4">{t("colReason")}</th>
+              <th className="py-2 pr-4">{t("colNote")}</th>
+              <th className="py-2 pr-4">{t("colReporter")}</th>
+              <th className="py-2 pr-4">{t("colFiled")}</th>
+              <th className="py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {quoteReports.map((r) => {
+              const q = reportQuotes.get(r.quoteId);
+              const rfq = q ? reportQuoteRfqs.get(q.rfqId) : undefined;
+              const listing = rfq?.listingId
+                ? reportQuoteListings.get(rfq.listingId)
+                : undefined;
+              const op = q ? reportQuoteOps.get(q.operatorId) : undefined;
+              return (
+              <tr key={r.id} data-testid={`quote-report-${r.id}`}>
+                <td className="py-2 pr-4 font-medium">
+                  {q ? formatMoney(q.amount, q.currency, locale) : "—"}
+                </td>
+                <td className="py-2 pr-4">{listing?.title ?? "—"}</td>
+                <td className="py-2 pr-4">{op?.name ?? "—"}</td>
+                <td className="py-2 pr-4">
+                  <Badge variant="warning" data-testid={`quote-report-reason-${r.id}`}>
+                    {r.reason}
+                  </Badge>
+                </td>
+                <td className="max-w-60 truncate py-2 pr-4">{r.note ?? ""}</td>
+                <td className="py-2 pr-4" data-testid={`quote-report-reporter-${r.id}`}>
+                  {r.reporterEmail}
+                </td>
+                <td className="py-2 pr-4">
+                  {new Date(r.createdAt).toLocaleDateString(locale)}
+                </td>
+                <td className="py-2">
+                  <span className="inline-flex gap-1">
+                    {q ? (
+                      <SuspendButton
+                        operatorId={q.operatorId}
+                        suspended={op?.suspended ?? false}
+                      />
+                    ) : null}
+                    <DismissQuoteReportButton reportId={r.id} />
+                  </span>
+                </td>
+              </tr>
+              );
+            })}
           </tbody>
         </table></div>
         )}

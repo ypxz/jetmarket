@@ -490,6 +490,19 @@
       "declined": "abgelehnt — der Preis bleibt bestehen",
       "accepted": "angenommen — Deal geschlossen",
       "expired": "mit der Anfrage geschlossen"
+    },
+    "report": "Melden",
+    "reportTitle": "Angebot melden",
+    "reportSend": "Meldung senden",
+    "reportedMsg": "Gemeldet — wir prüfen das.",
+    "reportedDone": "Gemeldet",
+    "reportNotePlaceholder": "optionaler Hinweis (max. 500 Zeichen)",
+    "reportReason": {
+      "off_platform": "Kontakt außerhalb",
+      "scam": "Betrug",
+      "spam": "Spam",
+      "abusive": "Missbräuchlich",
+      "other": "Sonstiges"
     }
   },
   "design": {
@@ -1325,7 +1338,11 @@
     "colAction": "Aktion",
     "colTarget": "Ziel",
     "noActivity": "Noch keine Moderationsaktivität.",
-    "closeRfq": "Anfrage schließen"
+    "closeRfq": "Anfrage schließen",
+    "quoteReports": "Angebots-Meldungen ({count})",
+    "noQuoteReports": "Keine offenen Angebots-Meldungen.",
+    "colQuote": "Angebot",
+    "colOnRfq": "Anfrage"
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",

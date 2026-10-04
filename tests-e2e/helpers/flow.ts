@@ -100,6 +100,10 @@ export async function createListing(page: Page, input: ListingInput) {
   }
   await fillDynamicFields(page, input.fields ?? {});
   await page.getByTestId('listing-price').fill(input.price);
+  // Cold-compile body drop (AGENTS.md): a first-hit POST to an
+  // on-demand-compiled route can lose its body — warm /api/listings so the
+  // save POST never pays the compile tax (QA-529 follow-up: upload.ui).
+  await page.request.get('/api/listings').catch(() => {});
   await page.getByTestId('listing-save').click();
 }
 

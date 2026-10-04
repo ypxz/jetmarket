@@ -16,6 +16,7 @@ import type {
   Plan,
   Quote,
   QuoteDeclineReason,
+  QuoteReport,
   QuoteTemplate,
   Repo,
   Rfq,
@@ -1493,6 +1494,7 @@ class MemoryRepo implements Repo {
   private blockedEmails = new Map<string, BlockedEmail>(); // key: lower email
   private adminEvents = new Map<string, AdminEvent>();
   private rfqReports = new Map<string, RfqReport>();
+  private quoteReports = new Map<string, QuoteReport>();
 
   async blockBuyerEmail(
     email: string,
@@ -1586,6 +1588,88 @@ class MemoryRepo implements Repo {
       )
       .map((x) => x.r)
       .slice(0, filter.limit ?? 100);
+  }
+
+  async createQuoteReport(input: {
+    quoteId: string;
+    reporterEmail: string;
+    reason: string;
+    note?: string;
+  }): Promise<QuoteReport | null> {
+    // QA-529: sync dedupe scan (QA-333) — a repeat OPEN flag from the
+    // same address returns null (route 409s); dismissed re-arms.
+    const want = input.reporterEmail.toLowerCase();
+    for (const r of this.quoteReports.values()) {
+      if (
+        r.quoteId === input.quoteId &&
+        r.reporterEmail.toLowerCase() === want &&
+        r.status === "open"
+      ) {
+        return null;
+      }
+    }
+    const row: QuoteReport = {
+      id: uid("qrep"),
+      quoteId: input.quoteId,
+      reporterEmail: input.reporterEmail,
+      reason: input.reason,
+      note: input.note ?? null,
+      status: "open",
+      createdAt: now(),
+      resolvedAt: null,
+    };
+    this.quoteReports.set(row.id, row);
+    return row;
+  }
+
+  async listQuoteReports(opts?: {
+    status?: QuoteReport["status"];
+    vertical?: string;
+    limit?: number;
+  }): Promise<QuoteReport[]> {
+    const rows = [...this.quoteReports.values()].filter((r) => {
+      if (opts?.status !== undefined && r.status !== opts.status) return false;
+      if (opts?.vertical !== undefined) {
+        // Reports carry no vertical — scope through quote→rfq (drizzle joins).
+        const quote = this.quotes.get(r.quoteId);
+        const rfq = quote ? this.rfqs.get(quote.rfqId) : undefined;
+        if (!rfq || rfq.vertical !== opts.vertical) return false;
+      }
+      return true;
+    });
+    // Newest-first; same-ms ties break later-insert-first (QA-467 parity).
+    return rows
+      .map((r, i) => ({ r, i }))
+      .sort(
+        (a, b) =>
+          b.r.createdAt.localeCompare(a.r.createdAt) || b.i - a.i,
+      )
+      .map((x) => x.r)
+      .slice(0, opts?.limit ?? 100);
+  }
+
+  async resolveQuoteReport(id: string): Promise<boolean> {
+    // CAS on 'open' — sync check-write (QA-333): a repeat dismiss 409s.
+    const r = this.quoteReports.get(id);
+    if (!r || r.status !== "open") return false;
+    this.quoteReports.set(id, { ...r, status: "dismissed", resolvedAt: now() });
+    return true;
+  }
+
+  async resolveQuoteReportsByReporter(email: string): Promise<number> {
+    const want = email.toLowerCase();
+    let n = 0;
+    for (const [id, r] of this.quoteReports) {
+      if (r.status === "open" && r.reporterEmail.toLowerCase() === want) {
+        this.quoteReports.set(id, {
+          ...r,
+          status: "dismissed",
+          resolvedAt: now(),
+        });
+        n++;
+      }
+    }
+    return n;
   }
 
   async logAdminEvent(
