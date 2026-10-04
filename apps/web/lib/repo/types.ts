@@ -791,6 +791,12 @@ export interface Repo {
   unblockBuyerEmail(email: string): Promise<boolean>;
   isEmailBlocked(email: string): Promise<boolean>;
   listBlockedEmails(): Promise<BlockedEmail[]>;
+  /** QA-464: blocking kills future filings; this clears the demand the
+   *  buyer ALREADY delivered — every live RFQ from the address flips to
+   *  spam (the QA-181 semantics: stops matching, stops notifying).
+   *  One statement on pg; returns the flipped count for the admin log.
+   *  Vertical-scoped like every moderation write. */
+  spamBuyerRfqs(email: string, vertical: string): Promise<number>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

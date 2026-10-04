@@ -3,6 +3,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
+import { verticalSlug } from "@/lib/vertical";
 
 /**
  * Buyer email block toggle (QA-463) — the account-level counterpart of the
@@ -35,6 +36,14 @@ export async function POST(req: Request) {
     reason: data!.reason,
     by: user.id,
   });
-  logInfo("admin.buyer_blocked", { adminId: user.id, email });
-  return ok(row);
+  // QA-464: the block kills future filings; this clears what the buyer
+  // already delivered — every live RFQ from the address flips to spam
+  // (stops matching + notifying, per QA-181).
+  const spammed = await repo.spamBuyerRfqs(email, verticalSlug());
+  logInfo("admin.buyer_blocked", {
+    adminId: user.id,
+    email,
+    rfqsSpammed: spammed,
+  });
+  return ok({ ...row, rfqsSpammed: spammed });
 }

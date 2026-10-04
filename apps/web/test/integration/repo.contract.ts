@@ -3569,5 +3569,82 @@ export function repoContract(
         b1.id,
       );
     });
+
+    it("blocking a buyer spams their live RFQs, terminals untouched (QA-464)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`blk-op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Blk Ops ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Blk Charter ${tag}`,
+        attributes: {},
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        status: "active",
+      });
+      const foreign = await repo.createListing({
+        operatorId: op.id,
+        vertical: "machinery",
+        type: "excavator",
+        title: `Blk Machine ${tag}`,
+        attributes: {},
+        price: 8000,
+        currency: "EUR",
+        photos: [],
+        status: "active",
+      });
+      const email = `spam-buyer-${tag}@test.dev`;
+      const mkRfq = (mail: string, listingId: string, vertical: string, n: number) =>
+        repo.createRfq({
+          vertical,
+          listingId,
+          buyerEmail: mail,
+          fields: {
+            departure: "ZRH",
+            arrival: "NCE",
+            dateFrom: isoIn(14 + n),
+            dateTo: isoIn(16 + n),
+            passengers: n,
+            name: `Spammer ${n}`,
+            email: mail,
+          },
+        });
+
+      const live1 = await mkRfq(email, listing.id, "jets", 1);
+      const live2 = await mkRfq(email, listing.id, "jets", 2);
+      const closed = await mkRfq(email, listing.id, "jets", 3);
+      await repo.setRfqStatus(closed.id, "closed", ["open"]);
+      const otherBuyer = await mkRfq(
+        `other-${tag}@test.dev`,
+        listing.id,
+        "jets",
+        4,
+      );
+      const foreignRfq = await mkRfq(email, foreign.id, "machinery", 5);
+
+      // Case-fold + live-only + vertical scope: the two live jets RFQs
+      // flip; the buyer's closed row, another buyer's row, and the same
+      // address's machinery RFQ all stay untouched.
+      expect(await repo.spamBuyerRfqs(email.toUpperCase(), "jets")).toBe(2);
+      expect((await repo.getRfq(live1.id))!.status).toBe("spam");
+      expect((await repo.getRfq(live2.id))!.status).toBe("spam");
+      expect((await repo.getRfq(closed.id))!.status).toBe("closed");
+      expect((await repo.getRfq(otherBuyer.id))!.status).toBe("open");
+      expect((await repo.getRfq(foreignRfq.id))!.status).toBe("open");
+
+      // The sweep is idempotent — a second pass has nothing left to flip.
+      expect(await repo.spamBuyerRfqs(email, "jets")).toBe(0);
+    });
   });
 }

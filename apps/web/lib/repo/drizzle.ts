@@ -1702,6 +1702,24 @@ export class DrizzleRepo implements Repo {
     return rows.map(toBlockedEmail);
   }
 
+  async spamBuyerRfqs(email: string, vertical: string): Promise<number> {
+    // QA-464: one statement flips every live RFQ the blocked buyer already
+    // delivered — iface 'open' is db 'new', same status gate as the
+    // per-row spam mark (QA-181).
+    const rows = await this.db
+      .update(rfqs)
+      .set({ status: "spam" })
+      .where(
+        and(
+          sql`lower(${rfqs.buyerEmail}) = ${email.toLowerCase()}`,
+          eq(rfqs.vertical, vertical),
+          inArray(rfqs.status, ["new", "matched", "quoted"]),
+        ),
+      )
+      .returning({ id: rfqs.id });
+    return rows.length;
+  }
+
   async ratingSummaryPerOperator(
     operatorIds: string[],
   ): Promise<Record<string, { avg: number; count: number }>> {

@@ -307,6 +307,11 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
     data: { email: BUYER.toUpperCase() }, // case-fold: caps can't slip past
   });
   expect(block.status()).toBe(200);
+  // QA-464: the block flips the demand already delivered — the one live
+  // RFQ this buyer filed above comes back counted in the sweep.
+  expect(
+    ((await block.json()) as { rfqsSpammed: number }).rfqsSpammed,
+  ).toBe(1);
 
   // Blocked: new RFQs 403 (not 404 — the listing exists, the buyer is the
   // problem). The per-RFQ spam mark still works on their history.
@@ -321,7 +326,8 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   });
   expect(unblock.status()).toBe(200);
   expect(((await unblock.json()) as { blocked: boolean }).blocked).toBe(false);
-  // Dedupe replay returns the first RFQ's live row (200 idempotent) —
-  // the point is the request clears the block, not which 2xx it gets.
+  // The first RFQ was spam-flipped by the block, so dedupe (live-only)
+  // misses it and this call mints a fresh row — the point is the request
+  // clears the block, not which 2xx it gets.
   expect((await mkRfq()).ok()).toBeTruthy();
 });

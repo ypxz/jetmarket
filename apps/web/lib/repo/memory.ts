@@ -1119,6 +1119,24 @@ class MemoryRepo implements Repo {
     );
   }
 
+  async spamBuyerRfqs(email: string, vertical: string): Promise<number> {
+    // QA-464: sync check-write per row (QA-333) — only live rows flip;
+    // terminal RFQs stay untouched, same gate as the per-row spam mark.
+    const key = email.toLowerCase();
+    let n = 0;
+    for (const [id, r] of this.rfqs) {
+      if (
+        r.vertical === vertical &&
+        r.buyerEmail.toLowerCase() === key &&
+        (r.status === "open" || r.status === "matched" || r.status === "quoted")
+      ) {
+        this.rfqs.set(id, { ...r, status: "spam" });
+        n += 1;
+      }
+    }
+    return n;
+  }
+
   async listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
