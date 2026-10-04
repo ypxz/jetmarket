@@ -11,6 +11,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -319,6 +320,25 @@ export const magicLinksUsed = pgTable("magic_links_used", {
   sig: text("sig").primaryKey(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
+
+// Per-operator inbox triage (QA-420): a dismissed RFQ leaves the operator's
+// listRfqs/countPendingRfqs views but stays visible to every other operator
+// and to the buyer/admin — it is inbox state, not RFQ state.
+export const rfqDismissals = pgTable(
+  "rfq_dismissals",
+  {
+    rfqId: uuid("rfq_id")
+      .notNull()
+      .references(() => rfqs.id, { onDelete: "cascade" }),
+    operatorId: uuid("operator_id")
+      .notNull()
+      .references(() => operators.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.rfqId, t.operatorId] })],
+);
 
 export type UserRow = typeof users.$inferSelect;
 export type OperatorRow = typeof operators.$inferSelect;

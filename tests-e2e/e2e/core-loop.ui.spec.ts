@@ -2,6 +2,7 @@
 // e2e/core-loop.api.spec.ts. Runs against the data-testid hooks shipped by
 // W3's public slice — see tests-e2e/TESTIDS.md for the contract.
 import { expect, test } from '@playwright/test';
+import postgres from 'postgres';
 import {
   createListing,
   createOperatorProfile,
@@ -146,6 +147,47 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);
     await item.locator(tidPrefix('quote-send-')).click();
     await expect(item).toContainText(/quote sent|sent/i);
+  });
+
+  await step('operator dismisses a second RFQ — inbox-only, buyer unaffected (QA-420)', async () => {
+    // Own fixture: a second, unquoted RFQ on the operator's empty-leg listing.
+    // Inserted directly (UI RFQ flow already covered above) with its own
+    // bearer token so the buyer side stays checkable.
+    const sql = postgres(process.env.TEST_DATABASE_URL!);
+    try {
+      const [rfq] = await sql`
+        insert into rfqs (vertical, listing_id, buyer_email, fields)
+        select 'jets', l.id, ${BUYER_EMAIL}, ${sql.json({ from: 'ZRH', to: 'NCE', dateTo: isoDateIn(10) })}
+        from listings l
+        where l.title = ${`E2E UI Empty Leg ${run}`} and l.vertical = 'jets'
+        returning id, access_token as "token"`;
+      if (!rfq) throw new Error('empty-leg RFQ fixture insert failed');
+      const other = await sql`
+        select id from rfqs where id <> ${rfq.id} and listing_id in (
+          select id from listings where title = ${LISTING_TITLE})`;
+      await operator.goto('/app/rfqs');
+      // The quoted charter row stays (dismiss only renders on unquoted rows);
+      // the new unquoted empty-leg row offers dismiss.
+      const charterRow = operator.locator(tid(`rfq-${other[0]!.id}`));
+      await expect(charterRow).toBeVisible();
+      await expect(charterRow.getByTestId(/^dismiss-rfq-/)).toHaveCount(0);
+      const legRow = operator.locator(tid(`rfq-${rfq!.id}`));
+      await expect(legRow).toBeVisible();
+      await legRow.getByTestId(`dismiss-rfq-${rfq!.id}`).click();
+      await expect(legRow).toHaveCount(0, { timeout: 15_000 });
+      // Per-operator state persists across reloads; buyer still sees it.
+      await operator.reload();
+      await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toHaveCount(0);
+      const inbox = await buyer.request.get(
+        `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+        { headers: { 'x-rfq-token': rfq!.token } },
+      );
+      const rows = (await inbox.json()) as { id: string }[];
+      expect(rows.map((r) => r.id)).toContain(rfq!.id);
+      await sql`delete from rfqs where id = ${rfq!.id}`;
+    } finally {
+      await sql.end();
+    }
   });
 
   await step('buyer accepts the quote', async () => {

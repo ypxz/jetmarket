@@ -1144,6 +1144,143 @@ export function repoContract(
       expect(await repo.getListing(mine.id)).toBeDefined();
     });
 
+    it("dismissRfq hides only from that operator's inbox (QA-420)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mk = async (n: string) => {
+        const u = await repo.createUser(`${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: false,
+          plan: "free",
+        });
+      };
+      const owner = await mk("dsm-own");
+      const matchedOp = await mk("dsm-mat");
+      const stranger = await mk("dsm-str");
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Dismiss Jet ${tag}`,
+        price: 8000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `dsm-${tag}@test.dev`,
+        fields: { dateTo: isoIn(5) },
+      });
+      await repo.createRfqMatches([
+        { rfqId: rfq.id, operatorId: matchedOp.id, listingId: listing.id },
+        {
+          rfqId: rfq.id,
+          operatorId: stranger.id,
+          listingId: listing.id,
+          deliverAt: new Date(Date.now() + 86_400_000),
+        },
+      ]);
+
+      // Not-visible operators can't dismiss: stranger's match is still
+      // delayed (undelivered), and an unknown id is a miss.
+      expect(await repo.dismissRfq(rfq.id, stranger.id)).toBe(false);
+      expect(await repo.dismissRfq("nope", owner.id)).toBe(false);
+
+      const visible = () =>
+        repo.listRfqs({ operatorId: owner.id, vertical: "jets" });
+      expect((await visible()).some((r) => r.id === rfq.id)).toBe(true);
+      expect(await repo.dismissRfq(rfq.id, owner.id)).toBe(true);
+      expect((await visible()).some((r) => r.id === rfq.id)).toBe(false);
+      // Replay stays idempotent-true.
+      expect(await repo.dismissRfq(rfq.id, owner.id)).toBe(true);
+
+      // Per-operator state: the delivered match still sees it, and the
+      // buyer/admin-style unfiltered list is untouched.
+      expect(
+        (
+          await repo.listRfqs({
+            operatorId: matchedOp.id,
+            vertical: "jets",
+          })
+        ).some((r) => r.id === rfq.id),
+      ).toBe(true);
+      expect(
+        (await repo.listRfqs({ vertical: "jets" })).some(
+          (r) => r.id === rfq.id,
+        ),
+      ).toBe(true);
+
+      // Matched operator dismisses too — now invisible to both inboxes but
+      // still listed unfiltered.
+      expect(await repo.dismissRfq(rfq.id, matchedOp.id)).toBe(true);
+      expect(
+        (
+          await repo.listRfqs({
+            operatorId: matchedOp.id,
+            vertical: "jets",
+          })
+        ).some((r) => r.id === rfq.id),
+      ).toBe(false);
+
+      // Delayed-match teaser + visibility gate: matchedOp's still-undelivered
+      // match counts toward their pending teaser but can't be dismissed yet.
+      const rfq2 = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `dsm2-${tag}@test.dev`,
+        fields: { dateTo: isoIn(5) },
+      });
+      await repo.createRfqMatches([
+        {
+          rfqId: rfq2.id,
+          operatorId: matchedOp.id,
+          listingId: listing.id,
+          deliverAt: new Date(Date.now() + 86_400_000),
+        },
+      ]);
+      expect(await repo.countPendingRfqs(matchedOp.id, "jets")).toBe(1);
+      expect(await repo.dismissRfq(rfq2.id, matchedOp.id)).toBe(false);
+      expect(await repo.countPendingRfqs(matchedOp.id, "jets")).toBe(1);
+      // rfq3: delivered match for stranger (past deliverAt), delayed for
+      // matchedOp — pins that a delivered-match dismissal works and that an
+      // undismissable delayed row keeps counting.
+      const rfq3 = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `dsm3-${tag}@test.dev`,
+        fields: { dateTo: isoIn(5) },
+      });
+      await repo.createRfqMatches([
+        {
+          rfqId: rfq3.id,
+          operatorId: stranger.id,
+          listingId: listing.id,
+          deliverAt: new Date(Date.now() - 1000),
+        },
+        {
+          rfqId: rfq3.id,
+          operatorId: matchedOp.id,
+          listingId: listing.id,
+          deliverAt: new Date(Date.now() + 86_400_000),
+        },
+      ]);
+      expect(await repo.countPendingRfqs(matchedOp.id, "jets")).toBe(2);
+      expect(await repo.dismissRfq(rfq3.id, stranger.id)).toBe(true);
+      expect(await repo.countPendingRfqs(matchedOp.id, "jets")).toBe(2);
+      // Delivered-match dismissal drops it from that operator's inbox:
+      expect(
+        (
+          await repo.listRfqs({ operatorId: stranger.id, vertical: "jets" })
+        ).some((r) => r.id === rfq3.id),
+      ).toBe(false);
+    });
+
     it("bumpListingViews increments atomically and starts at 0 (QA-413)", async () => {
       const repo = await factory();
       const user = await repo.createUser(

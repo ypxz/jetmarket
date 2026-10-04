@@ -375,6 +375,16 @@ export interface Repo {
    */
   hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean>;
   /**
+   * Inbox triage (QA-420): hide this RFQ from the operator's listRfqs /
+   * countPendingRfqs views. Per-operator state — the RFQ stays visible to
+   * other operators, the buyer, and admin. Only RFQs already in their inbox
+   * may be dismissed (owns the listing or holds a delivered match): returns
+   * false otherwise so routes 404 instead of letting an operator dismiss —
+   * and thereby probe — arbitrary ids. Idempotent: re-dismissing returns
+   * true.
+   */
+  dismissRfq(rfqId: string, operatorId: string): Promise<boolean>;
+  /**
    * Stamp `inbox_seen_at = now` on the operator (QA-416) — the inbox badges
    * RFQs created after this stamp. Idempotent by nature (a timestamp write).
    */

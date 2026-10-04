@@ -12,6 +12,7 @@ import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
+import { DismissButton } from "./dismiss-button";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
 const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
@@ -227,7 +228,14 @@ export default async function RfqInboxPage({
                     ))}
                   </ul>
                 ) : LIVE_RFQ_STATES.has(r.status) ? (
-                  <QuoteForm rfqId={r.id} />
+                  <div className="mt-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <QuoteForm rfqId={r.id} />
+                    </div>
+                    {/* Dismiss only on rows with no quote history to lose
+                        sight of — a quoted row keeps its context (QA-420). */}
+                    <DismissButton rfqId={r.id} />
+                  </div>
                 ) : (
                   <p className="mt-3 text-sm text-muted" data-testid={`rfq-closed-${r.id}`}>
                     {t("notOpen", { status: tc(`rfqState.${r.status}`) })}

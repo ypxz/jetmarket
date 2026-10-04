@@ -40,6 +40,7 @@ const {
   listings,
   rfqs,
   rfqMatches,
+  rfqDismissals,
   quotes,
   deals,
   subscriptions,
@@ -803,6 +804,13 @@ export class DrizzleRepo implements Repo {
         .where(
           and(
             or(eq(listings.operatorId, filter.operatorId), matched),
+            // Inbox triage: dismissed RFQs leave this operator's view only
+            // (QA-420) — buyer/admin lists don't join rfq_dismissals at all.
+            sql`not exists (
+              select 1 from rfq_dismissals d
+              where d.rfq_id = ${rfqs.id}
+                and d.operator_id = ${filter.operatorId}
+            )`,
             ...(filter.vertical
               ? [eq(rfqs.vertical, filter.vertical)]
               : []),
@@ -922,6 +930,11 @@ export class DrizzleRepo implements Repo {
           eq(rfqMatches.operatorId, operatorId),
           eq(rfqMatches.state, "delayed"),
           sql`${rfqs.status} NOT IN ('closed', 'spam')`,
+          // A dismissed delayed match stops teasing too (QA-420).
+          sql`not exists (
+            select 1 from rfq_dismissals d
+            where d.rfq_id = ${rfqs.id} and d.operator_id = ${operatorId}
+          )`,
           ...(vertical ? [eq(rfqs.vertical, vertical)] : []),
         ),
       );
@@ -944,6 +957,36 @@ export class DrizzleRepo implements Repo {
       )
       .limit(1);
     return r !== undefined;
+  }
+
+  async dismissRfq(rfqId: string, operatorId: string): Promise<boolean> {
+    if (!isUuid(rfqId) || !isUuid(operatorId)) return false;
+    const [rfq] = await this.db
+      .select({ listingId: rfqs.listingId })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqId))
+      .limit(1);
+    if (!rfq) return false;
+    // Only dismissable when it's already in this operator's inbox — the
+    // check gates what would otherwise be an id-probe endpoint (QA-420).
+    const owns =
+      rfq.listingId !== null &&
+      (await this.db
+        .select({ id: listings.id })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, rfq.listingId),
+            eq(listings.operatorId, operatorId),
+          ),
+        )
+        .limit(1)).length > 0;
+    if (!owns && !(await this.hasRfqMatch(rfqId, operatorId))) return false;
+    await this.db
+      .insert(rfqDismissals)
+      .values({ rfqId, operatorId })
+      .onConflictDoNothing();
+    return true;
   }
 
   async markInboxSeen(operatorId: string): Promise<void> {

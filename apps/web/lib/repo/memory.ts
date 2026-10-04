@@ -493,8 +493,9 @@ class MemoryRepo implements Repo {
       const opId = filter.operatorId;
       out = out.filter(
         (r) =>
-          (r.listingId !== null && opListingIds.has(r.listingId)) ||
-          this.matchVisible(r.id, opId),
+          !this.rfqDismissed.has(`${r.id}:${opId}`) &&
+          ((r.listingId !== null && opListingIds.has(r.listingId)) ||
+            this.matchVisible(r.id, opId)),
       );
       // "Needs a quote": hide RFQs the operator already has a live quote on
       // (sent/accepted) — declined/withdrawn leave it needing action (QA-402).
@@ -527,6 +528,21 @@ class MemoryRepo implements Repo {
   private matchVisible(rfqId: string, operatorId: string): boolean {
     const m = this.rfqMatches.get(rfqId)?.get(operatorId);
     return !!m && (!m.deliverAt || m.deliverAt.getTime() <= Date.now());
+  }
+
+  /** QA-420 dismissed pairs `${rfqId}:${operatorId}` — per-operator inbox
+   *  state, hidden from that operator's views only. */
+  private rfqDismissed = new Set<string>();
+
+  async dismissRfq(rfqId: string, operatorId: string): Promise<boolean> {
+    const rfq = this.rfqs.get(rfqId);
+    if (!rfq) return false;
+    const owns =
+      rfq.listingId !== null &&
+      this.listings.get(rfq.listingId)?.operatorId === operatorId;
+    if (!owns && !this.matchVisible(rfqId, operatorId)) return false;
+    this.rfqDismissed.add(`${rfqId}:${operatorId}`);
+    return true;
   }
 
   /** Still undelivered = deliverAt strictly in the future (matchVisible's
@@ -623,6 +639,8 @@ class MemoryRepo implements Repo {
         continue;
       }
       if (vertical && rfq?.vertical !== vertical) continue;
+      // A dismissed delayed match is no teaser either (QA-420).
+      if (this.rfqDismissed.has(`${rfqId}:${operatorId}`)) continue;
       n++;
     }
     return n;
