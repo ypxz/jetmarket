@@ -128,20 +128,14 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
  * name-only masking). `opsById` lets the caller reuse already-loaded
  * operator rows; missing entries are fetched one at a time.
  */
-export async function emailRfqMatches(
-  repo: Repo,
-  rfq: Rfq,
-  listingTitle: string | undefined,
-  operatorIds: string[],
-  opsById?: Map<string, Operator>,
-) {
+/** Shared mail details for RFQ operator notices: masked buyer name, the
+ *  vertical's declared field lines (QA-234) plus undeclared extras, and
+ *  the route string the subject carries. */
+function rfqMailDetails(f: Record<string, unknown>) {
   const vertical = verticalConfig();
-  const f = rfq.fields;
   // Buyer contact stays masked until a deal closes (QA-152) — name only.
   const buyerName =
     typeof f["name"] === "string" && f["name"].trim() ? f["name"] : "A buyer";
-  // Field detail lines mirror the worker's email (QA-234): the vertical's
-  // declared fields, labeled and in form order, plus undeclared extras.
   const labels = rfqFieldLabels(vertical, verticalMessages());
   const CONTACT_KEYS = new Set(["name", "email", "phone"]);
   const declaredOrder = [...labels.keys()];
@@ -157,6 +151,18 @@ export async function emailRfqMatches(
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
     .filter(Boolean)
     .join(" → ");
+  return { buyerName, detailLines, route };
+}
+
+export async function emailRfqMatches(
+  repo: Repo,
+  rfq: Rfq,
+  listingTitle: string | undefined,
+  operatorIds: string[],
+  opsById?: Map<string, Operator>,
+) {
+  const f = rfq.fields;
+  const { buyerName, detailLines, route } = rfqMailDetails(f);
   const subject = ["New RFQ", route, listingTitle].filter(Boolean).join(" — ");
   // Concierge RFQs are paid expedites — flag them so operators quote first
   // (same line the worker's email.quote_notification adds in pg mode).
@@ -191,6 +197,58 @@ export async function emailRfqMatches(
       });
     } catch (e) {
       logWarn("rfq.match_email_failed", {
+        rfqId: rfq.id,
+        operatorId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+}
+
+/**
+ * The "buyer amended their RFQ" operator email (QA-481) — same masked
+ * field lines as the new-request build, different subject/intro so an op
+ * doesn't mistake it for a second request. Goes to the PRE-amend visible
+ * set only: operators the re-fan-out just matched get the normal new-RFQ
+ * mail instead of an "updated" notice for a request they never saw.
+ */
+export async function emailRfqAmended(
+  repo: Repo,
+  rfq: Rfq,
+  listingTitle: string | undefined,
+  operatorIds: string[],
+) {
+  const { buyerName, detailLines, route } = rfqMailDetails(rfq.fields);
+  const subject = ["Updated RFQ", route, listingTitle]
+    .filter(Boolean)
+    .join(" — ");
+  for (const operatorId of operatorIds) {
+    const op = await repo.getOperator(operatorId);
+    const user = op ? await repo.getUser(op.userId) : undefined;
+    if (!user) continue;
+    try {
+      await emailProvider().send({
+        to: user.email,
+        subject,
+        text:
+          `The buyer updated their request for quotation on ${site.name} — ` +
+          `the latest details are below.\n\n` +
+          `${detailLines.join("\n")}\n` +
+          `Buyer: ${buyerName}\n\n` +
+          `Open your operator inbox to review or quote.`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [
+            `The buyer updated their request for quotation on ${site.name} — the request below reflects the latest version.`,
+            ...detailLines,
+            `Buyer: ${buyerName}`,
+            "Open your operator inbox to review or quote.",
+          ],
+        }),
+      });
+    } catch (e) {
+      logWarn("rfq.amend_email_failed", {
         rfqId: rfq.id,
         operatorId,
         error: e instanceof Error ? e.message : String(e),

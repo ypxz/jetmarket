@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, notExists, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import {
   fromMinorUnits,
@@ -911,6 +911,49 @@ export class DrizzleRepo implements Repo {
       )
       .returning({ id: rfqs.id });
     return rows.length > 0;
+  }
+  async updateRfqFields(
+    id: string,
+    fields: Record<string, unknown>,
+    dedupeKey: string,
+  ): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    // Full-fields replace (the edit form round-trips everything) + the
+    // caller-recomputed dedupe key — one CAS under the live-status gate.
+    const rows = await this.db
+      .update(rfqs)
+      .set({ fields, dedupeKey })
+      .where(
+        and(eq(rfqs.id, id), inArray(rfqs.status, ["new", "matched", "quoted"])),
+      )
+      .returning({ id: rfqs.id });
+    return rows.length > 0;
+  }
+  async listRfqMatchOperatorIds(rfqId: string): Promise<string[]> {
+    if (!isUuid(rfqId)) return [];
+    // Delivered = left the delay window; NOT EXISTS folds in the dismissal
+    // opt-out (same predicate the operator inbox applies).
+    const rows = await this.db
+      .select({ operatorId: rfqMatches.operatorId })
+      .from(rfqMatches)
+      .where(
+        and(
+          eq(rfqMatches.rfqId, rfqId),
+          ne(rfqMatches.state, "delayed"),
+          notExists(
+            this.db
+              .select({ one: sql`1` })
+              .from(rfqDismissals)
+              .where(
+                and(
+                  eq(rfqDismissals.rfqId, rfqMatches.rfqId),
+                  eq(rfqDismissals.operatorId, rfqMatches.operatorId),
+                ),
+              ),
+          ),
+        ),
+      );
+    return rows.map((r) => r.operatorId);
   }
   async expediteRfq(id: string) {
     if (!isUuid(id)) return { applied: false, matches: [] };

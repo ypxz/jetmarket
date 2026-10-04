@@ -46,6 +46,15 @@ interface Rfq {
   fields?: Record<string, unknown>;
   // Operators the request actually reached (delayed matches don't count).
   deliveredTo: number;
+  /** QA-481: vertical field defs for the inline edit form — key/label/
+   *  type/required built server-side (the client never imports config). */
+  editFields?: {
+    key: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: { value: string; label: string }[];
+  }[];
   /** QA-442: derived liveness deadline — when this request stops
    *  collecting offers (dated: day after dateTo; else createdAt+30d). */
   deadlineAt: string;
@@ -75,6 +84,8 @@ function QuotesInner() {
   // "Ending first" triage — same deadline sort the operator inbox has
   // (QA-448): soonest-dying live request first, terminal rows last.
   const [endingFirst, setEndingFirst] = useState(false);
+  // QA-481: which live row's inline edit form is open (one at a time).
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function load(e?: React.FormEvent, tok?: string, ending = endingFirst) {
     e?.preventDefault();
@@ -276,6 +287,31 @@ function QuotesInner() {
     await load();
   }
 
+  // QA-481: amend a live request in place — quotes and delivered-to
+  // history survive; the PATCH CAS keeps it off terminal rows, the route
+  // re-fans-out to newly-fitting operators and mails the rest.
+  async function amendRfq(rfqId: string, fields: Record<string, unknown>) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/rfqs/${rfqId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token, fields }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(data.error ?? tc("error"));
+      return;
+    }
+    setEditingId(null);
+    setMsg(t("amendedMsg"));
+    await load();
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -374,6 +410,18 @@ function QuotesInner() {
                         {t("extend")}
                       </button>
                     ) : null}
+                    {["open", "matched", "quoted"].includes(r.status) &&
+                    r.editFields?.length ? (
+                      <button
+                        onClick={() =>
+                          setEditingId(editingId === r.id ? null : r.id)
+                        }
+                        data-testid={`edit-rfq-${r.id}`}
+                        className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
+                      >
+                        {t("edit")}
+                      </button>
+                    ) : null}
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button
                         onClick={() => closeRfq(r.id)}
@@ -413,6 +461,15 @@ function QuotesInner() {
                   <p className="mt-1 text-xs text-muted" data-testid={`rfq-echo-${r.id}`}>
                     {r.requestFields.map((f) => `${f.label}: ${f.value}`).join(" · ")}
                   </p>
+                ) : null}
+                {editingId === r.id && r.editFields?.length ? (
+                  <RfqEditForm
+                    rfq={r}
+                    onSave={(fields) => amendRfq(r.id, fields)}
+                    onCancel={() => setEditingId(null)}
+                    saveLabel={t("saveEdit")}
+                    cancelLabel={t("cancelEdit")}
+                  />
                 ) : null}
                 {r.deliveredTo > 0 ? (
                   <p className="mt-1 text-xs text-muted" data-testid={`rfq-delivered-${r.id}`}>
@@ -584,5 +641,130 @@ export default function QuotesPage() {
     <Suspense>
       <QuotesInner />
     </Suspense>
+  );
+}
+
+/** QA-481: inline amend form for a live request — renders the vertical's
+ *  field defs (delivered as `editFields` by the API) prefilled from the
+ *  request's stored `fields`. Full replace semantics: whatever ships in
+ *  the form is the new request body. */
+function RfqEditForm({
+  rfq,
+  onSave,
+  onCancel,
+  saveLabel,
+  cancelLabel,
+}: {
+  rfq: Rfq;
+  onSave: (fields: Record<string, unknown>) => void;
+  onCancel: () => void;
+  saveLabel: string;
+  cancelLabel: string;
+}) {
+  const [vals, setVals] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const f of rfq.editFields ?? []) {
+      const v = rfq.fields?.[f.key];
+      init[f.key] = v === undefined || v === null ? "" : String(v);
+    }
+    return init;
+  });
+  return (
+    <form
+      className="mt-2 grid grid-cols-1 gap-2 rounded-md bg-surface p-3 sm:grid-cols-2"
+      data-testid={`rfq-edit-form-${rfq.id}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fields: Record<string, unknown> = {};
+        for (const f of rfq.editFields ?? []) {
+          const v = vals[f.key] ?? "";
+          if (v === "") {
+            fields[f.key] = "";
+          } else if (f.type === "number") {
+            fields[f.key] = Number(v);
+          } else {
+            fields[f.key] = v;
+          }
+        }
+        onSave(fields);
+      }}
+    >
+      {(rfq.editFields ?? []).map((f) =>
+        f.type === "textarea" ? (
+          <label key={f.key} className="col-span-full text-xs text-muted">
+            {f.label}
+            <textarea
+              value={vals[f.key] ?? ""}
+              required={f.required}
+              onChange={(e) =>
+                setVals((v) => ({ ...v, [f.key]: e.target.value }))
+              }
+              className="mt-0.5 w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+              data-testid={`rfq-edit-${rfq.id}-${f.key}`}
+            />
+          </label>
+        ) : f.type === "select" && f.options?.length ? (
+          <label key={f.key} className="text-xs text-muted">
+            {f.label}
+            <select
+              value={vals[f.key] ?? ""}
+              required={f.required}
+              onChange={(e) =>
+                setVals((v) => ({ ...v, [f.key]: e.target.value }))
+              }
+              className="mt-0.5 w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+              data-testid={`rfq-edit-${rfq.id}-${f.key}`}
+            >
+              <option value="">—</option>
+              {f.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label key={f.key} className="text-xs text-muted">
+            {f.label}
+            <input
+              type={
+                f.type === "number"
+                  ? "number"
+                  : f.type === "date"
+                    ? "date"
+                    : f.type === "email"
+                      ? "email"
+                      : f.type === "tel"
+                        ? "tel"
+                        : "text"
+              }
+              value={vals[f.key] ?? ""}
+              required={f.required}
+              onChange={(e) =>
+                setVals((v) => ({ ...v, [f.key]: e.target.value }))
+              }
+              className="mt-0.5 w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+              data-testid={`rfq-edit-${rfq.id}-${f.key}`}
+            />
+          </label>
+        ),
+      )}
+      <div className="col-span-full flex gap-2">
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground"
+          data-testid={`rfq-edit-save-${rfq.id}`}
+        >
+          {saveLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-border bg-background px-3 py-1 text-sm"
+        >
+          {cancelLabel}
+        </button>
+      </div>
+    </form>
   );
 }

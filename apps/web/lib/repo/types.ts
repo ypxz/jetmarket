@@ -453,6 +453,30 @@ export interface Repo {
    */
   extendRfqDeadline(id: string, dateTo: string): Promise<boolean>;
   /**
+   * Buyer-side amendment (QA-481): CAS-gated full replace of `fields` +
+   * `dedupeKey` on a LIVE RFQ — a typo'd route/date shouldn't force
+   * close+repost (which abandons delivered-to history and live quotes).
+   * The dedupe key is recomputed by the caller on the new fields so the
+   * amended request's own key isn't left to block a later identical post;
+   * a recomputed key colliding with ANOTHER live twin surfaces as a unique
+   * violation the route maps to 409. Returns false on a terminal RFQ.
+   */
+  updateRfqFields(
+    id: string,
+    fields: Record<string, unknown>,
+    dedupeKey: string,
+  ): Promise<boolean>;
+  /**
+   * Operators who can still SEE this RFQ in their inbox (QA-481): delivered
+   * match holders — pg `state <> 'delayed'` (pending/sent/failed all mean
+   * the row already left the delay window; memory `!deliverAt || deliverAt
+   * <= now`, the matchVisible rule) — minus dismissals: an operator who
+   * dismissed the request opted out and must not hear about edits. The
+   * listing owner has no match row (self-match exclusion) — callers add
+   * them separately. Used for the amend fan-out notify set.
+   */
+  listRfqMatchOperatorIds(rfqId: string): Promise<string[]>;
+  /**
    * Matches of this RFQ still awaiting delivery — the thing a concierge
    * purchase actually buys. pg counts `state='delayed'` (a row whose
    * deliverAt passed but the worker hasn't flipped yet still counts — the

@@ -2,6 +2,7 @@
 // RFQ spam moderation, deals list — plus logout revocation and the
 // uploads MIME guard, which had zero coverage until this spec.
 import { expect, request, test } from '@playwright/test';
+import postgres from 'postgres';
 import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
@@ -15,6 +16,30 @@ const BUYER_EMAIL = `e2e-adm-buyer-${run}@jetmarket.local`;
 const OPERATOR_EMAIL = `e2e-adm-op-${run}@jetmarket.local`;
 // Fresh rate-limit bucket per run for admin routes (keyed on client IP).
 const adminIp = { 'x-forwarded-for': `10.9.${(run % 200) + 1}.7` };
+
+const testDb =
+  process.env.TEST_DATABASE_URL ??
+  'postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test';
+
+test.afterAll(async () => {
+  // Specs own their fixtures (QA-289): the QA-458 rate leg leaves a
+  // 5.0-rated deal on this spec's operator — /operators then resolves TWO
+  // rating badges for later specs and core-loop's unscoped locator dies
+  // on strict mode (QA-481). RFQ matches/quotes/deals/reports cascade
+  // off the rfqs + listings deletes.
+  const sql = postgres(testDb, { max: 1 });
+  try {
+    await sql`delete from rfqs where buyer_email = ${BUYER_EMAIL}`;
+    await sql`delete from listings where operator_id in
+      (select o.id from operators o
+       join users u on u.id = o.user_id where u.email = ${OPERATOR_EMAIL})`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${OPERATOR_EMAIL})`;
+    await sql`delete from users where email in (${BUYER_EMAIL}, ${OPERATOR_EMAIL})`;
+  } finally {
+    await sql.end();
+  }
+});
 
 async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
   const ctx = await request.newContext({

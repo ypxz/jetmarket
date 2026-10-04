@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { brandedEmailHtml, captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
+import { canonicalize } from "@/lib/rfq-dedupe";
 import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
 import { z } from "zod";
 import { buildRfqSchema, getVertical, nonContactFields, rfqFieldLabels } from "@jetmarket/verticals";
@@ -23,19 +24,6 @@ const CreateRfq = z.object({
   // always passes; turnstile verifies server-side.
   captchaToken: z.string().max(4096).optional(),
 });
-
-/** Stable stringify: sorted object keys so field order never defeats dedupe. */
-function canonicalize(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(canonicalize).join(",")}]`;
-  if (v && typeof v === "object") {
-    const o = v as Record<string, unknown>;
-    return `{${Object.keys(o)
-      .sort()
-      .map((k) => `${JSON.stringify(k)}:${canonicalize(o[k])}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(v) ?? "null";
-}
 
 export async function POST(req: Request) {
   const ip = clientIp(req);

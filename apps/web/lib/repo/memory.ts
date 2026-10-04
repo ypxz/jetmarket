@@ -566,6 +566,40 @@ class MemoryRepo implements Repo {
     this.rfqs.set(id, { ...rfq, fields: { ...rfq.fields, dateTo } });
     return true;
   }
+  async updateRfqFields(
+    id: string,
+    fields: Record<string, unknown>,
+    dedupeKey: string,
+  ): Promise<boolean> {
+    const rfq = this.rfqs.get(id);
+    // Same live gate as drizzle — synchronous check+write (QA-333). The
+    // fields replace + dedupe re-key are one mutation, not interleavable.
+    if (!rfq || !LIVE_RFQ_STATUSES.has(rfq.status)) return false;
+    // Mirrors the partial unique index: the recomputed key collides only
+    // with a DIFFERENT live twin — same error createRfq throws (QA-228).
+    const hitId = this.rfqDedupe.get(dedupeKey);
+    const hit = hitId ? this.rfqs.get(hitId) : undefined;
+    if (hit && hit.id !== id && LIVE_RFQ_STATUSES.has(hit.status)) {
+      throw new Error("duplicate key value violates unique constraint");
+    }
+    for (const [k, v] of this.rfqDedupe) {
+      if (v === id) this.rfqDedupe.delete(k);
+    }
+    this.rfqs.set(id, { ...rfq, fields });
+    this.rfqDedupe.set(dedupeKey, id);
+    return true;
+  }
+  /** Delivered = matchVisible's rule on every holder, minus dismissals —
+   *  the amend-notify set (QA-481). */
+  async listRfqMatchOperatorIds(rfqId: string): Promise<string[]> {
+    const out: string[] = [];
+    for (const opId of this.rfqMatches.get(rfqId)?.keys() ?? []) {
+      if (!this.matchVisible(rfqId, opId)) continue;
+      if (this.rfqDismissed.has(`${rfqId}:${opId}`)) continue;
+      out.push(opId);
+    }
+    return out;
+  }
   async expediteRfq(id: string) {
     const rfq = this.rfqs.get(id);
     if (!rfq || rfq.concierge || !LIVE_RFQ_STATUSES.has(rfq.status)) {
@@ -761,10 +795,14 @@ class MemoryRepo implements Repo {
   ): Promise<void> {
     for (const r of rows) {
       const forRfq = this.rfqMatches.get(r.rfqId) ?? new Map();
-      forRfq.set(r.operatorId, {
-        listingId: r.listingId ?? null,
-        ...(r.deliverAt ? { deliverAt: r.deliverAt } : {}),
-      });
+      // pg is ON CONFLICT (rfq_id, operator_id) DO NOTHING — a re-fan-out
+      // (QA-481 amend) must not refresh an existing pair's deliverAt.
+      if (!forRfq.has(r.operatorId)) {
+        forRfq.set(r.operatorId, {
+          listingId: r.listingId ?? null,
+          ...(r.deliverAt ? { deliverAt: r.deliverAt } : {}),
+        });
+      }
       this.rfqMatches.set(r.rfqId, forRfq);
     }
     // Mirror markRfqMatched: only off the initial state, never resurrect.

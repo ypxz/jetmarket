@@ -342,7 +342,7 @@ describe("rfqFanout", () => {
     expect(rows.map((r) => r.operatorId)).toEqual(["press-dealer"]);
   });
 
-  it("no-ops on a non-new rfq (closed/expired/already-matched)", async () => {
+  it("no-ops on a terminal rfq (closed/expired/spam)", async () => {
     const repo = fakeRepo({ loadRfq: async (id) => ({
       id,
       vertical: "jets",
@@ -357,6 +357,36 @@ describe("rfqFanout", () => {
     await rfqFanout(d, { rfqId: "r1" });
     expect(repo.calls["insertMatches"]).toBeUndefined();
     expect(repo.calls["markRfqMatched"]).toBeUndefined();
+  });
+
+  it("re-runs matching on a live matched rfq — the amend path (QA-481)", async () => {
+    // PATCH /api/rfqs/[id] re-enqueues fan-out after a buyer amendment:
+    // the gate admits live statuses so newly-fitting operators get match
+    // rows (insertMatches is DO-NOTHING on existing pairs — the fake
+    // repo returns m-rows as if all fits were new).
+    const repo = fakeRepo({
+      loadRfq: async (id) => ({
+        ...(await fakeRepo().loadRfq(id))!,
+        status: "matched",
+      }),
+    });
+    const enqueued: { kind: string; payload: unknown }[] = [];
+    const d = deps(repo);
+    d.sql = sqlStub(enqueued);
+
+    await rfqFanout(d, { rfqId: "r1" });
+
+    expect(repo.calls["insertMatches"]).toHaveLength(1);
+    const rows = repo.calls["insertMatches"]![0] as {
+      operatorId: string;
+      state: string;
+    }[];
+    expect(rows.map((r) => r.state)).toEqual(["pending", "delayed"]);
+    // markRfqMatched is called but CAS no-ops off 'new' on the real repo.
+    expect(repo.calls["markRfqMatched"]).toEqual(["r1"]);
+    expect(enqueued).toEqual([
+      { kind: "email.quote_notification", payload: { matchId: "m0" } },
+    ]);
   });
 
   it("rejects a malformed payload", async () => {

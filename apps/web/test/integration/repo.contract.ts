@@ -1118,6 +1118,160 @@ export function repoContract(
       );
     });
 
+    it("updateRfqFields replaces fields + re-keys dedupe on live rows only (QA-481)", async () => {
+      const repo = await factory();
+      const tag = `am-${Date.now().toString(36)}`;
+      const u = await repo.createUser(`am-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "Amend Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Amend Jet ${tag}`,
+        price: 9000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const buyer = `amb-${tag}@test.dev`;
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: buyer,
+        fields: { from: "ZRH", to: "NCE", dateTo: isoIn(10) },
+        dedupeKey: `amk1-${tag}`,
+      });
+      // Live twin owning the key the amend will try to take.
+      const twin = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `amt-${tag}@test.dev`,
+        fields: { from: "GVA" },
+        dedupeKey: `taken-${tag}`,
+      });
+
+      // Live write: fields replace WHOLE (stale keys are gone), the dedupe
+      // lookup moves to the new key, the old one releases.
+      const fields2 = { from: "GVA", to: "LIN", passengers: 4 };
+      expect(await repo.updateRfqFields(rfq.id, fields2, `amk2-${tag}`)).toBe(
+        true,
+      );
+      expect((await repo.getRfq(rfq.id))?.fields).toEqual(fields2);
+      expect((await repo.getRfqByDedupeKey(`amk2-${tag}`))?.id).toBe(rfq.id);
+      expect(
+        await repo.getRfqByDedupeKey(`amk1-${tag}`),
+      ).toBeUndefined();
+
+      // Same-value rewrite still succeeds — the key holder is self.
+      expect(await repo.updateRfqFields(rfq.id, fields2, `amk2-${tag}`)).toBe(
+        true,
+      );
+
+      // Taking the twin's live key must surface the unique violation on
+      // both impls (pg partial index / memory synchronous guard).
+      try {
+        await repo.updateRfqFields(rfq.id, fields2, `taken-${tag}`);
+        expect.unreachable("taking a live twin's key must throw");
+      } catch (e) {
+        expect(isUniqueViolation(e)).toBe(true);
+      }
+      // The failed take left the row + keyring intact.
+      expect((await repo.getRfq(rfq.id))?.fields).toEqual(fields2);
+      expect((await repo.getRfqByDedupeKey(`taken-${tag}`))?.id).toBe(
+        twin.id,
+      );
+      expect((await repo.getRfqByDedupeKey(`amk2-${tag}`))?.id).toBe(rfq.id);
+
+      // Terminal rows refuse — and the failed write can't re-key anyway.
+      expect(
+        await repo.setRfqStatus(rfq.id, "closed", ["open", "matched", "quoted"]),
+      ).toBe(true);
+      expect(await repo.updateRfqFields(rfq.id, fields2, `amk3-${tag}`)).toBe(
+        false,
+      );
+      expect((await repo.getRfq(rfq.id))?.fields).toEqual(fields2);
+      expect(await repo.getRfqByDedupeKey(`amk3-${tag}`)).toBeUndefined();
+      // The dead twin refuses too — its key stays free for a repost.
+      expect(
+        await repo.setRfqStatus(twin.id, "closed", [
+          "open",
+          "matched",
+          "quoted",
+        ]),
+      ).toBe(true);
+      expect(await repo.updateRfqFields(twin.id, fields2, `amk4-${tag}`)).toBe(
+        false,
+      );
+      expect(await repo.getRfqByDedupeKey(`amk4-${tag}`)).toBeUndefined();
+      expect(await repo.getRfqByDedupeKey(`taken-${tag}`)).toBeUndefined();
+    });
+
+    it("listRfqMatchOperatorIds returns delivered holders minus dismissals (QA-481)", async () => {
+      const repo = await factory();
+      const tag = `aops-${Date.now().toString(36)}`;
+      const mk = async (n: string) => {
+        const u = await repo.createUser(`${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: false,
+          plan: "free",
+        });
+      };
+      const [owner, seen, delayed, dismissed] = await Promise.all([
+        mk("owner"),
+        mk("seen"),
+        mk("delayed"),
+        mk("dismissed"),
+      ]);
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Amend Ops ${tag}`,
+        price: 7000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `aopsb-${tag}@test.dev`,
+        fields: { from: "ZRH", to: "NCE", dateTo: isoIn(10) },
+      });
+      await repo.createRfqMatches([
+        { rfqId: rfq.id, operatorId: seen.id, listingId: listing.id },
+        {
+          rfqId: rfq.id,
+          operatorId: delayed.id,
+          listingId: listing.id,
+          deliverAt: new Date(Date.now() + 3_600_000),
+        },
+        { rfqId: rfq.id, operatorId: dismissed.id, listingId: listing.id },
+      ]);
+      // Dismissals hide that operator from the notify set even though the
+      // match itself is delivered.
+      await repo.dismissRfq(rfq.id, dismissed.id);
+
+      const ids = await repo.listRfqMatchOperatorIds(rfq.id);
+      expect(ids).toContain(seen.id);
+      expect(ids).not.toContain(delayed.id);
+      expect(ids).not.toContain(dismissed.id);
+      // The listing owner is deliberately absent — the caller adds it.
+      expect(ids).not.toContain(owner.id);
+      expect(await repo.listRfqMatchOperatorIds("rfq-missing")).toEqual([]);
+    });
+
     it("countDeliveredMatches counts due rows only, batched (QA-401)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

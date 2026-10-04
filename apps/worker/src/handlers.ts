@@ -91,10 +91,14 @@ export async function rfqFanout(
   }
   const rfq = await deps.repo.loadRfq(rfqId);
   if (!rfq) throw new Error(`rfq ${rfqId} not found`);
-  // Fan-out is a one-shot transition off `new`: an RFQ that closed, expired,
-  // or was already matched between enqueue and tick must not re-fan-out (or
-  // re-notify operators for a dead request).
-  if (rfq.status !== "new") return;
+  // Fan-out only runs for LIVE RFQs: closed/expired/spam must not
+  // re-notify operators for a dead request. `matched`/`quoted` are
+  // admitted too — the amend path (QA-481) re-enqueues fan-out after a
+  // buyer edits their request; insertMatches dedupes the existing pairs
+  // so only newly-fitting operators get a row + mail, and markRfqMatched
+  // is a no-op off `new` (the status never regresses).
+  if (rfq.status !== "new" && rfq.status !== "matched" && rfq.status !== "quoted")
+    return;
 
   const now = at(deps);
   const candidates = await deps.repo.loadOperatorCandidates(

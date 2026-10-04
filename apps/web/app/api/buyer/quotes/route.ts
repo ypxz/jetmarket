@@ -146,6 +146,22 @@ export async function GET(req: Request) {
       deadlineAt: rfqDeadlineAt(rfq).toISOString(),
       deliveredTo: deliveredCounts[rfq.id] ?? 0,
       requestFields: requestFieldsOf(rfq.listingId ?? "", rfq.fields),
+      // QA-481: the field defs the live row's edit form renders — type +
+      // label come from the vertical config server-side so the client
+      // never imports it (same rule as requestFields).
+      editFields: rfqFieldsFor(
+        vertical,
+        rfq.listingId ? listingById.get(rfq.listingId)?.type : undefined,
+      ).map((f) => ({
+        key: f.key,
+        label: labels.get(f.key) ?? f.key,
+        type: f.type,
+        required: f.required,
+        options: f.options?.map((o) => ({
+          value: o.value,
+          label: String(verticalMessages()[o.labelKey] ?? o.value),
+        })),
+      })),
       listing: (() => {
         const l = rfq.listingId
           ? (listingById.get(rfq.listingId) ?? null)
