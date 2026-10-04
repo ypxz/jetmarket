@@ -113,7 +113,11 @@ describe("POST /api/quotes/[id]/accept notifications (QA-149)", () => {
   });
 });
 
-async function legFixture(repo: Repo, type = "empty_leg") {
+async function legFixture(
+  repo: Repo,
+  type = "empty_leg",
+  attributes: Record<string, unknown> = {},
+) {
     const tag = Math.random().toString(36).slice(2, 8);
     const opUser = await repo.createUser(`op1-${tag}@test.dev`, "operator");
     const op = await repo.upsertOperator({
@@ -132,7 +136,7 @@ async function legFixture(repo: Repo, type = "empty_leg") {
       price: 5000,
       currency: "USD",
       photos: [],
-      attributes: {},
+      attributes,
     });
     const buyerEmail = `b1-${tag}@test.dev`;
     const rfq = await repo.createRfq({
@@ -413,5 +417,83 @@ describe("listing lifecycle analytics (QA-501)", () => {
       spy.mockRestore();
       asUser(null);
     }
+  });
+});
+
+describe("accept listing-ownership correctness (QA-502)", () => {
+  it("a fan-out win does not consume the pinned listing's one-off inventory", async () => {
+    const repo = await getMemoryRepo();
+    // RFQ pinned to op A's empty leg; op B is a matched operator quoting on
+    // the same request. If B wins, A's leg is still on the market.
+    const { listing, rfq, quote: ownerQuote, buyerEmail } =
+      await legFixture(repo);
+    const opBUser = await repo.createUser("opb@test.dev", "operator");
+    const opB = await repo.upsertOperator({
+      userId: opBUser.id,
+      name: "FanOut B",
+      baseAirport: "GVA",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    const quoteB = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: opB.id,
+      amount: 4800,
+      currency: "USD",
+      message: "",
+    });
+
+    const res = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quoteB.id),
+    );
+    expect(res.status).toBe(200);
+    // B won — their deal minted; A's pinned listing stays live, A's own
+    // quote declined as competing-accepted.
+    expect((await repo.getListing(listing.id))?.status).toBe("active");
+    expect((await repo.getQuote(ownerQuote.id))?.status).toBe("declined");
+    expect((await repo.getQuote(quoteB.id))?.status).toBe("accepted");
+  });
+
+  it("an expired listing blocks its owner's quote but not a fan-out quote", async () => {
+    const repo = await getMemoryRepo();
+    // The leg's date already passed — the listing is read-time expired.
+    const { listing, rfq, quote: ownerQuote, buyerEmail } =
+      await legFixture(repo, "empty_leg", { date: "2020-01-01" });
+    const opBUser = await repo.createUser("opb@test.dev", "operator");
+    const opB = await repo.upsertOperator({
+      userId: opBUser.id,
+      name: "FanOut B",
+      baseAirport: "GVA",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    const quoteB = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: opB.id,
+      amount: 4800,
+      currency: "USD",
+      message: "",
+    });
+
+    // Owner's quote: the seat they sold already flew — can't accept.
+    const res = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(ownerQuote.id),
+    );
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("no longer available");
+    expect((await repo.getRfq(rfq.id))?.status).not.toBe("closed");
+
+    // B's quote on the same request still serves the buyer.
+    const resB = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quoteB.id),
+    );
+    expect(resB.status).toBe(200);
+    // And B's win never flipped A's (already-dead) listing to 'sold'.
+    expect((await repo.getListing(listing.id))?.status).toBe("active");
   });
 });

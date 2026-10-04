@@ -9,6 +9,7 @@ import { getRepo } from "@/lib/repo";
 import { closeListingRfqs, sweepStaleRfqs } from "@/lib/sweep";
 import { paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 import { oneOffListingType } from "@jetmarket/verticals";
+import { isExpiredListing } from "@/lib/search";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { buyerAuthorized } from "@/lib/buyer-auth";
 import { endListingWatches } from "@/lib/search-alerts";
@@ -64,6 +65,17 @@ export async function POST(
   if (
     parentListing?.status === "archived" ||
     parentListing?.status === "sold"
+  ) {
+    return err("listing is no longer available", 409);
+  }
+  // QA-502: an expired one-off listing is gone from the market too — its
+  // dates already passed, so the LISTING OWNER's own quote can never be
+  // honored. Fan-out quotes on the same RFQ are unaffected: another
+  // operator can still serve the request on their own aircraft.
+  if (
+    parentListing &&
+    quote.operatorId === parentListing.operatorId &&
+    isExpiredListing(parentListing)
   ) {
     return err("listing is no longer available", 409);
   }
@@ -208,7 +220,14 @@ export async function POST(
   // market and its saved searches end with a "sold" notice — same terminal
   // treatment as archive, with 'sold' recording WHY. Capacity types
   // (charter) skip this: one plane takes many charters.
-  if (listing && oneOffListingType(verticalConfig(), listing.type)) {
+  // QA-502: only the LISTING OWNER's winning quote consumes the pinned
+  // listing — a fan-out win means the buyer chose another operator's
+  // supply; the pinned listing is still on the market.
+  if (
+    listing &&
+    quote.operatorId === listing.operatorId &&
+    oneOffListingType(verticalConfig(), listing.type)
+  ) {
     try {
       await repo.updateListingStatus(listing.id, "sold");
       await endListingWatches(repo, listing, appOrigin(req));
