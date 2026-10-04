@@ -76,6 +76,13 @@ export async function GET(req: Request) {
   const opById = new Map(
     opByIdEntries.map((o) => [o.id, publicOperator(o)] as const),
   );
+  // QA-451: deal id + rating attach to ACCEPTED quotes — the buyer rates
+  // the deal in place; ratingSummary feeds the operator trust line.
+  const [dealByQuote, ratingSummary] = await Promise.all([
+    repo.listDeals({ quoteIds: quoteRows.map((q) => q.id) }),
+    repo.ratingSummaryPerOperator(opIds),
+  ]);
+  const dealByQuoteId = new Map(dealByQuote.map((d) => [d.quoteId, d]));
   // QA-449: post-close contact reveal — once a quote is ACCEPTED the deal
   // is closed and the buyer legitimately reaches the operator directly
   // (the close mail already carries this address; the page shouldn't make
@@ -146,12 +153,21 @@ export async function GET(req: Request) {
         )
         .map((q) => ({
           ...q,
+          deal:
+            q.status === "accepted"
+              ? {
+                  id: dealByQuoteId.get(q.id)?.id,
+                  buyerRating: dealByQuoteId.get(q.id)?.buyerRating,
+                }
+              : undefined,
           operator: (() => {
             const o = opById.get(q.operatorId);
             return o
               ? {
                   ...o,
                   dealsClosed: dealCounts[q.operatorId] ?? 0,
+                  ratingAvg: ratingSummary[q.operatorId]?.avg,
+                  ratingCount: ratingSummary[q.operatorId]?.count,
                   contactEmail:
                     q.status === "accepted"
                       ? contactByOp.get(q.operatorId)

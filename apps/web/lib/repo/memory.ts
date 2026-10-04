@@ -900,13 +900,47 @@ class MemoryRepo implements Repo {
     });
     return true;
   }
+  async rateDeal(id: string, rating: number): Promise<boolean> {
+    const deal = this.deals.get(id);
+    // Sync check-write — once-ever + in-range in one pass (QA-333).
+    if (!deal || deal.buyerRating !== undefined || rating < 1 || rating > 5) {
+      return false;
+    }
+    this.deals.set(id, {
+      ...deal,
+      buyerRating: rating,
+      buyerRatedAt: new Date().toISOString(),
+    });
+    return true;
+  }
+  async ratingSummaryPerOperator(
+    operatorIds: string[],
+  ): Promise<Record<string, { avg: number; count: number }>> {
+    const want = new Set(operatorIds);
+    const acc = new Map<string, { sum: number; count: number }>();
+    for (const d of this.deals.values()) {
+      if (d.buyerRating === undefined || !want.has(d.operatorId)) continue;
+      const cur = acc.get(d.operatorId) ?? { sum: 0, count: 0 };
+      cur.sum += d.buyerRating;
+      cur.count += 1;
+      acc.set(d.operatorId, cur);
+    }
+    return Object.fromEntries(
+      [...acc].map(([id, a]) => [id, { avg: a.sum / a.count, count: a.count }]),
+    );
+  }
   async listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
+    quoteIds?: string[];
     limit?: number;
     offset?: number;
   }): Promise<Deal[]> {
     let out = [...this.deals.values()];
+    if (filter?.quoteIds !== undefined) {
+      const want = new Set(filter.quoteIds);
+      out = out.filter((d) => want.has(d.quoteId));
+    }
     if (filter?.operatorId) out = out.filter((d) => d.operatorId === filter.operatorId);
     // Deals carry no vertical — resolve through quote → rfq (QA-313).
     if (filter?.vertical) {

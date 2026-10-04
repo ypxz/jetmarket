@@ -22,10 +22,15 @@ interface Quote {
     name: string;
     verified: boolean;
     dealsClosed?: number;
+    /** QA-451: avg buyer rating + count across this operator's deals. */
+    ratingAvg?: number;
+    ratingCount?: number;
     /** QA-449: post-close reach-back — only present on the accepted quote
      *  (the deal's closed; the buyer legitimately gets the contact). */
     contactEmail?: string;
   } | null;
+  /** QA-451: on accepted quotes — the deal id to rate + the rating given. */
+  deal?: { id?: string; buyerRating?: number };
 }
 interface Rfq {
   id: string;
@@ -138,6 +143,28 @@ function QuotesInner() {
     // so it must not be a dep or the effect refetches every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // QA-451: once-ever 1-5 rating on the closed deal — updates the row
+  // in place via the same re-fetch the accept/decline handlers use.
+  async function rateDeal(dealId: string, rating: number) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/deals/${dealId}/rate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token, rating }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    if (!res.ok) {
+      const d = await readJsonOr<{ error?: string }>(res, {});
+      setMsg(d.error ?? tc("error"));
+      return;
+    }
+    await load();
+  }
 
   async function accept(quoteId: string) {
     let res: Response;
@@ -431,8 +458,34 @@ function QuotesInner() {
                             {(q.operator?.dealsClosed ?? 0) > 0
                               ? ` · ${t("dealsCount", { count: q.operator!.dealsClosed! })}`
                               : ""}
+                            {(q.operator?.ratingCount ?? 0) > 0
+                              ? ` · ${t("ratingAvg", { avg: q.operator!.ratingAvg!.toFixed(1), count: q.operator!.ratingCount! })}`
+                              : ""}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
+                          {/* QA-451: once-ever 1-5 rating, in place. */}
+                          {q.status === "accepted" && q.deal?.id ? (
+                            <p className="mt-1 text-sm" data-testid={`rate-deal-${q.deal.id}`}>
+                              {q.deal.buyerRating ? (
+                                t("ratedMsg", { rating: q.deal.buyerRating })
+                              ) : (
+                                <>
+                                  {t("ratePrompt")}{" "}
+                                  {[1, 2, 3, 4, 5].map((n) => (
+                                    <button
+                                      key={n}
+                                      type="button"
+                                      onClick={() => rateDeal(q.deal!.id!, n)}
+                                      data-testid={`rate-${q.deal!.id}-${n}`}
+                                      className="mx-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-xs hover:bg-surface"
+                                    >
+                                      {n}
+                                    </button>
+                                  ))}
+                                </>
+                              )}
+                            </p>
+                          ) : null}
                           {/* QA-449: accepted = deal closed — the buyer
                               needs a reach-back path on the page itself,
                               not just in the close mail. */}

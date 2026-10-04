@@ -173,6 +173,8 @@ function toDeal(
     invoiceStatus: d.invoiceStatus as Deal["invoiceStatus"],
     invoiceRef: d.invoiceRef ?? undefined,
     invoiceUrl: d.invoiceUrl ?? undefined,
+    buyerRating: d.buyerRating ?? undefined,
+    buyerRatedAt: d.buyerRatedAt ? iso(d.buyerRatedAt) : undefined,
     closedAt: iso(d.closedAt),
     ...(r
       ? { rfqId: r.id, buyerEmail: r.buyerEmail, listingTitle: l?.title }
@@ -1477,17 +1479,66 @@ export class DrizzleRepo implements Repo {
       .returning({ id: deals.id });
     return rows.length > 0;
   }
+  async rateDeal(id: string, rating: number): Promise<boolean> {
+    // Once-ever + in-range under one statement — a racing second rating
+    // loses the `buyer_rating is null` gate (QA-451).
+    const rows = await this.db
+      .update(deals)
+      .set({ buyerRating: rating, buyerRatedAt: new Date() })
+      .where(
+        and(
+          eq(deals.id, id),
+          sql`${deals.buyerRating} is null`,
+          sql`${rating} between 1 and 5`,
+        ),
+      )
+      .returning({ id: deals.id });
+    return rows.length > 0;
+  }
+  async ratingSummaryPerOperator(
+    operatorIds: string[],
+  ): Promise<Record<string, { avg: number; count: number }>> {
+    const ids = operatorIds.filter(isUuid);
+    if (!ids.length) return {};
+    const rows = await this.db
+      .select({
+        operatorId: quotes.operatorId,
+        avg: sql<number>`avg(${deals.buyerRating})::float8`,
+        count: sql<number>`count(${deals.buyerRating})::int`,
+      })
+      .from(deals)
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .where(
+        and(
+          inArray(quotes.operatorId, ids),
+          sql`${deals.buyerRating} is not null`,
+        ),
+      )
+      .groupBy(quotes.operatorId);
+    return Object.fromEntries(
+      rows.map((r) => [r.operatorId, { avg: r.avg, count: r.count }]),
+    );
+  }
   async listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
+    quoteIds?: string[];
     limit?: number;
     offset?: number;
   }): Promise<Deal[]> {
     // operatorId lives on the parent quote, vertical on the grandparent rfq —
     // join both so the filters are SQL (QA-313).
+    const quoteIds = filter?.quoteIds?.filter(isUuid) ?? [];
     const conds = [
       ...(filter?.operatorId ? [eq(quotes.operatorId, filter.operatorId)] : []),
       ...(filter?.vertical ? [eq(rfqs.vertical, filter.vertical)] : []),
+      ...(filter?.quoteIds !== undefined
+        ? [
+            quoteIds.length
+              ? inArray(deals.quoteId, quoteIds)
+              : sql`false`,
+          ]
+        : []),
     ];
     let q = this.db
       .select({ deal: deals, quote: quotes, rfq: rfqs, listing: listings })

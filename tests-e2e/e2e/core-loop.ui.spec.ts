@@ -393,6 +393,15 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(
       buyer.locator('[data-testid^="quote-contact-"]'),
     ).toContainText(OPERATOR_EMAIL);
+    // QA-451: the buyer rates the closed deal in place — once-ever; the
+    // operator trust line picks up "★ 5.0 (1 rating)" on the next render.
+    await buyer.locator('[data-testid^="rate-"][data-testid$="-5"]').click();
+    await expect(
+      buyer.locator('[data-testid^="rate-deal-"]'),
+    ).toContainText(/rated this deal 5\/5/i);
+    await expect(buyer.locator('[data-testid^="quote-"]').first()).toContainText(
+      /★ 5\.0 \(1 rating\)/,
+    );
   });
 
   await step('admin fee ledger shows the deal and fee invoice', async () => {

@@ -140,6 +140,9 @@ export interface Deal {
   /** QA-450: hosted pay page the operator settles through — only on
    *  `invoiced` rows, captured from the provider at issue time. */
   invoiceUrl?: string;
+  /** QA-451: the buyer's 1-5 rating — written once via rateDeal CAS. */
+  buyerRating?: number;
+  buyerRatedAt?: string;
   closedAt: string;
   /** Resolved off the parent quote→rfq→listing when the read joins them
    *  (listDeals): a closed deal unlocks the buyer's contact + which listing
@@ -656,6 +659,9 @@ export interface Repo {
   listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
+    /** QA-451: restrict to deals minted on these quotes (buyer inbox
+     *  attaches deal id + rating to accepted quote rows). */
+    quoteIds?: string[];
     limit?: number;
     offset?: number;
   }): Promise<Deal[]>;
@@ -678,6 +684,17 @@ export interface Repo {
     expectedIn?: Deal["invoiceStatus"][],
     invoiceUrl?: string,
   ): Promise<boolean>;
+
+  /** QA-451: buyer rates a closed deal 1-5 — once-ever CAS (a second call
+   *  returns false; ratings don't revise). Out-of-range ratings return
+   *  false too — the invariant lives in the repo, not the route. */
+  rateDeal(id: string, rating: number): Promise<boolean>;
+
+  /** QA-451: avg+count of buyer ratings per operator — the trust signal
+   *  quote cards and public profiles read. Empty map entries when none. */
+  ratingSummaryPerOperator(
+    operatorIds: string[],
+  ): Promise<Record<string, { avg: number; count: number }>>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

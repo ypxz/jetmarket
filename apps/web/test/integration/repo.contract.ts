@@ -2483,6 +2483,16 @@ export function repoContract(
       // be voided/re-invoiced by a racing writer.
       expect(await repo.setDealInvoice(deal.id, "void", undefined, ["invoiced"])).toBe(false);
       expect(await repo.setDealInvoice(deal.id, "invoiced", "inv_x", ["pending"])).toBe(false);
+      // QA-451: once-ever buyer rating — in-range write lands, second write
+      // and out-of-range writes refuse, quoteIds lookup attaches the deal.
+      expect(await repo.rateDeal(deal.id, 5)).toBe(true);
+      expect(await repo.rateDeal(deal.id, 4)).toBe(false);
+      expect((await repo.getDeal(deal.id))?.buyerRating).toBe(5);
+      const byQuotes = await repo.listDeals({ quoteIds: [quote.id] });
+      expect(byQuotes).toHaveLength(1);
+      expect(byQuotes[0]!.buyerRating).toBe(5);
+      const rates = await repo.ratingSummaryPerOperator([op.id]);
+      expect(rates[op.id]).toEqual({ avg: 5, count: 1 });
       expect((await repo.getDeal(deal.id))?.invoiceStatus).toBe("paid");
       expect((await repo.getDeal(deal.id))?.invoiceRef).toBe("inv_test_1");
       // deals.quote_id is unique — a racing double-accept must be rejected.
