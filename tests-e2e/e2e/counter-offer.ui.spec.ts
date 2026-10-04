@@ -118,9 +118,16 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await expect(chip).toBeVisible();
     await expect(chip).toContainText(/counter/i);
     await expect(chip).toContainText('9,500');
+    // The dashboard's open-offers row carries the same signal — the op
+    // sees a countered offer wherever they look.
+    await operator.goto('/app');
+    await expect(
+      operator.locator('[data-testid^="offer-counter-"]'),
+    ).toBeVisible();
   });
 
   await step('operator meets it with a revise — the round clears', async () => {
+    await operator.goto('/app/rfqs');
     const item = operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE });
     // 'revise-' also prefixes the inner form inputs — pin the button.
     await item.locator(`button${tidPrefix('revise-')}`).first().click();

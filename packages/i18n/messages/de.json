@@ -1046,7 +1046,8 @@
       "unmuteRfqMail": "E-Mails zu neuen Anfragen wieder aktivieren",
       "resumeRfqs": "Neue Anfragen fortsetzen",
       "awayBanner": "Sie sind pausiert — neue Anfragen erreichen Ihren Posteingang nicht. Bestehende Zuordnungen und Angebote bleiben unberührt.",
-      "suspendedBanner": "Ihr Konto ist gesperrt — Inserate sind verborgen, Anfragen pausiert und Bearbeitungen deaktiviert. Kontaktieren Sie den Support, wenn Sie das für einen Fehler halten."
+      "suspendedBanner": "Ihr Konto ist gesperrt — Inserate sind verborgen, Anfragen pausiert und Bearbeitungen deaktiviert. Kontaktieren Sie den Support, wenn Sie das für einen Fehler halten.",
+      "offerCountered": "Gegenangebot {amount}"
     },
     "onboarding": {
       "title": "Anbieterprofil",

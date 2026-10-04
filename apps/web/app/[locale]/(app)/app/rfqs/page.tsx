@@ -418,7 +418,9 @@ export default async function RfqInboxPage({
                             <>
                               <ReviseQuote
                                 quoteId={q.id}
-                                amount={q.amount}
+                                // QA-511: answering a counter — the form
+                                // opens pre-agreed to the buyer's number.
+                                amount={q.counterAmount ?? q.amount}
                                 currency={q.currency}
                                 message={q.message}
                               />

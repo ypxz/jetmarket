@@ -429,6 +429,23 @@ export default async function OperatorDashboard() {
                   <div>
                     <div className="font-medium">
                       {formatMoney(q.amount, q.currency, locale)}
+                      {/* QA-511: a countered offer needs the op's eyes —
+                          flag it here too, not only in the inbox. */}
+                      {q.counterAmount != null ? (
+                        <Badge
+                          variant="warning"
+                          className="ml-2"
+                          data-testid={`offer-counter-${q.id}`}
+                        >
+                          {t("offerCountered", {
+                            amount: formatMoney(
+                              q.counterAmount,
+                              q.currency,
+                              locale,
+                            ),
+                          })}
+                        </Badge>
+                      ) : null}
                     </div>
                     <div className="text-xs text-muted">
                       {listing?.title ?? t("openOfferFallback")} ·{" "}
