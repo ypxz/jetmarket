@@ -512,7 +512,12 @@ export default async function AdminPage({
               <th className="py-2 pr-4">{t("colReason")}</th>
               <th className="py-2 pr-4">{t("colNote")}</th>
               <th className="py-2 pr-4">{t("colReporter")}</th>
-              <th className="py-2">{t("colFiled")}</th>
+              <th className="py-2 pr-4">{t("colFiled")}</th>
+              {/* QA-479: the flag surfaced the problem but the fix sat a
+                  scroll away in the RFQ table — the spam action belongs
+                  on the flag row itself (live RFQs only; a flag on a
+                  terminal row needs no action). */}
+              <th className="py-2">{t("colAction")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -540,8 +545,13 @@ export default async function AdminPage({
                   <td className="py-2 pr-4">
                     {rfqFlagEmails.get(r.reporterId) ?? "—"}
                   </td>
-                  <td className="py-2">
+                  <td className="py-2 pr-4">
                     {new Date(r.createdAt).toLocaleDateString("en-US")}
+                  </td>
+                  <td className="py-2">
+                    {rfq && LIVE_RFQ.has(rfq.status) ? (
+                      <RfqSpamButton rfqId={rfq.id} />
+                    ) : null}
                   </td>
                 </tr>
               );

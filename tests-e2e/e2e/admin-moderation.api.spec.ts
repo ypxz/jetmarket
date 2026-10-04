@@ -479,6 +479,14 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   expect(adminHtml).toContain(`admin-rfq-flagged-${freshId}`);
   expect(adminHtml).toContain(`rfq-report-${flagId}`);
   expect(adminHtml).toContain(`rfq-report-reason-${flagId}`);
+  // QA-479: the flag row itself carries the spam action — the fix is
+  // inline, not a scroll away on the RFQ table. (Scope the assert to the
+  // flag row's <tr> — the same testid legitimately exists above in the
+  // RFQ moderation table.)
+  const flagRow = adminHtml.match(
+    new RegExp(`<tr[^>]*data-testid="rfq-report-${flagId}"[^>]*>[\\s\\S]*?</tr>`),
+  )?.[0];
+  expect(flagRow).toContain(`mod-rfq-spam-${freshId}`);
   // …and the flag never blocks enforcement — spam-mark still flips it.
   const spammed = await admin.post(`/api/admin/rfqs/${freshId}/status`, {
     data: { status: 'spam' },
