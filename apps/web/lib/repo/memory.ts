@@ -1074,6 +1074,19 @@ class MemoryRepo implements Repo {
     // Newest first — contract + drizzle parity.
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+  async countCounterRoundsByOutcome(operatorId: string) {
+    let accepted = 0;
+    let resolved = 0;
+    for (const q of this.quotes.values()) {
+      if (q.operatorId !== operatorId) continue;
+      for (const r of this.counterRounds.get(q.id) ?? []) {
+        if (r.outcome === "open") continue;
+        resolved++;
+        if (r.outcome === "accepted") accepted++;
+      }
+    }
+    return { accepted, resolved };
+  }
   // QA-524: empty/whitespace clears — a note you can't empty is a note
   // you can't delete. Writes stay synchronous check-to-write (QA-333).
   async setRfqNote(operatorId: string, rfqId: string, note: string | null) {

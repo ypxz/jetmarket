@@ -389,6 +389,10 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     // the revise so it no longer counts. Tile text is label + value
     // (a bare '1' would false-match the 100% seen-rate tile).
     await expect(stats).toContainText(/Counters waiting\s*1/);
+    // QA-526: three rounds already resolved across both RFQs (answered
+    // 9,500 + withdrawn 9,000 + declined 9,200), none accepted yet —
+    // the conversion tile reads n/m, honest at small n.
+    await expect(stats).toContainText(/Counter win rate\s*0\/3/);
   });
 
   await step('operator takes the counter — deal closes at 9,100 (QA-515)', async () => {
@@ -416,6 +420,11 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     // reads 0 again beside the won deal.
     await expect(operator.getByTestId('operator-stats')).toContainText(
       /Counters waiting\s*0/,
+    );
+    // QA-526: 1 accepted of 4 resolved rounds — the funnel's counter
+    // conversion now reads in the operator's favor.
+    await expect(operator.getByTestId('operator-stats')).toContainText(
+      /Counter win rate\s*1\/4/,
     );
 
     // QA-522: the buyer's card closes the trail — the declined 9,200

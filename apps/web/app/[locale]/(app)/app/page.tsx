@@ -121,6 +121,7 @@ export default async function OperatorDashboard() {
     ratingSelf,
     declineReasons,
     countersWaiting,
+    counterStats,
   ] = isPro
     ? await Promise.all([
         repo.countRfqs({ operatorId: operator.id, vertical: getVertical().slug }),
@@ -159,8 +160,12 @@ export default async function OperatorDashboard() {
         // price and still wait on an answer. Same live-only predicate
         // as the ?f=countered inbox filter.
         repo.countQuotes({ operatorId: operator.id, countered: true }),
+        // QA-526: the lifecycle's other end — of the counter rounds that
+        // resolved, how many the op converted into a deal (n/m display:
+        // honest at small n where a bare % overstates).
+        repo.countCounterRoundsByOutcome(operator.id),
       ])
-    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined, {}, 0];
+    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined, {}, 0, { accepted: 0, resolved: 0 }];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
@@ -271,6 +276,12 @@ export default async function OperatorDashboard() {
                   ["statWinRate", winRate === null ? "—" : `${winRate}%`],
                   ["statSeenRate", seenRate === null ? "—" : `${seenRate}%`],
                   ["statCountered", countersWaiting],
+                  [
+                    "statCounterWinRate",
+                    counterStats.resolved === 0
+                      ? "—"
+                      : `${counterStats.accepted}/${counterStats.resolved}`,
+                  ],
                   [
                     "statReply",
                     avgResponseH === undefined

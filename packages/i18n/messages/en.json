@@ -1080,7 +1080,8 @@
       "resumeRfqs": "Resume new requests",
       "awayBanner": "You are paused — new requests will not reach your inbox. Existing matches and quotes are unaffected.",
       "suspendedBanner": "Your account is suspended — listings are hidden, requests paused, and edits disabled. Contact support if you believe this was a mistake.",
-      "offerCountered": "Countered {amount}"
+      "offerCountered": "Countered {amount}",
+      "statCounterWinRate": "Counter win rate"
     },
     "onboarding": {
       "title": "Operator profile",

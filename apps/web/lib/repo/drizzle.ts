@@ -1802,6 +1802,25 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(quoteCounterRounds.createdAt));
     return rows.map(toCounterRound);
   }
+
+  async countCounterRoundsByOutcome(
+    operatorId: string,
+  ): Promise<{ accepted: number; resolved: number }> {
+    if (!isUuid(operatorId)) return { accepted: 0, resolved: 0 };
+    const rows = await this.db
+      .select({ outcome: quoteCounterRounds.outcome })
+      .from(quoteCounterRounds)
+      .innerJoin(quotes, eq(quoteCounterRounds.quoteId, quotes.id))
+      .where(eq(quotes.operatorId, operatorId));
+    let accepted = 0;
+    let resolved = 0;
+    for (const r of rows) {
+      if (r.outcome === "open") continue;
+      resolved++;
+      if (r.outcome === "accepted") accepted++;
+    }
+    return { accepted, resolved };
+  }
   // QA-524: private operator triage note — composite-PK upsert; an
   // empty note deletes the row.
   async setRfqNote(

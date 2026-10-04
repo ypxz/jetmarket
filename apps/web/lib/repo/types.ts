@@ -865,6 +865,12 @@ export interface Repo {
   /** QA-522: counter-round history for a batch of quotes — the buyer
    *  inbox joins this once per page; newest round first. */
   listCounterRounds(quoteIds: string[]): Promise<CounterRound[]>;
+  /** QA-526: counter-lifecycle conversion for the Pro funnel — resolved
+   *  rounds on this operator's quotes and how many closed 'accepted'.
+   *  Open rounds aren't outcomes yet and don't count. */
+  countCounterRoundsByOutcome(
+    operatorId: string,
+  ): Promise<{ accepted: number; resolved: number }>;
   /** QA-524: private operator note on a visible RFQ. Visibility is the
    *  route's job (same listRfqs({operatorId, ids}) predicate the inbox
    *  uses) — the repo persists what the caller proved. An empty or

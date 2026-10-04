@@ -696,6 +696,21 @@ export function repoContract(
       expect(
         await repo.listCounterRounds([counterTarget!.id, "nope", quote.id]),
       ).toEqual(rounds);
+
+      // QA-526: conversion tally on `other` — 3 resolved rounds, 1 of
+      // them 'accepted'; open rounds and other operators' rounds excluded.
+      expect(await repo.countCounterRoundsByOutcome(other.id)).toEqual({
+        accepted: 1,
+        resolved: 3,
+      });
+      expect(await repo.countCounterRoundsByOutcome(op.id)).toEqual({
+        accepted: 0,
+        resolved: 0,
+      });
+      expect(await repo.countCounterRoundsByOutcome("nope")).toEqual({
+        accepted: 0,
+        resolved: 0,
+      });
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {
