@@ -59,6 +59,8 @@ export interface Listing {
   currency: string;
   status: ListingStatus;
   photos: string[];
+  /** Public-page view counter — bump-on-read, not write-gated (QA-413). */
+  views: number;
   createdAt: string;
 }
 
@@ -198,12 +200,20 @@ export interface Repo {
   setOperatorPlan(id: string, plan: Plan): Promise<void>;
 
   createListing(
-    l: Omit<Listing, "id" | "createdAt" | "status"> & { status?: ListingStatus },
+    l: Omit<Listing, "id" | "createdAt" | "status" | "views"> & {
+      status?: ListingStatus;
+    },
     /** Atomic non-archived-listing cap — throws PlanCapError instead of
      *  inserting when the operator is already at the cap. */
     opts?: { cap?: number },
   ): Promise<Listing>;
   getListing(id: string): Promise<Listing | undefined>;
+  /**
+   * Increment a listing's public-page view counter (QA-413). Atomic at the
+   * row level (SQL `views = views + 1` / synchronous memory++) — NOT part of
+   * a read, so callers fire it alongside the page fetch, non-fatally.
+   */
+  bumpListingViews(id: string): Promise<void>;
   listListings(filter?: {
     operatorId?: string;
     status?: ListingStatus;

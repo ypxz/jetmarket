@@ -2,6 +2,7 @@
 // dashboard re-render. API-level PATCH coverage lives in lifecycle.api.spec.ts;
 // this spec exercises the edit page + form contract (TESTIDS.md).
 import { expect, test } from '@playwright/test';
+import postgres from 'postgres';
 import {
   createListing,
   createOperatorProfile,
@@ -86,6 +87,24 @@ test('listing edit UI: dashboard → edit → save → dashboard reflects change
   await step('public listing page shows the edited title', async () => {
     await operator.goto(`/listing/${listingId}`);
     await expect(operator.getByTestId('listing-title')).toContainText(EDITED_TITLE);
+  });
+
+  await step('each public render bumps views once — counter, not stat (QA-413)', async () => {
+    const sql = postgres(process.env.TEST_DATABASE_URL!, { max: 1 });
+    try {
+      const [before] = await sql`
+        select views from listings where id = ${listingId}`;
+      // One more full page load — exactly one bump (generateMetadata + page
+      // share the request-scoped cache() around the write).
+      await operator.goto(`/listing/${listingId}`);
+      const [row] = await sql`
+        select views from listings where id = ${listingId}`;
+      expect(row?.views).toBe((before?.views ?? 0) + 1);
+      // Below the social-proof threshold the public page shows no count.
+      await expect(operator.getByTestId('view-count')).toHaveCount(0);
+    } finally {
+      await sql.end();
+    }
   });
 
   await step('duplicate clones to a draft and lands on its editor (QA-412)', async () => {

@@ -946,6 +946,52 @@ export function repoContract(
       ).toEqual({});
     });
 
+    it("bumpListingViews increments atomically and starts at 0 (QA-413)", async () => {
+      const repo = await factory();
+      const user = await repo.createUser(
+        `views-${Date.now().toString(36)}@test.dev`,
+        "operator",
+      );
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Views Air",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: "Viewed Jet",
+        price: 1000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      expect(listing.views).toBe(0);
+
+      await repo.bumpListingViews(listing.id);
+      await repo.bumpListingViews(listing.id);
+      await repo.bumpListingViews(crypto.randomUUID()); // no row — no throw
+      const after = await repo.getListing(listing.id);
+      expect(after?.views).toBe(2);
+
+      // A sibling listing's counter stays untouched.
+      const other = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: "Unviewed Jet",
+        price: 500,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      expect(other.views).toBe(0);
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

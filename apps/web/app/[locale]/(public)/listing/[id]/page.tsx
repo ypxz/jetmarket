@@ -27,11 +27,17 @@ const load = cache(async (id: string) => {
   const listing = await repo.getListing(id);
   // Foreign-vertical rows 404 (shared-DB multi-vertical deploys) and expired
   // dated inventory is gone for buyers — 404 like a withdrawn one.
-  return listing?.vertical === verticalSlug() &&
+  const live =
+    listing !== undefined &&
+    listing.vertical === verticalSlug() &&
     listing.status === "active" &&
-    !isExpiredListing(listing)
-    ? listing
-    : null;
+    !isExpiredListing(listing);
+  if (!live) return null;
+  // QA-413: the page render IS the view — count it here inside the per-request
+  // cache() so generateMetadata + page sharing the load can't double-bump.
+  // Non-fatal: a failed counter never turns a real page into a 500.
+  await repo.bumpListingViews(id).catch(() => {});
+  return { ...listing, views: listing.views + 1 };
 });
 
 export async function generateMetadata({
@@ -202,6 +208,13 @@ export default async function ListingPage({
         {watchCount > 0 ? (
           <p className="mb-2 text-sm text-muted" data-testid="watch-count">
             {t("watchCount", { count: watchCount })}
+          </p>
+        ) : null}
+        {/* Social proof (QA-413): shown only once the signal is meaningful —
+            a "3 views" line reads as a dead listing, not a hot one. */}
+        {listing.views >= 5 ? (
+          <p className="mb-2 text-sm text-muted" data-testid="view-count">
+            {t("viewCount", { count: listing.views })}
           </p>
         ) : null}
         <SearchAlertForm

@@ -235,6 +235,11 @@ export default async function OperatorDashboard() {
                         {t("watchers", { count: watchCounts[l.id] ?? 0 })}
                       </Badge>
                     ) : null}
+                    {l.views > 0 ? (
+                      <Badge variant="outline" className="ml-2">
+                        {t("views", { count: l.views })}
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

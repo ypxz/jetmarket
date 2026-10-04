@@ -93,6 +93,7 @@ function toListing(r: typeof listings.$inferSelect): Listing {
     currency: r.currency,
     status: r.status as ListingStatus,
     photos: r.photos,
+    views: r.views,
     createdAt: iso(r.createdAt),
   };
 }
@@ -437,7 +438,7 @@ export class DrizzleRepo implements Repo {
   }
 
   async createListing(
-    l: Omit<Listing, "id" | "createdAt" | "status"> & {
+    l: Omit<Listing, "id" | "createdAt" | "status" | "views"> & {
       status?: ListingStatus;
     },
     opts?: { cap?: number },
@@ -486,6 +487,13 @@ export class DrizzleRepo implements Repo {
       .where(eq(listings.id, id))
       .limit(1);
     return r ? toListing(r) : undefined;
+  }
+  async bumpListingViews(id: string): Promise<void> {
+    if (!isUuid(id)) return; // /listing/<slug> 404s anyway — don't 22P02.
+    await this.db
+      .update(listings)
+      .set({ views: sql`${listings.views} + 1` })
+      .where(eq(listings.id, id));
   }
   async listListings(filter?: ListingFilter & {
     limit?: number;

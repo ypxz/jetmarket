@@ -146,7 +146,7 @@ class MemoryRepo implements Repo {
   }
 
   async createListing(
-    l: Omit<Listing, "id" | "createdAt" | "status"> & {
+    l: Omit<Listing, "id" | "createdAt" | "status" | "views"> & {
       status?: Listing["status"];
     },
     opts?: { cap?: number },
@@ -171,6 +171,7 @@ class MemoryRepo implements Repo {
       ...l,
       id: uid("lst"),
       status: l.status ?? "active",
+      views: 0,
       createdAt: now(),
     };
     this.listings.set(listing.id, listing);
@@ -178,6 +179,11 @@ class MemoryRepo implements Repo {
   }
   async getListing(id: string) {
     return this.listings.get(id);
+  }
+  async bumpListingViews(id: string) {
+    // Synchronous check+write — no await mid-mutation (QA-333).
+    const l = this.listings.get(id);
+    if (l) l.views += 1;
   }
   async listListings(filter?: {
     operatorId?: string;

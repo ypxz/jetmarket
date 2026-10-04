@@ -107,7 +107,8 @@
     "watchFreqInstant": "Instant",
     "watchFreqDaily": "Daily digest",
     "watchConfirmed": "You're watching this listing — we'll email you when it changes.",
-    "watchCount": "{count, plural, one {# buyer is watching this listing} other {# buyers are watching this listing}}"
+    "watchCount": "{count, plural, one {# buyer is watching this listing} other {# buyers are watching this listing}}",
+    "viewCount": "{count, plural, one {# view} other {# views}}"
   },
   "rfq": {
     "title": "Request a quote",
@@ -671,7 +672,8 @@
       "statsProGateBody": "RFQs received, quotes sent, win rate — unlock your operator funnel with Pro.",
       "statsProGateCta": "Upgrade now",
       "expiredHidden": "expired — hidden from buyers (edit to relist)",
-      "watchers": "{count, plural, one {# watching} other {# watching}}"
+      "watchers": "{count, plural, one {# watching} other {# watching}}",
+      "views": "{count, plural, one {# view} other {# views}}"
     },
     "onboarding": {
       "title": "Operator profile",
