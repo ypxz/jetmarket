@@ -847,6 +847,7 @@ export class DrizzleRepo implements Repo {
     listingId?: string;
     needsQuote?: boolean;
     dismissedOnly?: boolean;
+    answeredOnly?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
@@ -907,6 +908,18 @@ export class DrizzleRepo implements Repo {
                   )`,
                 ]
               : []),
+            ...(filter.answeredOnly
+              ? [
+                  // "Answered" (QA-433): needsQuote's inverse — only RFQs
+                  // with a live quote from this operator.
+                  sql`exists (
+                    select 1 from quotes q
+                    where q.rfq_id = ${rfqs.id}
+                      and q.operator_id = ${filter.operatorId}
+                      and q.status in ('sent','accepted')
+                  )`,
+                ]
+              : []),
           ),
         )
         // Operator inbox: paid concierge expedites answer first — burying one
@@ -946,6 +959,7 @@ export class DrizzleRepo implements Repo {
     operatorId?: string;
     needsQuote?: boolean;
     dismissedOnly?: boolean;
+    answeredOnly?: boolean;
     listingId?: string;
     vertical?: string;
     statusNot?: RfqStatus[];
@@ -1000,6 +1014,15 @@ export class DrizzleRepo implements Repo {
       if (filter.needsQuote)
         conds.push(
           sql`not exists (
+            select 1 from quotes q
+            where q.rfq_id = ${rfqs.id}
+              and q.operator_id = ${filter.operatorId}
+              and q.status in ('sent','accepted')
+          )`,
+        );
+      if (filter.answeredOnly)
+        conds.push(
+          sql`exists (
             select 1 from quotes q
             where q.rfq_id = ${rfqs.id}
               and q.operator_id = ${filter.operatorId}

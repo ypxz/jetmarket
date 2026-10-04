@@ -746,7 +746,8 @@
       "filterDismissed": "Dismissed",
       "listingFilterAll": "All listings",
       "listingFilterClear": "clear listing filter",
-      "newBadge": "New"
+      "newBadge": "New",
+      "filterAnswered": "Answered"
     },
     "billing": {
       "title": "Plan & billing",

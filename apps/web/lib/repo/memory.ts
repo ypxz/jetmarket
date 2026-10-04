@@ -511,6 +511,7 @@ class MemoryRepo implements Repo {
     listingId?: string;
     needsQuote?: boolean;
     dismissedOnly?: boolean;
+    answeredOnly?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
@@ -548,9 +549,10 @@ class MemoryRepo implements Repo {
           ? visible && this.rfqDismissed.has(`${r.id}:${opId}`)
           : visible && !this.rfqDismissed.has(`${r.id}:${opId}`);
       });
-      // "Needs a quote": hide RFQs the operator already has a live quote on
-      // (sent/accepted) — declined/withdrawn leave it needing action (QA-402).
-      if (filter.needsQuote) {
+      // "Needs a quote" hides RFQs the operator already has a live quote
+      // on (sent/accepted) — declined/withdrawn leave it needing action
+      // (QA-402); "Answered" (QA-433) is the exact inverse, same live set.
+      if (filter.needsQuote || filter.answeredOnly) {
         const quoted = new Set(
           [...this.quotes.values()]
             .filter(
@@ -560,7 +562,9 @@ class MemoryRepo implements Repo {
             )
             .map((q) => q.rfqId),
         );
-        out = out.filter((r) => !quoted.has(r.id));
+        out = out.filter((r) =>
+          filter.answeredOnly ? quoted.has(r.id) : !quoted.has(r.id),
+        );
       }
     }
     // Operator inbox: concierge expedites sort first — the buyer paid for
@@ -663,6 +667,7 @@ class MemoryRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
+    answeredOnly?: boolean;
     listingId?: string;
     vertical?: string;
     statusNot?: Rfq["status"][];

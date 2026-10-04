@@ -754,6 +754,87 @@ export function repoContract(
       );
     });
 
+    it("answeredOnly shows only RFQs the operator has a live quote on (QA-433)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mkOp = async (n: string) => {
+        const u = await repo.createUser(`an-${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: true,
+          plan: "pro",
+        });
+      };
+      const [owner, op, other] = await Promise.all([
+        mkOp("anowner"),
+        mkOp("anop"),
+        mkOp("another"),
+      ]);
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `AN Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const mkRfq = (suffix: string) =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: `an-${suffix}-${tag}@test.dev`,
+          fields: {},
+        });
+      const quotedRfq = await mkRfq("q");
+      const freshRfq = await mkRfq("f");
+      await repo.createRfqMatches([
+        { rfqId: quotedRfq.id, operatorId: op.id, listingId: listing.id },
+        { rfqId: freshRfq.id, operatorId: op.id, listingId: listing.id },
+      ]);
+      // op answers the first; a DIFFERENT operator's quote on the second
+      // must not count as answered for op.
+      await repo.createQuote({
+        rfqId: quotedRfq.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.createQuote({
+        rfqId: freshRfq.id,
+        operatorId: other.id,
+        amount: 8500,
+        currency: "USD",
+        message: "",
+      });
+
+      const answered = await repo.listRfqs({
+        operatorId: op.id,
+        answeredOnly: true,
+      });
+      expect(answered.map((r) => r.id)).toEqual([quotedRfq.id]);
+      // Pagination total mirrors the filtered page.
+      expect(
+        await repo.countRfqs({ operatorId: op.id, answeredOnly: true }),
+      ).toBe(1);
+
+      // Declining the quote drops the RFQ from "answered" — declined/
+      // withdrawn are not live offers.
+      const [q] = await repo.listQuotes({ rfqId: quotedRfq.id });
+      await repo.setQuoteStatus(q!.id, "declined", "sent");
+      expect(
+        await repo.listRfqs({ operatorId: op.id, answeredOnly: true }),
+      ).toEqual([]);
+      expect(
+        await repo.countRfqs({ operatorId: op.id, answeredOnly: true }),
+      ).toBe(0);
+    });
+
     it("countDeliveredMatches counts due rows only, batched (QA-401)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

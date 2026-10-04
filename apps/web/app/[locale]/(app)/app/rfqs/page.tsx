@@ -51,6 +51,9 @@ export default async function RfqInboxPage({
   // "Dismissed" view (QA-421): the QA-420 exclusion flips to a positive
   // match so dismissed rows can be reviewed + restored.
   const dismissedOnly = f === "dismissed";
+  // "Answered" view (QA-433): needsQuote's inverse — the RFQs where this
+  // operator already holds a live quote, i.e. their outstanding offers.
+  const answeredOnly = f === "answered";
   // Per-listing triage (QA-430): only their own listings may filter — a
   // foreign/unknown id falls back to the unfiltered inbox.
   const ownListings = await repo.listListings({
@@ -69,6 +72,7 @@ export default async function RfqInboxPage({
     listingId: listingFilter,
     needsQuote: needsOnly || undefined,
     dismissedOnly: dismissedOnly || undefined,
+    answeredOnly: answeredOnly || undefined,
     vertical: verticalSlug(),
   });
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
@@ -79,6 +83,7 @@ export default async function RfqInboxPage({
     listingId: listingFilter,
     needsQuote: needsOnly || undefined,
     dismissedOnly: dismissedOnly || undefined,
+    answeredOnly: answeredOnly || undefined,
     vertical: verticalSlug(),
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
@@ -146,6 +151,7 @@ export default async function RfqInboxPage({
           [
             ["all", t("filterAll")],
             ["needs", t("filterNeeds")],
+            ["answered", t("filterAnswered")],
             ["dismissed", t("filterDismissed")],
           ] as const
         ).map(([key, label]) => {
@@ -161,7 +167,8 @@ export default async function RfqInboxPage({
               href={`/app/rfqs${s ? `?${s}` : ""}`}
               data-testid={`filter-${key}`}
               className={`rounded-md px-3 py-1.5 text-sm ${
-                f === key || (key === "all" && !needsOnly && !dismissedOnly)
+                f === key ||
+                (key === "all" && !needsOnly && !dismissedOnly && !answeredOnly)
                   ? "bg-primary text-primary-foreground font-medium"
                   : "border border-border bg-background text-muted"
               }`}

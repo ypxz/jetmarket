@@ -162,6 +162,20 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);
     await item.locator(tidPrefix('quote-send-')).click();
     await expect(item).toContainText(/quote sent|sent/i);
+
+    // QA-433: the "Answered" view now holds this RFQ — it's the inverse of
+    // "needs a quote", which must exclude it (and listing scope composes).
+    await operator.getByTestId('filter-answered').click();
+    await expect(operator).toHaveURL(/\/app\/rfqs\?f=answered/);
+    await expect(
+      operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE }),
+    ).toBeVisible();
+    await operator.getByTestId('filter-needs').click();
+    await expect(
+      operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE }),
+    ).toHaveCount(0);
+    await operator.getByTestId('filter-all').click();
+    await expect(item).toBeVisible();
   });
 
   await step('operator dismisses a second RFQ — inbox-only, buyer unaffected (QA-420)', async () => {

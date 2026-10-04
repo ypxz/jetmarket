@@ -400,6 +400,11 @@ export interface Repo {
      * review (and restore) the rows they dismissed. Rows that also left the
      * inbox entirely (listing deleted, match gone) stay out either way. */
     dismissedOnly?: boolean;
+    /** "Answered" inbox view (QA-433): only meaningful with `operatorId` —
+     * the exact inverse of `needsQuote` (live quote `sent`/`accepted`), so
+     * the operator can review the outstanding queue they already created.
+     * Declined/withdrawn quotes don't count: no live quote is in play. */
+    answeredOnly?: boolean;
     /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
     vertical?: string;
     /** Page slice applied after other filters, newest-first. */
@@ -513,6 +518,9 @@ export interface Repo {
     /** Same "dismissed" inclusion as listRfqs (QA-421) — totals must match
      * the filtered page on both impls. */
     dismissedOnly?: boolean;
+    /** Same "answered" inclusion as listRfqs (QA-433) — totals must match
+     * the filtered page on both impls. */
+    answeredOnly?: boolean;
     /** Same per-listing scope as listRfqs (QA-430) — the filtered inbox's
      *  page total. */
     listingId?: string;
