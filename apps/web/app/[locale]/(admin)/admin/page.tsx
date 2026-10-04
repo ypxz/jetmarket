@@ -11,7 +11,11 @@ import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { ListingModButton } from "./listing-mod-button";
-import { MarkPaidButton, VoidInvoiceButton } from "./mark-paid";
+import {
+  ClearRatingButton,
+  MarkPaidButton,
+  VoidInvoiceButton,
+} from "./mark-paid";
 import { RfqSpamButton } from "./rfq-mod-button";
 import { VerifyButton } from "./verify-button";
 
@@ -166,6 +170,7 @@ export default async function AdminPage({
               <th className="py-2 pr-4">{t("colFeePct")}</th>
               <th className="py-2 pr-4">{t("colFee")}</th>
               <th className="py-2 pr-4">{t("colInvoice")}</th>
+              <th className="py-2 pr-4">{t("colRating")}</th>
               <th className="py-2">{t("colClosed")}</th>
             </tr>
           </thead>
@@ -194,12 +199,22 @@ export default async function AdminPage({
                     <VoidInvoiceButton dealId={d.id} />
                   ) : null}
                 </td>
+                <td className="py-2 pr-4" data-testid={`deal-rating-${d.id}`}>
+                  {d.buyerRating !== undefined ? (
+                    <>
+                      <Badge variant="outline">★ {d.buyerRating}</Badge>{" "}
+                      <ClearRatingButton dealId={d.id} />
+                    </>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
                 <td className="py-2 text-muted">{new Date(d.closedAt).toLocaleDateString("en-US")}</td>
               </tr>
             ))}
             {deals.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-6 text-center text-muted">
+                <td colSpan={9} className="py-6 text-center text-muted">
                   {t("noDeals")}
                 </td>
               </tr>

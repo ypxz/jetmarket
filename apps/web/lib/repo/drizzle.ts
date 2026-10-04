@@ -1513,6 +1513,18 @@ export class DrizzleRepo implements Repo {
       .returning({ id: deals.id });
     return rows.length > 0;
   }
+  async clearDealRating(id: string): Promise<boolean> {
+    // QA-458: admin recourse — NULL the pair under the same one-statement
+    // gate; clearing an unrated deal is a no-op (nothing to undo).
+    const rows = await this.db
+      .update(deals)
+      .set({ buyerRating: null, buyerRatedAt: null })
+      .where(
+        and(eq(deals.id, id), sql`${deals.buyerRating} is not null`),
+      )
+      .returning({ id: deals.id });
+    return rows.length > 0;
+  }
   async ratingSummaryPerOperator(
     operatorIds: string[],
   ): Promise<Record<string, { avg: number; count: number }>> {

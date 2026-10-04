@@ -2493,6 +2493,23 @@ export function repoContract(
       expect(byQuotes[0]!.buyerRating).toBe(5);
       const rates = await repo.ratingSummaryPerOperator([op.id]);
       expect(rates[op.id]).toEqual({ avg: 5, count: 1 });
+      // QA-458: admin clear — NULLs the pair once, re-clear refuses, the
+      // buyer's once-ever gate re-opens (rating IS NULL again) and the
+      // summary recomputes on the new write.
+      expect(await repo.clearDealRating(deal.id)).toBe(true);
+      expect((await repo.getDeal(deal.id))?.buyerRating).toBeUndefined();
+      expect(
+        (await repo.getDeal(deal.id))?.buyerRatedAt,
+      ).toBeUndefined();
+      expect(await repo.clearDealRating(deal.id)).toBe(false);
+      expect(await repo.rateDeal(deal.id, 2)).toBe(true);
+      expect((await repo.ratingSummaryPerOperator([op.id]))[op.id]).toEqual({
+        avg: 2,
+        count: 1,
+      });
+      // restore the ★5 fixture the QA-453/454 pins below rely on
+      expect(await repo.clearDealRating(deal.id)).toBe(true);
+      expect(await repo.rateDeal(deal.id, 5)).toBe(true);
       // QA-453: sort="rating" — rated-first by avg desc, unrated last.
       const lowOp = await repo.upsertOperator({
         userId: (await repo.createUser(`low-${tag}@test.dev`, "operator")).id,

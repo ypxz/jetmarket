@@ -701,6 +701,11 @@ export interface Repo {
    *  false too — the invariant lives in the repo, not the route. */
   rateDeal(id: string, rating: number): Promise<boolean>;
 
+  /** QA-458: admin recourse — clear an abusive rating so the buyer can
+   *  re-rate (CAS passes on rating IS NULL). False when nothing was
+   *  rated; unrated rows can't be "cleared" again. */
+  clearDealRating(id: string): Promise<boolean>;
+
   /** QA-451: avg+count of buyer ratings per operator — the trust signal
    *  quote cards and public profiles read. Empty map entries when none. */
   ratingSummaryPerOperator(

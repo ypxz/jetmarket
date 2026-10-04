@@ -950,6 +950,18 @@ class MemoryRepo implements Repo {
     });
     return true;
   }
+  async clearDealRating(id: string): Promise<boolean> {
+    const deal = this.deals.get(id);
+    // QA-458: sync check-write mirrors the pg gate — nothing to clear on
+    // an unrated/missing row.
+    if (!deal || deal.buyerRating === undefined) return false;
+    this.deals.set(id, {
+      ...deal,
+      buyerRating: undefined,
+      buyerRatedAt: undefined,
+    });
+    return true;
+  }
   async ratingSummaryPerOperator(
     operatorIds: string[],
   ): Promise<Record<string, { avg: number; count: number }>> {

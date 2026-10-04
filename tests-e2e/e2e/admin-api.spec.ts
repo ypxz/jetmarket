@@ -232,6 +232,38 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   const voidPaid = await admin.post(`/api/admin/deals/${deal!.id}/void`);
   expect(voidPaid.status()).toBe(409);
 
+  // --- admin clear-rating (QA-458) --------------------------------------
+  // Buyer rates once → admin clears → buyer can re-rate through the same
+  // CAS; clearing twice is a 409. The rate route wants the buyer trio.
+  const rate = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/deals/${deal!.id}/rate`, {
+    data: { buyerEmail: BUYER_EMAIL, token: accessToken, rating: 1 },
+  });
+  expect(rate.status()).toBe(200);
+  const clear1 = await admin.post(
+    `/api/admin/deals/${deal!.id}/clear-rating`,
+  );
+  expect(clear1.status()).toBe(200);
+  const clear2 = await admin.post(
+    `/api/admin/deals/${deal!.id}/clear-rating`,
+  );
+  expect(clear2.status()).toBe(409);
+  // Re-rate works — the once-ever gate re-opened (rating IS NULL again).
+  const rerate = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/deals/${deal!.id}/rate`, {
+    data: { buyerEmail: BUYER_EMAIL, token: accessToken, rating: 5 },
+  });
+  expect(rerate.status()).toBe(200);
+  // Admin reads the restored rating back on the ledger row.
+  const dealsFinal = await admin.get('/api/admin/deals');
+  const finalRow = ((await dealsFinal.json()) as Array<{
+    id: string;
+    buyerRating?: number;
+  }>).find((d) => d.id === deal!.id);
+  expect(finalRow?.buyerRating).toBe(5);
+
   // --- logout: server-side revocation kills the cookie --------------------
   const me1 = await buyer.get('/api/auth/me');
   expect(((await me1.json()) as { user: unknown }).user).toBeTruthy();
