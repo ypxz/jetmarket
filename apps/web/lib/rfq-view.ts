@@ -4,6 +4,7 @@ import {
   type VerticalConfig,
 } from "@jetmarket/verticals";
 import type { Rfq } from "./repo/types";
+import { rfqDeadlineAt } from "./rfq-deadline";
 
 /**
  * Operator-facing view of an RFQ (QA-152). Contact-detail fields
@@ -26,6 +27,9 @@ export function operatorRfqView(
     createdAt: rfq.createdAt,
     buyerName: typeof rfq.fields["name"] === "string" ? rfq.fields["name"] : null,
     concierge: rfq.concierge,
+    // QA-442: derived liveness deadline — non-contact, so it rides the
+    // view; the inbox shows when the request stops collecting quotes.
+    deadlineAt: rfqDeadlineAt(rfq).toISOString(),
     fields: nonContactFields(vertical, listingType, rfq.fields),
   };
 }

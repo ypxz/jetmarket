@@ -29,6 +29,9 @@ interface Rfq {
   fields?: Record<string, unknown>;
   // Operators the request actually reached (delayed matches don't count).
   deliveredTo: number;
+  /** QA-442: derived liveness deadline — when this request stops
+   *  collecting offers (dated: day after dateTo; else createdAt+30d). */
+  deadlineAt: string;
   listing: { id: string; title: string; currency: string; browseable?: boolean } | null;
   // Echo of the request's own spec fields ("Departure: TEB"), built
   // server-side in vertical field order — contact fields excluded.
@@ -239,6 +242,16 @@ function QuotesInner() {
                   </div>
                   <span className="flex items-center gap-3">
                     <span className="text-xs text-muted" data-testid={`rfq-state-${r.id}`}>{tc(`rfqState.${r.status}`)}</span>
+                    {["open", "matched", "quoted"].includes(r.status) ? (
+                      <span className="text-xs text-muted" data-testid={`rfq-deadline-${r.id}`}>
+                        {t("closesOn", {
+                          date: new Date(r.deadlineAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          }),
+                        })}
+                      </span>
+                    ) : null}
                     {r.concierge ? (
                       <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-success" data-testid={`concierge-badge-${r.id}`}>
                         {t("concierge.done")}

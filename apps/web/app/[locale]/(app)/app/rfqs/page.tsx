@@ -265,6 +265,20 @@ export default async function RfqInboxPage({
                     name: r.buyerName ?? t("anonymousBuyer"),
                     date: new Date(r.createdAt).toLocaleString("en-US"),
                   })}
+                  {LIVE_RFQ_STATES.has(r.status) ? (
+                    <span
+                      className="ml-2"
+                      data-testid={`rfq-deadline-${r.id}`}
+                    >
+                      ·{" "}
+                      {t("repliesClose", {
+                        date: new Date(r.deadlineAt).toLocaleDateString(
+                          "en-US",
+                          { month: "short", day: "numeric" },
+                        ),
+                      })}
+                    </span>
+                  ) : null}
                 </p>
                 <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
                   {Object.entries(r.fields).map(([k, v]) => (

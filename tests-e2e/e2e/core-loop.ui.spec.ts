@@ -165,6 +165,11 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);
     await item.locator(tidPrefix('quote-send-')).click();
     await expect(item).toContainText(/quote sent|sent/i);
+    // QA-442: live rows carry the request deadline — this RFQ is dated
+    // (dateTo in 15d), so replies close at the next UTC midnight.
+    await expect(
+      item.locator('[data-testid^="rfq-deadline-"]'),
+    ).toContainText(/replies close/i);
 
     // QA-433: the "Answered" view now holds this RFQ — it's the inverse of
     // "needs a quote", which must exclude it (and listing scope composes).
@@ -313,6 +318,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     const emailInput = buyer.getByTestId('buyer-email');
     if (!(await emailInput.inputValue())) await emailInput.fill(BUYER_EMAIL);
     await buyer.getByTestId('buyer-load').click();
+    // QA-442: the buyer sees the same close date the operator inbox shows.
+    await expect(
+      buyer.locator('[data-testid^="rfq-deadline-"]'),
+    ).toContainText(/closes/i);
     // amount renders grouped, e.g. "USD 41,000"
     const quote = buyer
       .locator(tidPrefix('quote-'))

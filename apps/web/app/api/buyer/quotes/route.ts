@@ -4,6 +4,7 @@ import { verticalSlug } from "@/lib/vertical";
 import { publicOperator } from "@/lib/repo/types";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { isExpiredListing } from "@/lib/search";
+import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { verticalConfig, verticalMessages } from "@/lib/vertical";
 import { rfqFieldLabels, rfqFieldsFor } from "@jetmarket/verticals";
 
@@ -103,6 +104,9 @@ export async function GET(req: Request) {
       // strip the bearer token — callers proved inbox access to get here,
       // but there's no reason to echo it back
       ...{ ...rfq, accessToken: undefined },
+      // QA-442: when this request stops collecting offers — same derived
+      // rule the worker sweep enforces (dated: after dateTo; else +30d).
+      deadlineAt: rfqDeadlineAt(rfq).toISOString(),
       deliveredTo: deliveredCounts[rfq.id] ?? 0,
       requestFields: requestFieldsOf(rfq.listingId ?? "", rfq.fields),
       listing: (() => {

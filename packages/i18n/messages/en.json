@@ -168,6 +168,7 @@
       "error": "Payment failed"
     },
     "deliveredTo": "In {count, plural, one {# operator’s inbox} other {# operators’ inboxes}}",
+    "closesOn": "Closes {date}",
     "alertsTitle": "Your saved searches",
     "alertsAll": "all listings",
     "alertOpen": "Open search",
@@ -746,6 +747,7 @@
       "restoreAll": "Restore all ({count})",
       "dismissAll": "Dismiss all ({count})",
       "dismissAllConfirm": "Dismiss {count, plural, one {# request} other {# requests}} from your inbox? They move to Dismissed — restore anytime.",
+      "repliesClose": "Replies close {date}",
       "notOpen": "This request is {status} — quoting is closed.",
       "noQuotes": "No quotes yet",
       "delayedTeaser": "{count, plural, one {# buyer request lands in your inbox in {hours}h} other {# buyer requests land in your inbox in {hours}h}} — Pro operators quote immediately.",
