@@ -1624,6 +1624,23 @@ export class DrizzleRepo implements Repo {
     return rows.length > 0;
   }
 
+  async resolveListingReportsForListing(listingId: string): Promise<number> {
+    // QA-462: archive clears the queue — one statement flips every open
+    // flag on the listing (RETURNING tells the route how many closed).
+    if (!isUuid(listingId)) return 0;
+    const rows = await this.db
+      .update(listingReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(
+          eq(listingReports.listingId, listingId),
+          eq(listingReports.status, "open"),
+        ),
+      )
+      .returning({ id: listingReports.id });
+    return rows.length;
+  }
+
   async ratingSummaryPerOperator(
     operatorIds: string[],
   ): Promise<Record<string, { avg: number; count: number }>> {

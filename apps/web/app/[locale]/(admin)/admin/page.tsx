@@ -86,6 +86,11 @@ export default async function AdminPage({
       }),
       repo.listUsers([...new Set(reports.map((r) => r.reporterId))]),
     ]);
+  // Report rows reach through their listing to the operator — the row's
+  // enforcement buttons (suspend/moderate) need the owner row (QA-462).
+  const reportOpRows = await repo.listOperators({
+    ids: [...new Set(reportListingRows.map((l) => l.operatorId))],
+  });
   // One grouped query + one Map build — was 100 sequential counts (QA-100).
   const listingCounts = new Map(Object.entries(listingCountRows));
   // Deal rows resolve operator names in ONE query — the first-100 table page
@@ -115,9 +120,8 @@ export default async function AdminPage({
   );
   // QA-461: report rows resolve their listing title + reporter email in
   // batch — no per-row lookups.
-  const reportListingTitles = new Map(
-    reportListingRows.map((l) => [l.id, l.title] as const),
-  );
+  const reportListings = new Map(reportListingRows.map((l) => [l.id, l] as const));
+  const reportOps = new Map(reportOpRows.map((o) => [o.id, o] as const));
   const reportEmails = new Map(
     reportUserRows.map((u) => [u.id, u.email] as const),
   );
@@ -307,6 +311,7 @@ export default async function AdminPage({
           <thead className="border-b border-border text-muted">
             <tr>
               <th className="py-2 pr-4">{t("colTitle")}</th>
+              <th className="py-2 pr-4">{t("colOperator")}</th>
               <th className="py-2 pr-4">{t("colReason")}</th>
               <th className="py-2 pr-4">{t("colNote")}</th>
               <th className="py-2 pr-4">{t("colReporter")}</th>
@@ -318,7 +323,13 @@ export default async function AdminPage({
             {reports.map((r) => (
               <tr key={r.id} data-testid={`report-${r.id}`}>
                 <td className="py-2 pr-4 font-medium">
-                  {reportListingTitles.get(r.listingId) ?? "—"}
+                  {reportListings.get(r.listingId)?.title ?? "—"}
+                </td>
+                <td className="py-2 pr-4">
+                  {reportListings.get(r.listingId)?.operatorId
+                    ? (reportOps.get(reportListings.get(r.listingId)!.operatorId)
+                        ?.name ?? "—")
+                    : "—"}
                 </td>
                 <td className="py-2 pr-4">
                   <Badge variant="warning" data-testid={`report-reason-${r.id}`}>
@@ -333,7 +344,33 @@ export default async function AdminPage({
                   {new Date(r.createdAt).toLocaleDateString("en-US")}
                 </td>
                 <td className="py-2">
-                  <DismissReportButton reportId={r.id} />
+                  <span className="inline-flex gap-1">
+                    {reportListings.get(r.listingId) ? (
+                      <>
+                        <ListingModButton
+                          listingId={r.listingId}
+                          status={reportListings.get(r.listingId)!.status}
+                          action="paused"
+                        />
+                        <ListingModButton
+                          listingId={r.listingId}
+                          status={reportListings.get(r.listingId)!.status}
+                          action="archived"
+                        />
+                      </>
+                    ) : null}
+                    {reportListings.get(r.listingId)?.operatorId ? (
+                      <SuspendButton
+                        operatorId={reportListings.get(r.listingId)!.operatorId}
+                        suspended={
+                          reportOps.get(
+                            reportListings.get(r.listingId)!.operatorId,
+                          )?.suspended ?? false
+                        }
+                      />
+                    ) : null}
+                    <DismissReportButton reportId={r.id} />
+                  </span>
                 </td>
               </tr>
             ))}

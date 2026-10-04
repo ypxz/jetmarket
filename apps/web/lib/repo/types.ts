@@ -765,6 +765,11 @@ export interface Repo {
    *  click 409s instead of rewriting. False when nothing open was found. */
   resolveListingReport(id: string): Promise<boolean>;
 
+  /** QA-462: bulk-dismiss every open report on one listing — archiving the
+   *  target makes its flags moot (the moderation queue cleared itself).
+   *  Returns the number of open reports closed. */
+  resolveListingReportsForListing(listingId: string): Promise<number>;
+
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;
 }

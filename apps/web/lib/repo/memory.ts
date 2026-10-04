@@ -447,6 +447,10 @@ class MemoryRepo implements Repo {
       }
       if (dirty) this.rfqMatches.set(rid, next);
     }
+    // FK `cascade` parity: a listing's reports die with it (QA-461/462).
+    for (const [rid, r] of this.listingReports) {
+      if (r.listingId === id) this.listingReports.delete(rid);
+    }
     return true;
   }
   async listOperatorDirectory(input: {
@@ -1060,6 +1064,22 @@ class MemoryRepo implements Repo {
       resolvedAt: new Date().toISOString(),
     });
     return true;
+  }
+
+  async resolveListingReportsForListing(listingId: string): Promise<number> {
+    let n = 0;
+    const at = new Date().toISOString();
+    for (const r of this.listingReports.values()) {
+      if (r.listingId === listingId && r.status === "open") {
+        this.listingReports.set(r.id, {
+          ...r,
+          status: "dismissed",
+          resolvedAt: at,
+        });
+        n += 1;
+      }
+    }
+    return n;
   }
 
   async listDeals(filter?: {

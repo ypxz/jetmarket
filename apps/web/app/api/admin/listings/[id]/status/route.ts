@@ -31,6 +31,12 @@ export async function POST(
   if (!listing || listing.vertical !== verticalSlug())
     return err("not found", 404);
   await repo.updateListingStatus(id, data!.status);
+  // QA-462: archiving a reported listing auto-clears its open flags —
+  // the enforcement the flag asked for just happened. Pauses stay open.
+  const cleared =
+    data!.status === "archived"
+      ? await repo.resolveListingReportsForListing(id)
+      : 0;
   // Owner gets a moderation email — a listing silently vanishing from
   // search was the QA-247 gap. Fire-and-forget; never fails the request.
   await notifyListingModerated(repo, listing, data!.status);
@@ -38,6 +44,7 @@ export async function POST(
     adminId: user.id,
     listingId: id,
     status: data!.status,
+    reportsCleared: cleared,
   });
   return ok(await repo.getListing(id));
 }

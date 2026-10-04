@@ -3510,6 +3510,35 @@ export function repoContract(
       });
       expect(r3).not.toBeNull();
       expect(r3!.id).not.toBe(r1!.id);
+
+      // QA-462: archiving the reported listing bulk-clears its open flags —
+      // r2 + r3 close in one sweep; the count comes back to the route.
+      expect(await repo.resolveListingReportsForListing(listing.id)).toBe(2);
+      const stillOpen = await repo.listListingReports({ status: "open" });
+      expect(stillOpen.map((r) => r.id)).toEqual(
+        expect.arrayContaining([rf!.id]),
+      );
+      expect(stillOpen.map((r) => r.id)).not.toContain(r2!.id);
+      expect(stillOpen.map((r) => r.id)).not.toContain(r3!.id);
+
+      // deleteListing drops report rows entirely — pg's FK cascade parity
+      // (a deleted listing's flags leave no history row behind).
+      await repo.updateListingStatus(foreign.id, "archived");
+      const doomed = await repo.createListingReport({
+        listingId: foreign.id,
+        reporterId: buyer2.id,
+        reason: "other",
+      });
+      expect(doomed).not.toBeNull();
+      expect(
+        await repo.deleteListing(foreign.id, {
+          operatorId: op.id,
+          vertical: "machinery",
+        }),
+      ).toBe(true);
+      expect(
+        (await repo.listListingReports({})).map((r) => r.id),
+      ).not.toContain(doomed!.id);
     });
   });
 }

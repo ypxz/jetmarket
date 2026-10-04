@@ -249,10 +249,20 @@ test('listing reports: flag → queue → dismiss → re-flag allowed (QA-461)',
     data: { reason: 'unavailable' },
   });
   expect(again.status()).toBe(201);
+  const againId = ((await again.json()) as { id: string }).id;
 
   // Anonymous browsers can't file flags — the write sink is authenticated.
   const anon = await (
     await request.newContext()
   ).post(`/api/listings/${listingId}/report`, { data: { reason: 'scam' } });
   expect(anon.status()).toBe(403);
+
+  // QA-462: archiving the reported listing auto-clears its open flags —
+  // the queue empties itself when the enforcement lands.
+  const archive = await admin.post(`/api/admin/listings/${listingId}/status`, {
+    data: { status: 'archived' },
+  });
+  expect(archive.status()).toBe(200);
+  const queueCleared = await admin.get('/en/admin');
+  expect(await queueCleared.text()).not.toContain(`report-${againId}`);
 });
