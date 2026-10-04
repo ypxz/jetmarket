@@ -8,7 +8,10 @@ import { getRepo } from "@/lib/repo";
 import { logWarn } from "@/lib/log";
 import { appOrigin } from "@/lib/origin";
 import { isExpiredListing } from "@/lib/search";
-import { alertSavedSearches } from "@/lib/search-alerts";
+import {
+  alertSavedSearches,
+  endListingWatches,
+} from "@/lib/search-alerts";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
@@ -141,6 +144,12 @@ export async function PATCH(
     if (fresh?.status === "active") {
       await alertSavedSearches(repo, fresh, appOrigin(req));
     }
+  }
+  // Archive ends every watch on the listing (QA-408): terminal state means
+  // watchers get one "removed" mail and their alert flips off. Pauses keep
+  // the watch — reactivation re-mails through the hook above.
+  if (data!.status === "archived" && listing.status !== "archived") {
+    await endListingWatches(repo, listing, appOrigin(req));
   }
   if (patch.photos !== undefined) {
     // Orphan sweep: keys dropped by a photos replace would leak objects in

@@ -820,13 +820,34 @@ class MemoryRepo implements Repo {
     vertical: string;
     status?: SearchAlert["status"];
     email?: string;
+    watchListingId?: string;
   }): Promise<SearchAlert[]> {
     return [...this.searchAlertRows.values()].filter(
       (r) =>
         r.vertical === filter.vertical &&
         (filter.status === undefined || r.status === filter.status) &&
-        (filter.email === undefined || r.email === filter.email),
+        (filter.email === undefined || r.email === filter.email) &&
+        (filter.watchListingId === undefined ||
+          r.params["watch"] === filter.watchListingId),
     );
+  }
+
+  async countSearchAlertsByWatch(
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    const out: Record<string, number> = {};
+    for (const r of this.searchAlertRows.values()) {
+      const watch = r.params["watch"];
+      if (
+        r.vertical === vertical &&
+        r.status === "active" &&
+        typeof watch === "string" &&
+        watch
+      ) {
+        out[watch] = (out[watch] ?? 0) + 1;
+      }
+    }
+    return out;
   }
 
   async appendSearchAlertPending(alertId: string, listingId: string) {

@@ -92,7 +92,7 @@ export default async function ListingPage({
   if (!listing) notFound();
   const repo = await getRepo();
   // Operator card and the similar rail both hang off `listing` — parallel.
-  const [operatorRow, similarRows] = await Promise.all([
+  const [operatorRow, similarRows, watchCount] = await Promise.all([
     repo.getOperator(listing.operatorId),
     repo.listListings({
       vertical: listing.vertical,
@@ -101,6 +101,15 @@ export default async function ListingPage({
       limit: 5,
       ...browseExpiry(),
     }),
+    // QA-408 social proof — active watchers on this listing only.
+    repo
+      .listSearchAlerts({
+        vertical: listing.vertical,
+        status: "active",
+        watchListingId: listing.id,
+      })
+      .then((rows) => rows.length)
+      .catch(() => 0),
   ]);
   const operator = operatorRow ?? null;
 
@@ -187,8 +196,14 @@ export default async function ListingPage({
       </div>
 
       {/* Listing watch (QA-407): email when this listing is edited/
-          repriced — same saved-search pipeline, params={watch:id}. */}
+          repriced — same saved-search pipeline, params={watch:id}.
+          The count line (QA-408) is social proof only shown when real. */}
       <div className="mt-6">
+        {watchCount > 0 ? (
+          <p className="mb-2 text-sm text-muted" data-testid="watch-count">
+            {t("watchCount", { count: watchCount })}
+          </p>
+        ) : null}
         <SearchAlertForm
           params={{ watch: listing.id }}
           title={t("watchTitle")}

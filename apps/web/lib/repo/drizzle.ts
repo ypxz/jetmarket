@@ -1337,6 +1337,7 @@ export class DrizzleRepo implements Repo {
     vertical: string;
     status?: SearchAlert["status"];
     email?: string;
+    watchListingId?: string;
   }): Promise<SearchAlert[]> {
     const rows = await this.db
       .select()
@@ -1346,9 +1347,32 @@ export class DrizzleRepo implements Repo {
           eq(searchAlerts.vertical, filter.vertical),
           ...(filter.status ? [eq(searchAlerts.status, filter.status)] : []),
           ...(filter.email ? [eq(searchAlerts.email, filter.email)] : []),
+          ...(filter.watchListingId
+            ? [
+                sql`${searchAlerts.params} ->> 'watch' = ${filter.watchListingId}`,
+              ]
+            : []),
         ),
       );
     return rows.map(toSearchAlert);
+  }
+
+  async countSearchAlertsByWatch(
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    const rows = await this.db.execute<{ watch: string; n: number }>(sql`
+      select params ->> 'watch' as watch, count(*)::int as n
+      from search_alerts
+      where vertical = ${vertical}
+        and status = 'active'
+        and params ? 'watch'
+      group by 1
+    `);
+    const out: Record<string, number> = {};
+    for (const r of rows) {
+      if (typeof r.watch === "string" && r.watch) out[r.watch] = r.n;
+    }
+    return out;
   }
 
   async appendSearchAlertPending(alertId: string, listingId: string) {

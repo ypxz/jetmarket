@@ -883,6 +883,69 @@ export function repoContract(
       ).toBe("active");
     });
 
+    it("watch filters + countByWatch scope to active watchers only (QA-408)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const listingId = crypto.randomUUID();
+      const otherId = crypto.randomUUID();
+      const mk = (
+        email: string,
+        token: string,
+        watch: string,
+        dedupeKey: string,
+      ) =>
+        repo.createSearchAlert({
+          vertical: "jets",
+          email,
+          params: { watch },
+          token,
+          dedupeKey,
+        });
+
+      // Two ACTIVE watchers on the same listing, one on another.
+      await mk(`wa-${tag}@t.dev`, "wa", listingId, "wa");
+      await mk(`wb-${tag}@t.dev`, "wb", listingId, "wb");
+      await mk(`wc-${tag}@t.dev`, "wc", otherId, "wc");
+      // A PENDING (never-confirmed) watch must not inflate the count.
+      await mk(`wp-${tag}@t.dev`, "wp", listingId, "wp");
+      // A non-watch alert is invisible to both filters.
+      await repo.createSearchAlert({
+        vertical: "jets",
+        email: `nw-${tag}@t.dev`,
+        params: { type: "charter" },
+        token: "nw",
+        dedupeKey: "nw",
+      });
+      await repo.confirmSearchAlert("wa");
+      await repo.confirmSearchAlert("wb");
+      await repo.confirmSearchAlert("wc");
+
+      // watchListingId filter — exact id only.
+      const watchers = await repo.listSearchAlerts({
+        vertical: "jets",
+        watchListingId: listingId,
+      });
+      expect(watchers.map((a) => a.email).sort()).toEqual([
+        `wa-${tag}@t.dev`,
+        `wb-${tag}@t.dev`,
+        `wp-${tag}@t.dev`,
+      ]);
+      const activeWatchers = await repo.listSearchAlerts({
+        vertical: "jets",
+        status: "active",
+        watchListingId: listingId,
+      });
+      expect(activeWatchers).toHaveLength(2);
+
+      // Grouped demand counts — active only, watch-keyed rows only.
+      const counts = await repo.countSearchAlertsByWatch("jets");
+      expect(counts[listingId]).toBe(2);
+      expect(counts[otherId]).toBe(1);
+      expect(
+        await repo.countSearchAlertsByWatch("machinery"),
+      ).toEqual({});
+    });
+
     it("enforces plan listing counts and subscription round-trips", async () => {
       const repo = await factory();
       const user = await repo.createUser(

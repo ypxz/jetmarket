@@ -234,6 +234,22 @@ test('listing watch: subscribe → confirm → price edit mails update (QA-407)'
     await new Promise((r) => setTimeout(r, 1500));
     const stale = latestMailTo(WATCHER);
     expect(stale && stale.includes(`E2E Unwatched ${run}`)).toBeFalsy();
+
+    // QA-408: archiving is terminal — one "watch ended" mail, alert flips off.
+    const arch = await op.patch(`/api/listings/${listingId}`, {
+      data: { status: 'archived' },
+    });
+    expect(arch.status()).toBe(200);
+    let ended: string | null = null;
+    for (let i = 0; i < 20 && !ended; i++) {
+      const m = latestMailTo(WATCHER);
+      if (m && m.includes('watch ended')) ended = m;
+      if (!ended) await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(ended, 'expected a watch-ended mail').toBeTruthy();
+    const [alertRow] = await sql`
+      select status from search_alerts where email = ${WATCHER}`;
+    expect(alertRow?.status).toBe('off');
   } finally {
     await sql`delete from search_alerts where email = ${`e2e-watch-${run}@test.dev`}`;
     await sql`delete from listings where title like ${`E2E Watch%${run}`} or title like ${`E2E Unwatched ${run}`}`;

@@ -143,6 +143,64 @@ async function sendAlertDigest(
 }
 
 /**
+ * End-of-watch (QA-408): archiving is operator-terminal — the watched row
+ * can never come back, so every watch on it is dead. Mail each watcher a
+ * "watch ended" notice and flip their alert 'off' (a fresh subscribe would
+ * be needed anyway since the listing is gone). Pauses do NOT end watches:
+ * reactivation already re-mails via the activation hook. Never fails the
+ * request — per-alert failures log and skip.
+ */
+export async function endListingWatches(
+  repo: Repo,
+  listing: Listing,
+  origin: string,
+): Promise<void> {
+  try {
+    const watchers = await repo.listSearchAlerts({
+      vertical: listing.vertical,
+      status: "active",
+      watchListingId: listing.id,
+    });
+    for (const alert of watchers) {
+      try {
+        const searchUrl = searchAlertSearchUrl(origin, {});
+        await emailProvider().send({
+          to: alert.email,
+          subject: `“${listing.title}” was removed — your watch ended`,
+          text: [
+            `The listing you were watching on ${site.name} is no longer available:`,
+            "",
+            listing.title,
+            "",
+            `Browse similar: ${searchUrl}`,
+          ].join("\n"),
+          html: brandedEmailHtml({
+            siteName: site.name,
+            title: `“${listing.title}” was removed — your watch ended`,
+            paragraphs: [
+              `The listing you were watching on ${site.name} is no longer available:`,
+              listing.title,
+            ],
+            cta: { url: searchUrl, label: "Browse similar listings" },
+          }),
+        });
+        await repo.unsubscribeSearchAlert(alert.token);
+      } catch (e) {
+        logWarn("search_alerts.watch_end_failed", {
+          alertId: alert.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+  } catch (e) {
+    logWarn("search_alerts.watch_end_scan_failed", {
+      listingId: listing.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
  * Activation hook — called wherever a listing becomes active (create or
  * reactivate). For each ACTIVE alert in the listing's vertical that still
  * matches: outside the cooldown → mail immediately (+ any queued backlog);

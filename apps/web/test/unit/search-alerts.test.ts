@@ -385,6 +385,67 @@ describe("listing watch (QA-407)", () => {
   });
 });
 
+describe("end-of-watch (QA-408)", () => {
+  const patch = (id: string, body: unknown) =>
+    patchListing(
+      new Request(`http://test.local/api/listings/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ id }) },
+    );
+
+  it("archiving mails every watcher once and flips their alert off", async () => {
+    await opFixture();
+    const res = await postListing(mkListing("Doomed Jet"));
+    const { id } = (await res.json()) as { id: string };
+    const { token } = await confirmedAlert("gone@test.dev", { watch: id });
+    sendSpy.mockClear();
+
+    const pres = await patch(id, { status: "archived" });
+    expect(pres.status).toBe(200);
+
+    const mail = sendSpy.mock.calls.find(
+      (c: unknown[]) => toOf(c) === "gone@test.dev",
+    );
+    expect(mail).toBeDefined();
+    expect(subjectOf(mail!)).toContain("watch ended");
+    expect(subjectOf(mail!)).toContain("Doomed Jet");
+
+    // The watch row is dead with the listing — not left 'active' forever.
+    const [alert] = await repo.listSearchAlerts({
+      vertical: "jets",
+      email: "gone@test.dev",
+    });
+    expect(alert?.token).toBe(token);
+    expect(alert?.status).toBe("off");
+  });
+
+  it("pausing keeps the watch live — reactivation re-mails", async () => {
+    await opFixture();
+    const res = await postListing(mkListing("Paused Jet"));
+    const { id } = (await res.json()) as { id: string };
+    await confirmedAlert("pause@test.dev", { watch: id });
+    sendSpy.mockClear();
+
+    expect((await patch(id, { status: "paused" })).status).toBe(200);
+    // No "ended" mail — the watch is only asleep.
+    expect(
+      sendSpy.mock.calls.filter(
+        (c: unknown[]) =>
+          toOf(c) === "pause@test.dev" &&
+          subjectOf(c).includes("watch ended"),
+      ),
+    ).toHaveLength(0);
+    const [alert] = await repo.listSearchAlerts({
+      vertical: "jets",
+      email: "pause@test.dev",
+    });
+    expect(alert?.status).toBe("active");
+  });
+});
+
 describe("buyer self-service (QA-405)", () => {
   async function buyerRfq(email: string) {
     const listing = await repo.createListing({

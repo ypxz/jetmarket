@@ -41,7 +41,7 @@ export default async function OperatorDashboard() {
 
   // Cap the dashboard render — the header count uses the true total; beyond
   // 100 listings this page needs a pager, not a longer card wall.
-  const [listings, listingCount, deals, dealCount, openRfqs, sub] =
+  const [listings, listingCount, deals, dealCount, openRfqs, sub, watchCounts] =
     await Promise.all([
       repo.listListings({
         operatorId: operator.id,
@@ -62,6 +62,8 @@ export default async function OperatorDashboard() {
         statusNot: ["closed", "expired", "spam"],
       }),
       repo.getSubscription(operator.id),
+      // Watchlist demand signal (QA-408): one grouped query, chip per row.
+      repo.countSearchAlertsByWatch(getVertical().slug),
     ]);
   // Funnel stats (QA-151): the Pro "analytics" bullet was vaporware — these
   // counts come from real rows, no external vendor needed. Pro-only now —
@@ -226,6 +228,11 @@ export default async function OperatorDashboard() {
                     {isExpiredListing(l) ? (
                       <Badge variant="warning" className="ml-2">
                         {t("expiredHidden")}
+                      </Badge>
+                    ) : null}
+                    {watchCounts[l.id] ? (
+                      <Badge variant="success" className="ml-2">
+                        {t("watchers", { count: watchCounts[l.id] ?? 0 })}
                       </Badge>
                     ) : null}
                   </div>

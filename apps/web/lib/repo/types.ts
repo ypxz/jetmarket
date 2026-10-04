@@ -389,7 +389,13 @@ export interface Repo {
     status?: SearchAlertStatus;
     /** Buyer self-service inbox: one mailbox's alerts only. */
     email?: string;
+    /** Watchlist demand: only rows watching this listing id (params.watch). */
+    watchListingId?: string;
   }): Promise<SearchAlert[]>;
+  /** Watchlist demand: ACTIVE watch-alert count per listing id — the
+   *  operator dashboard's "N watching" signal and the public listing
+   *  page's social proof read. One grouped query, no N+1. */
+  countSearchAlertsByWatch(vertical: string): Promise<Record<string, number>>;
   /** Queue a matched listing during the mail cooldown — distinct append. */
   appendSearchAlertPending(alertId: string, listingId: string): Promise<void>;
   /** Stamp lastAlertedAt=now and flush the pending queue (post-send). */
