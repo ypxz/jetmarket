@@ -76,6 +76,19 @@ export async function GET(req: Request) {
   const opById = new Map(
     opByIdEntries.map((o) => [o.id, publicOperator(o)] as const),
   );
+  // QA-449: post-close contact reveal — once a quote is ACCEPTED the deal
+  // is closed and the buyer legitimately reaches the operator directly
+  // (the close mail already carries this address; the page shouldn't make
+  // them fish for it). Only the winning quote's operator resolves —
+  // declined/withdrawn operators stay public-profile only.
+  const contactByOp = new Map<string, string>();
+  const opsByIdFull = new Map(opByIdEntries.map((o) => [o.id, o] as const));
+  for (const q of quoteRows) {
+    if (q.status !== "accepted" || contactByOp.has(q.operatorId)) continue;
+    const op = opsByIdFull.get(q.operatorId);
+    const owner = op ? await repo.getUser(op.userId) : undefined;
+    if (owner) contactByOp.set(q.operatorId, owner.email);
+  }
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();
   for (const q of quoteRows) {
@@ -136,7 +149,14 @@ export async function GET(req: Request) {
           operator: (() => {
             const o = opById.get(q.operatorId);
             return o
-              ? { ...o, dealsClosed: dealCounts[q.operatorId] ?? 0 }
+              ? {
+                  ...o,
+                  dealsClosed: dealCounts[q.operatorId] ?? 0,
+                  contactEmail:
+                    q.status === "accepted"
+                      ? contactByOp.get(q.operatorId)
+                      : undefined,
+                }
               : null;
           })(),
         })),

@@ -388,6 +388,11 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // The extended request still carries its live quote — accept it.
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);
+    // QA-449: the closed deal reveals the operator's contact on the row
+    // itself — the close mail has it, the page should too.
+    await expect(
+      buyer.locator('[data-testid^="quote-contact-"]'),
+    ).toContainText(OPERATOR_EMAIL);
   });
 
   await step('admin fee ledger shows the deal and fee invoice', async () => {

@@ -18,7 +18,14 @@ interface Quote {
   status: string;
   createdAt: string;
   updatedAt: string;
-  operator: { name: string; verified: boolean; dealsClosed?: number } | null;
+  operator: {
+    name: string;
+    verified: boolean;
+    dealsClosed?: number;
+    /** QA-449: post-close reach-back — only present on the accepted quote
+     *  (the deal's closed; the buyer legitimately gets the contact). */
+    contactEmail?: string;
+  } | null;
 }
 interface Rfq {
   id: string;
@@ -426,6 +433,20 @@ function QuotesInner() {
                               : ""}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
+                          {/* QA-449: accepted = deal closed — the buyer
+                              needs a reach-back path on the page itself,
+                              not just in the close mail. */}
+                          {q.status === "accepted" && q.operator?.contactEmail ? (
+                            <p className="mt-1 text-sm" data-testid={`quote-contact-${q.id}`}>
+                              {t("reachOperator", { name: q.operator.name })}{" "}
+                              <a
+                                className="underline"
+                                href={`mailto:${q.operator.contactEmail}`}
+                              >
+                                {q.operator.contactEmail}
+                              </a>
+                            </p>
+                          ) : null}
                         </div>
                         {q.status === "sent" &&
                         ["open", "matched", "quoted"].includes(r.status) ? (
