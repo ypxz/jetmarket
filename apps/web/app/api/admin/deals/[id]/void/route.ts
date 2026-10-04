@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { notifyDealInvoiceVoided } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
@@ -40,6 +41,13 @@ export async function POST(
     adminId: user.id,
     dealId: id,
     was: deal.invoiceStatus,
+  });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "deal_invoice_voided",
+    targetType: "deal",
+    targetId: id,
+    meta: { was: deal.invoiceStatus },
   });
   return ok(await repo.getDeal(id));
 }

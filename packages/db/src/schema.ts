@@ -425,6 +425,25 @@ export const listingReports = pgTable(
   ],
 );
 
+export const adminEvents = pgTable(
+  "admin_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    adminId: uuid("admin_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    event: text("event").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    meta: jsonb("meta"),
+    vertical: text("vertical").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("admin_events_feed_idx").on(t.vertical, t.createdAt)],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type OperatorRow = typeof operators.$inferSelect;
 export type ListingRow = typeof listings.$inferSelect;

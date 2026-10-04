@@ -14,6 +14,7 @@ import {
   toMinorUnits,
 } from "@jetmarket/domain";
 import type {
+  AdminEvent,
   BlockedEmail,
   Deal,
   JobInfo,
@@ -52,6 +53,7 @@ const {
   searchAlerts,
   listingReports,
   blockedEmails,
+  adminEvents,
 } = schema;
 
 const iso = (d: Date | null | undefined): string =>
@@ -149,6 +151,21 @@ function toBlockedEmail(r: typeof blockedEmails.$inferSelect): BlockedEmail {
     email: r.email,
     reason: r.reason,
     createdBy: r.createdBy,
+    createdAt: iso(r.createdAt),
+  };
+}
+
+function toAdminEvent(r: typeof adminEvents.$inferSelect): AdminEvent {
+  return {
+    id: r.id,
+    ...(r.adminId != null ? { adminId: r.adminId } : {}),
+    event: r.event,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    ...(r.meta != null
+      ? { meta: r.meta as Record<string, unknown> }
+      : {}),
+    vertical: r.vertical,
     createdAt: iso(r.createdAt),
   };
 }
@@ -1717,6 +1734,39 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(blockedEmails.createdAt))
       .limit(500);
     return rows.map(toBlockedEmail);
+  }
+
+  async logAdminEvent(
+    e: Omit<AdminEvent, "id" | "createdAt">,
+  ): Promise<AdminEvent> {
+    // QA-467: append-only audit row — one insert per enforcement write.
+    const rows = await this.db
+      .insert(adminEvents)
+      .values({
+        adminId: e.adminId,
+        event: e.event,
+        targetType: e.targetType,
+        targetId: e.targetId,
+        meta: e.meta,
+        vertical: e.vertical,
+      })
+      .returning();
+    return toAdminEvent(rows[0]!);
+  }
+
+  async listAdminEvents(filter: {
+    vertical?: string;
+    limit?: number;
+  }): Promise<AdminEvent[]> {
+    const conds = [];
+    if (filter.vertical) conds.push(eq(adminEvents.vertical, filter.vertical));
+    const rows = await this.db
+      .select()
+      .from(adminEvents)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(adminEvents.createdAt))
+      .limit(filter.limit ?? 50);
+    return rows.map(toAdminEvent);
   }
 
   async spamBuyerRfqs(email: string, vertical: string): Promise<number> {

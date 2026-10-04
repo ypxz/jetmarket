@@ -895,7 +895,13 @@
     "blocked": "Blocked buyers ({count})",
     "colEmail": "Email",
     "colBlocked": "Blocked",
-    "noBlocked": "No blocked buyers."
+    "noBlocked": "No blocked buyers.",
+    "activity": "Moderation activity ({count})",
+    "colWhen": "When",
+    "colAdmin": "Admin",
+    "colAction": "Action",
+    "colTarget": "Target",
+    "noActivity": "No moderation activity yet."
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

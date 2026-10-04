@@ -2,6 +2,7 @@ import { storageProvider } from "@jetmarket/providers";
 import { rfqDeadlineAt } from "../rfq-deadline";
 import { PlanCapError } from "./types";
 import type {
+  AdminEvent,
   BlockedEmail,
   Deal,
   JobInfo,
@@ -1101,6 +1102,7 @@ class MemoryRepo implements Repo {
   }
 
   private blockedEmails = new Map<string, BlockedEmail>(); // key: lower email
+  private adminEvents = new Map<string, AdminEvent>();
 
   async blockBuyerEmail(
     email: string,
@@ -1134,6 +1136,33 @@ class MemoryRepo implements Repo {
     return [...this.blockedEmails.values()].sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt),
     );
+  }
+
+  async logAdminEvent(
+    e: Omit<AdminEvent, "id" | "createdAt">,
+  ): Promise<AdminEvent> {
+    // QA-467: append-only — one row per enforcement write, never updated.
+    const row: AdminEvent = { ...e, id: uid("aev"), createdAt: now() };
+    this.adminEvents.set(row.id, row);
+    return row;
+  }
+
+  async listAdminEvents(filter: {
+    vertical?: string;
+    limit?: number;
+  }): Promise<AdminEvent[]> {
+    let rows = [...this.adminEvents.values()];
+    if (filter.vertical) rows = rows.filter((r) => r.vertical === filter.vertical);
+    // Same-ms writes: pg's microsecond stamp keeps insert order; memory
+    // ties break by later-insert-first (newest-first feed, QA-467).
+    rows = rows
+      .map((r, i) => ({ r, i }))
+      .sort(
+        (a, b) =>
+          b.r.createdAt.localeCompare(a.r.createdAt) || b.i - a.i,
+      )
+      .map((x) => x.r);
+    return rows.slice(0, filter.limit ?? 50);
   }
 
   async spamBuyerRfqs(email: string, vertical: string): Promise<number> {

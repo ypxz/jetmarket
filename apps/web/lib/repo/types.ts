@@ -101,6 +101,19 @@ export interface Rfq {
   createdAt: string;
 }
 
+/** QA-467: one append-only moderation audit row — who did what to which
+ *  target, newest-first feed on the admin page. */
+export interface AdminEvent {
+  id: string;
+  adminId?: string;
+  event: string;
+  targetType: string;
+  targetId: string;
+  meta?: Record<string, unknown>;
+  vertical: string;
+  createdAt: string;
+}
+
 /** QA-463: a blocked buyer address — RFQ-create and report filing refuse
  *  it at the route. Deliberately silent toward the blocked party. */
 export interface BlockedEmail {
@@ -783,6 +796,15 @@ export interface Repo {
    *  block route runs it so a flagged spammer's accusations stop
    *  cluttering the queue at the same moment their demand is purged. */
   resolveListingReportsByReporter(reporterId: string): Promise<number>;
+
+  /** QA-467: append-only moderation audit trail. Every enforcement route
+   *  appends after its write (non-fatal — never lets auditability fail a
+   *  request); the admin page renders the newest entries per vertical. */
+  logAdminEvent(e: Omit<AdminEvent, "id" | "createdAt">): Promise<AdminEvent>;
+  listAdminEvents(filter: {
+    vertical?: string;
+    limit?: number;
+  }): Promise<AdminEvent[]>;
 
   /** QA-463: account-level buyer block. RFQs file by buyerEmail — a serial
    *  abuser needs the ADDRESS stopped, not another per-row spam mark.

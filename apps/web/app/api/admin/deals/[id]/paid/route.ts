@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo, logWarn } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { site } from "@jetmarket/config";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { getRepo } from "@/lib/repo";
@@ -32,6 +33,12 @@ export async function POST(
     return err(`invoice is ${cur}, not invoiced`, 409);
   }
   logInfo("admin.deal_invoice_paid", { adminId: user.id, dealId: id });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "deal_invoice_paid",
+    targetType: "deal",
+    targetId: id,
+  });
   // Close the loop: the operator should learn their success-fee invoice
   // settled without watching the dashboard. Mail failure must not 500 —
   // the ledger state already flipped.

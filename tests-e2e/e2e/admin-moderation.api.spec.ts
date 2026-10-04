@@ -201,6 +201,11 @@ test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', 
       })
     ).ok(),
   ).toBeTruthy();
+
+  // QA-467: both toggles landed on the audit feed.
+  expect(await (await admin.get('/en/admin')).text()).toContain(
+    'mod-event-operator_suspension_toggled',
+  );
 });
 
 // Listing reports (QA-461): buyers flag supply into the admin queue —
@@ -342,9 +347,12 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   });
   expect(unblock.status()).toBe(200);
   expect(((await unblock.json()) as { blocked: boolean }).blocked).toBe(false);
-  expect(await (await admin.get('/en/admin')).text()).not.toContain(
-    `blocked-row-${BUYER}`,
-  );
+  const afterUnblock = await admin.get('/en/admin');
+  expect(await afterUnblock.text()).not.toContain(`blocked-row-${BUYER}`);
+  // QA-467: block AND unblock both append to the audit feed.
+  const feedText = await (await admin.get('/en/admin')).text();
+  expect(feedText).toContain('mod-event-buyer_blocked');
+  expect(feedText).toContain('mod-event-buyer_unblocked');
   // The first RFQ was spam-flipped by the block, so dedupe (live-only)
   // misses it and this call mints a fresh row — the point is the request
   // clears the block, not which 2xx it gets.

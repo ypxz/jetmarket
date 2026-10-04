@@ -35,7 +35,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, modEvents] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -56,6 +56,8 @@ export default async function AdminPage({
       }),
       // QA-463: blocked buyer addresses — the RFQ rows show their state.
       repo.listBlockedEmails(),
+      // QA-467: append-only moderation feed — newest first, this vertical.
+      repo.listAdminEvents({ vertical: verticalSlug(), limit: 30 }),
     ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
@@ -89,6 +91,12 @@ export default async function AdminPage({
       }),
       repo.listUsers([...new Set(reports.map((r) => r.reporterId))]),
     ]);
+  // QA-467: audit rows show who did it — resolve admin emails in one go.
+  const modEventUserRows = await repo.listUsers([
+    ...new Set(
+      modEvents.map((e) => e.adminId).filter((x): x is string => !!x),
+    ),
+  ]);
   // Report rows reach through their listing to the operator — the row's
   // enforcement buttons (suspend/moderate) need the owner row (QA-462).
   const reportOpRows = await repo.listOperators({
@@ -127,6 +135,9 @@ export default async function AdminPage({
   const reportOps = new Map(reportOpRows.map((o) => [o.id, o] as const));
   const reportEmails = new Map(
     reportUserRows.map((u) => [u.id, u.email] as const),
+  );
+  const modEventEmails = new Map(
+    modEventUserRows.map((u) => [u.id, u.email] as const),
   );
   const LIVE_RFQ: ReadonlySet<string> = new Set(["open", "matched", "quoted"]);
   const blockedEmails = new Set(
@@ -480,6 +491,53 @@ export default async function AdminPage({
               <tr>
                 <td colSpan={4} className="py-6 text-center text-muted">
                   {t("noBlocked")}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table></div>
+      </section>
+
+      {/* QA-467: moderation activity — append-only audit feed so every
+          enforcement write above is visible (who, what, on which target).
+          same newest-first shape as the queues it records. */}
+      <section className="mt-10" data-testid="admin-activity">
+        <h2 className="text-lg font-semibold">
+          {t("activity", { count: modEvents.length })}
+        </h2>
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colWhen")}</th>
+              <th className="py-2 pr-4">{t("colAdmin")}</th>
+              <th className="py-2 pr-4">{t("colAction")}</th>
+              <th className="py-2">{t("colTarget")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {modEvents.map((e) => (
+              <tr key={e.id} data-testid={`mod-event-${e.event}`}>
+                <td className="py-2 pr-4 text-muted">
+                  {new Date(e.createdAt).toLocaleDateString("en-US")}
+                </td>
+                <td className="max-w-60 truncate py-2 pr-4">
+                  {e.adminId ? (modEventEmails.get(e.adminId) ?? "—") : "—"}
+                </td>
+                <td className="py-2 pr-4">
+                  <Badge variant="default">{e.event}</Badge>
+                </td>
+                <td className="py-2 text-muted">
+                  {e.targetType}:{" "}
+                  {e.targetType === "buyer_email"
+                    ? e.targetId
+                    : e.targetId.slice(0, 8)}
+                </td>
+              </tr>
+            ))}
+            {modEvents.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-muted">
+                  {t("noActivity")}
                 </td>
               </tr>
             ) : null}

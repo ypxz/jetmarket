@@ -3683,5 +3683,47 @@ export function repoContract(
       // Resolved rows keep the dismissed stamp; second sweep is a no-op.
       expect(await repo.resolveListingReportsByReporter(spammer.id)).toBe(0);
     });
+
+    it("admin events: append-only feed, vertical scope, newest first (QA-467)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const admin = await repo.createUser(`aev-adm-${tag}@test.dev`, "admin");
+
+      const e1 = await repo.logAdminEvent({
+        adminId: admin.id,
+        event: "buyer_blocked",
+        targetType: "buyer_email",
+        targetId: `abuse-${tag}@test.dev`,
+        meta: { rfqsSpammed: 2 },
+        vertical: "jets",
+      });
+      expect(e1.id).toBeTruthy();
+      const e2 = await repo.logAdminEvent({
+        adminId: admin.id,
+        event: "operator_suspension_toggled",
+        targetType: "operator",
+        targetId: "op-1",
+        vertical: "machinery",
+      });
+      const e3 = await repo.logAdminEvent({
+        event: "listing_moderated",
+        targetType: "listing",
+        targetId: "lst-1",
+        vertical: "jets",
+      });
+
+      // Newest first + vertical scope — the machinery row never shows on
+      // the jets feed.
+      const jets = await repo.listAdminEvents({ vertical: "jets" });
+      expect(jets.map((r) => r.id)).toContain(e1.id);
+      expect(jets.map((r) => r.id)).toContain(e3.id);
+      expect(jets.map((r) => r.id)).not.toContain(e2.id);
+      expect(jets[0]!.id).toBe(e3.id);
+      expect(jets.find((r) => r.id === e1.id)?.meta?.rfqsSpammed).toBe(2);
+      // Limit clamps the feed.
+      expect(
+        (await repo.listAdminEvents({ vertical: "jets", limit: 1 })).length,
+      ).toBe(1);
+    });
   });
 }

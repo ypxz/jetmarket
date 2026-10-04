@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 
@@ -32,5 +33,11 @@ export async function POST(
     return err("deal has no rating to clear", 409);
   }
   logInfo("admin.deal_rating_cleared", { adminId: user.id, dealId: id });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "deal_rating_cleared",
+    targetType: "deal",
+    targetId: id,
+  });
   return ok(await repo.getDeal(id));
 }

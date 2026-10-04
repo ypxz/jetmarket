@@ -2,6 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 
@@ -44,6 +45,13 @@ export async function POST(
     adminId: user.id,
     rfqId: id,
     status: "spam",
+  });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "rfq_moderated",
+    targetType: "rfq",
+    targetId: id,
+    meta: { status: "spam" },
   });
   return ok({ id, status: "spam" });
 }

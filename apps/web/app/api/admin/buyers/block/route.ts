@@ -2,6 +2,7 @@ import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 
@@ -30,6 +31,12 @@ export async function POST(req: Request) {
   if (await repo.isEmailBlocked(email)) {
     await repo.unblockBuyerEmail(email);
     logInfo("admin.buyer_unblocked", { adminId: user.id, email });
+    await auditAdmin(repo, {
+      adminId: user.id,
+      event: "buyer_unblocked",
+      targetType: "buyer_email",
+      targetId: email,
+    });
     return ok({ email, blocked: false });
   }
   const row = await repo.blockBuyerEmail(email, {
@@ -52,6 +59,13 @@ export async function POST(req: Request) {
     email,
     rfqsSpammed: spammed,
     reportsCleared,
+  });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "buyer_blocked",
+    targetType: "buyer_email",
+    targetId: email,
+    meta: { rfqsSpammed: spammed, reportsCleared },
   });
   return ok({ ...row, rfqsSpammed: spammed, reportsCleared });
 }

@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { notifyOperatorSuspended } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 
@@ -30,6 +31,13 @@ export async function POST(
     adminId: user.id,
     operatorId: id,
     suspended: !op.suspended,
+  });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "operator_suspension_toggled",
+    targetType: "operator",
+    targetId: id,
+    meta: { suspended: !op.suspended },
   });
   return ok(await repo.getOperator(id));
 }

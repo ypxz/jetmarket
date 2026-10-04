@@ -1,6 +1,7 @@
 import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
+import { auditAdmin } from "@/lib/audit";
 import { getRepo } from "@/lib/repo";
 
 /**
@@ -24,5 +25,11 @@ export async function POST(
     return err("report not found or already resolved", 409);
   }
   logInfo("admin.listing_report_dismissed", { adminId: user.id, reportId: id });
+  await auditAdmin(repo, {
+    adminId: user.id,
+    event: "listing_report_dismissed",
+    targetType: "listing_report",
+    targetId: id,
+  });
   return ok({ id, status: "dismissed" });
 }
