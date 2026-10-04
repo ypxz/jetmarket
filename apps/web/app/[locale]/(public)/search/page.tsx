@@ -5,6 +5,7 @@ import { FacetSidebar } from "@/components/facet-sidebar";
 import { ListingCard } from "@/components/listing-card";
 import { Pager } from "@/components/pager";
 import { SearchAlertForm } from "@/components/search-alert-form";
+import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { browseExpiry, searchListingsPage } from "@/lib/search";
@@ -23,6 +24,10 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const t = await getTranslations("search");
+  // QA-478: a signed-in buyer shouldn't retype their own address — the
+  // field stays editable (subscribing for another mailbox is legitimate),
+  // it just starts pre-filled with the session identity.
+  const user = await currentUser();
   // Cards carry the query string so "← Back to search" on a listing restores
   // the buyer's filters (QA-217). `page` excluded — back lands on page 1 of
   // the same filter set, not mid-pager.
@@ -104,6 +109,7 @@ export default async function SearchPage({
               params={savedParams}
               title={t("alertTitle")}
               emailPlaceholder={t("alertEmail")}
+              emailDefault={user?.email}
               submitLabel={t("alertSubmit")}
               sendingLabel={t("alertSending")}
               sentLabel={t("alertSent")}

@@ -461,6 +461,21 @@ test('saved searches manageable on /account with a session (QA-473)', async () =
     // A different signed-in mailbox can't touch the row — 404, not leaked.
     const other = await login(OTHER);
     expect((await other.post(`/api/search-alerts/${alertId}/off`)).status()).toBe(404);
+
+    // QA-478: the saved set deep-links back to /search (re-run + refine =
+    // the edit path); the link survives the 'off' state (re-subscribing
+    // re-arms). href is locale-prefixed by the i18n Link.
+    const openHref = html2.match(
+      new RegExp(`data-testid="account-alert-open-${alertId}"[^>]*href="([^"]+)"|href="([^"]+)"[^>]*data-testid="account-alert-open-${alertId}"`),
+    );
+    const href = openHref?.[1] ?? openHref?.[2] ?? '';
+    expect(href).toContain('/search?');
+    expect(decodeURIComponent(href)).toContain('type=charter');
+
+    // QA-478: a signed-in buyer's subscribe form pre-fills their session
+    // email — no retyping the mailbox the session already proves.
+    const searchHtml = await (await buyer.get('/en/search?type=charter')).text();
+    expect(searchHtml).toContain(`value="${ACCT}"`);
   } finally {
     await sql`delete from search_alerts where email in (${ACCT}, ${OTHER})`;
     await sql`delete from users where email in (${ACCT}, ${OTHER})`;

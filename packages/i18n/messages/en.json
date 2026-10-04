@@ -961,6 +961,8 @@
       "daily": "daily digest"
     },
     "alertOff": "Turn off",
+    "alertOpen": "Run this search",
+    "alertOpenListing": "View listing",
     "alertOffPending": "Turning off…",
     "alertOffDone": "Off",
     "alertOffFailed": "Couldn't turn it off — try again.",

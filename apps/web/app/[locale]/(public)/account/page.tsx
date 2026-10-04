@@ -6,7 +6,11 @@ import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
-import { searchAlertSummary, searchAlertWatchId } from "@/lib/search-alerts";
+import {
+  searchAlertSummary,
+  searchAlertTargetUrl,
+  searchAlertWatchId,
+} from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 import { AlertOffButton } from "./alert-off-button";
 import { AlertResend } from "./alert-resend";
@@ -155,6 +159,18 @@ export default async function AccountPage() {
                       {new Date(a.createdAt).toLocaleDateString("en-US")} ·{" "}
                       {t(`alertFreq.${a.freq}` as Parameters<typeof t>[0])}
                     </span>
+                    {/* QA-478: the saved set deep-links back to its own
+                        /search — re-running (then re-saving tweaks) is how
+                        a buyer refines it; watch alerts land on the
+                        listing. Off rows keep it too — re-subscribing
+                        re-arms. */}
+                    <Link
+                      href={searchAlertTargetUrl("", a.params)}
+                      data-testid={`account-alert-open-${a.id}`}
+                      className="text-xs underline"
+                    >
+                      {watchId ? t("alertOpenListing") : t("alertOpen")}
+                    </Link>
                   </span>
                   <span className="flex items-center gap-2">
                     <Badge
