@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, notExists, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, ne, notExists, notInArray, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import {
   fromMinorUnits,
@@ -1526,12 +1526,14 @@ export class DrizzleRepo implements Repo {
     operatorId?: string;
     status?: QuoteStatus;
     since?: string;
+    buyerSeen?: boolean;
   }): Promise<number> {
     const conds = [];
     if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
     if (filter?.status) conds.push(eq(quotes.status, filter.status));
     if (filter?.since)
       conds.push(gte(quotes.createdAt, new Date(filter.since)));
+    if (filter?.buyerSeen) conds.push(isNotNull(quotes.buyerSeenAt));
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(quotes)

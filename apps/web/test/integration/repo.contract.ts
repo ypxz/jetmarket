@@ -484,6 +484,16 @@ export function repoContract(
         verified: false,
         plan: "free",
       });
+      const other = await repo.upsertOperator({
+        userId: (
+          await repo.createUser(`other-${tag}@test.dev`, "operator")
+        ).id,
+        name: "Other Air",
+        baseAirport: "GVA",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
       const listing = await repo.createListing({
         operatorId: op.id,
         vertical: "jets",
@@ -528,6 +538,20 @@ export function repoContract(
       expect(revised?.buyerSeenAt).toBeUndefined();
       await repo.markQuotesBuyerSeen([quote.id]);
       expect((await repo.getQuote(quote.id))?.buyerSeenAt).toBeDefined();
+
+      // QA-507: the funnel's seen leg — buyerSeen counts only stamped rows.
+      const unseen = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: other.id,
+        amount: 31000,
+        currency: "USD",
+        message: "",
+      });
+      expect(unseen).toBeTruthy();
+      expect(
+        await repo.countQuotes({ operatorId: op.id, buyerSeen: true }),
+      ).toBe(1);
+      expect(await repo.countQuotes({ operatorId: op.id })).toBe(1);
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {

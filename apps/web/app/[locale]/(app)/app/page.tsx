@@ -100,6 +100,7 @@ export default async function OperatorDashboard() {
     quotesSent,
     quotesWon,
     quotesLost,
+    quotesSeen,
     rfqs30d,
     quotes30d,
     won30d,
@@ -111,6 +112,7 @@ export default async function OperatorDashboard() {
         repo.countQuotes({ operatorId: operator.id }),
         repo.countQuotes({ operatorId: operator.id, status: "accepted" }),
         repo.countQuotes({ operatorId: operator.id, status: "declined" }),
+        repo.countQuotes({ operatorId: operator.id, buyerSeen: true }),
         repo.countRfqs({
           operatorId: operator.id,
           vertical: getVertical().slug,
@@ -136,11 +138,15 @@ export default async function OperatorDashboard() {
           .ratingSummaryPerOperator([operator.id])
           .then((m) => m[operator.id]),
       ])
-    : [0, 0, 0, 0, 0, 0, 0, undefined, undefined];
+    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
       : null;
+  // QA-507: of the quotes you sent, how many the buyer actually opened —
+  // the funnel's engagement leg QA-506's receipts enable.
+  const seenRate =
+    quotesSent > 0 ? Math.round((quotesSeen / quotesSent) * 100) : null;
   const limit = isPro ? "∞" : String(FREE_LISTING_LIMIT);
 
   // Batch-join the offer rows' context — one listRfqs(ids) + one
@@ -241,6 +247,7 @@ export default async function OperatorDashboard() {
                   ["statQuotes", quotesSent],
                   ["statWon", quotesWon],
                   ["statWinRate", winRate === null ? "—" : `${winRate}%`],
+                  ["statSeenRate", seenRate === null ? "—" : `${seenRate}%`],
                   [
                     "statReply",
                     avgResponseH === undefined

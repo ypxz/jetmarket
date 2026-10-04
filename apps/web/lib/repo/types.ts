@@ -761,6 +761,8 @@ export interface Repo {
     status?: QuoteStatus;
     /** ISO timestamp — only rows created at/after this instant count. */
     since?: string;
+    /** QA-506/507: only count quotes with a buyer read receipt set. */
+    buyerSeen?: boolean;
   }): Promise<number>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent

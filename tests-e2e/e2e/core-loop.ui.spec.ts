@@ -552,6 +552,13 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(operator.getByTestId('operator-stats')).toContainText(
       '★ 5.0 (1)',
     );
+    // QA-507: the buyer's inbox GET stamped the quote — 1 of 1 seen = 100%.
+    await expect(operator.getByTestId('operator-stats')).toContainText(
+      'Seen rate',
+    );
+    await expect(operator.getByTestId('operator-stats')).toContainText(
+      '100%',
+    );
     await expect(operator.getByTestId('stats-recent')).toContainText(
       'Last 30 days',
     );

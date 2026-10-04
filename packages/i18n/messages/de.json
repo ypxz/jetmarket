@@ -996,6 +996,7 @@
       "statQuotes": "Gesendete Angebote",
       "statWon": "Gewonnene Angebote",
       "statWinRate": "Gewinnquote",
+      "statSeenRate": "Gesehen-Rate",
       "statReply": "Übliche Antwortzeit",
       "statRating": "Ø Käuferbewertung",
       "statsRecent": "Letzte 30 Tage — {rfqs} Anfragen · {quotes} Angebote · {won} gewonnen",

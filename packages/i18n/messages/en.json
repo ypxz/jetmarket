@@ -996,6 +996,7 @@
       "statQuotes": "Quotes sent",
       "statWon": "Quotes won",
       "statWinRate": "Win rate",
+      "statSeenRate": "Seen rate",
       "statReply": "Typical reply",
       "statRating": "Avg buyer rating",
       "statsRecent": "Last 30 days — {rfqs} RFQs · {quotes} quotes · {won} won",
