@@ -60,6 +60,14 @@ export async function POST(
   if (parentListing?.status === "archived") {
     return err("listing is no longer available", 409);
   }
+  // QA-471: suspension is enforcement, not a suggestion — a suspended
+  // operator's already-sent quotes must not mint NEW deals. Already-sealed
+  // deals keep settling; deal formation stops here, BEFORE the CAS, so a
+  // rejected accept can't flip the RFQ closed.
+  const quotingOp = await repo.getOperator(quote.operatorId);
+  if (quotingOp?.suspended) {
+    return err("operator unavailable", 409);
+  }
 
   // Arbitration order matters: the RFQ flip is the single-winner gate.
   // Two accepts on DIFFERENT quotes of this RFQ would both pass their own

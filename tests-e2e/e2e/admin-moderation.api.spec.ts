@@ -129,6 +129,35 @@ test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', 
   });
   expect((await publicCtx.get(`/api/listings/${listingId}`)).ok()).toBeTruthy();
 
+  // QA-471: a quote minted BEFORE suspension must not mint a deal while
+  // the operator is suspended — enforcement gates deal formation, not
+  // just the writes QA-460 covered. Mint the pair up front.
+  const SUS_BUYER = `e2e-sus-buyer-${run}@jetmarket.local`;
+  const liveRfq = await publicCtx.post('/api/rfqs', {
+    data: {
+      listingId,
+      buyerEmail: SUS_BUYER,
+      fields: {
+        departure: 'ZRH',
+        arrival: 'NCE',
+        dateFrom: isoDateIn(14),
+        dateTo: isoDateIn(16),
+        passengers: 4,
+        budgetUsd: 45000,
+        name: 'Buyer Test',
+        email: SUS_BUYER,
+      },
+    },
+  });
+  expect(liveRfq.status()).toBe(201);
+  const { rfqId: liveRfqId, accessToken: liveToken } =
+    (await liveRfq.json()) as { rfqId: string; accessToken: string };
+  const liveQuote = await operator.post('/api/quotes', {
+    data: { rfqId: liveRfqId, amount: 42000, message: 'pre-suspend offer' },
+  });
+  expect(liveQuote.status()).toBe(201);
+  const liveQuoteId = ((await liveQuote.json()) as { id: string }).id;
+
   const admin = await login(ADMIN_EMAIL);
   const suspend = await admin.post(`/api/admin/operators/${operatorId}/suspend`);
   expect(suspend.status()).toBe(200);
@@ -185,6 +214,13 @@ test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', 
     ).status(),
   ).toBe(403);
 
+  // QA-471: the pre-suspension quote can't mint a deal while suspended.
+  const acceptWhileSuspended = await publicCtx.post(
+    `/api/quotes/${liveQuoteId}/accept`,
+    { data: { buyerEmail: SUS_BUYER, token: liveToken } },
+  );
+  expect(acceptWhileSuspended.status()).toBe(409);
+
   // Reinstate restores everything in one toggle.
   const reinstate = await admin.post(
     `/api/admin/operators/${operatorId}/suspend`,
@@ -206,6 +242,14 @@ test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', 
   expect(await (await admin.get('/en/admin')).text()).toContain(
     'mod-event-operator_suspension_toggled',
   );
+
+  // QA-471: post-reinstate the stale quote accepts normally — suspension
+  // gates deal formation only while active, it doesn't void the offer.
+  const acceptRestored = await publicCtx.post(
+    `/api/quotes/${liveQuoteId}/accept`,
+    { data: { buyerEmail: SUS_BUYER, token: liveToken } },
+  );
+  expect(acceptRestored.ok()).toBeTruthy();
 });
 
 // Listing reports (QA-461): buyers flag supply into the admin queue —
