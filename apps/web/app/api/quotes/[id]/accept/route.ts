@@ -159,15 +159,20 @@ export async function POST(
       currency: quote.currency,
       description: `${site.name} success fee — deal ${deal.id}`,
       idempotencyKey: deal.id,
-      metadata: { dealId: deal.id, quoteId: quote.id },
+      // kind tags the settle event for applyPaymentEvent — the operator
+      // pays this invoice through the hosted page (QA-450).
+      metadata: { kind: "dealFee", dealId: deal.id, quoteId: quote.id },
     });
     // pending→invoiced, idempotent on retry (a repeat accept re-invoices
     // and refreshes the ref) but never resurrects paid/void (QA-145).
+    // invoiceUrl (QA-450): the hosted pay page rides the deal row so the
+    // operator's dashboard can link to it without a provider round-trip.
     const flipped = await repo.setDealInvoice(
       deal.id,
       "invoiced",
       invoice.id,
       ["pending", "invoiced"],
+      invoice.hostedUrl,
     );
     if (flipped) {
       deal.invoiceStatus = "invoiced";

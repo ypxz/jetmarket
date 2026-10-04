@@ -137,6 +137,9 @@ export interface Deal {
   invoiceStatus: "pending" | "invoiced" | "paid" | "void";
   /** Provider-side invoice id (stripe-mock `in_…` or mock `inv_…`). */
   invoiceRef?: string;
+  /** QA-450: hosted pay page the operator settles through — only on
+   *  `invoiced` rows, captured from the provider at issue time. */
+  invoiceUrl?: string;
   closedAt: string;
   /** Resolved off the parent quote→rfq→listing when the read joins them
    *  (listDeals): a closed deal unlocks the buyer's contact + which listing
@@ -666,12 +669,14 @@ export interface Repo {
   /** Omit `ref` to keep the existing invoiceRef (e.g. invoiced -> paid).
    * `expectedIn` makes the write conditional on the current invoiceStatus —
    * returns false when the deal is already past it (admin void vs provider
-   * settle race, QA-145). */
+   * settle race, QA-145). `invoiceUrl` (QA-450) follows the same omit-keeps
+   * rule: only the issue flip passes it; the paid flip never touches it. */
   setDealInvoice(
     id: string,
     status: Deal["invoiceStatus"],
     ref?: string,
     expectedIn?: Deal["invoiceStatus"][],
+    invoiceUrl?: string,
   ): Promise<boolean>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;

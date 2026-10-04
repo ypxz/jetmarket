@@ -10,6 +10,7 @@ import { AvailabilityToggle } from "./availability-toggle";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { invoiceStateVariant } from "@/lib/state-variant";
+import { PayFee } from "./deals/pay-fee";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { isExpiredListing } from "@/lib/search";
 
@@ -420,9 +421,16 @@ export default async function OperatorDashboard() {
                     {d.invoiceRef ? ` · ${d.invoiceRef}` : ""}
                   </div>
                 </div>
-                <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
-                  {tc(`invoiceState.${d.invoiceStatus}`)}
-                </Badge>
+                <span className="flex items-center gap-2">
+                  <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
+                    {tc(`invoiceState.${d.invoiceStatus}`)}
+                  </Badge>
+                  {/* QA-450: self-serve settle — the hosted pay URL was
+                      captured at issue time; mock flips it instantly. */}
+                  {d.invoiceStatus === "invoiced" && d.invoiceUrl ? (
+                    <PayFee dealId={d.id} />
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

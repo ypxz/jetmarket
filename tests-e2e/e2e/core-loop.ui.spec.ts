@@ -412,6 +412,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // QA-428: the closed deal unlocks buyer contact + listing context.
     await expect(deals.filter({ hasText: BUYER_EMAIL })).toBeVisible();
     await expect(deals.filter({ hasText: LISTING_TITLE })).toBeVisible();
+    // QA-450: the operator settles the success fee from the deal wall —
+    // mock mode flips it through the emulated webhook instantly.
+    await operator.locator('[data-testid^="pay-fee-"]').first().click();
+    await expect(deals.getByText('paid')).toBeVisible();
   });
 
   await step('buyer sees the operator track record (QA-431)', async () => {

@@ -188,6 +188,18 @@ export class StripePaymentsProvider implements PaymentsProvider {
           created: event.created,
         };
       }
+      case "invoice.paid": {
+        // Success-fee settle — the operator paid the hosted invoice page
+        // (QA-450). The issue call tags metadata { kind: "dealFee", dealId }
+        // so the apply path routes it like any payment.completed.
+        const inv = event.data.object as Stripe.Invoice;
+        return {
+          kind: "payment.completed",
+          customerId: String(inv.customer ?? ""),
+          metadata: inv.metadata ?? undefined,
+          created: event.created,
+        };
+      }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         // Only mode=payment sessions are one-off charges — subscription-mode

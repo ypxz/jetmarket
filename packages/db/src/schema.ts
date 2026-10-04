@@ -239,6 +239,9 @@ export const deals = pgTable("deals", {
     .notNull()
     .default("pending"),
   invoiceRef: text("invoice_ref"),
+  /** QA-450: provider's hosted pay page — the operator settles the
+   *  success fee through it (stripe hosted_invoice_url; mock pay page). */
+  invoiceUrl: text("invoice_url"),
   /** QA-429 overdue-invoice reminder stamp — doubles as the 7d cooldown. */
   invoiceRemindedAt: timestamp("invoice_reminded_at", { withTimezone: true }),
 });

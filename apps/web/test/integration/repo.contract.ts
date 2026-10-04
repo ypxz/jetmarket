@@ -2464,11 +2464,20 @@ export function repoContract(
       expect(await repo.getDeal(deal.id)).toMatchObject({
         invoiceStatus: "pending",
       });
-      await repo.setDealInvoice(deal.id, "invoiced", "inv_test_1");
-      await repo.setDealInvoice(deal.id, "paid"); // ref omitted -> preserved
+      // QA-450: the hosted pay URL rides the issue flip; omit-keeps applies
+      // to it exactly like ref — a later paid flip never clears it.
+      await repo.setDealInvoice(
+        deal.id,
+        "invoiced",
+        "inv_test_1",
+        undefined,
+        "https://pay.test/inv_test_1",
+      );
+      await repo.setDealInvoice(deal.id, "paid"); // ref+url omitted -> preserved
       expect(await repo.getDeal(deal.id)).toMatchObject({
         invoiceStatus: "paid",
         invoiceRef: "inv_test_1",
+        invoiceUrl: "https://pay.test/inv_test_1",
       });
       // CAS (QA-145): expectedIn gates the transition — a paid invoice can't
       // be voided/re-invoiced by a racing writer.

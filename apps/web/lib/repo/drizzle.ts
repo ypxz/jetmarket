@@ -172,6 +172,7 @@ function toDeal(
     feeAmount: fromMinorUnits(d.feeAmountMinor, d.currency),
     invoiceStatus: d.invoiceStatus as Deal["invoiceStatus"],
     invoiceRef: d.invoiceRef ?? undefined,
+    invoiceUrl: d.invoiceUrl ?? undefined,
     closedAt: iso(d.closedAt),
     ...(r
       ? { rfqId: r.id, buyerEmail: r.buyerEmail, listingTitle: l?.title }
@@ -1458,12 +1459,14 @@ export class DrizzleRepo implements Repo {
     status: Deal["invoiceStatus"],
     ref?: string,
     expectedIn?: Deal["invoiceStatus"][],
+    invoiceUrl?: string,
   ): Promise<boolean> {
     const rows = await this.db
       .update(deals)
       .set({
         invoiceStatus: status,
         ...(ref !== undefined ? { invoiceRef: ref } : {}),
+        ...(invoiceUrl !== undefined ? { invoiceUrl } : {}),
       })
       .where(
         and(

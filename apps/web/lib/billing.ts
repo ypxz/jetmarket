@@ -16,7 +16,26 @@ export async function applyPaymentEvent(
 ): Promise<boolean> {
   if (event.kind === "ignored") return false;
   if (event.kind === "payment.completed") {
-    if (event.metadata?.kind !== "concierge") return false;
+    const kind = event.metadata?.kind;
+    // Success-fee settle (QA-450): the operator paid the invoice — flip the
+    // deal's ledger state through the same CAS the admin "mark paid" uses
+    // (paid/void never resurrect, QA-145).
+    if (kind === "dealFee") {
+      const dealId = event.metadata?.dealId;
+      if (!dealId) return false;
+      const paid = await repo.setDealInvoice(dealId, "paid", undefined, [
+        "pending",
+        "invoiced",
+      ]);
+      if (paid) {
+        analyticsProvider().track({
+          name: "deal_fee_paid",
+          props: { dealId },
+        });
+      }
+      return paid;
+    }
+    if (kind !== "concierge") return false;
     const rfqId = event.metadata?.rfqId;
     if (!rfqId) return false;
     return applyConciergePaid(repo, rfqId);

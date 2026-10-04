@@ -887,6 +887,7 @@ class MemoryRepo implements Repo {
     status: Deal["invoiceStatus"],
     ref?: string,
     expectedIn?: Deal["invoiceStatus"][],
+    invoiceUrl?: string,
   ) {
     const deal = this.deals.get(id);
     if (!deal) return false;
@@ -895,6 +896,7 @@ class MemoryRepo implements Repo {
       ...deal,
       invoiceStatus: status,
       invoiceRef: ref ?? deal.invoiceRef,
+      invoiceUrl: invoiceUrl ?? deal.invoiceUrl,
     });
     return true;
   }
