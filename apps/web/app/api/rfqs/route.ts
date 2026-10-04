@@ -63,6 +63,10 @@ export async function POST(req: Request) {
     // Expired dated inventory is unbookable — same 404 as a withdrawn listing.
     return err("listing not found", 404);
   }
+  // QA-460: a suspended operator's supply takes no new demand — the deep
+  // link from an old mail dies like a withdrawn listing.
+  const listingOp = await repo.getOperator(listing.operatorId);
+  if (listingOp?.suspended) return err("listing not found", 404);
 
   // RFQ payload shape comes from the active vertical's rfqFields config,
   // scoped to this listing's type — an aircraft_sale inquiry has no trip
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
   // The listing owner gets the direct notice in every mode — it must not
   // depend on the worker being up. Contact fields (email/tel) are masked —
   // the intro is the fee, so contact happens only after deal-close (QA-152).
-  const operator = await repo.getOperator(listing.operatorId);
+  const operator = listingOp;
   const owner = operator ? await repo.getUser(operator.userId) : undefined;
   if (owner) {
     const buyerName =

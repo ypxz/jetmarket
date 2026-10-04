@@ -3326,5 +3326,88 @@ export function repoContract(
       // Unknown id is a silent miss (non-uuid probe-safe on pg).
       await repo.setOperatorAccepting(`missing-${tag}`, false);
     });
+
+    it("setOperatorSuspended: preserve + browse/directory exclusion (QA-460)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`sus-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Sus Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Sus Charter ${tag}`,
+        attributes: {},
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        status: "active",
+      });
+      const filter = { vertical: "jets", status: "active" as const };
+      const hasIt = (rows: { id: string }[]) =>
+        rows.some((l) => l.id === listing.id);
+
+      // Default clear; unsuspended supply browses and directories.
+      expect(op.suspended).toBe(false);
+      expect(
+        hasIt(await repo.listListings({ ...filter, excludeSuspendedOps: true })),
+      ).toBe(true);
+      expect(
+        (await repo.listOperatorDirectory({ vertical: "jets" })).some(
+          (r) => r.operator.id === op.id,
+        ),
+      ).toBe(true);
+
+      // Suspend → gone from browse (list AND count stay in sync — the
+      // shared listingConds rule) and from the public directory.
+      await repo.setOperatorSuspended(op.id, true);
+      expect((await repo.getOperator(op.id))?.suspended).toBe(true);
+      expect(
+        hasIt(await repo.listListings({ ...filter, excludeSuspendedOps: true })),
+      ).toBe(false);
+      expect(
+        await repo.countListings({ ...filter, excludeSuspendedOps: true }),
+      ).toBe(
+        (await repo.listListings({ ...filter, excludeSuspendedOps: true }))
+          .length,
+      );
+      expect(
+        (await repo.listOperatorDirectory({ vertical: "jets" })).some(
+          (r) => r.operator.id === op.id,
+        ),
+      ).toBe(false);
+      // Admin/operator reads keep full visibility — no flag, no exclusion.
+      expect(hasIt(await repo.listListings(filter))).toBe(true);
+
+      // A profile upsert without the flag preserves the suspension.
+      await repo.upsertOperator({
+        userId: user.id,
+        name: `Sus Air renamed ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      expect((await repo.getOperator(op.id))?.suspended).toBe(true);
+
+      // Reinstate restores supply everywhere.
+      await repo.setOperatorSuspended(op.id, false);
+      expect(
+        hasIt(await repo.listListings({ ...filter, excludeSuspendedOps: true })),
+      ).toBe(true);
+      expect(
+        (await repo.listOperatorDirectory({ vertical: "jets" })).some(
+          (r) => r.operator.id === op.id,
+        ),
+      ).toBe(true);
+      await repo.setOperatorSuspended(`missing-${tag}`, true); // silent miss
+    });
   });
 }

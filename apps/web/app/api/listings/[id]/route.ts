@@ -44,6 +44,11 @@ export async function GET(
     return err("not found", 404);
   }
   const op = await repo.getOperator(listing.operatorId);
+  // QA-460: suspended supply is invisible on every public surface —
+  // this API backs the listing page that already notFounds on it.
+  if (op?.suspended) {
+    return err("not found", 404);
+  }
   return ok({ ...listing, operator: op ? publicOperator(op) : null });
 }
 
@@ -60,6 +65,10 @@ export async function PATCH(
   if (!listing || !operator || listing.operatorId !== operator.id) {
     return err("not found", 404);
   }
+  // QA-460: suspension freezes the book — no edits/reactivations (the
+  // admin must reinstate first). 403 after ownership 404 keeps the
+  // foreign row invisible.
+  if (operator.suspended) return err("account suspended", 403);
   // Cross-vertical writes on a shared DB would strip attributes — the
   // active vertical's schema has no fields for a foreign listing type.
   if (listing.vertical !== verticalSlug()) return err("not found", 404);

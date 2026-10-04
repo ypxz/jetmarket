@@ -28,6 +28,8 @@ export async function POST(req: Request) {
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
+  // QA-460: a suspended operator cannot quote new demand.
+  if (operator.suspended) return err("account suspended", 403);
 
   const { data, error } = await parseBody(req, CreateQuote);
   if (error) return error;

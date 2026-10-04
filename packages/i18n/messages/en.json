@@ -706,7 +706,8 @@
       "requests": "{count, plural, one {# request} other {# requests}}",
       "pauseRfqs": "Pause new requests",
       "resumeRfqs": "Resume new requests",
-      "awayBanner": "You are paused — new requests will not reach your inbox. Existing matches and quotes are unaffected."
+      "awayBanner": "You are paused — new requests will not reach your inbox. Existing matches and quotes are unaffected.",
+      "suspendedBanner": "Your account is suspended — listings are hidden, requests paused, and edits disabled. Contact support if you believe this was a mistake."
     },
     "onboarding": {
       "title": "Operator profile",
@@ -847,6 +848,9 @@
     "voidInvoice": "Void",
     "clearRating": "Clear rating",
     "clearingRating": "Clearing…",
+    "suspend": "Suspend",
+    "reinstate": "Reinstate",
+    "suspendedBadge": "Suspended",
     "voiding": "Voiding…",
     "jobs": {
       "title": "Job queue",

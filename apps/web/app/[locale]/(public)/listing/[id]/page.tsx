@@ -134,6 +134,9 @@ export default async function ListingPage({
         .then((m) => m[listing.operatorId])
         .catch(() => undefined),
     ]);
+  // QA-460: a suspended operator's supply is gone for buyers — the row
+  // 404s like a withdrawn listing (their own dashboard still sees it).
+  if (operatorRow?.suspended) notFound();
   const operator = operatorRow ?? null;
   const memberSince = operator
     ? new Date(operator.createdAt).toLocaleDateString("en", {

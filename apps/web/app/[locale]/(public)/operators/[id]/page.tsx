@@ -23,7 +23,9 @@ const PAGE_SIZE = 48;
 const load = cache(async (id: string) => {
   const repo = await getRepo();
   const operator = await repo.getOperator(id);
-  if (!operator) return null;
+  // QA-460: suspended operators lose their public profile — 404 like a
+  // missing row (the admin ledger keeps full visibility).
+  if (!operator || operator.suspended) return null;
   const listings = await repo.listListings({
     operatorId: operator.id,
     vertical: verticalSlug(),

@@ -279,6 +279,44 @@ export async function notifyOperatorVerified(
 }
 
 /**
+ * Suspension is the strongest moderation lever (QA-460) — it must never
+ * land silently: the operator loses browse supply, fan-out, and writes.
+ * Non-fatal like every notify.
+ */
+export async function notifyOperatorSuspended(
+  repo: Repo,
+  operatorId: string,
+  suspended: boolean,
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (!operator || !owner) return;
+    const subject = suspended
+      ? `Your ${site.name} account was suspended`
+      : `Your ${site.name} account was reinstated`;
+    const body = suspended
+      ? `Our team suspended your operator account "${operator.name}" on ${site.name}. Your listings are hidden from buyers, you will not receive new requests, and listing/quote actions are disabled. Contact support if you believe this was a mistake.`
+      : `Your operator account "${operator.name}" on ${site.name} was reinstated — your listings are visible again and new requests will reach you normally.`;
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.operator_suspended_failed", {
+      operatorId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
  * Tell an operator their success-fee invoice was voided (dispute/refund) —
  * the dashboard row would otherwise just flip state silently (QA-249).
  */

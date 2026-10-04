@@ -286,7 +286,8 @@ export function createWorkerRepo(db: Db): WorkerRepo {
                or exists (select 1 from listings ls
                   where ls.operator_id = ${operators.id}
                     and ls.vertical = ${vertical}))
-              and ${operators.acceptingRfqs}`,
+              and ${operators.acceptingRfqs}
+              and not ${operators.suspended}`,
         );
       const charter = await db
         .select({

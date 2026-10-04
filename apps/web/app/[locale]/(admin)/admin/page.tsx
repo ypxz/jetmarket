@@ -17,7 +17,7 @@ import {
   VoidInvoiceButton,
 } from "./mark-paid";
 import { RfqSpamButton } from "./rfq-mod-button";
-import { VerifyButton } from "./verify-button";
+import { SuspendButton, VerifyButton } from "./verify-button";
 
 export default async function AdminPage({
   searchParams,
@@ -137,9 +137,17 @@ export default async function AdminPage({
                 <td className="py-2 pr-4">{listingCounts.get(o.id) ?? 0}</td>
                 <td className="py-2 pr-4" data-testid={`admin-verified-${o.id}`}>
                   {o.verified ? t("yes") : t("no")}
+                  {o.suspended ? (
+                    <Badge variant="danger" data-testid={`admin-suspended-${o.id}`}>
+                      {t("suspendedBadge")}
+                    </Badge>
+                  ) : null}
                 </td>
                 <td className="py-2">
-                  <VerifyButton operatorId={o.id} verified={o.verified} />
+                  <span className="inline-flex gap-1">
+                    <VerifyButton operatorId={o.id} verified={o.verified} />
+                    <SuspendButton operatorId={o.id} suspended={o.suspended} />
+                  </span>
                 </td>
               </tr>
             ))}

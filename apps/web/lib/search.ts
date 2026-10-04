@@ -103,14 +103,19 @@ export function listingFilterFor(params: SearchParams) {
 }
 
 /**
- * Dated-inventory expiry fragment for public browse reads — spreads into a
- * `listListings`/`countListings` filter. Empty when the vertical declares no
- * `expiry` (machinery has none — QA-219).
+ * Public-browse exclusion fragment — spreads into a `listListings`/
+ * `countListings` filter. Carries dated-inventory expiry (empty when the
+ * vertical declares no `expiry`) plus the suspended-operator exclusion
+ * (QA-460, always on).
  */
 export function browseExpiry() {
   const expiry = getVertical().expiry;
-  if (!expiry) return {};
+  // QA-460: the public-browse bundle also drops suspended operators'
+  // supply — every caller that spreads this gets the exclusion free;
+  // admin/operator reads don't spread it and keep full visibility.
+  if (!expiry) return { excludeSuspendedOps: true } as const;
   return {
+    excludeSuspendedOps: true,
     notExpiredByAttr: {
       type: expiry.type,
       attr: expiry.attributeKey,

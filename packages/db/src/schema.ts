@@ -52,6 +52,9 @@ export const operators = pgTable(
     // QA-427: operator away switch — false removes them from every fan-out
     // (already-delivered matches stay visible in their inbox).
     acceptingRfqs: boolean("accepting_rfqs").notNull().default(true),
+    // QA-460: admin enforcement — hides supply from public browse, stops
+    // fan-outs, blocks new listings/quotes. Stronger than verified=false.
+    suspended: boolean("suspended").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

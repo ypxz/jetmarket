@@ -33,6 +33,11 @@ export interface Operator {
   /** Away switch (QA-427): false = excluded from new RFQ fan-outs.
    *  Already-delivered matches stay in the inbox. Default true. */
   acceptingRfqs: boolean;
+  /** Admin enforcement (QA-460): hides supply from public browse, stops
+   *  new fan-outs, blocks new listings/quotes. Stronger than
+   *  verified=false — a suspended operator cannot trade at all. Default
+   *  false; server-owned like acceptingRfqs (upserts preserve it). */
+  suspended: boolean;
   createdAt: string;
 }
 
@@ -210,9 +215,12 @@ export interface Repo {
   consumeMagicLinkSig(sig: string, expiresAt: string): Promise<boolean>;
 
   upsertOperator(
-    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs"> & {
+    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs" | "suspended"> & {
       id?: string;
+      /** Optional on upsert — re-saving a profile keeps the current
+       *  switch (QA-427); the admin flag survives the same way (QA-460). */
       acceptingRfqs?: boolean;
+      suspended?: boolean;
     },
   ): Promise<Operator>;
   getOperator(id: string): Promise<Operator | undefined>;
@@ -239,6 +247,8 @@ export interface Repo {
   /** Away switch (QA-427): flip whether fan-out candidates include this
    *  operator. Does not touch already-delivered matches or the inbox. */
   setOperatorAccepting(id: string, accepting: boolean): Promise<void>;
+  /** Admin enforcement toggle (QA-460). */
+  setOperatorSuspended(id: string, suspended: boolean): Promise<void>;
 
   createListing(
     l: Omit<Listing, "id" | "createdAt" | "status" | "views"> & {
@@ -288,6 +298,10 @@ export interface Repo {
      *  Unrated operators never match — like verifiedOnly, an
      *  unverifiable signal hides rather than leaking. */
     minRating?: number;
+    /** Hide rows owned by suspended operators (QA-460) — rides inside
+     *  `browseExpiry()` so every public surface gets it; admin/operator
+     *  reads omit it and keep full visibility. */
+    excludeSuspendedOps?: boolean;
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
     /** Result order — `newest` (createdAt desc) is the default. */
@@ -314,6 +328,8 @@ export interface Repo {
     verifiedOnly?: boolean;
     /** See {@link Repo.listListings}. */
     minRating?: number;
+    /** See {@link Repo.listListings}. */
+    excludeSuspendedOps?: boolean;
     /** See {@link Repo.listListings}. */
     ids?: string[];
   }): Promise<number>;

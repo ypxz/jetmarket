@@ -81,6 +81,7 @@ function toOperator(r: typeof operators.$inferSelect): Operator {
     plan: r.plan as Plan,
     ...(r.inboxSeenAt !== null ? { inboxSeenAt: iso(r.inboxSeenAt) } : {}),
     acceptingRfqs: r.acceptingRfqs,
+    suspended: r.suspended,
     createdAt: iso(r.createdAt),
   };
 }
@@ -214,6 +215,7 @@ interface ListingFilter {
   notExpiredByAttr?: { type: string; attr: string; asOf: string };
   verifiedOnly?: boolean;
   minRating?: number;
+  excludeSuspendedOps?: boolean;
 }
 
 /** Shared WHERE builder so listListings/countListings never drift apart.
@@ -310,6 +312,14 @@ function listingConds(filter?: ListingFilter) {
       sql`exists (select 1 from operators o where o.id = ${listings.operatorId} and o.verified)`,
     );
   }
+  if (filter?.excludeSuspendedOps) {
+    // QA-460: public browse hides a suspended operator's supply. NOT
+    // EXISTS (inverse of verifiedOnly) so a listing survives a missing
+    // operator row — only a KNOWN-suspended owner excludes.
+    conds.push(
+      sql`not exists (select 1 from operators o where o.id = ${listings.operatorId} and o.suspended)`,
+    );
+  }
   return conds.length ? and(...conds) : undefined;
 }
 
@@ -385,9 +395,10 @@ export class DrizzleRepo implements Repo {
   }
 
   async upsertOperator(
-    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs"> & {
+    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs" | "suspended"> & {
       id?: string;
       acceptingRfqs?: boolean;
+      suspended?: boolean;
     },
   ): Promise<Operator> {
     const values = {
@@ -402,6 +413,9 @@ export class DrizzleRepo implements Repo {
       ...(o.acceptingRfqs !== undefined
         ? { acceptingRfqs: o.acceptingRfqs }
         : {}),
+      // QA-460: an explicit suspend arg writes; omitted preserves
+      // (upsert is a full-row shape — the admin flag must survive).
+      ...(o.suspended !== undefined ? { suspended: o.suspended } : {}),
     };
     if (o.id) {
       const [r] = await this.db
@@ -481,6 +495,13 @@ export class DrizzleRepo implements Repo {
     await this.db
       .update(operators)
       .set({ acceptingRfqs: accepting })
+      .where(eq(operators.id, id));
+  }
+  async setOperatorSuspended(id: string, suspended: boolean): Promise<void> {
+    if (!isUuid(id)) return;
+    await this.db
+      .update(operators)
+      .set({ suspended })
       .where(eq(operators.id, id));
   }
 
@@ -705,6 +726,8 @@ export class DrizzleRepo implements Repo {
     const conds = [
       eq(listings.vertical, vertical),
       eq(listings.status, "active"),
+      // QA-460: suspended operators leave the public directory entirely.
+      eq(operators.suspended, false),
     ];
     if (notExpiredByAttr) {
       // Same NULL-safe dated-inventory predicate as listingConds — a

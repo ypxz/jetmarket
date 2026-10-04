@@ -21,6 +21,8 @@ export async function POST(req: Request) {
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
+  // QA-460: a suspended operator can't flip their own away switch back.
+  if (operator.suspended) return err("account suspended", 403);
   await repo.setOperatorAccepting(operator.id, data!.accepting);
   return ok({ ok: true, accepting: data!.accepting });
 }

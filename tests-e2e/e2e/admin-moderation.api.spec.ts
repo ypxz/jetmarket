@@ -2,6 +2,7 @@
 // terminal for the owner (no self-revive, no two-hop), pause stays a
 // republishable nudge, and moderation is admin-only.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
+import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
 // buckets across the whole suite run (and across runs when reused), so
@@ -107,4 +108,97 @@ test('admin moderation: archive terminal for owner, pause republishable, admin-o
     data: { status: 'archived' },
   });
   expect(denied.status()).toBe(403);
+});
+
+// Operator suspension (QA-460): an admin flag hides ALL of the operator's
+// supply from public browse, stops new RFQs landing on it, and blocks the
+// suspended owner's writes — until a reinstate restores the whole set.
+test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', async () => {
+  test.setTimeout(60_000);
+
+  const operator = await login(`e2e-sus-operator-${run}@jetmarket.local`, 'operator');
+  const opRes = await operator.post('/api/operators', {
+    data: { name: `E2E Sus Ops ${run}`, baseAirport: 'LSZH', fleetSummary: 'e2e' },
+  });
+  expect(opRes.status()).toBe(201);
+  const operatorId = ((await opRes.json()) as { id: string }).id;
+  const listingId = await createListing(operator, `E2E Sus Charter ${run}`);
+
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.2.8' },
+  });
+  expect((await publicCtx.get(`/api/listings/${listingId}`)).ok()).toBeTruthy();
+
+  const admin = await login(ADMIN_EMAIL);
+  const suspend = await admin.post(`/api/admin/operators/${operatorId}/suspend`);
+  expect(suspend.status()).toBe(200);
+  expect(((await suspend.json()) as { suspended: boolean }).suspended).toBe(true);
+
+  // Public surfaces: direct API GET 404s and search drops the row.
+  expect((await publicCtx.get(`/api/listings/${listingId}`)).status()).toBe(404);
+  const search = await publicCtx.get('/api/listings?type=charter&limit=200');
+  expect(search.ok()).toBeTruthy();
+  expect(
+    ((await search.json()) as { id: string }[]).map((l) => l.id),
+  ).not.toContain(listingId);
+
+  // New RFQs refuse the suspended listing like a missing one.
+  const rfq = await publicCtx.post('/api/rfqs', {
+    data: {
+      listingId,
+      buyerEmail: `e2e-sus-buyer-${run}@jetmarket.local`,
+      fields: {
+        departure: 'ZRH',
+        arrival: 'NCE',
+        dateFrom: isoDateIn(14),
+        dateTo: isoDateIn(16),
+        passengers: 4,
+        budgetUsd: 45000,
+        name: 'Buyer Test',
+        email: `e2e-sus-buyer-${run}@jetmarket.local`,
+      },
+    },
+  });
+  expect(rfq.status()).toBe(404);
+
+  // The suspended owner can't create or edit supply — their existing row
+  // stays theirs but writes bounce 403 until reinstatement.
+  expect(
+    (
+      await operator.post('/api/listings', {
+        data: {
+          type: 'charter',
+          title: `E2E Sus Blocked ${run}`,
+          price: 38000,
+          currency: 'USD',
+          photos: [],
+          attributes: { aircraftCategory: 'light', model: 'Phenom 300', seats: 7 },
+        },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await operator.patch(`/api/listings/${listingId}`, {
+        data: { price: 36000 },
+      })
+    ).status(),
+  ).toBe(403);
+
+  // Reinstate restores everything in one toggle.
+  const reinstate = await admin.post(
+    `/api/admin/operators/${operatorId}/suspend`,
+  );
+  expect(reinstate.status()).toBe(200);
+  expect(
+    ((await reinstate.json()) as { suspended: boolean }).suspended,
+  ).toBe(false);
+  expect((await publicCtx.get(`/api/listings/${listingId}`)).ok()).toBeTruthy();
+  expect(
+    (
+      await operator.patch(`/api/listings/${listingId}`, {
+        data: { price: 36000 },
+      })
+    ).ok(),
+  ).toBeTruthy();
 });

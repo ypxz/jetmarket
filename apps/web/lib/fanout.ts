@@ -41,7 +41,8 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
     ops
       // QA-427: away operators sit out new fan-outs (the worker's
       // loadOperatorCandidates encodes the same rule on the pg path).
-      .filter((o) => inScope.has(o.id) && o.acceptingRfqs)
+      // QA-460: suspended operators sit out too — enforcement, not away.
+      .filter((o) => inScope.has(o.id) && o.acceptingRfqs && !o.suspended)
       .map(async (o) => ({
       id: o.id,
       verified: o.verified,

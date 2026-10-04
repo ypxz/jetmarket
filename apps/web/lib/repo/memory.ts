@@ -96,9 +96,10 @@ class MemoryRepo implements Repo {
   }
 
   async upsertOperator(
-    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs"> & {
+    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs" | "suspended"> & {
       id?: string;
       acceptingRfqs?: boolean;
+      suspended?: boolean;
     },
   ): Promise<Operator> {
     // Parity with the drizzle ON CONFLICT (user_id) path: no explicit id
@@ -114,6 +115,9 @@ class MemoryRepo implements Repo {
       // QA-427: default ON; an upsert that doesn't pass the switch keeps the
       // operator's current state (same stamp-survival rule as inboxSeenAt).
       acceptingRfqs: o.acceptingRfqs ?? prev?.acceptingRfqs ?? true,
+      // QA-460: default clear; an upsert that doesn't pass the flag keeps
+      // the operator's current state (same preserve rule as the switch).
+      suspended: o.suspended ?? prev?.suspended ?? false,
       createdAt: prev?.createdAt ?? now(),
       // QA-416: the inbox stamp survives profile upserts (callers never pass
       // it — upsert is a full-row shape).
@@ -163,6 +167,10 @@ class MemoryRepo implements Repo {
   async setOperatorAccepting(id: string, accepting: boolean) {
     const op = this.operators.get(id);
     if (op) this.operators.set(id, { ...op, acceptingRfqs: accepting });
+  }
+  async setOperatorSuspended(id: string, suspended: boolean) {
+    const op = this.operators.get(id);
+    if (op) this.operators.set(id, { ...op, suspended });
   }
 
   async createListing(
@@ -280,6 +288,7 @@ class MemoryRepo implements Repo {
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
     verifiedOnly?: boolean;
     minRating?: number;
+    excludeSuspendedOps?: boolean;
     ids?: string[];
   }): Promise<number> {
     let rows = this.filterListings(filter);
@@ -305,6 +314,7 @@ class MemoryRepo implements Repo {
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
     verifiedOnly?: boolean;
+    excludeSuspendedOps?: boolean;
     ids?: string[];
   }): Listing[] {
     let out = [...this.listings.values()];
@@ -367,6 +377,12 @@ class MemoryRepo implements Repo {
       // QA-436: EXISTS-parity with drizzle — a missing operator row hides.
       out = out.filter(
         (l) => this.operators.get(l.operatorId)?.verified === true,
+      );
+    }
+    if (filter?.excludeSuspendedOps) {
+      // QA-460: NOT EXISTS parity — only a KNOWN-suspended owner hides.
+      out = out.filter(
+        (l) => this.operators.get(l.operatorId)?.suspended !== true,
       );
     }
     return out;
@@ -450,7 +466,10 @@ class MemoryRepo implements Repo {
     }
     const rows = [...counts.entries()].flatMap(([operatorId, n]) => {
       const operator = this.operators.get(operatorId);
-      return operator ? [{ operator, activeCount: n }] : [];
+      // QA-460: suspended operators leave the public directory entirely.
+      return operator && !operator.suspended
+        ? [{ operator, activeCount: n }]
+        : [];
     });
     rows.sort(
       (a, b) =>

@@ -207,6 +207,15 @@ export default async function OperatorDashboard() {
         </div>
       </div>
 
+      {operator.suspended ? (
+        <div
+          className="mt-4 rounded-md border border-border bg-surface px-4 py-3"
+          data-testid="suspended-banner"
+        >
+          <p className="text-sm text-danger">{t("suspendedBanner")}</p>
+        </div>
+      ) : null}
+
       {!operator.acceptingRfqs ? (
         <div
           className="mt-4 rounded-md border border-border bg-surface px-4 py-3"
