@@ -220,6 +220,46 @@ test('buyer amendment: PATCH replaces fields, re-keys dedupe, mails owner (QA-48
       page.getByTestId(`rfq-updated-${twin.rfqId}`),
     ).not.toBeVisible();
 
+    // 4b. Extend mails the delivered set too (QA-484) — an extension is a
+    // one-field amendment: the owner gets the same diff mail leading with
+    // "Latest date: old → new". Pull dateTo in first so a week buys time.
+    expect(
+      (
+        await buyer.patch(`/api/rfqs/${rfq.rfqId}`, {
+          data: {
+            buyerEmail: BUYER,
+            fields: rfqFields(BUYER, {
+              dateFrom: isoDateIn(0),
+              dateTo: isoDateIn(2),
+            }),
+          },
+        })
+      ).status(),
+    ).toBe(200);
+    const ext = await buyer.post(`/api/rfqs/${rfq.rfqId}/extend`, {
+      data: { buyerEmail: BUYER },
+    });
+    expect(ext.status()).toBe(200);
+    const { dateTo: newDateTo } = (await ext.json()) as { dateTo: string };
+    let extMail: string | null = null;
+    for (let i = 0; i < 20 && !extMail; i++) {
+      const m = latestMailTo(OP_EMAIL);
+      // The PATCH above also mailed a Latest-date diff — disambiguate on
+      // the extend's forward target.
+      if (
+        m &&
+        m.includes('Updated RFQ') &&
+        m.includes('Latest date') &&
+        m.includes(`→ ${newDateTo}`)
+      ) {
+        extMail = m;
+      } else {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    expect(extMail, 'expected an Updated RFQ mail after extend').toBeTruthy();
+    expect(extMail!).toContain('what changed');
+
     // 4. A stranger session can't amend — uniform-denial 404.
     const stranger = await login(STRANGER);
     expect(

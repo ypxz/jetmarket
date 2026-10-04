@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { analyticsProvider } from "@jetmarket/providers";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
-import { logInfo } from "@/lib/log";
+import { emailRfqAmended } from "@/lib/fanout";
+import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { verticalSlug } from "@/lib/vertical";
@@ -48,9 +49,41 @@ export async function POST(
     return err("request already has at least a week left", 409);
   }
   const dateTo = target.toISOString().slice(0, 10);
+  // The delivered set + listing owner get the amended mail — an extension
+  // IS a one-field amendment (dateTo): the QA-482 diff mail leads with
+  // "dateTo: old → new". Read them BEFORE the CAS so the pre-write fields
+  // diff against the new map (QA-484 — extends used to bump the Updated
+  // badge but mail nobody).
+  const notifyIds = await repo.listRfqMatchOperatorIds(rfq.id);
+  const listing = rfq.listingId
+    ? await repo.getListing(rfq.listingId)
+    : undefined;
+  const owner = listing ? await repo.getOperator(listing.operatorId) : undefined;
   // CAS: a terminal flip between read and write refuses to re-date.
   if (!(await repo.extendRfqDeadline(id, dateTo))) {
     return err("rfq is no longer open", 409);
+  }
+  const mailIds = new Set(notifyIds);
+  if (owner) mailIds.add(owner.id);
+  const mailTargets = (
+    await Promise.all(
+      mailIds.size ? [...mailIds].map((o) => repo.getOperator(o)) : [],
+    )
+  ).filter((o): o is NonNullable<typeof o> => !!o && !o.suspended);
+  const updated = { ...rfq, fields: { ...rfq.fields, dateTo } };
+  try {
+    await emailRfqAmended(
+      repo,
+      updated,
+      listing?.title,
+      mailTargets.map((o) => o.id),
+      rfq.fields,
+    );
+  } catch (e) {
+    logWarn("rfq.extend_notify_failed", {
+      rfqId: rfq.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
   logInfo("rfq.extended_by_buyer", { rfqId: rfq.id, dateTo });
   analyticsProvider().track({
