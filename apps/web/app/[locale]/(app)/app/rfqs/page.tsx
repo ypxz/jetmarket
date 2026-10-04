@@ -9,6 +9,7 @@ import { operatorRfqView } from "@/lib/rfq-view";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { quoteStateVariant, rfqStateVariant } from "@/lib/state-variant";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
+import { ListingFilter } from "./listing-filter";
 import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
@@ -50,8 +51,22 @@ export default async function RfqInboxPage({
   // "Dismissed" view (QA-421): the QA-420 exclusion flips to a positive
   // match so dismissed rows can be reviewed + restored.
   const dismissedOnly = f === "dismissed";
+  // Per-listing triage (QA-430): only their own listings may filter — a
+  // foreign/unknown id falls back to the unfiltered inbox.
+  const ownListings = await repo.listListings({
+    operatorId: operator.id,
+    vertical: verticalSlug(),
+    limit: 200,
+  });
+  const listingParam = Array.isArray(params.listing)
+    ? params.listing[0]
+    : params.listing;
+  const listingFilter = ownListings.some((l) => l.id === listingParam)
+    ? listingParam
+    : undefined;
   const total = await repo.countRfqs({
     operatorId: operator.id,
+    listingId: listingFilter,
     needsQuote: needsOnly || undefined,
     dismissedOnly: dismissedOnly || undefined,
     vertical: verticalSlug(),
@@ -61,6 +76,7 @@ export default async function RfqInboxPage({
   const page = Number.isInteger(n) && n >= 1 ? Math.min(n, pages) : 1;
   const rfqsPage = await repo.listRfqs({
     operatorId: operator.id,
+    listingId: listingFilter,
     needsQuote: needsOnly || undefined,
     dismissedOnly: dismissedOnly || undefined,
     vertical: verticalSlug(),
@@ -122,29 +138,53 @@ export default async function RfqInboxPage({
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
-      <div className="mt-4 flex gap-2" data-testid="rfq-filter">
+      <div
+        className="mt-4 flex flex-wrap items-center gap-2"
+        data-testid="rfq-filter"
+      >
         {(
           [
             ["all", t("filterAll")],
             ["needs", t("filterNeeds")],
             ["dismissed", t("filterDismissed")],
           ] as const
-        ).map(([key, label]) => (
+        ).map(([key, label]) => {
+          // Listing scope survives view switches — "needs a quote for THIS
+          // listing" is the point of the filter (QA-430).
+          const q = new URLSearchParams();
+          if (key !== "all") q.set("f", key);
+          if (listingFilter) q.set("listing", listingFilter);
+          const s = q.toString();
+          return (
+            <Link
+              key={key}
+              href={`/app/rfqs${s ? `?${s}` : ""}`}
+              data-testid={`filter-${key}`}
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                f === key || (key === "all" && !needsOnly && !dismissedOnly)
+                  ? "bg-primary text-primary-foreground font-medium"
+                  : "border border-border bg-background text-muted"
+              }`}
+            >
+              {label}
+            </Link>
+          );
+        })}
+        <ListingFilter
+          listings={ownListings.map((l) => ({ id: l.id, title: l.title }))}
+          active={listingFilter ?? null}
+          f={f ?? null}
+          allLabel={t("listingFilterAll")}
+        />
+        {listingFilter ? (
           <Link
-            key={key}
-            href={
-              key === "all" ? "/app/rfqs" : `/app/rfqs?f=${key}`
-            }
-            data-testid={`filter-${key}`}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              f === key || (key === "all" && !needsOnly && !dismissedOnly)
-                ? "bg-primary text-primary-foreground font-medium"
-                : "border border-border bg-background text-muted"
-            }`}
+            href={f ? `/app/rfqs?f=${f}` : "/app/rfqs"}
+            data-testid="listing-filter-clear"
+            className="rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-muted"
           >
-            {label}
+            {t("listingFilterClear")}
           </Link>
-        ))}
+        ) : null}
       </div>
       {pendingRfqs > 0 ? (
         <div

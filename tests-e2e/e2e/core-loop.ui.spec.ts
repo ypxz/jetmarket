@@ -125,23 +125,38 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // The untouched second listing carries no chip.
     const quiet = operator.locator('li').filter({ hasText: 'E2E UI Empty Leg' });
     await expect(quiet.locator(tidPrefix('rfq-count-'))).toHaveCount(0);
-  });
-
-  await step('operator quotes the RFQ from the inbox', async () => {
-    // QA-416: the just-arrived RFQ badges "New"; the mount effect stamps
-    // inbox_seen_at so a reload shows none. Capturing the POST makes the
-    // stamp deterministic instead of racing the fire-and-forget fetch.
+    // QA-430: the chip deep-links to the per-listing inbox view — the
+    // filtered list holds only this listing's RFQ and the select shows it.
+    // This visit IS the first inbox render, so the mount effect stamps
+    // inbox_seen_at here (not in the quote step below) — capture the POST.
     const [seenRes] = await Promise.all([
       operator.waitForResponse(
         (r) => r.url().includes('/api/operator/rfqs/seen') && r.request().method() === 'POST',
         { timeout: 20_000 },
       ),
-      operator.goto('/app/rfqs'),
+      row.locator(tidPrefix('rfq-count-')).click(),
     ]);
     expect(seenRes.ok()).toBeTruthy();
-    const item = operator.locator(tidPrefix('rfq-')).filter({ hasText: LISTING_TITLE });
+    await operator.waitForURL(/\/app\/rfqs\?listing=/);
+    const filtered = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    await expect(filtered).toBeVisible();
+    // QA-416: a fresh arrival badges "New" on first render.
+    await expect(filtered.locator(tidPrefix('rfq-new-'))).toBeVisible();
+    await expect(operator.getByTestId('listing-filter')).toHaveValue(/./);
+    // Back to the unfiltered inbox for the quote step — the clear chip
+    // drops the listing scope (view links deliberately keep it).
+    await operator.getByTestId('listing-filter-clear').click();
+    await operator.waitForURL(/\/app\/rfqs$/);
+  });
+
+  await step('operator quotes the RFQ from the inbox', async () => {
+    // QA-416: inbox_seen_at was stamped on the filtered visit above —
+    // the badge is gone now and stays gone across a reload.
+    await operator.goto('/app/rfqs');
+    const item = operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE });
     await expect(item).toBeVisible();
-    await expect(item.locator(tidPrefix('rfq-new-'))).toBeVisible();
     await operator.reload();
     await expect(item.locator(tidPrefix('rfq-new-'))).toHaveCount(0);
     await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);

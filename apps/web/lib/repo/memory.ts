@@ -508,6 +508,7 @@ class MemoryRepo implements Repo {
     ids?: string[];
     buyerEmail?: string;
     operatorId?: string;
+    listingId?: string;
     needsQuote?: boolean;
     dismissedOnly?: boolean;
     vertical?: string;
@@ -519,6 +520,8 @@ class MemoryRepo implements Repo {
       const want = new Set(filter.ids);
       out = out.filter((r) => want.has(r.id));
     }
+    if (filter?.listingId)
+      out = out.filter((r) => r.listingId === filter.listingId);
     if (filter?.vertical)
       out = out.filter((r) => r.vertical === filter.vertical);
     // buyerEmail is stored lowercase at create (QA-153); normalize the
@@ -660,6 +663,7 @@ class MemoryRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
+    listingId?: string;
     vertical?: string;
     statusNot?: Rfq["status"][];
     since?: string;

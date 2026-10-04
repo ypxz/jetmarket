@@ -742,6 +742,8 @@
       "filterAll": "All",
       "filterNeeds": "Needs a quote",
       "filterDismissed": "Dismissed",
+      "listingFilterAll": "All listings",
+      "listingFilterClear": "clear listing filter",
       "newBadge": "New"
     },
     "billing": {

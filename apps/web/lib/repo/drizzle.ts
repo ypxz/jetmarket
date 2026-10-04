@@ -844,12 +844,17 @@ export class DrizzleRepo implements Repo {
     ids?: string[];
     buyerEmail?: string;
     operatorId?: string;
+    listingId?: string;
     needsQuote?: boolean;
     dismissedOnly?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
   }): Promise<Rfq[]> {
+    // Non-uuid listingIds can only come from tests/query-strings — miss,
+    // don't 22P02 (same guard as filter.ids).
+    if (filter?.listingId !== undefined && !isUuid(filter.listingId))
+      return [];
     if (filter?.operatorId) {
       // Owner sees the RFQ via its listing; a fan-out-matched operator sees it
       // once the match is delivered — any state except 'delayed' counts (the
@@ -887,6 +892,9 @@ export class DrizzleRepo implements Repo {
             ...(filter.vertical
               ? [eq(rfqs.vertical, filter.vertical)]
               : []),
+            ...(filter.listingId
+              ? [eq(rfqs.listingId, filter.listingId)]
+              : []),
             ...(filter.needsQuote
               ? [
                   // "Needs a quote": no live quote from THIS operator —
@@ -920,6 +928,8 @@ export class DrizzleRepo implements Repo {
       conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
     if (filter?.vertical)
       conds.push(eq(rfqs.vertical, filter.vertical));
+    if (filter?.listingId)
+      conds.push(eq(rfqs.listingId, filter.listingId));
     let q = this.db
       .select()
       .from(rfqs)
@@ -936,11 +946,14 @@ export class DrizzleRepo implements Repo {
     operatorId?: string;
     needsQuote?: boolean;
     dismissedOnly?: boolean;
+    listingId?: string;
     vertical?: string;
     statusNot?: RfqStatus[];
     since?: string;
     concierge?: boolean;
   }): Promise<number> {
+    if (filter?.listingId !== undefined && !isUuid(filter.listingId))
+      return 0;
     // iface statuses -> db vocabulary (open -> new; expired -> closed).
     const bannedDb = filter?.statusNot?.map((s) =>
       s === "open" ? "new" : s === "expired" ? "closed" : s,
@@ -979,6 +992,8 @@ export class DrizzleRepo implements Repo {
       ];
       if (filter.vertical)
         conds.push(eq(rfqs.vertical, filter.vertical));
+      if (filter.listingId)
+        conds.push(eq(rfqs.listingId, filter.listingId));
       if (statusCond) conds.push(statusCond);
       if (sinceCond) conds.push(sinceCond);
       if (filter.concierge) conds.push(eq(rfqs.concierge, true));
@@ -1003,6 +1018,8 @@ export class DrizzleRepo implements Repo {
       conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
     if (filter?.vertical)
       conds.push(eq(rfqs.vertical, filter.vertical));
+    if (filter?.listingId)
+      conds.push(eq(rfqs.listingId, filter.listingId));
     if (statusCond) conds.push(statusCond);
     if (sinceCond) conds.push(sinceCond);
     if (filter?.concierge) conds.push(eq(rfqs.concierge, true));

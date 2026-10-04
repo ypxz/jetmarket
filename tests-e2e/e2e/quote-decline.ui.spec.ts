@@ -68,7 +68,7 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
 
   await step('operator quotes the RFQ', async () => {
     await operator.goto('/app/rfqs');
-    const item = operator.locator(tidPrefix('rfq-')).filter({ hasText: LISTING_TITLE });
+    const item = operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE });
     await expect(item).toBeVisible();
     await item.locator(tidPrefix('quote-amount-')).fill('11000');
     await item.locator(tidPrefix('quote-send-')).click();

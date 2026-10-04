@@ -386,6 +386,10 @@ export interface Repo {
     buyerEmail?: string;
     /** Listing owner OR an operator with a delivered (pending) rfq_match. */
     operatorId?: string;
+    /** Per-listing inbox triage (QA-430): only RFQs filed against this
+     *  listing — open requests (listingId null) and match-only visibility
+     *  don't qualify, the "requests" chip deep-links here. */
+    listingId?: string;
     /** Operator inbox "needs a quote" (QA-402): only meaningful with
      * `operatorId` — excludes RFQs where that operator already has a live
      * quote (`sent`/`accepted`). Declined/withdrawn quotes don't hide the
@@ -501,6 +505,9 @@ export interface Repo {
     /** Same "dismissed" inclusion as listRfqs (QA-421) — totals must match
      * the filtered page on both impls. */
     dismissedOnly?: boolean;
+    /** Same per-listing scope as listRfqs (QA-430) — the filtered inbox's
+     *  page total. */
+    listingId?: string;
     /** Scope to one vertical — matches listRfqs (QA-293). */
     vertical?: string;
     /** Exclude these iface statuses (e.g. "closed" counts only live RFQs). */

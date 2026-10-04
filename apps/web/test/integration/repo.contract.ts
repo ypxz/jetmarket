@@ -2158,6 +2158,99 @@ export function repoContract(
       ).toBe(1);
     });
 
+    it("listRfqs/countRfqs scope to one listing (QA-430)", async () => {
+      const repo = await factory();
+      const tag = `lf-${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Filter Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const mkListing = (title: string) =>
+        repo.createListing({
+          operatorId: op.id,
+          vertical: "jets",
+          type: "charter",
+          title,
+          price: 9000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+        });
+      const a = await mkListing(`Alpha ${tag}`);
+      const b = await mkListing(`Beta ${tag}`);
+      const rfqA = await repo.createRfq({
+        vertical: "jets",
+        listingId: a.id,
+        buyerEmail: `ba-${tag}@test.dev`,
+        fields: {},
+      });
+      await repo.createRfq({
+        vertical: "jets",
+        listingId: b.id,
+        buyerEmail: `bb-${tag}@test.dev`,
+        fields: {},
+      });
+      // Open request — no listing — never shows up under a listing filter.
+      await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `bo-${tag}@test.dev`,
+        fields: {},
+      });
+
+      const filtered = await repo.listRfqs({
+        operatorId: op.id,
+        listingId: a.id,
+      });
+      expect(filtered.map((r) => r.id)).toEqual([rfqA.id]);
+      expect(
+        await repo.countRfqs({ operatorId: op.id, listingId: a.id }),
+      ).toBe(1);
+      // Composes with needsQuote on both impls.
+      expect(
+        await repo.listRfqs({
+          operatorId: op.id,
+          listingId: a.id,
+          needsQuote: true,
+        }),
+      ).toHaveLength(1);
+      // Non-uuid listingIds miss — drizzle must not 22P02 (pg would throw
+      // invalid-uuid on the bare eq; memory compares strings and misses).
+      expect(
+        await repo.listRfqs({ operatorId: op.id, listingId: "nope" }),
+      ).toEqual([]);
+      expect(
+        await repo.countRfqs({ operatorId: op.id, listingId: "nope" }),
+      ).toBe(0);
+      // A uuid the operator doesn't own returns empty, not the foreign RFQ.
+      const [other] = await repo.listRfqs({
+        operatorId: op.id,
+        listingId: b.id,
+      });
+      expect(other).toBeDefined();
+      const foreignOp = await repo.upsertOperator({
+        userId: (
+          await repo.createUser(`stranger-${tag}@test.dev`, "operator")
+        ).id,
+        name: `Stranger ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      expect(
+        await repo.listRfqs({
+          operatorId: foreignOp.id,
+          listingId: a.id,
+        }),
+      ).toEqual([]);
+    });
+
     it("listDeals resolves rfq + buyer + listing context (QA-428)", async () => {
       const repo = await factory();
       const tag = `ctx-${Date.now().toString(36)}`;

@@ -292,13 +292,18 @@ export default async function OperatorDashboard() {
                       </Badge>
                     ) : null}
                     {rfqCounts[l.id] ? (
-                      <Badge
-                        variant="outline"
+                      <Link
+                        href={`/app/rfqs?listing=${l.id}`}
                         className="ml-2"
-                        data-testid={`rfq-count-${l.id}`}
                       >
-                        {t("requests", { count: rfqCounts[l.id] ?? 0 })}
-                      </Badge>
+                        <Badge
+                          variant="outline"
+                          className="hover:bg-surface"
+                          data-testid={`rfq-count-${l.id}`}
+                        >
+                          {t("requests", { count: rfqCounts[l.id] ?? 0 })}
+                        </Badge>
+                      </Link>
                     ) : null}
                   </div>
                 </div>
