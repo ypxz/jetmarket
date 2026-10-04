@@ -14,6 +14,7 @@ import {
   rfqMatches,
   rfqs,
   quotes,
+  deals,
   searchAlerts,
   users,
   operators,
@@ -29,6 +30,7 @@ import { defaultPlans } from "@jetmarket/domain";
 import {
   deliverDueMatches,
   recoverUnfanoutedRfqs,
+  remindOverdueInvoices,
   rfqFanout,
   searchAlertFlush,
 } from "../../src/handlers";
@@ -216,6 +218,121 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       (await createWorkerRepo(db).loadOperatorCandidates("jets", undefined))
         .map((c) => c.id),
     ).toContain(o!.id);
+  });
+
+  it("claims overdue invoices once, chases weekly, ignores settled deals (QA-429)", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const [u] = await db
+      .insert(users)
+      .values({ email: `debtor-${tag}@x.com` })
+      .returning({ id: users.id });
+    const [o] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Debtor Air" })
+      .returning({ id: operators.id });
+    const mkDeal = async (input: {
+      vertical?: string;
+      invoiceStatus: "pending" | "invoiced" | "paid" | "void";
+      closedAt: Date;
+      invoiceRef?: string;
+    }) => {
+      const [l] = await db
+        .insert(listings)
+        .values({
+          operatorId: o!.id,
+          vertical: input.vertical ?? "jets",
+          type: "charter",
+          title: `Ctx ${tag}`,
+          priceMinor: 900000,
+          currency: "USD",
+          status: "active",
+          attributes: {},
+        })
+        .returning({ id: listings.id });
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical: input.vertical ?? "jets",
+          listingId: l!.id,
+          buyerEmail: `b-${tag}@x.com`,
+          fields: {},
+        })
+        .returning({ id: rfqs.id });
+      const [q] = await db
+        .insert(quotes)
+        .values({
+          rfqId: r!.id,
+          operatorId: o!.id,
+          amountMinor: 100000,
+          currency: "USD",
+          status: "accepted",
+        })
+        .returning({ id: quotes.id });
+      const [d] = await db
+        .insert(deals)
+        .values({
+          quoteId: q!.id,
+          closedAt: input.closedAt,
+          feePct: 0.03,
+          feeAmountMinor: 3000,
+          currency: "USD",
+          invoiceStatus: input.invoiceStatus,
+          invoiceRef: input.invoiceRef,
+        })
+        .returning({ id: deals.id });
+      return d!.id;
+    };
+    const old = new Date(Date.now() - 4 * 86_400_000); // 4d > 72h window
+    const overdue = await mkDeal({
+      invoiceStatus: "invoiced",
+      closedAt: old,
+      invoiceRef: `inv_${tag}`,
+    });
+    // Not eligible: still-pending invoice, settled deal, fresh invoice,
+    // machinery-vertical deal.
+    await mkDeal({ invoiceStatus: "pending", closedAt: old });
+    await mkDeal({ invoiceStatus: "paid", closedAt: old });
+    await mkDeal({ invoiceStatus: "invoiced", closedAt: new Date() });
+    await mkDeal({
+      vertical: "machinery",
+      invoiceStatus: "invoiced",
+      closedAt: old,
+    });
+
+    const d = deps();
+    d.invoiceReminderHours = 72;
+    // Private outbox — the suite shares one dir and a later test asserts
+    // every mail it holds is RFQ-related.
+    const mineDir = mkdtempSync(join(tmpdir(), "jm-invoice-outbox-"));
+    d.email = new MockEmailProvider({ outboxDir: mineDir });
+    const claimed = await remindOverdueInvoices(d);
+    expect(claimed).toBe(1);
+    const mails = await readOutbox(mineDir);
+    const mine = mails.filter((m) => m.to === `debtor-${tag}@x.com`);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]!.subject).toContain(`inv_${tag}`);
+    expect(mine[0]!.subject).toContain("30");
+
+    // Stamp written → immediate re-sweep claims nothing.
+    expect(await remindOverdueInvoices(d)).toBe(0);
+    // Cooldown ages out (>7d) → the chase re-arms.
+    await db
+      .update(deals)
+      .set({ invoiceRemindedAt: new Date(Date.now() - 8 * 86_400_000) })
+      .where(eq(deals.id, overdue));
+    expect(await remindOverdueInvoices(d)).toBe(1);
+    // Settling the invoice stops the chase entirely.
+    await db
+      .update(deals)
+      .set({ invoiceStatus: "paid", invoiceRemindedAt: null })
+      .where(eq(deals.id, overdue));
+    expect(await remindOverdueInvoices(d)).toBe(0);
+    // Teardown: leave the fixture SETTLED — the suite shares one seeded DB
+    // and a leftover 'invoiced' deal would be claimed by a later tick().
+    await db
+      .update(deals)
+      .set({ invoiceStatus: "paid" })
+      .where(eq(deals.id, overdue));
   });
 
   it("delivers delayed matches on sweep and sends notifications end-to-end", async () => {

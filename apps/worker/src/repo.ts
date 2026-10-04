@@ -132,6 +132,26 @@ export interface WorkerRepo {
   }): Promise<
     { operatorId: string; email: string; unansweredCount: number }[]
   >;
+  /** QA-429 overdue-invoice reminder: claim deals stuck 'invoiced' since
+   *  before `olderThan` — one statement stamps invoice_reminded_at under
+   *  the row lock, and `cooldown` re-arms only after the stamp ages out so
+   *  a non-payer gets a weekly chase, not a drip and not never-again.
+   *  Deals carry no vertical — resolved via quote → rfq (QA-313). */
+  sweepOverdueInvoices(input: {
+    vertical: string;
+    olderThan: Date;
+    cooldown: Date;
+    limit?: number;
+  }): Promise<
+    {
+      dealId: string;
+      operatorId: string;
+      email: string;
+      invoiceRef: string | null;
+      feeAmountMinor: number;
+      currency: string;
+    }[]
+  >;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
@@ -650,6 +670,58 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           ) as "unansweredCount"
         from stamped s
         join users u on u.id = s.user_id
+      `);
+      return rows;
+    },
+
+    async sweepOverdueInvoices({ vertical, olderThan, cooldown, limit = 50 }) {
+      // due → stamped (QA-418 pattern): the UPDATE re-checks the stamp under
+      // the row lock so racing ticks can't double-mail the same deal. Deals
+      // carry no vertical — scope via quote → rfq (QA-313).
+      const rows = await db.execute<{
+        dealId: string;
+        operatorId: string;
+        email: string;
+        invoiceRef: string | null;
+        feeAmountMinor: number;
+        currency: string;
+      }>(sql`
+        with due as (
+          select d.id
+          from deals d
+          join quotes q on q.id = d.quote_id
+          join rfqs r on r.id = q.rfq_id
+          where d.invoice_status = 'invoiced'
+            and d.closed_at < ${olderThan.toISOString()}
+            and r.vertical = ${vertical}
+            and (
+              d.invoice_reminded_at is null
+              or d.invoice_reminded_at < ${cooldown.toISOString()}
+            )
+          limit ${limit}
+        ),
+        stamped as (
+          update deals d
+          set invoice_reminded_at = now()
+          where d.id in (select id from due)
+            and (
+              d.invoice_reminded_at is null
+              or d.invoice_reminded_at < ${cooldown.toISOString()}
+            )
+          returning d.id
+        )
+        select
+          s.id as "dealId",
+          o.id as "operatorId",
+          u.email,
+          d.invoice_ref as "invoiceRef",
+          d.fee_amount_minor as "feeAmountMinor",
+          d.currency
+        from stamped s
+        join deals d on d.id = s.id
+        join quotes q on q.id = d.quote_id
+        join operators o on o.id = q.operator_id
+        join users u on u.id = o.user_id
       `);
       return rows;
     },

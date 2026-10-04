@@ -11,6 +11,7 @@ import {
   nudgeStaleQuotes,
   nudgeUnansweredOperators,
   nudgeUnquotedRfqs,
+  remindOverdueInvoices,
   rfqFanout,
   searchAlertFlush,
 } from "./handlers";
@@ -143,6 +144,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepUnansweredOperators: async (input) => {
       rec("sweepUnansweredOperators", input);
+      return [];
+    },
+    sweepOverdueInvoices: async (input) => {
+      rec("sweepOverdueInvoices", input);
       return [];
     },
     ...over,
@@ -1079,6 +1084,110 @@ describe("nudgeUnansweredOperators (QA-425)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeUnansweredOperators(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("remindOverdueInvoices (QA-429)", () => {
+  it("disabled when invoiceReminderHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepOverdueInvoices: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.invoiceReminderHours = 0;
+    expect(await remindOverdueInvoices(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed operator the invoice ref + fee amount", async () => {
+    let call: {
+      vertical: string;
+      olderThan: Date;
+      cooldown: Date;
+    } | null = null;
+    const repo = fakeRepo({
+      sweepOverdueInvoices: async (input) => {
+        call = input;
+        return [
+          {
+            dealId: "d1aaaaaa-0000-4000-8000-000000000001",
+            operatorId: "o1",
+            email: "ops@alpine.example",
+            invoiceRef: "inv_42",
+            feeAmountMinor: 30000,
+            currency: "USD",
+          },
+          {
+            dealId: "d2bbbbbb-0000-4000-8000-000000000002",
+            operatorId: "o2",
+            email: "solo@x.example",
+            invoiceRef: null,
+            feeAmountMinor: 15050,
+            currency: "USD",
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.invoiceReminderHours = 72;
+    expect(await remindOverdueInvoices(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // deps.now fixed 2026-09-15T12:00Z → olderThan -72h, cooldown -7d.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-12T12:00:00.000Z");
+    expect(call!.cooldown.toISOString()).toBe("2026-09-08T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual([
+      "ops@alpine.example",
+      "solo@x.example",
+    ]);
+    expect(sent[0]!.subject).toContain("inv_42");
+    expect(sent[0]!.subject).toContain("300");
+    // No invoiceRef → falls back to the deal-id prefix, never "null".
+    expect(sent[1]!.subject).toContain("d2bbbbbb");
+    expect(sent[1]!.subject).not.toContain("null");
+    expect(sent[0]!.text).toContain("/app");
+  });
+
+  it("defaults to 72h and a failed send doesn't stall the rest", async () => {
+    const repo = fakeRepo({
+      sweepOverdueInvoices: async () => [
+        {
+          dealId: "d3",
+          operatorId: "o1",
+          email: "bad@x.example",
+          invoiceRef: "inv_1",
+          feeAmountMinor: 100,
+          currency: "USD",
+        },
+        {
+          dealId: "d4",
+          operatorId: "o2",
+          email: "ok@x.example",
+          invoiceRef: "inv_2",
+          feeAmountMinor: 200,
+          currency: "USD",
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // invoiceReminderHours unset → 72h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await remindOverdueInvoices(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+    expect(sent[0]!.subject).toContain("inv_2");
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await remindOverdueInvoices(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

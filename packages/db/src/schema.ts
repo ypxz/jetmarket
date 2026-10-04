@@ -232,6 +232,8 @@ export const deals = pgTable("deals", {
     .notNull()
     .default("pending"),
   invoiceRef: text("invoice_ref"),
+  /** QA-429 overdue-invoice reminder stamp — doubles as the 7d cooldown. */
+  invoiceRemindedAt: timestamp("invoice_reminded_at", { withTimezone: true }),
 });
 
 export const subscriptions = pgTable(

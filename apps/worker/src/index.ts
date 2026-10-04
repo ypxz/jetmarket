@@ -24,6 +24,7 @@ import {
   nudgeUnansweredOperators,
   nudgeUnquotedRfqs,
   recoverUnfanoutedRfqs,
+  remindOverdueInvoices,
   searchAlertFlush,
   type WorkerDeps,
 } from "./handlers";
@@ -78,6 +79,11 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const unansweredNudged = await nudgeUnansweredOperators(deps);
   if (unansweredNudged)
     logInfo("worker.unanswered_nudges", { count: unansweredNudged });
+
+  // Overdue-invoice chase (QA-429) — invoiced deals past the window mail
+  // the operator; the stamp cools down weekly so non-payers get chased.
+  const reminded = await remindOverdueInvoices(deps);
+  if (reminded) logInfo("worker.invoice_reminders", { count: reminded });
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });

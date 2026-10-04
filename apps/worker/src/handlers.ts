@@ -4,7 +4,9 @@ import type { AnalyticsProvider } from "@jetmarket/providers/analytics";
 import { site } from "@jetmarket/config";
 import {
   deliverAt,
+  fromMinorUnits,
   matchOperators,
+  type Currency,
   type Plan,
 } from "@jetmarket/domain";
 import type { Sql } from "postgres";
@@ -48,6 +50,10 @@ export interface WorkerDeps {
    *  via the unanswered_mailed_at stamp — operators get a periodic pull,
    *  not a drip feed. */
   unansweredNudgeHours?: number;
+  /** QA-429 overdue-invoice chase: deals stuck 'invoiced' this many hours
+   *  mail the operator a payment reminder (defaults 72, <=0 disables).
+   *  Re-mails at most once per 7 days via the invoice_reminded_at stamp. */
+  invoiceReminderHours?: number;
 }
 
 function at(deps: WorkerDeps): Date {
@@ -486,6 +492,62 @@ export async function nudgeUnansweredOperators(
     } catch (e) {
       logWarn("worker.unanswered_nudge_failed", {
         operatorId: r.operatorId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-429: the revenue loop's last gap — a closed deal issues a success-fee
+ * invoice at accept time, but a non-payer just sat: admin marks paid/void
+ * manually and nothing chased in between. Deals stuck 'invoiced' past the
+ * window mail the operator a reminder; the invoice_reminded_at stamp is a
+ * 7-day cooldown so a deadbeat hears weekly at most, not per tick.
+ */
+export async function remindOverdueInvoices(
+  deps: WorkerDeps,
+): Promise<number> {
+  const hours = deps.invoiceReminderHours ?? 72;
+  if (!(hours > 0)) return 0;
+  const now = at(deps).getTime();
+  const rows = await deps.repo.sweepOverdueInvoices({
+    vertical: deps.vertical,
+    olderThan: new Date(now - hours * 3_600_000),
+    cooldown: new Date(now - 7 * 86_400_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const fee = fromMinorUnits(r.feeAmountMinor, r.currency as Currency);
+      const amount = `${r.currency} ${fee.toLocaleString("en")}`;
+      const ref = r.invoiceRef ?? `deal ${r.dealId.slice(0, 8)}`;
+      const subject = `Success-fee invoice ${ref} outstanding — ${amount}`;
+      const body =
+        `A success-fee invoice for ${amount} (${ref}) on a closed ` +
+        `${site.name} deal is still unpaid. Settle it to keep your ` +
+        `account in good standing — reach billing if the ref doesn't ` +
+        `look right.`;
+      const accountUrl = `${origin}/app`;
+      await deps.email.send({
+        to: r.email,
+        subject,
+        text: `${body}\n\nYour deals: ${accountUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: accountUrl, label: "View your deals" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "invoice_reminder_sent",
+        props: { dealId: r.dealId, operatorId: r.operatorId },
+      });
+    } catch (e) {
+      logWarn("worker.invoice_reminder_failed", {
+        dealId: r.dealId,
         error: e instanceof Error ? e.message : String(e),
       });
     }
