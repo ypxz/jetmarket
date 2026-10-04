@@ -143,6 +143,10 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
     ...(r.declineReason
       ? { declineReason: r.declineReason as QuoteDeclineReason }
       : {}),
+    ...(r.counterAmountMinor != null
+      ? { counterAmount: fromMinorUnits(r.counterAmountMinor, r.currency) }
+      : {}),
+    ...(r.counteredAt ? { counteredAt: iso(r.counteredAt) } : {}),
   };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
@@ -1595,6 +1599,9 @@ export class DrizzleRepo implements Repo {
         updatedAt: new Date(),
         // QA-506: revised content is unseen — the buyer saw the old terms.
         buyerSeenAt: null,
+        // QA-511: a revise answers the buyer's counter — next round.
+        counterAmountMinor: null,
+        counteredAt: null,
       })
       .where(
         and(
@@ -1606,6 +1613,33 @@ export class DrizzleRepo implements Repo {
       )
       .returning();
     return rows[0] ? toQuote(rows[0]) : null;
+  }
+
+  async counterQuote(id: string, amount: number): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    // The counter is denominated in the quote's own currency.
+    const [q] = await this.db
+      .select({ currency: quotes.currency })
+      .from(quotes)
+      .where(eq(quotes.id, id));
+    if (!q) return false;
+    // No updatedAt bump — a counter isn't an offer revision (the
+    // "updated" badge + stale-offer check ride that stamp).
+    const rows = await this.db
+      .update(quotes)
+      .set({
+        counterAmountMinor: toMinorUnits(amount, q.currency),
+        counteredAt: new Date(),
+      })
+      .where(
+        and(
+          eq(quotes.id, id),
+          eq(quotes.status, "sent"),
+          isNull(quotes.counteredAt),
+        ),
+      )
+      .returning({ id: quotes.id });
+    return rows.length > 0;
   }
 
   async markQuotesBuyerSeen(quoteIds: string[]) {

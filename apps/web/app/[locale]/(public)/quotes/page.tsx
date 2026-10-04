@@ -39,6 +39,10 @@ interface Quote {
   } | null;
   /** QA-451: on accepted quotes — the deal id to rate + the rating given. */
   deal?: { id?: string; buyerRating?: number };
+  /** QA-511: the buyer's live counter-offer (one per offer round — a
+   *  revise clears it). */
+  counterAmount?: number;
+  counteredAt?: string;
 }
 interface Rfq {
   id: string;
@@ -98,6 +102,9 @@ function QuotesInner() {
   // QA-508: which quote's decline-reason picker is open — declining is a
   // two-step so the buyer can say why (optional, structured).
   const [decliningId, setDecliningId] = useState<string | null>(null);
+  // QA-511: which quote's counter-offer input is open + the draft amount.
+  const [counteringId, setCounteringId] = useState<string | null>(null);
+  const [counterDraft, setCounterDraft] = useState("");
   // QA-486: one in-flight mutation at a time. Every action below raced a
   // double-click before — accept/close/extend 409'd harmlessly, but a
   // second PATCH succeeded and re-mailed every delivered operator. The ref
@@ -344,6 +351,90 @@ function QuotesInner() {
     setMsg(t("declinedMsg"));
     setDecliningId(null);
     await load();
+  }
+
+  // QA-511: counter-offer — the buyer names their price instead of
+  // declining outright; the quote stays live and the operator answers
+  // by revising (which clears the counter for the next round).
+  const counter = (quoteId: string) =>
+    withBusy(() => counterImpl(quoteId));
+
+  async function counterImpl(quoteId: string) {
+    const amount = Math.round(Number(counterDraft));
+    let res: Response;
+    try {
+      res = await fetch(`/api/quotes/${quoteId}/counter`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token, amount }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(errText(data, tc("error")));
+      return;
+    }
+    setCounteringId(null);
+    setMsg(t("counteredMsg"));
+    await load();
+  }
+
+  // Two-step like the decline picker: the button reveals an inline
+  // amount field (prefilled just under the ask); a live counter
+  // suppresses the button — one counter per offer round.
+  function counterControls(q: Quote) {
+    if (q.counterAmount != null) return null;
+    if (counteringId === q.id) {
+      return (
+        <span
+          className="flex flex-wrap items-center gap-1"
+          data-testid={`counter-picker-${q.id}`}
+        >
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={counterDraft}
+            onChange={(e) => setCounterDraft(e.target.value)}
+            aria-label={t("counterYourPrice")}
+            data-testid={`counter-amount-${q.id}`}
+            className="w-28 rounded-md border border-border bg-background px-2 py-1 text-sm"
+          />
+          <span className="text-xs text-muted">{q.currency}</span>
+          <button
+            onClick={() => counter(q.id)}
+            disabled={busy || !(Number(counterDraft) > 0)}
+            data-testid={`counter-send-${q.id}`}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+          >
+            {t("counterSend")}
+          </button>
+          <button
+            onClick={() => setCounteringId(null)}
+            data-testid={`counter-cancel-${q.id}`}
+            className="text-xs text-muted underline"
+          >
+            {t("cancelEdit")}
+          </button>
+        </span>
+      );
+    }
+    return (
+      <button
+        onClick={() => {
+          setCounterDraft(String(Math.max(1, q.amount - 1)));
+          setCounteringId(q.id);
+        }}
+        disabled={busy}
+        data-testid={`counter-${q.id}`}
+        className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+      >
+        {t("counter")}
+      </button>
+    );
   }
 
   // QA-508: two-step decline — the button reveals structured reason chips;
@@ -716,6 +807,15 @@ function QuotesInner() {
                               {t("staleOffer")}
                             </span>
                           ) : null}{" "}
+                          {/* QA-511: your counter is on the table — the
+                              operator was mailed; a revise clears it. */}
+                          {q.status === "sent" && q.counterAmount != null ? (
+                            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid={`counter-sent-${q.id}`}>
+                              {t("counteredYou", {
+                                amount: formatMoney(q.counterAmount, q.currency, locale),
+                              })}
+                            </span>
+                          ) : null}{" "}
                           <span className="text-sm text-muted">
                             {t("by", { name: q.operator?.name ?? "" })}
                             {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {tc(`quoteState.${q.status}`)}
@@ -802,7 +902,7 @@ function QuotesInner() {
                               {declineControls(q)}
                             </span>
                           ) : (
-                          <span className="flex gap-2">
+                          <span className="flex flex-wrap gap-2">
                             <button
                               onClick={() => accept(q.id)}
                               disabled={busy}
@@ -811,6 +911,7 @@ function QuotesInner() {
                             >
                               {t("accept")}
                             </button>
+                            {counterControls(q)}
                             {declineControls(q)}
                           </span>
                           )

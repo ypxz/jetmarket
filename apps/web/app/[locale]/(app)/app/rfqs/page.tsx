@@ -398,6 +398,22 @@ export default async function RfqInboxPage({
                               {t(`declineReason.${q.declineReason}`)}
                             </Badge>
                           ) : null}
+                          {/* QA-511: the buyer countered — op answers
+                              with a revise (which clears the counter). */}
+                          {q.status === "sent" && q.counterAmount != null ? (
+                            <Badge
+                              variant="warning"
+                              data-testid={`quote-counter-${q.id}`}
+                            >
+                              {t("counteredByBuyer", {
+                                amount: formatMoney(
+                                  q.counterAmount,
+                                  q.currency,
+                                  locale,
+                                ),
+                              })}
+                            </Badge>
+                          ) : null}
                           {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
                             <>
                               <ReviseQuote

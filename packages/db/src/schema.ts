@@ -239,6 +239,10 @@ export const quotes = pgTable(
     // a revised quote is new content the buyer hasn't seen yet.
     buyerSeenAt: timestamp("buyer_seen_at", { withTimezone: true }),
     declineReason: text("decline_reason"),
+    // QA-511: buyer counter-offer — the amount they proposed (minor
+    // units) and when; reviseQuote clears both for the next round.
+    counterAmountMinor: bigint("counter_amount_minor", { mode: "number" }),
+    counteredAt: timestamp("countered_at", { withTimezone: true }),
   },
   (t) => [
     // One *live* quote per (rfq, operator) — terminal statuses don't count,

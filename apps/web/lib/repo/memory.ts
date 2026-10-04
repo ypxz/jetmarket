@@ -967,6 +967,18 @@ class MemoryRepo implements Repo {
     }
     return out;
   }
+  async counterQuote(id: string, amount: number) {
+    const q = this.quotes.get(id);
+    if (!q || q.status !== "sent" || q.counteredAt) return false;
+    // Deliberately no updatedAt bump — a counter isn't a revision of the
+    // offer (the "updated" badge + stale-offer check ride that stamp).
+    this.quotes.set(id, {
+      ...q,
+      counterAmount: amount,
+      counteredAt: now(),
+    });
+    return true;
+  }
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"], opts?: { declineReason?: QuoteDeclineReason }) {
     const q = this.quotes.get(id);
     if (!q || q.status !== expected) return false;
@@ -1000,6 +1012,9 @@ class MemoryRepo implements Repo {
       updatedAt: now(),
       // QA-506: revised content is unseen — the buyer saw the old terms.
       buyerSeenAt: undefined,
+      // QA-511: a revise answers the buyer's counter — next round.
+      counterAmount: undefined,
+      counteredAt: undefined,
     };
     this.quotes.set(id, next);
     return next;

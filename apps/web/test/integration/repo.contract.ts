@@ -602,6 +602,36 @@ export function repoContract(
         timing: 1,
       });
       expect(await repo.countQuotesByDeclineReason("nope")).toEqual({});
+
+      // QA-511: buyer counter-offer — stamps only on a live 'sent' quote;
+      // one counter per round (a second is refused, a revise clears for
+      // the next), terminal rows refuse, and updatedAt stays untouched
+      // (a counter isn't a revision of the offer).
+      const counterTarget = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: other.id,
+        amount: 28000,
+        currency: "USD",
+        message: "",
+      });
+      const untouched = counterTarget!.updatedAt;
+      expect(await repo.counterQuote(counterTarget!.id, 25000)).toBe(true);
+      const countered = (await repo.getQuote(counterTarget!.id))!;
+      expect(countered.counterAmount).toBe(25000);
+      expect(countered.counteredAt).toBeDefined();
+      expect(countered.updatedAt).toBe(untouched);
+      expect(await repo.counterQuote(counterTarget!.id, 24000)).toBe(false);
+      expect(await repo.counterQuote("nope", 24000)).toBe(false);
+      expect(await repo.counterQuote(noReason!.id, 1)).toBe(false);
+      const met = await repo.reviseQuote(counterTarget!.id, other.id, {
+        amount: 26000,
+        currency: "USD",
+        message: "meet in the middle",
+      });
+      expect(met?.counterAmount).toBeUndefined();
+      expect(met?.counteredAt).toBeUndefined();
+      // The cleared round accepts a fresh counter.
+      expect(await repo.counterQuote(counterTarget!.id, 24000)).toBe(true);
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {

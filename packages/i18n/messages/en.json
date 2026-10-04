@@ -104,8 +104,8 @@
       "track": "Track their quotes here: {url}"
     },
     "rfqListingEnded": {
-      "subject": "Your request for \u201c{title}\u201d closed \u2014 the listing is no longer available",
-      "intro": "The listing you asked about on {site} is no longer available, so your request for \u201c{title}\u201d was closed.",
+      "subject": "Your request for “{title}” closed — the listing is no longer available",
+      "intro": "The listing you asked about on {site} is no longer available, so your request for “{title}” was closed.",
       "browse": "Browse similar listings: {url}",
       "cta": "Browse similar listings"
     },
@@ -216,98 +216,102 @@
       "body": "Your request for \"{title}\" on {site} expired without an accepted quote. You can submit a fresh request anytime."
     },
     "opQuoteDeclined": {
-      "subjectAccepted": "The buyer accepted another quote for \u201c{title}\u201d",
-      "subjectClosed": "The buyer closed their request for \u201c{title}\u201d",
-      "subjectDeclined": "Your quote for \u201c{title}\u201d was declined",
-      "subjectEnded": "\u201c{title}\u201d is no longer listed \u2014 your quote was not selected",
-      "bodyAccepted": "The buyer accepted a different quote for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
-      "bodyClosed": "The buyer closed their request for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
-      "bodyDeclined": "The buyer declined your quote of {currency} {amount} for \u201c{title}\u201d on {site}.",
+      "subjectAccepted": "The buyer accepted another quote for “{title}”",
+      "subjectClosed": "The buyer closed their request for “{title}”",
+      "subjectDeclined": "Your quote for “{title}” was declined",
+      "subjectEnded": "“{title}” is no longer listed — your quote was not selected",
+      "bodyAccepted": "The buyer accepted a different quote for “{title}” on {site}, so your quote of {currency} {amount} was not selected this time.",
+      "bodyClosed": "The buyer closed their request for “{title}” on {site}, so your quote of {currency} {amount} was not selected this time.",
+      "bodyDeclined": "The buyer declined your quote of {currency} {amount} for “{title}” on {site}.",
       "reasonLine": "Reason given: {reason}.",
       "reason_price": "too expensive",
       "reason_timing": "dates didn't work",
       "reason_chose_other": "another offer accepted",
       "reason_no_longer_needed": "no longer needed",
       "reason_other": "other",
-      "bodyEnded": "The listing \u201c{title}\u201d is no longer available on {site}, so your quote of {currency} {amount} was not selected this time."
+      "bodyEnded": "The listing “{title}” is no longer available on {site}, so your quote of {currency} {amount} was not selected this time."
+    },
+    "opQuoteCountered": {
+      "subject": "Buyer countered your quote for “{title}”",
+      "body": "The buyer countered your quote of {currency} {amount} for “{title}” on {site} with {currency} {counterAmount}. Revise your offer or stand firm — the quote stays live."
     },
     "opDealClosed": {
-      "subject": "Your quote for \u201c{title}\u201d was accepted",
-      "body": "The buyer accepted your quote of {currency} {amount} for \u201c{title}\u201d on {site}. Contact them at {buyer} to arrange fulfilment.{invoiceNote}",
+      "subject": "Your quote for “{title}” was accepted",
+      "body": "The buyer accepted your quote of {currency} {amount} for “{title}” on {site}. Contact them at {buyer} to arrange fulfilment.{invoiceNote}",
       "invoiceNote": " A success-fee invoice for {currency} {fee} ({ref}) has been issued to your account."
     },
     "opListingModerated": {
-      "subject": "Your listing \u201c{title}\u201d was {status} by moderation",
+      "subject": "Your listing “{title}” was {status} by moderation",
       "paused": "paused",
       "archived": "archived",
-      "bodyPaused": "Our moderation team paused your listing \u201c{title}\u201d on {site}, so it is hidden from public search. Review its details and contact support if you believe this was a mistake \u2014 you can reactivate it from your dashboard.",
-      "bodyArchived": "Our moderation team archived your listing \u201c{title}\u201d on {site}, so it is no longer listed. Contact support if you believe this was a mistake."
+      "bodyPaused": "Our moderation team paused your listing “{title}” on {site}, so it is hidden from public search. Review its details and contact support if you believe this was a mistake — you can reactivate it from your dashboard.",
+      "bodyArchived": "Our moderation team archived your listing “{title}” on {site}, so it is no longer listed. Contact support if you believe this was a mistake."
     },
     "opVerified": {
       "subjectOn": "Your operator profile was verified",
       "subjectOff": "Your operator profile is no longer verified",
-      "bodyOn": "Our team verified your operator profile \u201c{name}\u201d on {site} \u2014 the verified badge now shows on your listings and public profile.",
-      "bodyOff": "Our team removed the verified badge from your operator profile \u201c{name}\u201d on {site}. Contact support if you believe this was a mistake."
+      "bodyOn": "Our team verified your operator profile “{name}” on {site} — the verified badge now shows on your listings and public profile.",
+      "bodyOff": "Our team removed the verified badge from your operator profile “{name}” on {site}. Contact support if you believe this was a mistake."
     },
     "opSuspended": {
       "subjectOn": "Your {site} account was suspended",
       "subjectOff": "Your {site} account was reinstated",
-      "bodyOn": "Our team suspended your operator account \u201c{name}\u201d on {site}. Your listings are hidden from buyers, you will not receive new requests, and listing/quote actions are disabled. Contact support if you believe this was a mistake.",
-      "bodyOff": "Your operator account \u201c{name}\u201d on {site} was reinstated \u2014 your listings are visible again and new requests will reach you normally."
+      "bodyOn": "Our team suspended your operator account “{name}” on {site}. Your listings are hidden from buyers, you will not receive new requests, and listing/quote actions are disabled. Contact support if you believe this was a mistake.",
+      "bodyOff": "Your operator account “{name}” on {site} was reinstated — your listings are visible again and new requests will reach you normally."
     },
     "opInvoiceVoided": {
-      "subject": "Success-fee invoice voided \u2014 deal {id}",
-      "body": "Your success-fee invoice{refParen} of {currency} {fee} for the {currency} {amount} deal was voided \u2014 you owe no fee on it. Contact support if you have questions."
+      "subject": "Success-fee invoice voided — deal {id}",
+      "body": "Your success-fee invoice{refParen} of {currency} {fee} for the {currency} {amount} deal was voided — you owe no fee on it. Contact support if you have questions."
     },
     "opDealRated": {
-      "subject": "The buyer rated your deal \u2605 {rating}",
-      "body": "The buyer rated your deal on \u201c{title}\u201d \u2605 {rating} out of 5 on {site}.{standing}",
-      "standingOne": " Your rating now stands at \u2605 {avg} across {count} rated deal.",
-      "standingMany": " Your rating now stands at \u2605 {avg} across {count} rated deals."
+      "subject": "The buyer rated your deal ★ {rating}",
+      "body": "The buyer rated your deal on “{title}” ★ {rating} out of 5 on {site}.{standing}",
+      "standingOne": " Your rating now stands at ★ {avg} across {count} rated deal.",
+      "standingMany": " Your rating now stands at ★ {avg} across {count} rated deals."
     },
     "rfqNew": {
       "subject": "New RFQ",
       "intro": "You have a new request for quotation on {site}.",
-      "priority": "Priority request \u2014 the buyer paid for immediate delivery.",
+      "priority": "Priority request — the buyer paid for immediate delivery.",
       "buyer": "Buyer: {name}",
       "cta": "Open your operator inbox to send a quote."
     },
     "rfqAmended": {
       "subject": "Updated RFQ",
-      "introChanged": "The buyer updated their request for quotation on {site} \u2014 here's what changed.",
-      "introLatest": "The buyer updated their request for quotation on {site} \u2014 the latest details are below.",
+      "introChanged": "The buyer updated their request for quotation on {site} — here's what changed.",
+      "introLatest": "The buyer updated their request for quotation on {site} — the latest details are below.",
       "buyer": "Buyer: {name}",
       "cta": "Open your operator inbox to review or quote."
     },
     "invoicePaid": {
-      "subject": "Success-fee invoice paid \u2014 deal {id}",
+      "subject": "Success-fee invoice paid — deal {id}",
       "body": "Your success-fee invoice{refParen} for {currency} {fee} on deal amount {currency} {amount} was marked paid."
     },
     "listingExpired": {
-      "subject": "Your listing \u201c{title}\u201d just expired",
-      "body": "\u201c{title}\u201d (dated {date}) dropped out of {site} browse when its date passed. To relist it, open your dashboard and edit the listing \u2014 a fresh date puts it back in front of buyers."
+      "subject": "Your listing “{title}” just expired",
+      "body": "“{title}” (dated {date}) dropped out of {site} browse when its date passed. To relist it, open your dashboard and edit the listing — a fresh date puts it back in front of buyers."
     },
     "opUnanswered": {
       "subjectOne": "1 request is waiting for your quote",
       "subjectMany": "{count} requests are waiting for your quote",
-      "body": "Live requests on {site} have been sitting in your inbox unanswered \u2014 buyers compare operators by who responds first. Quote them, or dismiss the ones you can't serve so they stop counting against your inbox.",
+      "body": "Live requests on {site} have been sitting in your inbox unanswered — buyers compare operators by who responds first. Quote them, or dismiss the ones you can't serve so they stop counting against your inbox.",
       "cta": "Review requests",
       "yourInbox": "Your inbox: {url}"
     },
     "opEmptyBook": {
       "subject": "Create your first listing on {site}",
-      "body": "Your operator account is live but your public page is empty \u2014 buyers can't quote what they can't see. Listing takes a few minutes and puts you in front of every matching request.",
+      "body": "Your operator account is live but your public page is empty — buyers can't quote what they can't see. Listing takes a few minutes and puts you in front of every matching request.",
       "cta": "Create a listing",
       "createListingLine": "Create a listing: {url}"
     },
     "invoiceOverdue": {
-      "subject": "Success-fee invoice {ref} outstanding \u2014 {amount}",
-      "body": "A success-fee invoice for {amount} ({ref}) on a closed {site} deal is still unpaid. Settle it to keep your account in good standing \u2014 reach billing if the ref doesn't look right.",
+      "subject": "Success-fee invoice {ref} outstanding — {amount}",
+      "body": "A success-fee invoice for {amount} ({ref}) on a closed {site} deal is still unpaid. Settle it to keep your account in good standing — reach billing if the ref doesn't look right.",
       "cta": "View your deals",
       "yourDeals": "Your deals: {url}"
     },
     "rfqExpiredOp": {
-      "subject": "The RFQ for \u201c{title}\u201d expired",
+      "subject": "The RFQ for “{title}” expired",
       "body": "The request you quoted on {site} expired before the buyer accepted, so your quote was not selected."
     },
     "shared": {
@@ -449,7 +453,12 @@
     },
     "alertWatch": "Watching a listing",
     "alertOpenListing": "Open listing",
-    "repost": "Request again"
+    "repost": "Request again",
+    "counter": "Counter",
+    "counterYourPrice": "Your price",
+    "counterSend": "Send counter",
+    "counteredYou": "You countered {amount} — awaiting the operator.",
+    "counteredMsg": "Counter sent — the operator was emailed."
   },
   "design": {
     "title": "Design system",
@@ -542,7 +551,7 @@
     "already_reported": "You already reported this.",
     "archive_the_listing_before_deleting_it": "Archive the listing before deleting it.",
     "archived_listings_can_t_be_reactivated_contact_support": "Archived listings can't be reactivated — contact support.",
-    "sold_listings_can_t_be_reactivated_contact_support": "Sold listings can't be reactivated \u2014 the deal is recorded.",
+    "sold_listings_can_t_be_reactivated_contact_support": "Sold listings can't be reactivated — the deal is recorded.",
     "couldn_t_send_the_email_try_again": "Couldn't send the email — try again.",
     "couldn_t_send_the_sign_in_email_try_again": "Couldn't send the sign-in email — try again.",
     "create_an_operator_profile_first": "Create an operator profile first.",
@@ -594,7 +603,9 @@
     "invoice_is_paid_not_invoiced": "This invoice is already paid.",
     "invoice_is_pending_not_invoiced": "This invoice hasn't been sent yet.",
     "free_plan_allows_3_listings_upgrade_to_pro": "The free plan allows 3 listings — upgrade to Pro for more.",
-    "invoice_is_voided_not_invoiced": "This invoice is already voided."
+    "invoice_is_voided_not_invoiced": "This invoice is already voided.",
+    "counter_already_on_the_table": "Your counter-offer is already with the operator.",
+    "a_counter_must_be_below_the_asking_price": "A counter-offer must be below the asking price."
   },
   "vertical": {
     "jets": {
@@ -987,9 +998,15 @@
       "archive": "Archive",
       "delete": "Delete",
       "deleteConfirm": "Delete forever?",
-    "markSold": "Mark sold",
-    "markSoldConfirm": "Mark as sold? Listing leaves the market for good.",
-    "status": { "draft": "draft", "active": "active", "paused": "paused", "archived": "archived", "sold": "sold" },
+      "markSold": "Mark sold",
+      "markSoldConfirm": "Mark as sold? Listing leaves the market for good.",
+      "status": {
+        "draft": "draft",
+        "active": "active",
+        "paused": "paused",
+        "archived": "archived",
+        "sold": "sold"
+      },
       "noListings": "No listings yet. Create your first {types}.",
       "rfqInbox": "RFQ inbox ({count} open)",
       "openOffers": "Open offers ({count})",
@@ -1012,8 +1029,8 @@
       "statWon": "Quotes won",
       "statWinRate": "Win rate",
       "statSeenRate": "Seen rate",
-        "declineBreakdown": "Lost to: {reasons}",
-        "declineNoReason": "no reason given",
+      "declineBreakdown": "Lost to: {reasons}",
+      "declineNoReason": "no reason given",
       "statReply": "Typical reply",
       "statRating": "Avg buyer rating",
       "statsRecent": "Last 30 days — {rfqs} RFQs · {quotes} quotes · {won} won",
@@ -1120,7 +1137,8 @@
       "flagDuplicate": "Duplicate request",
       "flagOther": "Other",
       "flagNotePlaceholder": "Optional details for our team",
-      "sortEnding": "Ending first"
+      "sortEnding": "Ending first",
+      "counteredByBuyer": "Countered {amount}"
     },
     "billing": {
       "title": "Plan & billing",

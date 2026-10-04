@@ -207,6 +207,12 @@ export interface Quote {
   buyerSeenAt?: string;
   /** Buyer-chosen decline reason key (QA-508) — only set on 'declined'. */
   declineReason?: QuoteDeclineReason;
+  /** Buyer's counter-offer amount (QA-511, display units, same currency
+   *  as `amount`) — set only while the quote is still 'sent'; cleared by
+   *  reviseQuote so each offer round carries at most one counter. */
+  counterAmount?: number;
+  /** When the live counter was proposed. */
+  counteredAt?: string;
 }
 
 export interface Deal {
@@ -783,6 +789,12 @@ export interface Repo {
   countQuotesByDeclineReason(
     operatorId: string,
   ): Promise<Record<string, number>>;
+  /** QA-511: buyer counter-offer — stamps `amount` as the buyer's
+   *  counter on a still-'sent' quote; returns false (no write) when the
+   *  quote already left 'sent' or already carries a live counter (one
+   *  counter per offer round — reviseQuote clears it for the next).
+   *  Amount is in display units, stored minor like the quote itself. */
+  counterQuote(id: string, amount: number): Promise<boolean>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */

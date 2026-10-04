@@ -104,10 +104,10 @@
       "track": "Verfolgen Sie deren Angebote hier: {url}"
     },
     "rfqListingEnded": {
-      "subject": "Ihre Anfrage zu \u201e{title}\u201c wurde geschlossen \u2014 das Inserat ist nicht mehr verf\u00fcgbar",
-      "intro": "Das Inserat, zu dem Sie auf {site} angefragt haben, ist nicht mehr verf\u00fcgbar. Ihre Anfrage zu \u201e{title}\u201c wurde geschlossen.",
-      "browse": "\u00c4hnliche Inserate ansehen: {url}",
-      "cta": "\u00c4hnliche Inserate ansehen"
+      "subject": "Ihre Anfrage zu „{title}“ wurde geschlossen — das Inserat ist nicht mehr verfügbar",
+      "intro": "Das Inserat, zu dem Sie auf {site} angefragt haben, ist nicht mehr verfügbar. Ihre Anfrage zu „{title}“ wurde geschlossen.",
+      "browse": "Ähnliche Inserate ansehen: {url}",
+      "cta": "Ähnliche Inserate ansehen"
     },
     "quoteReceived": {
       "subject": "Angebot für „{title}“ — {currency} {amount}",
@@ -216,99 +216,103 @@
       "body": "Ihre Anfrage für „{title}“ auf {site} ist abgelaufen, ohne dass ein Angebot angenommen wurde. Sie können jederzeit eine neue Anfrage stellen."
     },
     "opQuoteDeclined": {
-      "subjectAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c angenommen",
-      "subjectClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c geschlossen",
-      "subjectDeclined": "Ihr Angebot f\u00fcr \u201e{title}\u201c wurde abgelehnt",
-      "subjectEnded": "\u201e{title}\u201c ist nicht mehr gelistet \u2014 Ihr Angebot wurde nicht ausgew\u00e4hlt",
-      "bodyAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c auf {site} angenommen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
-      "bodyClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c auf {site} geschlossen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
-      "bodyDeclined": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} abgelehnt.",
+      "subjectAccepted": "Der Käufer hat ein anderes Angebot für „{title}“ angenommen",
+      "subjectClosed": "Der Käufer hat seine Anfrage für „{title}“ geschlossen",
+      "subjectDeclined": "Ihr Angebot für „{title}“ wurde abgelehnt",
+      "subjectEnded": "„{title}“ ist nicht mehr gelistet — Ihr Angebot wurde nicht ausgewählt",
+      "bodyAccepted": "Der Käufer hat ein anderes Angebot für „{title}“ auf {site} angenommen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgewählt.",
+      "bodyClosed": "Der Käufer hat seine Anfrage für „{title}“ auf {site} geschlossen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgewählt.",
+      "bodyDeclined": "Der Käufer hat Ihr Angebot von {currency} {amount} für „{title}“ auf {site} abgelehnt.",
       "reasonLine": "Angegebener Grund: {reason}.",
       "reason_price": "zu teuer",
       "reason_timing": "die Termine passten nicht",
       "reason_chose_other": "ein anderes Angebot angenommen",
-      "reason_no_longer_needed": "nicht mehr n\u00f6tig",
+      "reason_no_longer_needed": "nicht mehr nötig",
       "reason_other": "sonstiges",
-      "bodyEnded": "Das Inserat \u201e{title}\u201c ist auf {site} nicht mehr verf\u00fcgbar, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt."
+      "bodyEnded": "Das Inserat „{title}“ ist auf {site} nicht mehr verfügbar, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgewählt."
+    },
+    "opQuoteCountered": {
+      "subject": "Käufer hat Ihr Angebot für „{title}“ gegengeboten",
+      "body": "Der Käufer hat auf Ihr Angebot von {currency} {amount} für „{title}“ auf {site} ein Gegenangebot von {currency} {counterAmount} gemacht. Überarbeiten Sie Ihr Angebot oder bleiben Sie dabei — das Angebot bleibt aktiv."
     },
     "opDealClosed": {
-      "subject": "Ihr Angebot f\u00fcr \u201e{title}\u201c wurde angenommen",
-      "body": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} angenommen. Kontaktieren Sie ihn unter {buyer}, um die Ausf\u00fchrung zu vereinbaren.{invoiceNote}",
-      "invoiceNote": " Eine Erfolgsgeb\u00fchren-Rechnung \u00fcber {currency} {fee} ({ref}) wurde Ihrem Konto ausgestellt."
+      "subject": "Ihr Angebot für „{title}“ wurde angenommen",
+      "body": "Der Käufer hat Ihr Angebot von {currency} {amount} für „{title}“ auf {site} angenommen. Kontaktieren Sie ihn unter {buyer}, um die Ausführung zu vereinbaren.{invoiceNote}",
+      "invoiceNote": " Eine Erfolgsgebühren-Rechnung über {currency} {fee} ({ref}) wurde Ihrem Konto ausgestellt."
     },
     "opListingModerated": {
-      "subject": "Ihr Inserat \u201e{title}\u201c wurde von der Moderation {status}",
+      "subject": "Ihr Inserat „{title}“ wurde von der Moderation {status}",
       "paused": "pausiert",
       "archived": "archiviert",
-      "bodyPaused": "Unser Moderationsteam hat Ihr Inserat \u201e{title}\u201c auf {site} pausiert, sodass es in der \u00f6ffentlichen Suche ausgeblendet ist. Pr\u00fcfen Sie die Angaben und kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten \u2014 Sie k\u00f6nnen es in Ihrem Dashboard reaktivieren.",
-      "bodyArchived": "Unser Moderationsteam hat Ihr Inserat \u201e{title}\u201c auf {site} archiviert, sodass es nicht mehr gelistet ist. Kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten."
+      "bodyPaused": "Unser Moderationsteam hat Ihr Inserat „{title}“ auf {site} pausiert, sodass es in der öffentlichen Suche ausgeblendet ist. Prüfen Sie die Angaben und kontaktieren Sie den Support, falls Sie dies für einen Fehler halten — Sie können es in Ihrem Dashboard reaktivieren.",
+      "bodyArchived": "Unser Moderationsteam hat Ihr Inserat „{title}“ auf {site} archiviert, sodass es nicht mehr gelistet ist. Kontaktieren Sie den Support, falls Sie dies für einen Fehler halten."
     },
     "opVerified": {
       "subjectOn": "Ihr Anbieterprofil wurde verifiziert",
       "subjectOff": "Ihr Anbieterprofil ist nicht mehr verifiziert",
-      "bodyOn": "Unser Team hat Ihr Anbieterprofil \u201e{name}\u201c auf {site} verifiziert \u2014 das Verifiziert-Badge erscheint nun auf Ihren Inseraten und Ihrem \u00f6ffentlichen Profil.",
-      "bodyOff": "Unser Team hat das Verifiziert-Badge von Ihrem Anbieterprofil \u201e{name}\u201c auf {site} entfernt. Kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten."
+      "bodyOn": "Unser Team hat Ihr Anbieterprofil „{name}“ auf {site} verifiziert — das Verifiziert-Badge erscheint nun auf Ihren Inseraten und Ihrem öffentlichen Profil.",
+      "bodyOff": "Unser Team hat das Verifiziert-Badge von Ihrem Anbieterprofil „{name}“ auf {site} entfernt. Kontaktieren Sie den Support, falls Sie dies für einen Fehler halten."
     },
     "opSuspended": {
       "subjectOn": "Ihr {site}-Konto wurde gesperrt",
       "subjectOff": "Ihr {site}-Konto wurde reaktiviert",
-      "bodyOn": "Unser Team hat Ihr Anbieterkonto \u201e{name}\u201c auf {site} gesperrt. Ihre Inserate sind f\u00fcr K\u00e4ufer ausgeblendet, Sie erhalten keine neuen Anfragen und Inserat-/Angebotsaktionen sind deaktiviert. Kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten.",
-      "bodyOff": "Ihr Anbieterkonto \u201e{name}\u201c auf {site} wurde reaktiviert \u2014 Ihre Inserate sind wieder sichtbar und neue Anfragen erreichen Sie wie gewohnt."
+      "bodyOn": "Unser Team hat Ihr Anbieterkonto „{name}“ auf {site} gesperrt. Ihre Inserate sind für Käufer ausgeblendet, Sie erhalten keine neuen Anfragen und Inserat-/Angebotsaktionen sind deaktiviert. Kontaktieren Sie den Support, falls Sie dies für einen Fehler halten.",
+      "bodyOff": "Ihr Anbieterkonto „{name}“ auf {site} wurde reaktiviert — Ihre Inserate sind wieder sichtbar und neue Anfragen erreichen Sie wie gewohnt."
     },
     "opInvoiceVoided": {
-      "subject": "Erfolgsgeb\u00fchren-Rechnung storniert \u2014 Abschluss {id}",
-      "body": "Ihre Erfolgsgeb\u00fchren-Rechnung{refParen} \u00fcber {currency} {fee} f\u00fcr den Abschluss \u00fcber {currency} {amount} wurde storniert \u2014 Sie schulden keine Geb\u00fchr daf\u00fcr. Kontaktieren Sie den Support bei Fragen."
+      "subject": "Erfolgsgebühren-Rechnung storniert — Abschluss {id}",
+      "body": "Ihre Erfolgsgebühren-Rechnung{refParen} über {currency} {fee} für den Abschluss über {currency} {amount} wurde storniert — Sie schulden keine Gebühr dafür. Kontaktieren Sie den Support bei Fragen."
     },
     "opDealRated": {
-      "subject": "Der K\u00e4ufer hat Ihren Abschluss mit \u2605 {rating} bewertet",
-      "body": "Der K\u00e4ufer hat Ihren Abschluss zu \u201e{title}\u201c auf {site} mit \u2605 {rating} von 5 bewertet.{standing}",
-      "standingOne": " Ihre Bewertung steht nun bei \u2605 {avg} \u00fcber {count} bewerteten Abschluss.",
-      "standingMany": " Ihre Bewertung steht nun bei \u2605 {avg} \u00fcber {count} bewertete Abschl\u00fcsse."
+      "subject": "Der Käufer hat Ihren Abschluss mit ★ {rating} bewertet",
+      "body": "Der Käufer hat Ihren Abschluss zu „{title}“ auf {site} mit ★ {rating} von 5 bewertet.{standing}",
+      "standingOne": " Ihre Bewertung steht nun bei ★ {avg} über {count} bewerteten Abschluss.",
+      "standingMany": " Ihre Bewertung steht nun bei ★ {avg} über {count} bewertete Abschlüsse."
     },
     "rfqNew": {
       "subject": "Neue Anfrage",
       "intro": "Sie haben eine neue Anfrage auf {site}.",
-      "priority": "Priorisierte Anfrage \u2014 der K\u00e4ufer hat f\u00fcr sofortige Zustellung bezahlt.",
+      "priority": "Priorisierte Anfrage — der Käufer hat für sofortige Zustellung bezahlt.",
       "buyer": "Anfragender: {name}",
-      "cta": "\u00d6ffnen Sie Ihren Anbieter-Posteingang, um ein Angebot zu senden."
+      "cta": "Öffnen Sie Ihren Anbieter-Posteingang, um ein Angebot zu senden."
     },
     "rfqAmended": {
       "subject": "Aktualisierte Anfrage",
-      "introChanged": "Der K\u00e4ufer hat seine Anfrage auf {site} aktualisiert \u2014 hier sind die \u00c4nderungen.",
-      "introLatest": "Der K\u00e4ufer hat seine Anfrage auf {site} aktualisiert \u2014 die aktuellen Details folgen.",
+      "introChanged": "Der Käufer hat seine Anfrage auf {site} aktualisiert — hier sind die Änderungen.",
+      "introLatest": "Der Käufer hat seine Anfrage auf {site} aktualisiert — die aktuellen Details folgen.",
       "buyer": "Anfragender: {name}",
-      "cta": "\u00d6ffnen Sie Ihren Anbieter-Posteingang zum Pr\u00fcfen oder Anbieten."
+      "cta": "Öffnen Sie Ihren Anbieter-Posteingang zum Prüfen oder Anbieten."
     },
     "invoicePaid": {
-      "subject": "Erfolgsgeb\u00fchren-Rechnung bezahlt \u2014 Abschluss {id}",
-      "body": "Ihre Erfolgsgeb\u00fchren-Rechnung{refParen} \u00fcber {currency} {fee} zum Abschlussbetrag {currency} {amount} wurde als bezahlt markiert."
+      "subject": "Erfolgsgebühren-Rechnung bezahlt — Abschluss {id}",
+      "body": "Ihre Erfolgsgebühren-Rechnung{refParen} über {currency} {fee} zum Abschlussbetrag {currency} {amount} wurde als bezahlt markiert."
     },
     "listingExpired": {
-      "subject": "Ihr Inserat \u201e{title}\u201c ist gerade abgelaufen",
-      "body": "\u201e{title}\u201c (vom {date}) ist nach Ablauf des Datums aus der {site}-Suche gefallen. Um es erneut zu listen, \u00f6ffnen Sie Ihr Dashboard und bearbeiten das Inserat \u2014 ein neues Datum bringt es wieder vor K\u00e4ufer."
+      "subject": "Ihr Inserat „{title}“ ist gerade abgelaufen",
+      "body": "„{title}“ (vom {date}) ist nach Ablauf des Datums aus der {site}-Suche gefallen. Um es erneut zu listen, öffnen Sie Ihr Dashboard und bearbeiten das Inserat — ein neues Datum bringt es wieder vor Käufer."
     },
     "opUnanswered": {
       "subjectOne": "1 Anfrage wartet auf Ihr Angebot",
       "subjectMany": "{count} Anfragen warten auf Ihr Angebot",
-      "body": "Live-Anfragen auf {site} liegen unbeantwortet in Ihrem Posteingang \u2014 K\u00e4ufer vergleichen Anbieter danach, wer zuerst antwortet. Bieten Sie darauf oder verwerfen Sie die Anfragen, die Sie nicht bedienen k\u00f6nnen, damit sie nicht l\u00e4nger in Ihrem Posteingang z\u00e4hlen.",
-      "cta": "Anfragen pr\u00fcfen",
+      "body": "Live-Anfragen auf {site} liegen unbeantwortet in Ihrem Posteingang — Käufer vergleichen Anbieter danach, wer zuerst antwortet. Bieten Sie darauf oder verwerfen Sie die Anfragen, die Sie nicht bedienen können, damit sie nicht länger in Ihrem Posteingang zählen.",
+      "cta": "Anfragen prüfen",
       "yourInbox": "Ihr Posteingang: {url}"
     },
     "opEmptyBook": {
       "subject": "Erstellen Sie Ihr erstes Inserat auf {site}",
-      "body": "Ihr Anbieterkonto ist aktiv, aber Ihre \u00f6ffentliche Seite ist leer \u2014 K\u00e4ufer k\u00f6nnen nicht auf etwas bieten, das sie nicht sehen. Das Listen dauert nur wenige Minuten und bringt Sie vor jede passende Anfrage.",
+      "body": "Ihr Anbieterkonto ist aktiv, aber Ihre öffentliche Seite ist leer — Käufer können nicht auf etwas bieten, das sie nicht sehen. Das Listen dauert nur wenige Minuten und bringt Sie vor jede passende Anfrage.",
       "cta": "Inserat erstellen",
       "createListingLine": "Inserat erstellen: {url}"
     },
     "invoiceOverdue": {
-      "subject": "Erfolgsgeb\u00fchren-Rechnung {ref} ausstehend \u2014 {amount}",
-      "body": "Eine Erfolgsgeb\u00fchren-Rechnung \u00fcber {amount} ({ref}) f\u00fcr einen abgeschlossenen {site}-Abschluss ist noch unbezahlt. Begleichen Sie sie, um Ihr Konto in gutem Stand zu halten \u2014 wenden Sie sich an die Abrechnung, falls die Referenz nicht stimmt.",
-      "cta": "Ihre Abschl\u00fcsse ansehen",
-      "yourDeals": "Ihre Abschl\u00fcsse: {url}"
+      "subject": "Erfolgsgebühren-Rechnung {ref} ausstehend — {amount}",
+      "body": "Eine Erfolgsgebühren-Rechnung über {amount} ({ref}) für einen abgeschlossenen {site}-Abschluss ist noch unbezahlt. Begleichen Sie sie, um Ihr Konto in gutem Stand zu halten — wenden Sie sich an die Abrechnung, falls die Referenz nicht stimmt.",
+      "cta": "Ihre Abschlüsse ansehen",
+      "yourDeals": "Ihre Abschlüsse: {url}"
     },
     "rfqExpiredOp": {
-      "subject": "Die Anfrage f\u00fcr \u201e{title}\u201c ist abgelaufen",
-      "body": "Die Anfrage, auf die Sie auf {site} geboten haben, ist abgelaufen, bevor der K\u00e4ufer angenommen hat \u2014 Ihr Angebot wurde nicht ausgew\u00e4hlt."
+      "subject": "Die Anfrage für „{title}“ ist abgelaufen",
+      "body": "Die Anfrage, auf die Sie auf {site} geboten haben, ist abgelaufen, bevor der Käufer angenommen hat — Ihr Angebot wurde nicht ausgewählt."
     },
     "shared": {
       "aListing": "ein Inserat",
@@ -400,7 +404,7 @@
       "price": "Zu teuer",
       "timing": "Termine passen nicht",
       "chose_other": "Anderes Angebot angenommen",
-      "no_longer_needed": "Nicht mehr n\u00f6tig",
+      "no_longer_needed": "Nicht mehr nötig",
       "other": "Sonstiges"
     },
     "declineNoReason": "Ohne Grund ablehnen",
@@ -449,7 +453,12 @@
     },
     "alertWatch": "Beobachtet ein Inserat",
     "alertOpenListing": "Inserat öffnen",
-    "repost": "Erneut anfragen"
+    "repost": "Erneut anfragen",
+    "counter": "Gegenangebot",
+    "counterYourPrice": "Ihr Preis",
+    "counterSend": "Gegenangebot senden",
+    "counteredYou": "Sie haben {amount} geboten — warten auf den Anbieter.",
+    "counteredMsg": "Gegenangebot gesendet — der Anbieter wurde benachrichtigt."
   },
   "design": {
     "title": "Designsystem",
@@ -542,7 +551,7 @@
     "already_reported": "Sie haben dies bereits gemeldet.",
     "archive_the_listing_before_deleting_it": "Archivieren Sie das Inserat, bevor Sie es löschen.",
     "archived_listings_can_t_be_reactivated_contact_support": "Archivierte Inserate können nicht reaktiviert werden — kontaktieren Sie den Support.",
-    "sold_listings_can_t_be_reactivated_contact_support": "Verkaufte Inserate k\u00f6nnen nicht reaktiviert werden \u2014 der Abschluss ist erfasst.",
+    "sold_listings_can_t_be_reactivated_contact_support": "Verkaufte Inserate können nicht reaktiviert werden — der Abschluss ist erfasst.",
     "couldn_t_send_the_email_try_again": "Die E-Mail konnte nicht gesendet werden — bitte erneut versuchen.",
     "couldn_t_send_the_sign_in_email_try_again": "Die Anmelde-E-Mail konnte nicht gesendet werden — bitte erneut versuchen.",
     "create_an_operator_profile_first": "Erstellen Sie zuerst ein Anbieterprofil.",
@@ -594,7 +603,9 @@
     "invoice_is_paid_not_invoiced": "Diese Rechnung ist bereits bezahlt.",
     "invoice_is_pending_not_invoiced": "Diese Rechnung wurde noch nicht gestellt.",
     "free_plan_allows_3_listings_upgrade_to_pro": "Der kostenlose Plan erlaubt 3 Inserate — upgraden Sie auf Pro für mehr.",
-    "invoice_is_voided_not_invoiced": "Diese Rechnung ist bereits storniert."
+    "invoice_is_voided_not_invoiced": "Diese Rechnung ist bereits storniert.",
+    "counter_already_on_the_table": "Ihr Gegenangebot liegt bereits beim Anbieter.",
+    "a_counter_must_be_below_the_asking_price": "Ein Gegenangebot muss unter dem geforderten Preis liegen."
   },
   "vertical": {
     "jets": {
@@ -987,9 +998,15 @@
       "archive": "Archivieren",
       "delete": "Löschen",
       "deleteConfirm": "Endgültig löschen?",
-    "markSold": "Als verkauft markieren",
-    "markSoldConfirm": "Als verkauft markieren? Das Inserat verlässt den Markt endgültig.",
-    "status": { "draft": "Entwurf", "active": "aktiv", "paused": "pausiert", "archived": "archiviert", "sold": "verkauft" },
+      "markSold": "Als verkauft markieren",
+      "markSoldConfirm": "Als verkauft markieren? Das Inserat verlässt den Markt endgültig.",
+      "status": {
+        "draft": "Entwurf",
+        "active": "aktiv",
+        "paused": "pausiert",
+        "archived": "archiviert",
+        "sold": "verkauft"
+      },
       "noListings": "Noch keine Inserate. Erstellen Sie Ihr erstes {types}.",
       "rfqInbox": "Anfragen-Posteingang ({count} offen)",
       "openOffers": "Offene Angebote ({count})",
@@ -1012,8 +1029,8 @@
       "statWon": "Gewonnene Angebote",
       "statWinRate": "Gewinnquote",
       "statSeenRate": "Gesehen-Rate",
-        "declineBreakdown": "Verloren wegen: {reasons}",
-        "declineNoReason": "ohne Angabe",
+      "declineBreakdown": "Verloren wegen: {reasons}",
+      "declineNoReason": "ohne Angabe",
       "statReply": "Übliche Antwortzeit",
       "statRating": "Ø Käuferbewertung",
       "statsRecent": "Letzte 30 Tage — {rfqs} Anfragen · {quotes} Angebote · {won} gewonnen",
@@ -1079,8 +1096,8 @@
       "declineReason": {
         "price": "zu teuer",
         "timing": "Termine passten nicht",
-        "chose_other": "anderes Angebot gew\u00e4hlt",
-        "no_longer_needed": "nicht mehr n\u00f6tig",
+        "chose_other": "anderes Angebot gewählt",
+        "no_longer_needed": "nicht mehr nötig",
         "other": "sonstiges"
       },
       "seenByBuyerTitle": "Käufer hat dieses Angebot angesehen",
@@ -1120,7 +1137,8 @@
       "flagDuplicate": "Doppelte Anfrage",
       "flagOther": "Sonstiges",
       "flagNotePlaceholder": "Optionale Details für unser Team",
-      "sortEnding": "Endet zuerst"
+      "sortEnding": "Endet zuerst",
+      "counteredByBuyer": "Gegenangebot {amount}"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

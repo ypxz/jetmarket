@@ -19,6 +19,7 @@ import type { Quote, Repo } from "../../lib/repo/types";
 import { POST as createQuote } from "../../app/api/quotes/route";
 import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
 import { POST as declineQuote } from "../../app/api/quotes/[id]/decline/route";
+import { POST as counterQuote } from "../../app/api/quotes/[id]/counter/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
 import { POST as moderateListing } from "../../app/api/admin/listings/[id]/status/route";
@@ -194,6 +195,69 @@ describe("POST /api/quotes re-quote (QA-18)", () => {
     expect(fresh.id).not.toBe(quote.id);
     // The declined row keeps its reason — history isn't rewritten.
     expect((await repo.getQuote(quote.id))?.declineReason).toBe("price");
+  });
+});
+
+describe("POST /api/quotes/[id]/counter (buyer, QA-511)", () => {
+  it("stamps the counter on a sent quote; guards replay/dupes/ask+ errors", async () => {
+    const repo = await getMemoryRepo();
+    const { quote, buyerEmail, rfq } = await fixture(repo);
+
+    const bad = await counterQuote(
+      post({ buyerEmail: "nope@x.dev", token: rfq.accessToken, amount: 8000 }),
+      params(quote.id),
+    );
+    expect(bad.status).toBe(403);
+
+    // A counter at or above the ask is pointless — just accept.
+    const high = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 9000 }),
+      params(quote.id),
+    );
+    expect(high.status).toBe(422);
+    const junk = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: -5 }),
+      params(quote.id),
+    );
+    expect(junk.status).toBe(422);
+    expect((await repo.getQuote(quote.id))?.counteredAt).toBeUndefined();
+
+    const res = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 8000 }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    const stamped = (await res.json()) as Quote;
+    expect(stamped.counterAmount).toBe(8000);
+    expect(stamped.counteredAt).toBeDefined();
+    expect(stamped.status).toBe("sent");
+
+    // One counter per offer round.
+    const again = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 7000 }),
+      params(quote.id),
+    );
+    expect(again.status).toBe(409);
+  });
+
+  it("404s on unknown quote; 409s once the quote left 'sent'", async () => {
+    const missing = await counterQuote(
+      post({ buyerEmail: "b@x.dev", token: "t", amount: 1 }),
+      params("quo_missing"),
+    );
+    expect(missing.status).toBe(404);
+
+    const repo = await getMemoryRepo();
+    const { quote, buyerEmail, rfq } = await fixture(repo);
+    await declineQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    const res = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 8000 }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(409);
   });
 });
 
