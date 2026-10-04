@@ -522,4 +522,52 @@ describe("buyer self-service (QA-405)", () => {
     const rows = (await resub.json()) as { status: string }[];
     expect(rows[0]!.status).toBe("off");
   });
+
+  it("returns labeled summaries + re-subscribing an 'off' row re-arms it (QA-409)", async () => {
+    const rfq = await buyerRfq("rearm@test.dev");
+    const { id } = await confirmedAlert("rearm@test.dev", {
+      type: "charter",
+      aircraftCategory: "light",
+      seatsMin: "4",
+      seatsMax: "10",
+    });
+
+    // Summary resolves facet + option labels instead of raw keys.
+    const res = await listAlerts("rearm@test.dev", rfq.accessToken);
+    const [row] = (await res.json()) as { summary: string[] }[];
+    expect(row?.summary).toContain("Listing type: Charter");
+    expect(
+      row?.summary.some((s) => s.startsWith("Aircraft category:")),
+    ).toBe(true);
+    expect(row?.summary).toContain("Seats: 4–10");
+
+    // Turn-off then re-POST the same params → dedupe re-arms to pending
+    // and mails a fresh confirm link (the client's Turn-on path).
+    expect(
+      (
+        await alertOffPost(
+          new Request(
+            `http://test.local/api/search-alerts/${id}/off?email=rearm@test.dev`,
+            { method: "POST", headers: { "x-rfq-token": rfq.accessToken } },
+          ),
+          { params: Promise.resolve({ id }) },
+        )
+      ).status,
+    ).toBe(200);
+    sendSpy.mockClear();
+    const resub = await subscribe({
+      email: "rearm@test.dev",
+      params: { type: "charter", aircraftCategory: "light", seatsMin: "4", seatsMax: "10" },
+    });
+    expect(resub.status).toBe(200);
+    const after = await repo.listSearchAlerts({
+      vertical: "jets",
+      email: "rearm@test.dev",
+    });
+    expect(after).toHaveLength(1);
+    expect(after[0]!.status).toBe("pending");
+    expect(
+      sendSpy.mock.calls.some((c: unknown[]) => toOf(c) === "rearm@test.dev"),
+    ).toBe(true);
+  });
 });

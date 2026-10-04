@@ -7,6 +7,8 @@ import { readJsonOr } from "@/lib/fetch-json";
 interface SavedSearch {
   id: string;
   params: Record<string, unknown>;
+  /** Server-built labeled recap (QA-409); empty → raw k=v fallback. */
+  summary?: string[];
   status: "pending" | "active" | "off";
   freq: "instant" | "daily";
   createdAt: string;
@@ -73,6 +75,39 @@ export function SavedSearchesList({
     }
   }
 
+  // Re-arm (QA-409): re-subscribing the same email+params hits the dedupe
+  // path — an 'off' row flips back to 'pending' and gets a fresh confirm
+  // mail. Same POST the /search form uses; no new endpoint needed.
+  async function turnOn(row: SavedSearch) {
+    setBusy(row.id);
+    setErr(null);
+    try {
+      const res = await fetch("/api/search-alerts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email,
+          params: row.params,
+          freq: row.freq,
+        }),
+      });
+      if (!res.ok) {
+        setErr(tc("error"));
+        return;
+      }
+      setRows(
+        (prev) =>
+          prev?.map((a) =>
+            a.id === row.id ? { ...a, status: "pending" } : a,
+          ) ?? prev,
+      );
+    } catch {
+      setErr(tc("error"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!rows || rows.length === 0) return null;
 
   return (
@@ -108,11 +143,13 @@ export function SavedSearchesList({
                 <span className="break-all text-muted">
                   {watch
                     ? t("alertWatch")
-                    : Object.entries(a.params)
-                        .map(([k, v]) =>
-                          `${k}=${Array.isArray(v) ? v.join("/") : String(v)}`,
-                        )
-                        .join(" · ") || t("alertsAll")}
+                    : (a.summary?.length
+                        ? a.summary.join(" · ")
+                        : Object.entries(a.params)
+                            .map(([k, v]) =>
+                              `${k}=${Array.isArray(v) ? v.join("/") : String(v)}`,
+                            )
+                            .join(" · ")) || t("alertsAll")}
                 </span>
               </div>
               <span className="flex shrink-0 items-center gap-2">
@@ -132,7 +169,16 @@ export function SavedSearchesList({
                   >
                     {t("alertOff")}
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    onClick={() => turnOn(a)}
+                    disabled={busy !== null}
+                    className="rounded-md border border-border bg-background px-2 py-0.5 text-xs disabled:opacity-50"
+                    data-testid={`saved-search-on-${a.id}`}
+                  >
+                    {t("alertOn")}
+                  </button>
+                )}
               </span>
             </li>
           );

@@ -1,5 +1,6 @@
 import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
+import { searchAlertSummary } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 
 // Buyer self-service for saved searches (QA-405): the same gate as
@@ -31,6 +32,9 @@ export async function GET(req: Request) {
       alerts.map((a) => ({
         id: a.id,
         params: a.params,
+        // Labeled recap (QA-409) — the client falls back to raw k=v pairs
+        // when this is empty (e.g. a watch row, which gets its own label).
+        summary: searchAlertSummary(a.params),
         status: a.status,
         freq: a.freq,
         createdAt: a.createdAt,

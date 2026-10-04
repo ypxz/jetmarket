@@ -3,6 +3,7 @@ import { site } from "@jetmarket/config";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
 import { listingFilterFor } from "@/lib/search";
+import { verticalConfig, verticalMessages } from "@/lib/vertical";
 import type { Listing, Repo, SearchAlert } from "@/lib/repo/types";
 
 /**
@@ -72,6 +73,73 @@ export function searchAlertSearchUrl(
   }
   const q = qs.toString();
   return `${origin}/search${q ? `?${q}` : ""}`;
+}
+
+/** Resolve a dotted labelKey inside the vertical's en messages subtree. */
+function vLabel(key: string): string | null {
+  let cur: unknown = verticalMessages();
+  for (const part of key.split(".")) {
+    cur =
+      cur && typeof cur === "object"
+        ? (cur as Record<string, unknown>)[part]
+        : undefined;
+  }
+  return typeof cur === "string" ? cur : null;
+}
+
+/**
+ * Human recap of a saved filter set (QA-409) — the /quotes management list
+ * shows this instead of raw `k=v` pairs. Mirrors listingFilterFor's param
+ * grammar: enum/text facets read as `key`, number ranges as `keyMin/Max`,
+ * date ranges as `keyFrom/To`. Watch rows and leftover unknown keys are
+ * skipped (watch rows render via their own label; unknown keys were never
+ * matchable anyway).
+ */
+export function searchAlertSummary(
+  params: Record<string, unknown>,
+): string[] {
+  const out: string[] = [];
+  const str = (v: unknown) =>
+    typeof v === "string" && v !== "" ? v : undefined;
+  const seen = new Set<string>();
+  for (const facet of verticalConfig().facets) {
+    const label = vLabel(facet.labelKey) ?? facet.key;
+    if (facet.type === "number-range") {
+      const min = str(params[`${facet.key}Min`]);
+      const max = str(params[`${facet.key}Max`]);
+      if (min !== undefined || max !== undefined) {
+        seen.add(`${facet.key}Min`);
+        seen.add(`${facet.key}Max`);
+        out.push(`${label}: ${min ?? "0"}–${max ?? "∞"}`);
+      }
+      continue;
+    }
+    if (facet.type === "date-range") {
+      const from = str(params[`${facet.key}From`]);
+      const to = str(params[`${facet.key}To`]);
+      if (from !== undefined || to !== undefined) {
+        seen.add(`${facet.key}From`);
+        seen.add(`${facet.key}To`);
+        out.push(`${label}: ${from ?? "…"} → ${to ?? "…"}`);
+      }
+      continue;
+    }
+    const raw = str(params[facet.key]);
+    if (raw === undefined) continue;
+    seen.add(facet.key);
+    // enum facets map option values to labels; text facets show the code.
+    const opt = facet.options?.find((o) => o.value === raw);
+    const value = opt ? (vLabel(opt.labelKey) ?? raw) : raw;
+    out.push(`${label}: ${value}`);
+  }
+  // Leftover keys (`q` free-text, unknown params) show raw; `watch` is
+  // skipped — the caller renders watch rows with their own label.
+  for (const [k, v] of Object.entries(params)) {
+    if (seen.has(k) || k === "watch") continue;
+    const val = Array.isArray(v) ? v.join("/") : str(v);
+    if (val) out.push(`${k}: ${val}`);
+  }
+  return out;
 }
 
 /**

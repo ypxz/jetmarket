@@ -165,6 +165,7 @@
     "alertsAll": "all listings",
     "alertOpen": "Open search",
     "alertOff": "Turn off",
+    "alertOn": "Turn on",
     "alertState": {
       "pending": "Awaiting confirmation",
       "active": "On",
