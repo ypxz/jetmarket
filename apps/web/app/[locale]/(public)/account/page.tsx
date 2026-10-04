@@ -47,6 +47,16 @@ export default async function AccountPage() {
     // mailbox, so /account lists every saved search this buyer filed.
     repo.listSearchAlerts({ vertical: verticalSlug(), email: user.email }),
   ]);
+  // QA-488: live offer counts beside each request — the one signal that
+  // tells the buyer a trip to /quotes is worth it.
+  const myQuotes = myRfqs.length
+    ? await repo.listQuotes({ rfqIds: myRfqs.map((r) => r.id) })
+    : [];
+  const offersByRfq = new Map<string, number>();
+  for (const q of myQuotes) {
+    if (q.status !== "sent") continue;
+    offersByRfq.set(q.rfqId, (offersByRfq.get(q.rfqId) ?? 0) + 1);
+  }
   // Watch rows carry no facet summary — resolve their listing titles.
   const watchListingRows = await repo.listListings({
     ids: [
@@ -111,6 +121,17 @@ export default async function AccountPage() {
                   <Badge variant="outline">{tc(`rfqState.${r.status}`)}</Badge>
                   {LIVE.has(r.status) ? (
                     <>
+                      {(offersByRfq.get(r.id) ?? 0) > 0 ? (
+                        <Link
+                          href="/quotes"
+                          className="text-xs underline"
+                          data-testid={`account-rfq-offers-${r.id}`}
+                        >
+                          {t("offerCount", {
+                            count: offersByRfq.get(r.id)!,
+                          })}
+                        </Link>
+                      ) : null}
                       <span className="text-xs text-muted">
                         {t("closesOn", {
                           date: rfqDeadlineAt(r).toLocaleDateString("en-US", {

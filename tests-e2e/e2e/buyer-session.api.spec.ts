@@ -218,9 +218,23 @@ test('account page: withdraw a live request via session (QA-475)', async () => {
     rfqId = (await mkRfq(publicCtx, listingId, BUYER)).rfqId;
     const buyer = await login(BUYER);
 
+    // QA-488: a live request with an offer advertises the count — the
+    // signal that makes the /quotes trip worthwhile. Operator quotes via
+    // the same session-authed route the inbox uses.
+    expect(
+      (
+        await operator.post('/api/quotes', {
+          data: { rfqId, amount: 15000, currency: 'USD', message: 'm' },
+        })
+      ).status(),
+    ).toBe(201);
+
     // Live row offers the withdraw control…
     const html1 = await (await buyer.get('/en/account')).text();
     expect(html1).toContain(`account-rfq-withdraw-${rfqId}`);
+    // …and the offer count that just landed.
+    expect(html1).toContain(`account-rfq-offers-${rfqId}`);
+    expect(html1).toContain('1 offer');
     // …which is the same session-authed close route (QA-474).
     expect(
       (

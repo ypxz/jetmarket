@@ -946,6 +946,7 @@
     "requests": "Your requests ({count})",
     "viewInbox": "View your quotes inbox →",
     "closesOn": "closes {date}",
+    "offerCount": "{count, plural, one {# offer} other {# offers}} →",
     "withdraw": "Withdraw",
     "withdrawing": "Withdrawing…",
     "withdrawnMsg": "Withdrawn — operators were notified",
