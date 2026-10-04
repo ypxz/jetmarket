@@ -838,7 +838,19 @@ class MemoryRepo implements Repo {
     out = out.sort((a, b) => b.closedAt.localeCompare(a.closedAt));
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
-    return out;
+    // Enrich copies — never leak store refs with extra fields mutated on.
+    return out.map((d) => {
+      const q = this.quotes.get(d.quoteId);
+      const r = q ? this.rfqs.get(q.rfqId) : undefined;
+      return {
+        ...d,
+        rfqId: r?.id,
+        buyerEmail: r?.buyerEmail,
+        listingTitle: r?.listingId
+          ? this.listings.get(r.listingId)?.title
+          : undefined,
+      };
+    });
   }
   async countDeals(filter?: {
     operatorId?: string;

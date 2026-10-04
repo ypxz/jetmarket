@@ -799,6 +799,7 @@
     "ledger": "Fee ledger ({count} deals · {total} fees)",
     "colDeal": "Deal",
     "colOperator": "Operator",
+    "colBuyer": "Buyer",
     "colAmount": "Amount",
     "colFeePct": "Fee %",
     "colFee": "Fee",

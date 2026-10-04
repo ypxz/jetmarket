@@ -134,6 +134,12 @@ export interface Deal {
   /** Provider-side invoice id (stripe-mock `in_…` or mock `inv_…`). */
   invoiceRef?: string;
   closedAt: string;
+  /** Resolved off the parent quote→rfq→listing when the read joins them
+   *  (listDeals): a closed deal unlocks the buyer's contact + which listing
+   *  it was — the marketplace's job is done, fulfilment is theirs. */
+  rfqId?: string;
+  buyerEmail?: string;
+  listingTitle?: string;
 }
 
 /** Saved-search alert (QA-403): a buyer's whitelisted /search filter set +

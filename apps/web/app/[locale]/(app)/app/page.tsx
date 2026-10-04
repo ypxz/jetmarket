@@ -368,6 +368,21 @@ export default async function OperatorDashboard() {
                   <div className="font-medium">
                     {formatMoney(d.amount, d.currency)} · {t("dealFee", { fee: formatMoney(d.feeAmount, d.currency) })}
                   </div>
+                  <div className="text-xs text-muted" data-testid={`deal-context-${d.id}`}>
+                    {d.listingTitle ?? t("openOfferFallback")}
+                    {d.buyerEmail ? (
+                      <>
+                        {" · "}
+                        <a
+                          className="text-primary underline"
+                          href={`mailto:${d.buyerEmail}`}
+                          data-testid={`deal-buyer-${d.id}`}
+                        >
+                          {d.buyerEmail}
+                        </a>
+                      </>
+                    ) : null}
+                  </div>
                   <div className="text-xs text-muted">
                     {new Date(d.closedAt).toDateString()}
                     {d.invoiceRef ? ` · ${d.invoiceRef}` : ""}

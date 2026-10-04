@@ -153,7 +153,12 @@ function toSearchAlert(r: typeof searchAlerts.$inferSelect): SearchAlert {
 
 type DealRow = typeof deals.$inferSelect;
 type QuoteRow = typeof quotes.$inferSelect;
-function toDeal(d: DealRow, q: QuoteRow): Deal {
+function toDeal(
+  d: DealRow,
+  q: QuoteRow,
+  r?: typeof rfqs.$inferSelect,
+  l?: typeof listings.$inferSelect | null,
+): Deal {
   return {
     id: d.id,
     quoteId: d.quoteId,
@@ -167,6 +172,9 @@ function toDeal(d: DealRow, q: QuoteRow): Deal {
     invoiceStatus: d.invoiceStatus as Deal["invoiceStatus"],
     invoiceRef: d.invoiceRef ?? undefined,
     closedAt: iso(d.closedAt),
+    ...(r
+      ? { rfqId: r.id, buyerEmail: r.buyerEmail, listingTitle: l?.title }
+      : {}),
   };
 }
 
@@ -1347,16 +1355,20 @@ export class DrizzleRepo implements Repo {
       ...(filter?.vertical ? [eq(rfqs.vertical, filter.vertical)] : []),
     ];
     let q = this.db
-      .select({ deal: deals, quote: quotes })
+      .select({ deal: deals, quote: quotes, rfq: rfqs, listing: listings })
       .from(deals)
       .innerJoin(quotes, eq(deals.quoteId, quotes.id))
       .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+      // leftJoin, not inner: listing-less "open request" RFQs still close.
+      .leftJoin(listings, eq(listings.id, rfqs.listingId))
       .where(conds.length ? and(...conds) : undefined)
       .orderBy(desc(deals.closedAt))
       .$dynamic();
     if (filter?.limit !== undefined) q = q.limit(filter.limit);
     if (filter?.offset) q = q.offset(filter.offset);
-    return (await q).map((r) => toDeal(r.deal, r.quote));
+    return (await q).map((r) =>
+      toDeal(r.deal, r.quote, r.rfq, r.listing),
+    );
   }
   async countDeals(filter?: {
     operatorId?: string;

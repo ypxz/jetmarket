@@ -249,6 +249,9 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(deals).toBeVisible();
     await expect(deals.filter({ hasText: EXPECTED_FEE })).toBeVisible();
     await expect(deals.getByText('invoiced')).toBeVisible();
+    // QA-428: the closed deal unlocks buyer contact + listing context.
+    await expect(deals.filter({ hasText: BUYER_EMAIL })).toBeVisible();
+    await expect(deals.filter({ hasText: LISTING_TITLE })).toBeVisible();
   });
 
   await step('free limit → upgrade via mock checkout → limit lifted', async () => {

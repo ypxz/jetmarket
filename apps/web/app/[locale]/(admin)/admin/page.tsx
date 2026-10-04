@@ -161,6 +161,7 @@ export default async function AdminPage({
             <tr>
               <th className="py-2 pr-4">{t("colDeal")}</th>
               <th className="py-2 pr-4">{t("colOperator")}</th>
+              <th className="py-2 pr-4">{t("colBuyer")}</th>
               <th className="py-2 pr-4">{t("colAmount")}</th>
               <th className="py-2 pr-4">{t("colFeePct")}</th>
               <th className="py-2 pr-4">{t("colFee")}</th>
@@ -173,6 +174,7 @@ export default async function AdminPage({
               <tr key={d.id} data-testid={`deal-${d.id}`}>
                 <td className="py-2 pr-4 font-mono text-xs">{d.id}</td>
                 <td className="py-2 pr-4">{dealOps.get(d.id)}</td>
+                <td className="py-2 pr-4" data-testid={`deal-buyer-${d.id}`}>{d.buyerEmail ?? "—"}</td>
                 <td className="py-2 pr-4">{formatMoney(d.amount, d.currency)}</td>
                 <td className="py-2 pr-4">{(d.feePct * 100).toFixed(1)}%</td>
                 <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, d.currency)}</td>
@@ -197,7 +199,7 @@ export default async function AdminPage({
             ))}
             {deals.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-6 text-center text-muted">
+                <td colSpan={8} className="py-6 text-center text-muted">
                   {t("noDeals")}
                 </td>
               </tr>

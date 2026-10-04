@@ -2158,6 +2158,71 @@ export function repoContract(
       ).toBe(1);
     });
 
+    it("listDeals resolves rfq + buyer + listing context (QA-428)", async () => {
+      const repo = await factory();
+      const tag = `ctx-${Date.now().toString(36)}`;
+      const user = await repo.createUser(`${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Context Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Ctx Jet ${tag}`,
+        price: 9000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const mk = async (listingId: string | null, email: string) => {
+        const rfq = await repo.createRfq({
+          vertical: "jets",
+          listingId,
+          buyerEmail: email,
+          fields: {},
+        });
+        const quote = await repo.createQuote({
+          rfqId: rfq.id,
+          operatorId: op.id,
+          amount: 1000,
+          currency: "USD",
+          message: "",
+        });
+        return repo.createDeal({
+          quoteId: quote.id,
+          operatorId: op.id,
+          amount: 1000,
+          currency: "USD",
+          feePct: 0.03,
+          feeAmount: 30,
+          invoiceStatus: "pending",
+        });
+      };
+      const listed = await mk(listing.id, `listed-${tag}@test.dev`);
+      // Listing-less "open request" RFQs still close — buyer contact is
+      // populated, listingTitle stays undefined.
+      const open = await mk(null, `open-${tag}@test.dev`);
+
+      const rows = await repo.listDeals({ operatorId: op.id });
+      const byId = new Map(rows.map((d) => [d.id, d] as const));
+      expect(byId.get(listed.id)).toMatchObject({
+        rfqId: expect.any(String),
+        buyerEmail: `listed-${tag}@test.dev`,
+        listingTitle: `Ctx Jet ${tag}`,
+      });
+      expect(byId.get(open.id)).toMatchObject({
+        rfqId: expect.any(String),
+        buyerEmail: `open-${tag}@test.dev`,
+      });
+      expect(byId.get(open.id)?.listingTitle).toBeUndefined();
+    });
+
     it("covers the admin/listing aggregate helpers (QA-274)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);
