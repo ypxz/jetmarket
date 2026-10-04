@@ -31,6 +31,7 @@ import type {
   Quote,
   QuoteDeclineReason,
   QuoteStatus,
+  QuoteTemplate,
   Repo,
   Rfq,
   RfqNote,
@@ -53,6 +54,7 @@ const {
   quotes,
   quoteCounterRounds,
   operatorRfqNotes,
+  operatorQuoteTemplates,
   deals,
   subscriptions,
   jobs,
@@ -174,6 +176,19 @@ function toRfqNote(
   r: typeof operatorRfqNotes.$inferSelect,
 ): RfqNote {
   return { rfqId: r.rfqId, note: r.note, updatedAt: iso(r.updatedAt) };
+}
+function toQuoteTemplate(
+  r: typeof operatorQuoteTemplates.$inferSelect,
+): QuoteTemplate {
+  return {
+    id: r.id,
+    operatorId: r.operatorId,
+    name: r.name,
+    amount: r.amount,
+    message: r.message,
+    createdAt: iso(r.createdAt),
+    updatedAt: iso(r.updatedAt),
+  };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
   return {
@@ -1866,6 +1881,60 @@ export class DrizzleRepo implements Repo {
         ),
       );
     return rows.map(toRfqNote);
+  }
+
+  async listQuoteTemplates(operatorId: string): Promise<QuoteTemplate[]> {
+    if (!isUuid(operatorId)) return [];
+    const rows = await this.db
+      .select()
+      .from(operatorQuoteTemplates)
+      .where(eq(operatorQuoteTemplates.operatorId, operatorId))
+      .orderBy(asc(operatorQuoteTemplates.name));
+    return rows.map(toQuoteTemplate);
+  }
+  async upsertQuoteTemplate(t: {
+    operatorId: string;
+    name: string;
+    amount: number;
+    message: string;
+  }): Promise<QuoteTemplate> {
+    const [row] = await this.db
+      .insert(operatorQuoteTemplates)
+      .values({
+        operatorId: t.operatorId,
+        name: t.name,
+        amount: t.amount,
+        message: t.message,
+      })
+      .onConflictDoUpdate({
+        target: [
+          operatorQuoteTemplates.operatorId,
+          operatorQuoteTemplates.name,
+        ],
+        set: {
+          amount: t.amount,
+          message: t.message,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return toQuoteTemplate(row!);
+  }
+  async deleteQuoteTemplate(
+    operatorId: string,
+    id: string,
+  ): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    const rows = await this.db
+      .delete(operatorQuoteTemplates)
+      .where(
+        and(
+          eq(operatorQuoteTemplates.id, id),
+          eq(operatorQuoteTemplates.operatorId, operatorId),
+        ),
+      )
+      .returning({ id: operatorQuoteTemplates.id });
+    return rows.length > 0;
   }
 
   async clearQuoteCounter(

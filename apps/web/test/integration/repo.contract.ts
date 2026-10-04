@@ -4792,5 +4792,83 @@ export function repoContract(
       expect(await repo.setRfqNote(op1.id, rfqB.id, "   ")).toBeNull();
       expect(await repo.listRfqNotes(op1.id, [rfqA.id, rfqB.id])).toEqual([]);
     });
+
+    it("quote templates: name-keyed upsert, per-operator isolation, delete (QA-527)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u1 = await repo.createUser(`tpl-op1-${tag}@test.dev`, "operator");
+      const u2 = await repo.createUser(`tpl-op2-${tag}@test.dev`, "operator");
+      const mk = (u: { id: string }, name: string) =>
+        repo.upsertOperator({
+          userId: u.id,
+          name,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: true,
+          plan: "pro",
+        });
+      const op1 = await mk(u1, "Tpl Ops One");
+      const op2 = await mk(u2, "Tpl Ops Two");
+
+      expect(await repo.listQuoteTemplates(op1.id)).toEqual([]);
+
+      // Create two — list comes back name-asc.
+      const b = await repo.upsertQuoteTemplate({
+        operatorId: op1.id,
+        name: "Weekday charter",
+        amount: 28000,
+        message: "incl. repositioning",
+      });
+      await repo.upsertQuoteTemplate({
+        operatorId: op1.id,
+        name: "Empty leg flat",
+        amount: 9500,
+        message: "",
+      });
+      expect(
+        (await repo.listQuoteTemplates(op1.id)).map((t) => t.name),
+      ).toEqual(["Empty leg flat", "Weekday charter"]);
+
+      // Same name replaces amount/message, keeps id + createdAt.
+      const again = await repo.upsertQuoteTemplate({
+        operatorId: op1.id,
+        name: "Weekday charter",
+        amount: 29500,
+        message: "new copy",
+      });
+      expect(again.id).toBe(b.id);
+      expect(again.amount).toBe(29500);
+      expect(again.message).toBe("new copy");
+      expect(await repo.listQuoteTemplates(op1.id)).toHaveLength(2);
+
+      // Per-operator isolation: same name under a second operator is a
+      // separate row; lists + deletes never cross.
+      const theirs = await repo.upsertQuoteTemplate({
+        operatorId: op2.id,
+        name: "Weekday charter",
+        amount: 100,
+        message: "",
+      });
+      expect(theirs.id).not.toBe(b.id);
+      expect(
+        (await repo.listQuoteTemplates(op2.id)).map((t) => t.amount),
+      ).toEqual([100]);
+      expect(
+        await repo.deleteQuoteTemplate(op2.id, again.id),
+      ).toBe(false);
+
+      // Delete returns true once, false on replay.
+      expect(await repo.deleteQuoteTemplate(op1.id, again.id)).toBe(true);
+      expect(await repo.deleteQuoteTemplate(op1.id, again.id)).toBe(false);
+      expect(
+        (await repo.listQuoteTemplates(op1.id)).map((t) => t.name),
+      ).toEqual(["Empty leg flat"]);
+
+      // Foreign/garbage ids can't touch rows.
+      expect(
+        await repo.deleteQuoteTemplate(op1.id, crypto.randomUUID()),
+      ).toBe(false);
+      expect(await repo.listQuoteTemplates("not-a-uuid")).toEqual([]);
+    });
   });
 }

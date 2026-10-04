@@ -16,6 +16,7 @@ import type {
   Plan,
   Quote,
   QuoteDeclineReason,
+  QuoteTemplate,
   Repo,
   Rfq,
   RfqNote,
@@ -54,6 +55,8 @@ class MemoryRepo implements Repo {
   >();
   /** QA-524: operatorId -> rfqId -> private triage note. */
   rfqNotes = new Map<string, Map<string, RfqNote>>();
+  /** QA-527: operatorId -> templateId -> saved quote preset. */
+  quoteTemplates = new Map<string, Map<string, QuoteTemplate>>();
 
   async createUser(
     email: string,
@@ -1113,6 +1116,49 @@ class MemoryRepo implements Repo {
       if (row) out.push(row);
     }
     return out;
+  }
+  async listQuoteTemplates(operatorId: string) {
+    const mine = this.quoteTemplates.get(operatorId);
+    if (!mine) return [];
+    return [...mine.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async upsertQuoteTemplate(t: {
+    operatorId: string;
+    name: string;
+    amount: number;
+    message: string;
+  }) {
+    let mine = this.quoteTemplates.get(t.operatorId);
+    if (!mine) {
+      mine = new Map();
+      this.quoteTemplates.set(t.operatorId, mine);
+    }
+    for (const row of mine.values()) {
+      if (row.name === t.name) {
+        const updated: QuoteTemplate = {
+          ...row,
+          amount: t.amount,
+          message: t.message,
+          updatedAt: now(),
+        };
+        mine.set(row.id, updated);
+        return updated;
+      }
+    }
+    const row: QuoteTemplate = {
+      id: crypto.randomUUID(),
+      operatorId: t.operatorId,
+      name: t.name,
+      amount: t.amount,
+      message: t.message,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    mine.set(row.id, row);
+    return row;
+  }
+  async deleteQuoteTemplate(operatorId: string, id: string) {
+    return this.quoteTemplates.get(operatorId)?.delete(id) ?? false;
   }
   async clearQuoteCounter(id: string, outcome: "withdrawn" | "declined" = "withdrawn") {
     const q = this.quotes.get(id);

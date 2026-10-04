@@ -1199,7 +1199,10 @@
       "noteSave": "Speichern",
       "noteCancel": "Abbrechen",
       "noteWorking": "Speichert…",
-      "notePlaceholder": "Private Notiz — nur für Sie sichtbar"
+      "notePlaceholder": "Private Notiz — nur für Sie sichtbar",
+      "templatePh": "Vorlage…",
+      "templateNamePh": "Vorlagenname",
+      "saveTemplate": "Vorlage speichern"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

@@ -244,6 +244,20 @@ export interface CounterRound {
   resolvedAt?: string;
 }
 
+/** QA-527: saved quote preset — operators re-type the same offer shapes,
+ *  so a named (amount, message) pair can be dropped into the inbox form.
+ *  `amount` is DISPLAY units: the quote picks up the listing's currency at
+ *  send time, so the template is deliberately currency-agnostic. */
+export interface QuoteTemplate {
+  id: string;
+  operatorId: string;
+  name: string;
+  amount: number;
+  message: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** QA-524: private per-operator note on a visible RFQ — inbox triage
  *  memory that never leaves the operator's own surfaces (no buyer/admin
  *  path reads it). One note per (operator, rfq); clearing deletes the row. */
@@ -883,6 +897,20 @@ export interface Repo {
   ): Promise<RfqNote | null>;
   /** QA-524: batch read of the operator's notes for the inbox page. */
   listRfqNotes(operatorId: string, rfqIds: string[]): Promise<RfqNote[]>;
+  /** QA-527: the operator's saved quote templates, name-asc. */
+  listQuoteTemplates(operatorId: string): Promise<QuoteTemplate[]>;
+  /** QA-527: upsert a template by (operatorId, name) — the name is the
+   *  identity; re-saving the same name replaces amount/message and bumps
+   *  updatedAt. */
+  upsertQuoteTemplate(t: {
+    operatorId: string;
+    name: string;
+    amount: number;
+    message: string;
+  }): Promise<QuoteTemplate>;
+  /** QA-527: delete one of the operator's templates; false when it didn't
+   *  exist or belongs to someone else. */
+  deleteQuoteTemplate(operatorId: string, id: string): Promise<boolean>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */

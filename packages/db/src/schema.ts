@@ -540,6 +540,37 @@ export const operatorRfqNotes = pgTable(
   (t) => [primaryKey({ columns: [t.operatorId, t.rfqId] })],
 );
 
+// QA-527: operator quote templates — saved quote presets for the inbox
+// form. `amount` is DISPLAY units (numeric) — the quote takes the listing's
+// currency at send time, so storing minor units here would need a fake
+// currency.
+export const operatorQuoteTemplates = pgTable(
+  "operator_quote_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    operatorId: uuid("operator_id")
+      .notNull()
+      .references(() => operators.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2, mode: "number" })
+      .notNull(),
+    message: text("message").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("operator_quote_templates_operator_id_name_key").on(
+      t.operatorId,
+      t.name,
+    ),
+    index("operator_quote_templates_operator_idx").on(t.operatorId),
+  ],
+);
+
 export const adminEvents = pgTable(
   "admin_events",
   {

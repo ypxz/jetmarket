@@ -1199,7 +1199,10 @@
       "noteSave": "Save",
       "noteCancel": "Cancel",
       "noteWorking": "Saving…",
-      "notePlaceholder": "Private note — only you see it"
+      "notePlaceholder": "Private note — only you see it",
+      "templatePh": "Template…",
+      "templateNamePh": "Template name",
+      "saveTemplate": "Save template"
     },
     "billing": {
       "title": "Plan & billing",
