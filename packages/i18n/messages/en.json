@@ -147,6 +147,7 @@
     "accept": "Accept",
     "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
     "by": "by {name}",
+    "bestPrice": "Best price",
     "decline": "Decline",
     "declinedMsg": "Quote declined.",
     "needLink": "Open the link from your RFQ or quote email to view your quotes.",

@@ -328,7 +328,16 @@ function QuotesInner() {
                         <div>
                           <span className="font-medium">
                             {formatMoney(q.amount, q.currency)}
-                          </span>{" "}
+                          </span>
+                          {/* QA-414: cheapest live offer gets the badge — the
+                              comparison the sort implies made explicit. */}
+                          {q.status === "sent" &&
+                          q.id ===
+                            r.quotes.find((o) => o.status === "sent")?.id ? (
+                            <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid="best-price">
+                              {t("bestPrice")}
+                            </span>
+                          ) : null}{" "}
                           <span className="text-sm text-muted">
                             {t("by", { name: q.operator?.name ?? "" })}
                             {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {tc(`quoteState.${q.status}`)}

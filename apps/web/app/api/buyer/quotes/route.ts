@@ -102,10 +102,17 @@ export async function GET(req: Request) {
           ? { ...l, browseable: l.status === "active" && !isExpiredListing(l) }
           : null;
       })(),
-      quotes: (quotesByRfq.get(rfq.id) ?? []).map((q) => ({
-        ...q,
-        operator: opById.get(q.operatorId) ?? null,
-      })),
+      quotes: (quotesByRfq.get(rfq.id) ?? [])
+        // QA-414: the buyer compares offers — cheapest first makes the
+        // comparison the page's default, not its homework. createdAt
+        // tiebreak keeps equal-price rows stable.
+        .sort(
+          (a, b) => a.amount - b.amount || a.createdAt.localeCompare(b.createdAt),
+        )
+        .map((q) => ({
+          ...q,
+          operator: opById.get(q.operatorId) ?? null,
+        })),
     })),
   ));
 }

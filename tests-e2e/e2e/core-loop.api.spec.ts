@@ -6,6 +6,7 @@
 // { devLink } in mock mode → GET devLink sets the jm_session cookie inside
 // this request context.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
+import postgres from 'postgres';
 import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
@@ -15,6 +16,7 @@ test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.7.7' } });
 
 const run = Date.now();
 const OPERATOR_EMAIL = `e2e-operator-${run}@jetmarket.local`;
+const OPERATOR2_EMAIL = `e2e-operator2-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-buyer-${run}@jetmarket.local`;
 const ADMIN_EMAIL = 'admin@jetmarket.local';
 const LISTING_TITLE = `E2E Charter ${run}`;
@@ -148,6 +150,29 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
   expect(quote.status()).toBe(201);
   const quoteId = ((await quote.json()) as { id: string }).id;
 
+  // QA-414: a second operator's cheaper offer lands first in the buyer
+  // inbox — the comparison is ordered for the buyer, not left newest-first.
+  // One quote per operator is enforced, so this needs a second account; no
+  // worker runs fan-out in e2e, so the delivered match is inserted directly
+  // for the quote route's bearer path (hasRfqMatch).
+  const operator2 = await login(OPERATOR2_EMAIL, 'operator');
+  const op2Res = await operator2.post('/api/operators', {
+    data: { name: `E2E Ops Two ${run}`, baseAirport: 'LFMN', fleetSummary: 'E2E' },
+  });
+  expect(op2Res.status()).toBe(201);
+  const operator2Id = ((await op2Res.json()) as { id: string }).id;
+  {
+    const sql = postgres(process.env.TEST_DATABASE_URL!, { max: 1 });
+    await sql`insert into rfq_matches (rfq_id, operator_id, listing_id, state)
+              values (${rfqId}, ${operator2Id}, ${listingId}, 'sent')`;
+    await sql.end();
+  }
+  const cheaper = await operator2.post('/api/quotes', {
+    data: { rfqId, amount: QUOTE_AMOUNT - 1000, message: `E2E cheaper ${run}` },
+  });
+  expect(cheaper.status()).toBe(201);
+  const cheaperId = ((await cheaper.json()) as { id: string }).id;
+
   const needsAfter = await operator.get('/api/operator/rfqs?needs=1');
   const afterIds = (await needsAfter.json()).map((r: { id: string }) => r.id);
   expect(afterIds).not.toContain(rfqId);
@@ -164,7 +189,8 @@ test('core loop API: signup → listings → RFQ → quote → accept → deal/f
     requestFields?: { label: string; value: string }[];
     deliveredTo?: number;
   }[];
-  expect(buyerRfqs[0]?.quotes.map((q) => q.id)).toContain(quoteId);
+  // Cheapest-first for the buyer's comparison (QA-414).
+  expect(buyerRfqs[0]?.quotes.map((q) => q.id)).toEqual([cheaperId, quoteId]);
   // QA-401: inbox carries the delivered-operator count (0 pre-fan-out here —
   // e2e runs no worker, so the count field itself is what we pin).
   expect(typeof buyerRfqs[0]?.deliveredTo).toBe('number');
