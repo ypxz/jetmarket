@@ -9,6 +9,7 @@ import {
   notifyExpiredListings,
   notifyExpirations,
   nudgeStaleQuotes,
+  nudgeUnansweredOperators,
   nudgeUnquotedRfqs,
   rfqFanout,
   searchAlertFlush,
@@ -138,6 +139,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepUnquotedRfqs: async (input) => {
       rec("sweepUnquotedRfqs", input);
+      return [];
+    },
+    sweepUnansweredOperators: async (input) => {
+      rec("sweepUnansweredOperators", input);
       return [];
     },
     ...over,
@@ -999,6 +1004,81 @@ describe("nudgeUnquotedRfqs (QA-423)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeUnquotedRfqs(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeUnansweredOperators (QA-425)", () => {
+  it("disabled when unansweredNudgeHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepUnansweredOperators: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unansweredNudgeHours = 0;
+    expect(await nudgeUnansweredOperators(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed operator the Needs-quote inbox link", async () => {
+    let call: {
+      vertical: string;
+      olderThan: Date;
+      cooldown: Date;
+    } | null = null;
+    const repo = fakeRepo({
+      sweepUnansweredOperators: async (input) => {
+        call = input;
+        return [
+          { operatorId: "o1", email: "ops@alpine.example", unansweredCount: 3 },
+          { operatorId: "o2", email: "solo@x.example", unansweredCount: 1 },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unansweredNudgeHours = 72;
+    expect(await nudgeUnansweredOperators(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // olderThan = now-72h; cooldown = now-7d — deps.now fixed 2026-09-15T12:00Z.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-12T12:00:00.000Z");
+    expect(call!.cooldown.toISOString()).toBe("2026-09-08T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual([
+      "ops@alpine.example",
+      "solo@x.example",
+    ]);
+    expect(sent[0]!.subject).toBe("3 requests are waiting for your quote");
+    expect(sent[1]!.subject).toBe("1 request is waiting for your quote");
+    // The CTA lands on the Needs-quote inbox view — the fix for the state.
+    expect(sent[0]!.text).toContain("/app/rfqs?f=needs");
+    expect(sent[0]!.text).toContain("dismiss");
+  });
+
+  it("defaults to 72h, a failed send doesn't stall, zero claims silent", async () => {
+    const repo = fakeRepo({
+      sweepUnansweredOperators: async () => [
+        { operatorId: "o1", email: "bad@x.example", unansweredCount: 2 },
+        { operatorId: "o2", email: "ok@x.example", unansweredCount: 4 },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // unansweredNudgeHours unset → 72h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeUnansweredOperators(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+    expect(sent[0]!.subject).toBe("4 requests are waiting for your quote");
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeUnansweredOperators(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

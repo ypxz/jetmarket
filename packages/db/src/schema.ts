@@ -44,6 +44,11 @@ export const operators = pgTable(
     plan: text("plan").notNull().default("free"),
     // QA-416: last /app/rfqs render stamp — newer arrivals badge "New".
     inboxSeenAt: timestamp("inbox_seen_at", { withTimezone: true }),
+    // QA-425: cooldown stamp — the unanswered-demand digest re-mails an
+    // operator at most once per cooldown while their inbox has unquoted RFQs.
+    unansweredMailedAt: timestamp("unanswered_mailed_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

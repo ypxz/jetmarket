@@ -119,6 +119,19 @@ export interface WorkerRepo {
       matchCount: number;
     }[]
   >;
+  /** QA-425 unanswered-demand digest: claim operators who have at least
+   *  one live, unquoted, undismissed RFQ older than `olderThan` in their
+   *  inbox — one statement stamps unanswered_mailed_at under the row lock,
+   *  and `cooldown` re-arms only after the stamp ages out (weekly-at-most
+   *  mail, not once-ever). */
+  sweepUnansweredOperators(input: {
+    vertical: string;
+    olderThan: Date;
+    cooldown: Date;
+    limit?: number;
+  }): Promise<
+    { operatorId: string; email: string; unansweredCount: number }[]
+  >;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
@@ -530,6 +543,109 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           ) as "matchCount"
         from stamped s
         left join listings l on l.id = s."listingId"
+      `);
+      return rows;
+    },
+
+    async sweepUnansweredOperators({
+      vertical,
+      olderThan,
+      cooldown,
+      limit = 50,
+    }) {
+      // Unanswered (QA-425) = live RFQ in this operator's inbox (owns the
+      // listing OR holds a delivered match) AND the operator has no live
+      // quote on it (the exact needsQuote predicate: declined/withdrawn
+      // still count as unanswered) AND the operator didn't dismiss it — a
+      // deliberate dismissal shouldn't drive a nudge. The stamp doubles as
+      // the cooldown: re-arm only once it ages past `cooldown`.
+      const unanswered = sql`
+        exists (
+          select 1
+          from rfqs r
+          left join listings l on l.id = r.listing_id
+          where r.vertical = ${vertical}
+            and r.status in ('new', 'matched')
+            and r.created_at < ${olderThan.toISOString()}
+            and (
+              l.operator_id = o.id
+              or exists (
+                select 1 from rfq_matches m
+                where m.rfq_id = r.id
+                  and m.operator_id = o.id
+                  and m.state <> 'delayed'
+              )
+            )
+            and not exists (
+              select 1 from quotes q
+              where q.rfq_id = r.id
+                and q.operator_id = o.id
+                and q.status in ('sent', 'accepted')
+            )
+            and not exists (
+              select 1 from rfq_dismissals d
+              where d.rfq_id = r.id
+                and d.operator_id = o.id
+            )
+        )`;
+      const rows = await db.execute<{
+        operatorId: string;
+        email: string;
+        unansweredCount: number;
+      }>(sql`
+        with due as (
+          select o.id
+          from operators o
+          where (
+            o.unanswered_mailed_at is null
+            or o.unanswered_mailed_at < ${cooldown.toISOString()}
+          )
+            and ${unanswered}
+          limit ${limit}
+        ),
+        stamped as (
+          update operators o
+          set unanswered_mailed_at = now()
+          where o.id in (select id from due)
+            and (
+              o.unanswered_mailed_at is null
+              or o.unanswered_mailed_at < ${cooldown.toISOString()}
+            )
+          returning o.id, o.user_id
+        )
+        select
+          s.id as "operatorId",
+          u.email,
+          (
+            select count(*)::int
+            from rfqs r
+            left join listings l on l.id = r.listing_id
+            where r.vertical = ${vertical}
+              and r.status in ('new', 'matched')
+              and r.created_at < ${olderThan.toISOString()}
+              and (
+                l.operator_id = s.id
+                or exists (
+                  select 1 from rfq_matches m
+                  where m.rfq_id = r.id
+                    and m.operator_id = s.id
+                    and m.state <> 'delayed'
+                )
+              )
+              and not exists (
+                select 1 from quotes q
+                where q.rfq_id = r.id
+                  and q.operator_id = s.id
+                  and q.status in ('sent', 'accepted')
+              )
+              and not exists (
+                select 1 from rfq_dismissals d
+                where d.rfq_id = r.id
+                  and d.operator_id = s.id
+              )
+          ) as "unansweredCount"
+        from stamped s
+        join users u on u.id = s.user_id
       `);
       return rows;
     },

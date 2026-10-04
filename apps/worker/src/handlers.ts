@@ -42,6 +42,12 @@ export interface WorkerDeps {
    *  how long a live RFQ may sit with zero live quotes before the buyer gets
    *  one "still gathering quotes" mail. Machinery picks its own window. */
   unquotedNudgeHours?: number;
+  /** QA-425 unanswered-demand digest: RFQs older than this many hours in an
+   *  operator's inbox with no live quote trigger a "N requests are waiting"
+   *  digest (defaults 72, <=0 disables). Re-mails at most once per 7 days
+   *  via the unanswered_mailed_at stamp — operators get a periodic pull,
+   *  not a drip feed. */
+  unansweredNudgeHours?: number;
 }
 
 function at(deps: WorkerDeps): Date {
@@ -423,6 +429,63 @@ export async function nudgeUnquotedRfqs(deps: WorkerDeps): Promise<number> {
     } catch (e) {
       logWarn("worker.unquoted_nudge_failed", {
         rfqId: r.rfqId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-425: buyers churn when supply ignores them — an operator with live,
+ * unquoted RFQs past the nudge window gets one "N requests are waiting for
+ * your quote" digest deep-linking the Needs-quote inbox view. The sweep's
+ * unanswered_mailed_at stamp doubles as a 7-day cooldown, so an idle
+ * operator hears about it weekly at most, not once ever and not per tick.
+ * Dismissed RFQs and already-quoted ones don't count (needsQuote semantics).
+ */
+export async function nudgeUnansweredOperators(
+  deps: WorkerDeps,
+): Promise<number> {
+  const hours = deps.unansweredNudgeHours ?? 72;
+  if (!(hours > 0)) return 0;
+  const now = at(deps).getTime();
+  const rows = await deps.repo.sweepUnansweredOperators({
+    vertical: deps.vertical,
+    olderThan: new Date(now - hours * 3_600_000),
+    cooldown: new Date(now - 7 * 86_400_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const inboxUrl = `${origin}/app/rfqs?f=needs`;
+      const subject =
+        r.unansweredCount === 1
+          ? `1 request is waiting for your quote`
+          : `${r.unansweredCount} requests are waiting for your quote`;
+      const body =
+        `Live requests on ${site.name} have been sitting in your inbox ` +
+        `unanswered — buyers compare operators by who responds first. ` +
+        `Quote them, or dismiss the ones you can't serve so they stop ` +
+        `counting against your inbox.`;
+      await deps.email.send({
+        to: r.email,
+        subject,
+        text: `${body}\n\nYour inbox: ${inboxUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: inboxUrl, label: "Review requests" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "unanswered_nudge_sent",
+        props: { operatorId: r.operatorId, unanswered: r.unansweredCount },
+      });
+    } catch (e) {
+      logWarn("worker.unanswered_nudge_failed", {
+        operatorId: r.operatorId,
         error: e instanceof Error ? e.message : String(e),
       });
     }

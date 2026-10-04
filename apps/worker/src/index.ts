@@ -21,6 +21,7 @@ import {
   notifyExpiredListings,
   notifyExpirations,
   nudgeStaleQuotes,
+  nudgeUnansweredOperators,
   nudgeUnquotedRfqs,
   recoverUnfanoutedRfqs,
   searchAlertFlush,
@@ -71,6 +72,12 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const unquotedNudged = await nudgeUnquotedRfqs(deps);
   if (unquotedNudged)
     logInfo("worker.unquoted_nudges", { count: unquotedNudged });
+
+  // Unanswered-demand digest (QA-425) — operators with live, unquoted RFQs
+  // get a cooled-down pull back to the Needs-quote inbox view.
+  const unansweredNudged = await nudgeUnansweredOperators(deps);
+  if (unansweredNudged)
+    logInfo("worker.unanswered_nudges", { count: unansweredNudged });
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });

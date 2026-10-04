@@ -842,6 +842,118 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     );
   });
 
+  it("digests operators with live unanswered RFQs, weekly at most (QA-425)", async () => {
+    const ops = await db
+      .select({ id: operators.id, userId: operators.userId })
+      .from(operators)
+      .limit(8);
+    const [opA, opB, opC, opD, opE, opF] = ops;
+    const tag = Date.now();
+    const mkRfq = async (status: "new" | "matched" | "closed", iso: string) => {
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical: "jets",
+          buyerEmail: `unans-${tag}@x.com`,
+          status,
+          createdAt: new Date(iso),
+          fields: { dateTo: isoIn(10) },
+        })
+        .returning({ id: rfqs.id });
+      return r!;
+    };
+    const mkMatch = (rfqId: string, operatorId: string, state: "delayed" | "pending" = "pending") =>
+      db
+        .insert(rfqMatches)
+        .values({ rfqId, operatorId, state, deliverAt: new Date() })
+        .returning({ id: rfqMatches.id });
+
+    const old = new Date(Date.now() - 96 * 3_600_000).toISOString(); // 4d
+    const fresh = new Date(Date.now() - 60 * 60_000).toISOString(); // 1h
+
+    // opA: two old unanswered RFQs → count 2.
+    const a1 = await mkRfq("matched", old);
+    const a2 = await mkRfq("matched", old);
+    const [m1] = await mkMatch(a1.id, opA!.id);
+    const [m2] = await mkMatch(a2.id, opA!.id);
+
+    // opB: old RFQ but ALREADY QUOTED — answered, no nudge.
+    const b1 = await mkRfq("matched", old);
+    const [m3] = await mkMatch(b1.id, opB!.id);
+    await db.insert(quotes).values({
+      rfqId: b1.id,
+      operatorId: opB!.id,
+      amountMinor: 10000,
+      status: "sent",
+    });
+
+    // opC: only a delayed match — not delivered, not theirs to answer yet.
+    const c1 = await mkRfq("matched", old);
+    const [m4] = await mkMatch(c1.id, opC!.id, "delayed");
+
+    // opD: old RFQ but DISMISSED — deliberate triage, no nudge.
+    const d1 = await mkRfq("matched", old);
+    const [m5] = await mkMatch(d1.id, opD!.id);
+    await sql`insert into rfq_dismissals (rfq_id, operator_id) values (${d1.id}, ${opD!.id})`;
+
+    // opE: match on a FRESH RFQ — inside the window.
+    const e1 = await mkRfq("matched", fresh);
+    const [m6] = await mkMatch(e1.id, opE!.id);
+
+    const window = new Date(Date.now() - 72 * 3_600_000);
+    const cooldown = new Date(Date.now() - 7 * 86_400_000);
+    const sweep = () =>
+      deps().repo.sweepUnansweredOperators({
+        vertical: "jets",
+        olderThan: window,
+        cooldown,
+      });
+    const claimed = (await sweep()).filter((r) =>
+      ops.some((o) => o.id === r.operatorId),
+    );
+    const ids = claimed.map((c) => c.operatorId);
+    expect(ids).toContain(opA!.id);
+    expect(ids).not.toContain(opB!.id);
+    expect(ids).not.toContain(opC!.id);
+    expect(ids).not.toContain(opD!.id);
+    expect(ids).not.toContain(opE!.id);
+    expect(claimed.find((c) => c.operatorId === opA!.id)!.unansweredCount).toBe(2);
+
+    // Cooldown: stamp persists; a second sweep inside the week misses opA.
+    const [stamped] = await db
+      .select({ t: operators.unansweredMailedAt })
+      .from(operators)
+      .where(eq(operators.id, opA!.id));
+    expect(stamped!.t).toBeTruthy();
+    expect((await sweep()).map((c) => c.operatorId)).not.toContain(opA!.id);
+
+    // Handler end-to-end: opF qualifies → branded mail to their user email.
+    const f1 = await mkRfq("matched", old);
+    const [m7] = await mkMatch(f1.id, opF!.id);
+    const [opFUser] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, opF!.userId));
+    const { nudgeUnansweredOperators } = await import("../../src/handlers");
+    expect(await nudgeUnansweredOperators(deps())).toBeGreaterThanOrEqual(1);
+    const outbox = readOutbox(outboxDir);
+    const mail = outbox.find(
+      (m) =>
+        m.to === opFUser!.email &&
+        (m.subject ?? "").includes("waiting for your quote"),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.text).toContain("/app/rfqs?f=needs");
+
+    await db.delete(rfqMatches).where(inArray(rfqMatches.id, [m1!.id, m2!.id, m3!.id, m4!.id, m5!.id, m6!.id, m7!.id]));
+    await sql`delete from rfq_dismissals where rfq_id = ${d1.id}`;
+    await db.delete(quotes).where(eq(quotes.rfqId, b1.id));
+    await db.delete(rfqs).where(inArray(rfqs.id, [a1.id, a2.id, b1.id, c1.id, d1.id, e1.id, f1.id]));
+    // The stamps are per-operator — restore them so other suites' seeds stay
+    // untouched (QA-139 isolation).
+    await sql`update operators set unanswered_mailed_at = null where id in (${opA!.id}, ${opF!.id})`;
+  });
+
   it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {
     // Scale-out safety: two workers polling the same queue must partition
     // the pending set, not duplicate it. Serial tests can't prove the
