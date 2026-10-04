@@ -219,13 +219,17 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           baseAirport: operators.baseAirport,
         })
         .from(operators)
+        // The OR must stay parenthesized inside one fragment — a bare
+        // `A or B` spliced into and() becomes `A or (B and C)` and every
+        // zero-listing wildcard qualifies regardless of the AND clause.
         .where(
-          sql`not exists (select 1 from listings lf
-                where lf.operator_id = ${operators.id}
-                  and lf.vertical <> ${vertical})
-           or exists (select 1 from listings ls
-                where ls.operator_id = ${operators.id}
-                  and ls.vertical = ${vertical})`,
+          sql`(not exists (select 1 from listings lf
+                  where lf.operator_id = ${operators.id}
+                    and lf.vertical <> ${vertical})
+               or exists (select 1 from listings ls
+                  where ls.operator_id = ${operators.id}
+                    and ls.vertical = ${vertical}))
+              and ${operators.acceptingRfqs}`,
         );
       const charter = await db
         .select({

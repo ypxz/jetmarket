@@ -49,6 +49,9 @@ export const operators = pgTable(
     unansweredMailedAt: timestamp("unanswered_mailed_at", {
       withTimezone: true,
     }),
+    // QA-427: operator away switch — false removes them from every fan-out
+    // (already-delivered matches stay visible in their inbox).
+    acceptingRfqs: boolean("accepting_rfqs").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

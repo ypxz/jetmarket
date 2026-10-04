@@ -39,7 +39,9 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
   }
   const candidates: OperatorCandidate[] = await Promise.all(
     ops
-      .filter((o) => inScope.has(o.id))
+      // QA-427: away operators sit out new fan-outs (the worker's
+      // loadOperatorCandidates encodes the same rule on the pg path).
+      .filter((o) => inScope.has(o.id) && o.acceptingRfqs)
       .map(async (o) => ({
       id: o.id,
       verified: o.verified,

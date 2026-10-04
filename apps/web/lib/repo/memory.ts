@@ -95,7 +95,10 @@ class MemoryRepo implements Repo {
   }
 
   async upsertOperator(
-    o: Omit<Operator, "id" | "createdAt"> & { id?: string },
+    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs"> & {
+      id?: string;
+      acceptingRfqs?: boolean;
+    },
   ): Promise<Operator> {
     // Parity with the drizzle ON CONFLICT (user_id) path: no explicit id
     // means upsert on the one-profile-per-user invariant.
@@ -107,6 +110,9 @@ class MemoryRepo implements Repo {
     const op: Operator = {
       ...o,
       id,
+      // QA-427: default ON; an upsert that doesn't pass the switch keeps the
+      // operator's current state (same stamp-survival rule as inboxSeenAt).
+      acceptingRfqs: o.acceptingRfqs ?? prev?.acceptingRfqs ?? true,
       createdAt: prev?.createdAt ?? now(),
       // QA-416: the inbox stamp survives profile upserts (callers never pass
       // it — upsert is a full-row shape).
@@ -152,6 +158,10 @@ class MemoryRepo implements Repo {
   async setOperatorPlan(id: string, plan: Plan) {
     const op = this.operators.get(id);
     if (op) this.operators.set(id, { ...op, plan });
+  }
+  async setOperatorAccepting(id: string, accepting: boolean) {
+    const op = this.operators.get(id);
+    if (op) this.operators.set(id, { ...op, acceptingRfqs: accepting });
   }
 
   async createListing(

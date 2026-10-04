@@ -2432,5 +2432,51 @@ export function repoContract(
         },
       ]);
     });
+
+    it("setOperatorAccepting round-trips; upserts preserve the away flag (QA-427)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`away-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Away Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      // Default ON.
+      expect(op.acceptingRfqs).toBe(true);
+      await repo.setOperatorAccepting(op.id, false);
+      expect((await repo.getOperator(op.id))?.acceptingRfqs).toBe(false);
+      // A profile upsert that doesn't pass the flag keeps the operator's
+      // current state (same stamp-survival rule as inboxSeenAt).
+      await repo.upsertOperator({
+        userId: user.id,
+        name: `Away Air renamed ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "pro",
+      });
+      expect((await repo.getOperator(op.id))?.acceptingRfqs).toBe(false);
+      // ...but an upsert MAY pass it explicitly.
+      await repo.upsertOperator({
+        userId: user.id,
+        name: `Away Air ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "pro",
+        acceptingRfqs: true,
+      });
+      expect((await repo.getOperator(op.id))?.acceptingRfqs).toBe(true);
+      await repo.setOperatorAccepting(op.id, false);
+      expect((await repo.getOperator(op.id))?.acceptingRfqs).toBe(false);
+      await repo.setOperatorAccepting(op.id, true);
+      expect((await repo.getOperator(op.id))?.acceptingRfqs).toBe(true);
+      // Unknown id is a silent miss (non-uuid probe-safe on pg).
+      await repo.setOperatorAccepting(`missing-${tag}`, false);
+    });
   });
 }

@@ -186,6 +186,38 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(machCands.map((c) => c.id)).toContain(machDealer);
   });
 
+  it("drops away operators from candidates but keeps their inbox (QA-427)", async () => {
+    const [u] = await db
+      .insert(users)
+      .values({ email: `away-${randomUUID()}@x.com` })
+      .returning({ id: users.id });
+    const [o] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Away Air" })
+      .returning({ id: operators.id });
+    // On by default — zero-listing broker wildcard applies.
+    expect(
+      (await createWorkerRepo(db).loadOperatorCandidates("jets", undefined))
+        .map((c) => c.id),
+    ).toContain(o!.id);
+    await db
+      .update(operators)
+      .set({ acceptingRfqs: false })
+      .where(eq(operators.id, o!.id));
+    expect(
+      (await createWorkerRepo(db).loadOperatorCandidates("jets", undefined))
+        .map((c) => c.id),
+    ).not.toContain(o!.id);
+    await db
+      .update(operators)
+      .set({ acceptingRfqs: true })
+      .where(eq(operators.id, o!.id));
+    expect(
+      (await createWorkerRepo(db).loadOperatorCandidates("jets", undefined))
+        .map((c) => c.id),
+    ).toContain(o!.id);
+  });
+
   it("delivers delayed matches on sweep and sends notifications end-to-end", async () => {
     const rfqId = await insertRfq({
       departure: "NCE",

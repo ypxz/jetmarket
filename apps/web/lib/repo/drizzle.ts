@@ -80,6 +80,7 @@ function toOperator(r: typeof operators.$inferSelect): Operator {
     verified: r.verified,
     plan: r.plan as Plan,
     ...(r.inboxSeenAt !== null ? { inboxSeenAt: iso(r.inboxSeenAt) } : {}),
+    acceptingRfqs: r.acceptingRfqs,
     createdAt: iso(r.createdAt),
   };
 }
@@ -355,7 +356,10 @@ export class DrizzleRepo implements Repo {
   }
 
   async upsertOperator(
-    o: Omit<Operator, "id" | "createdAt"> & { id?: string },
+    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs"> & {
+      id?: string;
+      acceptingRfqs?: boolean;
+    },
   ): Promise<Operator> {
     const values = {
       userId: o.userId,
@@ -364,6 +368,11 @@ export class DrizzleRepo implements Repo {
       fleetSummary: o.fleetSummary,
       verified: o.verified,
       plan: o.plan,
+      // Away switch honors an explicit arg but survives profile upserts
+      // (the QA-416 stamp convention — upsert is a full-row shape).
+      ...(o.acceptingRfqs !== undefined
+        ? { acceptingRfqs: o.acceptingRfqs }
+        : {}),
     };
     if (o.id) {
       const [r] = await this.db
@@ -437,6 +446,13 @@ export class DrizzleRepo implements Repo {
   }
   async setOperatorPlan(id: string, plan: Plan): Promise<void> {
     await this.db.update(operators).set({ plan }).where(eq(operators.id, id));
+  }
+  async setOperatorAccepting(id: string, accepting: boolean): Promise<void> {
+    if (!isUuid(id)) return;
+    await this.db
+      .update(operators)
+      .set({ acceptingRfqs: accepting })
+      .where(eq(operators.id, id));
   }
 
   async createListing(

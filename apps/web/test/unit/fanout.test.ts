@@ -97,4 +97,58 @@ describe("fanoutRfq (memory mode)", () => {
       (await repo.listRfqs({ operatorId: delayed.id })).map((r) => r.id),
     ).not.toContain(rfq.id);
   });
+
+  it("skips away operators entirely (QA-427)", async () => {
+    const repo = await getRepo();
+    const tag = `away-${Date.now().toString(36)}`;
+    const mkOp = async (n: string) => {
+      const u = await repo.createUser(`${n}-${tag}@test.dev`, "operator");
+      return repo.upsertOperator({
+        userId: u.id,
+        name: `${n} ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+    };
+    const owner = await mkOp("owner");
+    const eligible = await mkOp("on");
+    const away = await mkOp("off");
+    for (const op of [eligible, away]) {
+      await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Fleet ${op.id} ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: { aircraftCategory: "light", seats: 8 },
+      });
+    }
+    await repo.setOperatorAccepting(away.id, false);
+    const listing = await repo.createListing({
+      operatorId: owner.id,
+      vertical: "jets",
+      type: "charter",
+      title: `Fanout away ${tag}`,
+      price: 9000,
+      currency: "USD",
+      photos: [],
+      attributes: { aircraftCategory: "light", seats: 6 },
+    });
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: `b-${tag}@test.dev`,
+      fields: { departure: "ZRH", arrival: "NCE" },
+    });
+    await fanoutRfq(repo, rfq, listing);
+    // The pro+verified control proves delivery ran; the away twin — same
+    // plan, same fleet — is absent (not merely delayed: pending matches
+    // are visible to hasRfqMatch).
+    expect(await repo.hasRfqMatch(rfq.id, eligible.id)).toBe(true);
+    expect(await repo.hasRfqMatch(rfq.id, away.id)).toBe(false);
+  });
 });

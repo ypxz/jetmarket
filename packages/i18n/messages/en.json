@@ -681,7 +681,10 @@
       "expiredHidden": "expired — hidden from buyers (edit to relist)",
       "watchers": "{count, plural, one {# watching} other {# watching}}",
       "views": "{count, plural, one {# view} other {# views}}",
-      "requests": "{count, plural, one {# request} other {# requests}}"
+      "requests": "{count, plural, one {# request} other {# requests}}",
+      "pauseRfqs": "Pause new requests",
+      "resumeRfqs": "Resume new requests",
+      "awayBanner": "You are paused — new requests will not reach your inbox. Existing matches and quotes are unaffected."
     },
     "onboarding": {
       "title": "Operator profile",

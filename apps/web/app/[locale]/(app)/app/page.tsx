@@ -6,6 +6,7 @@ import { getVertical } from "@jetmarket/verticals";
 import { currentUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
 import { ListingActions } from "./listing-actions";
+import { AvailabilityToggle } from "./availability-toggle";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { invoiceStateVariant } from "@/lib/state-variant";
@@ -183,8 +184,20 @@ export default async function OperatorDashboard() {
               })}
             </Link>
           ) : null}
+          <div className="mt-1">
+            <AvailabilityToggle accepting={operator.acceptingRfqs} />
+          </div>
         </div>
       </div>
+
+      {!operator.acceptingRfqs ? (
+        <div
+          className="mt-4 rounded-md border border-border bg-surface px-4 py-3"
+          data-testid="away-banner"
+        >
+          <p className="text-sm">{t("awayBanner")}</p>
+        </div>
+      ) : null}
 
       <section className="mt-8" aria-label={t("statsTitle")}>
         {isPro ? (

@@ -30,6 +30,9 @@ export interface Operator {
   /** Last time /app/rfqs rendered for this operator — newer inbox arrivals
    *  badge "New" (QA-416). NULL = inbox never visited (everything is new). */
   inboxSeenAt?: string;
+  /** Away switch (QA-427): false = excluded from new RFQ fan-outs.
+   *  Already-delivered matches stay in the inbox. Default true. */
+  acceptingRfqs: boolean;
   createdAt: string;
 }
 
@@ -191,7 +194,10 @@ export interface Repo {
   consumeMagicLinkSig(sig: string, expiresAt: string): Promise<boolean>;
 
   upsertOperator(
-    o: Omit<Operator, "id" | "createdAt"> & { id?: string },
+    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs"> & {
+      id?: string;
+      acceptingRfqs?: boolean;
+    },
   ): Promise<Operator>;
   getOperator(id: string): Promise<Operator | undefined>;
   getOperatorByUserId(userId: string): Promise<Operator | undefined>;
@@ -214,6 +220,9 @@ export interface Repo {
   }): Promise<{ operator: Operator; activeCount: number }[]>;
   setOperatorVerified(id: string, verified: boolean): Promise<void>;
   setOperatorPlan(id: string, plan: Plan): Promise<void>;
+  /** Away switch (QA-427): flip whether fan-out candidates include this
+   *  operator. Does not touch already-delivered matches or the inbox. */
+  setOperatorAccepting(id: string, accepting: boolean): Promise<void>;
 
   createListing(
     l: Omit<Listing, "id" | "createdAt" | "status" | "views"> & {
