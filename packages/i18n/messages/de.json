@@ -505,7 +505,13 @@
       "other": "Sonstiges"
     },
     "reviseLine": "Überarbeitet — bis {date}: {amount}",
-    "newOffer": "Neu"
+    "newOffer": "Neu",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "pausedChip": "Pausiert",
+    "pausedHint": "Keine neuen Angebote in der Pause",
+    "pausedMsg": "Anfrage pausiert — es kommen keine neuen Angebote an.",
+    "resumedMsg": "Anfrage fortgesetzt — nimmt wieder Angebote an."
   },
   "design": {
     "title": "Designsystem",
@@ -1223,7 +1229,9 @@
       "templateNamePh": "Vorlagenname",
       "saveTemplate": "Vorlage speichern",
       "buyerRated": "Bewerteter Käufer {avg}★ · {count}",
-      "reviseLineOp": "Von Ihnen überarbeitet — bis {date}: {amount}"
+      "reviseLineOp": "Von Ihnen überarbeitet — bis {date}: {amount}",
+      "pausedBadge": "Pausiert",
+      "intakePaused": "Käufer hat neue Angebote pausiert"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

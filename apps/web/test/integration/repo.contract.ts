@@ -1706,6 +1706,57 @@ export function repoContract(
       );
     });
 
+    it("setRfqPaused toggles the intake freeze on live rows only (QA-533)", async () => {
+      const repo = await factory();
+      const tag = `pz-${Date.now().toString(36)}`;
+      const u = await repo.createUser(`pz-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "Pause Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Pause Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `pz-${tag}@test.dev`,
+        fields: { from: "ZRH" },
+      });
+      // Fresh row: unpaused, pause stamps, status untouched.
+      expect((await repo.getRfq(rfq.id))?.pausedAt).toBeUndefined();
+      expect(await repo.setRfqPaused(rfq.id, true)).toBe(true);
+      const paused = await repo.getRfq(rfq.id);
+      expect(paused?.pausedAt).toBeTruthy();
+      expect(paused?.status).toBe("open");
+      // Double-pause no-ops; resume clears; double-resume no-ops.
+      expect(await repo.setRfqPaused(rfq.id, true)).toBe(false);
+      expect(await repo.setRfqPaused(rfq.id, false)).toBe(true);
+      expect((await repo.getRfq(rfq.id))?.pausedAt).toBeUndefined();
+      expect(await repo.setRfqPaused(rfq.id, false)).toBe(false);
+      // Terminal rows can't be paused — re-pause, close, pause refuses.
+      expect(await repo.setRfqPaused(rfq.id, true)).toBe(true);
+      expect(
+        await repo.setRfqStatus(rfq.id, "closed", ["open", "matched", "quoted"]),
+      ).toBe(true);
+      expect(await repo.setRfqPaused(rfq.id, false)).toBe(true); // resume still clears the stamp
+      expect(await repo.setRfqPaused(rfq.id, true)).toBe(false);
+      // Unknown id refuses both arms.
+      expect(await repo.setRfqPaused(crypto.randomUUID(), true)).toBe(false);
+      expect(await repo.setRfqPaused(crypto.randomUUID(), false)).toBe(false);
+    });
+
     it("updateRfqFields replaces fields + re-keys dedupe on live rows only (QA-481)", async () => {
       const repo = await factory();
       const tag = `am-${Date.now().toString(36)}`;

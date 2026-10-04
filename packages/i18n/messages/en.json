@@ -505,7 +505,13 @@
       "other": "Other"
     },
     "reviseLine": "Revised — was {amount} before {date}",
-    "newOffer": "New"
+    "newOffer": "New",
+    "pause": "Pause",
+    "resume": "Resume",
+    "pausedChip": "Paused",
+    "pausedHint": "No new offers while paused",
+    "pausedMsg": "Request paused — no new offers will arrive.",
+    "resumedMsg": "Request resumed — accepting offers again."
   },
   "design": {
     "title": "Design system",
@@ -1223,7 +1229,9 @@
       "templateNamePh": "Template name",
       "saveTemplate": "Save template",
       "buyerRated": "Rated buyer {avg}★ · {count}",
-      "reviseLineOp": "You revised — was {amount} before {date}"
+      "reviseLineOp": "You revised — was {amount} before {date}",
+      "pausedBadge": "Paused",
+      "intakePaused": "Buyer paused new offers"
     },
     "billing": {
       "title": "Plan & billing",

@@ -138,6 +138,7 @@ function toRfq(r: typeof rfqs.$inferSelect): Rfq {
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
     locale: r.locale,
+    ...(r.pausedAt ? { pausedAt: iso(r.pausedAt) } : {}),
   };
 }
 function toQuote(r: typeof quotes.$inferSelect): Quote {
@@ -1054,6 +1055,25 @@ export class DrizzleRepo implements Repo {
       })
       .where(
         and(eq(rfqs.id, id), inArray(rfqs.status, ["new", "matched", "quoted"])),
+      )
+      .returning({ id: rfqs.id });
+    return rows.length > 0;
+  }
+  async setRfqPaused(id: string, paused: boolean): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    const rows = await this.db
+      .update(rfqs)
+      .set({ pausedAt: paused ? new Date() : null, updatedAt: new Date() })
+      .where(
+        paused
+          // Pause only from a live status and only once — a terminal row
+          // or a second concurrent pause no-ops (same CAS as memory).
+          ? and(
+              eq(rfqs.id, id),
+              inArray(rfqs.status, ["new", "matched", "quoted"]),
+              isNull(rfqs.pausedAt),
+            )
+          : and(eq(rfqs.id, id), isNotNull(rfqs.pausedAt)),
       )
       .returning({ id: rfqs.id });
     return rows.length > 0;

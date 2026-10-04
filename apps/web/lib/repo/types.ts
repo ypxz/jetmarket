@@ -115,6 +115,9 @@ export interface Rfq {
   updatedAt: string;
   /** QA-493: locale the request was filed under — buyer mails render in it. */
   locale: string;
+  /** QA-533: buyer pause stamp — freezes NEW offer intake while existing
+   *  quotes stay acceptable. Absent = accepting offers. */
+  pausedAt?: string;
 }
 
 /** QA-469: an operator's flag on an abusive RFQ — feeds the admin
@@ -599,6 +602,16 @@ export interface Repo {
    * concrete close date. Returns false on a terminal RFQ.
    */
   extendRfqDeadline(id: string, dateTo: string): Promise<boolean>;
+  /**
+   * Buyer-side pause/resume (QA-533): CAS-gated toggle of `paused_at`.
+   * `paused=true` stamps it on a LIVE RFQ (pause on a terminal row or a
+   * double-pause returns false); `paused=false` clears the stamp on any
+   * paused row (a resume on an unpaused row returns false). Pausing only
+   * freezes NEW offer intake — existing quotes stay live and the request
+   * keeps its natural deadline; resume needs no status derivation since
+   * the RFQ never left its live state.
+   */
+  setRfqPaused(id: string, paused: boolean): Promise<boolean>;
   /**
    * Buyer-side amendment (QA-481): CAS-gated full replace of `fields` +
    * `dedupeKey` on a LIVE RFQ — a typo'd route/date shouldn't force

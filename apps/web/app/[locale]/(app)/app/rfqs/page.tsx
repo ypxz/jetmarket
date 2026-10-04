@@ -367,6 +367,11 @@ export default async function RfqInboxPage({
                         {t("conciergeBadge")}
                       </Badge>
                     ) : null}
+                    {r.pausedAt ? (
+                      <Badge variant="warning" data-testid={`rfq-paused-${r.id}`}>
+                        {t("pausedBadge")}
+                      </Badge>
+                    ) : null}
                     {/* QA-528: this requester closed rated deals before —
                         triage signal for who to quote first. */}
                     {buyerScore ? (
@@ -590,7 +595,7 @@ export default async function RfqInboxPage({
                   </ul>
                   {!quotes.some(
                     (q) => q.status === "sent" || q.status === "accepted",
-                  ) && LIVE_RFQ_STATES.has(r.status) ? (
+                  ) && LIVE_RFQ_STATES.has(r.status) && !r.pausedAt ? (
                     <div
                       className="mt-3"
                       data-testid={`requote-${r.id}`}
@@ -609,7 +614,18 @@ export default async function RfqInboxPage({
                 ) : LIVE_RFQ_STATES.has(r.status) ? (
                   <div className="mt-3 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <QuoteForm rfqId={r.id} />
+                      {/* QA-533: paused rows keep the card (flag/dismiss
+                          stay) but the form would just 409. */}
+                      {!r.pausedAt ? (
+                        <QuoteForm rfqId={r.id} />
+                      ) : (
+                        <p
+                          className="text-sm text-muted"
+                          data-testid={`rfq-intake-paused-${r.id}`}
+                        >
+                          {t("intakePaused")}
+                        </p>
+                      )}
                       {/* QA-469: flag abuse into admin moderation — the
                           demand-side twin of the buyer listing report. */}
                       <div className="mt-2">

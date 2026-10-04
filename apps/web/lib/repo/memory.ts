@@ -634,6 +634,19 @@ class MemoryRepo implements Repo {
     });
     return true;
   }
+  async setRfqPaused(id: string, paused: boolean): Promise<boolean> {
+    const rfq = this.rfqs.get(id);
+    // Synchronous check+write (QA-333) — matches the drizzle CAS exactly.
+    if (!rfq) return false;
+    if (paused) {
+      if (!LIVE_RFQ_STATUSES.has(rfq.status) || rfq.pausedAt) return false;
+      this.rfqs.set(id, { ...rfq, pausedAt: now(), updatedAt: now() });
+      return true;
+    }
+    if (!rfq.pausedAt) return false;
+    this.rfqs.set(id, { ...rfq, pausedAt: undefined, updatedAt: now() });
+    return true;
+  }
   async updateRfqFields(
     id: string,
     fields: Record<string, unknown>,

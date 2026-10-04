@@ -33,6 +33,9 @@ export function operatorRfqView(
     // QA-442: derived liveness deadline — non-contact, so it rides the
     // view; the inbox shows when the request stops collecting quotes.
     deadlineAt: rfqDeadlineAt(rfq).toISOString(),
+    // QA-533: buyer intake freeze — badge so the operator doesn't burn a
+    // quote attempt that would 409.
+    ...(rfq.pausedAt ? { pausedAt: rfq.pausedAt } : {}),
     fields: nonContactFields(vertical, listingType, rfq.fields),
   };
 }

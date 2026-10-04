@@ -94,6 +94,9 @@ interface Rfq {
   /** QA-442: derived liveness deadline — when this request stops
    *  collecting offers (dated: day after dateTo; else createdAt+30d). */
   deadlineAt: string;
+  /** QA-533: intake freeze stamp — new offers 409 while set; existing
+   *  quotes stay live. */
+  pausedAt?: string;
   listing: { id: string; title: string; currency: string; browseable?: boolean } | null;
   // Echo of the request's own spec fields ("Departure: TEB"), built
   // server-side in vertical field order — contact fields excluded.
@@ -739,6 +742,32 @@ function QuotesInner() {
     await load();
   }
 
+  // QA-533: freeze/resume NEW offer intake — existing quotes keep working
+  // either way, so the toggle is a one-click, not a two-step.
+    const pauseRfq = (rfqId: string, paused: boolean) =>
+    withBusy(() => pauseRfqImpl(rfqId, paused));
+
+  async function pauseRfqImpl(rfqId: string, paused: boolean) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/rfqs/${rfqId}/pause`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token, paused }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(errText(data, tc("error")));
+      return;
+    }
+    setMsg(paused ? t("pausedMsg") : t("resumedMsg"));
+    await load();
+  }
+
   // QA-481: amend a live request in place — quotes and delivered-to
   // history survive; the PATCH CAS keeps it off terminal rows, the route
   // re-fans-out to newly-fitting operators and mails the rest.
@@ -857,6 +886,15 @@ function QuotesInner() {
                         {t("concierge.done")}
                       </span>
                     ) : null}
+                    {r.pausedAt ? (
+                      <span
+                        className="rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-warning"
+                        data-testid={`rfq-paused-${r.id}`}
+                        title={t("pausedHint")}
+                      >
+                        {t("pausedChip")}
+                      </span>
+                    ) : null}
                     {/* QA-487: the route 409s extends with ≥8d of horizon
                         left — hide the button while the click would only
                         error. It reappears inside the extendable window. */}
@@ -882,6 +920,16 @@ function QuotesInner() {
                         className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
                       >
                         {t("edit")}
+                      </button>
+                    ) : null}
+                    {["open", "matched", "quoted"].includes(r.status) ? (
+                      <button
+                        onClick={() => pauseRfq(r.id, !r.pausedAt)}
+                        disabled={busy}
+                        data-testid={`pause-rfq-${r.id}`}
+                        className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
+                      >
+                        {r.pausedAt ? t("resume") : t("pause")}
                       </button>
                     ) : null}
                     {["open", "matched", "quoted"].includes(r.status) ? (

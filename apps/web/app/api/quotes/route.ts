@@ -76,6 +76,11 @@ export async function POST(req: Request) {
   if (!["open", "matched", "quoted"].includes(rfq.status)) {
     return err("rfq is no longer open", 409);
   }
+  // Buyer pause (QA-533) freezes NEW offer intake — existing quotes stay
+  // live, so only this create path checks the stamp.
+  if (rfq.pausedAt) {
+    return err("rfq is not accepting new offers", 409);
+  }
 
   // One live quote per operator per rfq; a declined/withdrawn one may be
   // re-quoted (partial-unique index backs the same invariant — the catch

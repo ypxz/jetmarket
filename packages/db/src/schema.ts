@@ -160,6 +160,9 @@ export const rfqs = pgTable(
     })
       .notNull()
       .default("new"),
+    // QA-533: buyer pause — freezes NEW offer intake while keeping existing
+    // quotes alive. NULL = accepting offers.
+    pausedAt: timestamp("paused_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

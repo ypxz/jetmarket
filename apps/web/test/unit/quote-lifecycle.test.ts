@@ -821,3 +821,77 @@ describe("POST /api/quotes expired-listing owner gate (QA-504)", () => {
     asUser(null);
   });
 });
+
+describe("POST /api/rfqs/[id]/pause (buyer, QA-533)", () => {
+  it("pause freezes new offers; resume re-opens; guards strangers/replays/terminal", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, listing, buyerEmail } = await fixture(repo);
+    const { POST: pauseRfq } = await import(
+      "../../app/api/rfqs/[id]/pause/route"
+    );
+    // Fresh RFQ — the fixture's own quote would 409 createQuote on the
+    // one-live-quote guard, not on the pause.
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail,
+      fields: {},
+    });
+
+    // Stranger token → 404 (uniform miss, same as every buyer route).
+    const stranger = await pauseRfq(
+      post({ buyerEmail: "stranger@test.dev", token: "nope", paused: true }),
+      params(rfq.id),
+    );
+    expect(stranger.status).toBe(404);
+
+    // Bearer pause → 200 + stamp.
+    const paused = await pauseRfq(
+      post({ buyerEmail, token: rfq.accessToken, paused: true }),
+      params(rfq.id),
+    );
+    expect(paused.status).toBe(200);
+    expect((await repo.getRfq(rfq.id))?.pausedAt).toBeTruthy();
+    // Status untouched — pause is an intake gate, not a lifecycle state.
+    expect((await repo.getRfq(rfq.id))?.status).toBe("open");
+
+    // New offers 409 while paused.
+    asUser(opUser.id);
+    const blocked = await createQuote(post({ rfqId: rfq.id, amount: 8800 }));
+    expect(blocked.status).toBe(409);
+
+    // Double-pause no-ops.
+    asUser(null);
+    const again = await pauseRfq(
+      post({ buyerEmail, token: rfq.accessToken, paused: true }),
+      params(rfq.id),
+    );
+    expect(again.status).toBe(409);
+
+    // Resume → offers flow again.
+    const resumed = await pauseRfq(
+      post({ buyerEmail, token: rfq.accessToken, paused: false }),
+      params(rfq.id),
+    );
+    expect(resumed.status).toBe(200);
+    expect((await repo.getRfq(rfq.id))?.pausedAt).toBeUndefined();
+    const unpaused = await pauseRfq(
+      post({ buyerEmail, token: rfq.accessToken, paused: false }),
+      params(rfq.id),
+    );
+    expect(unpaused.status).toBe(409);
+
+    asUser(opUser.id);
+    const ok2 = await createQuote(post({ rfqId: rfq.id, amount: 8800 }));
+    expect(ok2.status).toBe(201);
+    asUser(null);
+
+    // Terminal RFQs can't be paused.
+    await repo.setRfqStatus(rfq.id, "closed", ["open", "matched", "quoted"]);
+    const dead = await pauseRfq(
+      post({ buyerEmail, token: rfq.accessToken, paused: true }),
+      params(rfq.id),
+    );
+    expect(dead.status).toBe(409);
+  });
+});
