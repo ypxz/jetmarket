@@ -66,6 +66,25 @@ export interface WorkerRepo {
    * declined (shares the one-pass SQL with the web DrizzleRepo). Returns the
    * affected rows so the tick can notify buyers + operators. */
   expireRfqs(now: Date, vertical?: string): Promise<ExpireResultDetailed>;
+  /** Dated-inventory expiry sweep (QA-418): claims active listings whose
+   * vertical expiry attr passed `now` and was never mailed on — the claim
+   * stamps `expiry_mailed_at` inside the same UPDATE so concurrent ticks
+   * can't double-mail. Returns the claimed rows for notification. */
+  sweepExpiredListings(input: {
+    vertical: string;
+    type: string;
+    attr: string;
+    now: Date;
+    limit?: number;
+  }): Promise<
+    {
+      listingId: string;
+      title: string;
+      operatorName: string;
+      operatorEmail: string;
+      legDate: string;
+    }[]
+  >;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
@@ -326,6 +345,53 @@ export function createWorkerRepo(db: Db): WorkerRepo {
 
     async expireRfqs(now, vertical) {
       return expireStaleRfqsDetailed(db, now, vertical);
+    },
+
+    async sweepExpiredListings({ vertical, type, attr, now, limit = 50 }) {
+      // Same instant comparison as browseExpiry — a leg dated "today" is
+      // already hidden from browse, so the mail fires at the same boundary.
+      // The inner WHERE (expiry_mailed_at IS NULL) re-evaluates under the
+      // row lock, so a racing tick stamps nothing twice.
+      const rows = await db.execute<{
+        listingId: string;
+        title: string;
+        operatorName: string;
+        operatorEmail: string;
+        legDate: string;
+      }>(sql`
+        with due as (
+          select l.id
+          from listings l
+          where l.vertical = ${vertical}
+            and l.type = ${type}
+            and l.status = 'active'
+            and l.expiry_mailed_at is null
+            and l.attributes ->> ${attr} is not null
+            and (l.attributes ->> ${attr}) < ${now.toISOString()}
+          limit ${limit}
+        ),
+        stamped as (
+          update listings l
+          set expiry_mailed_at = now()
+          where l.id in (select id from due)
+            and l.expiry_mailed_at is null
+          returning
+            l.id as "listingId",
+            l.title,
+            l.operator_id as "operatorId",
+            l.attributes ->> ${attr} as "legDate"
+        )
+        select
+          s."listingId",
+          s.title,
+          o.name as "operatorName",
+          u.email as "operatorEmail",
+          s."legDate"
+        from stamped s
+        join operators o on o.id = s."operatorId"
+        join users u on u.id = o.user_id
+      `);
+      return rows;
     },
 
     async loadOperatorEmails(operatorIds) {

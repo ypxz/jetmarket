@@ -6,6 +6,7 @@ import {
   deliverDueMatches,
   recoverUnfanoutedRfqs,
   handleJob,
+  notifyExpiredListings,
   notifyExpirations,
   rfqFanout,
   searchAlertFlush,
@@ -124,6 +125,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     markSearchAlerted: async (id) => {
       rec("markSearchAlerted", id);
+    },
+    sweepExpiredListings: async (input) => {
+      rec("sweepExpiredListings", input);
+      return [];
     },
     ...over,
   };
@@ -698,5 +703,105 @@ describe("notifyExpirations", () => {
       quotes: [],
     });
     expect(sent.map((m) => m.to)).toEqual(["buyer2@x.com"]);
+  });
+});
+
+describe("notifyExpiredListings", () => {
+  const jetsExpiry = { type: "empty_leg", attributeKey: "date" };
+
+  it("no-ops entirely on a vertical without dated inventory (machinery)", async () => {
+    const repo = fakeRepo({
+      sweepExpiredListings: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo); // deps.expiry unset
+    expect(await notifyExpiredListings(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed operator and reports the count (QA-418)", async () => {
+    let call: {
+      vertical: string;
+      type: string;
+      attr: string;
+      now: Date;
+    } | null = null;
+    const repo = fakeRepo({
+      sweepExpiredListings: async (input) => {
+        call = input;
+        return [
+          {
+            listingId: "l1",
+            title: "ZRH–NCE Phenom leg",
+            operatorName: "Alpine Jet",
+            operatorEmail: "ops@alpinejet.example",
+            legDate: "2026-09-14",
+          },
+          {
+            listingId: "l2",
+            title: "GVA–LTN G650 leg",
+            operatorName: "Lac Air",
+            operatorEmail: "desk@lacair.example",
+            legDate: "2026-09-13",
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.expiry = jetsExpiry;
+    expect(await notifyExpiredListings(d)).toBe(2);
+    // The sweep ran scoped to this deploy's vertical + expiry shape.
+    expect(call!.vertical).toBe("jets");
+    expect(call!.type).toBe("empty_leg");
+    expect(call!.attr).toBe("date");
+    expect(sent.map((m) => m.to)).toEqual([
+      "ops@alpinejet.example",
+      "desk@lacair.example",
+    ]);
+    expect(sent[0]!.subject).toContain("expired");
+    expect(sent[0]!.text).toContain("ZRH–NCE Phenom leg");
+  });
+
+  it("a failed send doesn't stop the batch; zero claims sends nothing", async () => {
+    const repo = fakeRepo({
+      sweepExpiredListings: async () => [
+        {
+          listingId: "l1",
+          title: "Leg A",
+          operatorName: "A",
+          operatorEmail: "bad@x.example",
+          legDate: "2026-09-14",
+        },
+        {
+          listingId: "l2",
+          title: "Leg B",
+          operatorName: "B",
+          operatorEmail: "ok@x.example",
+          legDate: "2026-09-14",
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.expiry = jetsExpiry;
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await notifyExpiredListings(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    const d2 = deps(empty);
+    d2.expiry = jetsExpiry;
+    expect(await notifyExpiredListings(d2)).toBe(0);
+    expect(sent).toEqual([]);
   });
 });

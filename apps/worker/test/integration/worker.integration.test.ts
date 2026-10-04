@@ -47,7 +47,7 @@ const testUrl =
 const { db, sql } = createDb(testUrl);
 const outboxDir = mkdtempSync(join(tmpdir(), "jm-worker-outbox-"));
 const email = new MockEmailProvider({ outboxDir });
-const deps = () => ({
+const deps = (): import("../../src/handlers").WorkerDeps => ({
   repo: createWorkerRepo(db),
   sql,
   vertical: "jets",
@@ -550,6 +550,90 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       .delete(searchAlerts)
       .where(
         inArray(searchAlerts.id, [staleId, freshId, dailyOldId, dailyNewId]),
+      );
+  });
+
+  it("sweeps expired dated listings once and mails the operator (QA-418)", async () => {
+    // A leg whose date passed drops out of browse silently; the sweep
+    // claims it once (expiry_mailed_at CAS in the same UPDATE) and the
+    // handler mails a relist nudge — a second tick must not re-mail.
+    const [op] = await db
+      .select({ id: operators.id, userId: operators.userId })
+      .from(operators)
+      .limit(1);
+    const [usr] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, op!.userId));
+    const tag = Date.now();
+    const mk = (title: string, attrs: Record<string, unknown>, status = "active") =>
+      db
+        .insert(listings)
+        .values({
+          operatorId: op!.id,
+          vertical: "jets",
+          type: "empty_leg",
+          title,
+          attributes: attrs,
+          status: status as "active",
+          currency: "USD",
+        })
+        .returning({ id: listings.id });
+    const [expired] = await mk(`QA418 expired leg ${tag}`, { date: "2026-09-01" });
+    const [expiredPaused] = await mk(`QA418 paused leg ${tag}`, { date: "2026-09-01" }, "paused");
+    const [live] = await mk(`QA418 live leg ${tag}`, { date: isoIn(10) });
+    const [charter] = await db
+      .insert(listings)
+      .values({
+        operatorId: op!.id,
+        vertical: "jets",
+        type: "charter", // expiry only applies to the configured type
+        title: `QA418 charter ${tag}`,
+        attributes: { date: "2026-09-01" },
+        status: "active",
+        currency: "USD",
+      })
+      .returning({ id: listings.id });
+
+    const sweep = { vertical: "jets", type: "empty_leg", attr: "date", now: new Date() };
+    const claimed = await deps().repo.sweepExpiredListings(sweep);
+    const ids = claimed.map((c) => c.listingId);
+    expect(ids).toContain(expired!.id);
+    expect(ids).not.toContain(expiredPaused!.id);
+    expect(ids).not.toContain(live!.id);
+    expect(ids).not.toContain(charter!.id);
+    const mine = claimed.find((c) => c.listingId === expired!.id)!;
+    expect(mine.operatorEmail).toBe(usr!.email);
+    expect(mine.legDate).toBe("2026-09-01");
+
+    // The claim stamped the row — a re-sweep never returns it again.
+    const again = await deps().repo.sweepExpiredListings(sweep);
+    expect(again.map((c) => c.listingId)).not.toContain(expired!.id);
+    const [stamped] = await db
+      .select({ t: listings.expiryMailedAt })
+      .from(listings)
+      .where(eq(listings.id, expired!.id));
+    expect(stamped!.t).toBeTruthy();
+
+    // Handler end-to-end: another expired leg → outbox mail to the operator.
+    const [second] = await mk(`QA418 expired leg two ${tag}`, { date: "2026-09-02" });
+    const d = deps();
+    d.expiry = { type: "empty_leg", attributeKey: "date" };
+    const { notifyExpiredListings } = await import("../../src/handlers");
+    expect(await notifyExpiredListings(d)).toBeGreaterThanOrEqual(1);
+    const outbox = readOutbox(outboxDir);
+    const mail = outbox.find(
+      (m) =>
+        m.to === usr!.email &&
+        (m.text ?? "").includes(`QA418 expired leg two ${tag}`),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.subject).toContain("expired");
+
+    await db
+      .delete(listings)
+      .where(
+        inArray(listings.id, [expired!.id, expiredPaused!.id, live!.id, charter!.id, second!.id]),
       );
   });
 

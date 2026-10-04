@@ -18,6 +18,7 @@ import { analyticsProvider } from "@jetmarket/providers";
 import {
   deliverDueMatches,
   handleJob,
+  notifyExpiredListings,
   notifyExpirations,
   recoverUnfanoutedRfqs,
   searchAlertFlush,
@@ -51,6 +52,12 @@ export async function tick(deps: WorkerDeps): Promise<number> {
     });
     await notifyExpirations(deps, expired);
   }
+
+  // Dated-inventory expiry sweep (QA-418) — mail the operator once per
+  // listing whose leg date just passed (no-ops on expiry-less verticals).
+  const expiredListings = await notifyExpiredListings(deps);
+  if (expiredListings)
+    logInfo("worker.expired_listings", { count: expiredListings });
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });
@@ -143,6 +150,9 @@ async function main() {
     // Contact-field mask comes from the same config the form validates
     // against (QA-308).
     contactKeys: contactFieldKeys(getVertical()),
+    // Dated-inventory expiry shape — absent on machinery so the sweep
+    // no-ops there (QA-418).
+    expiry: getVertical().expiry,
   };
   const pollMs = pollIntervalMs();
   logInfo("worker.up", { pollMs });

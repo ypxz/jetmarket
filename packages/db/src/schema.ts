@@ -74,6 +74,8 @@ export const listings = pgTable(
     photos: jsonb("photos").$type<string[]>().notNull().default([]),
     // Public-page view counter — soft demand signal for operators (QA-413).
     views: integer("views").notNull().default(0),
+    // QA-418: worker's once-only stamp for the "your listing expired" mail.
+    expiryMailedAt: timestamp("expiry_mailed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

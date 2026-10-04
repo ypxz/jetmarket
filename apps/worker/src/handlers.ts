@@ -32,6 +32,9 @@ export interface WorkerDeps {
   contactKeys?: ReadonlySet<string>;
   analytics?: AnalyticsProvider;
   now?: () => Date;
+  /** Vertical's dated-inventory expiry shape (QA-418) — machinery has
+   *  none, so the listing-expiry sweep no-ops there. */
+  expiry?: { type: string; attributeKey: string };
 }
 
 function at(deps: WorkerDeps): Date {
@@ -260,6 +263,53 @@ export async function recoverUnfanoutedRfqs(
  * by expiry learns why. Each send is fire-and-log: one bad address must not
  * stop the rest of the sweep's notifications.
  */
+/**
+ * Listing-expiry notifications (QA-418) — dated inventory (empty legs and
+ * equivalents) silently drops out of browse when its date passes; until now
+ * the operator only found out by noticing the "expired — hidden" chip. The
+ * sweep claims each just-expired listing once (expiry_mailed_at CAS in the
+ * same UPDATE) and mails a relist nudge: edit the date and it's live again.
+ * Fire-and-log per row — one bad address never stalls the batch.
+ */
+export async function notifyExpiredListings(deps: WorkerDeps): Promise<number> {
+  if (!deps.expiry) return 0;
+  const rows = await deps.repo.sweepExpiredListings({
+    vertical: deps.vertical,
+    type: deps.expiry.type,
+    attr: deps.expiry.attributeKey,
+    now: at(deps),
+  });
+  for (const l of rows) {
+    deps.analytics?.track({
+      name: "listing_expired",
+      props: { listingId: l.listingId },
+    });
+    try {
+      const subject = `Your listing “${l.title}” just expired`;
+      const body =
+        `"${l.title}" (dated ${l.legDate}) dropped out of ${site.name} browse ` +
+        `when its date passed. To relist it, open your dashboard and edit the ` +
+        `listing — a fresh date puts it back in front of buyers.`;
+      await deps.email.send({
+        to: l.operatorEmail,
+        subject,
+        text: body,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+        }),
+      });
+    } catch (e) {
+      logWarn("worker.listing_expiry_email_failed", {
+        listingId: l.listingId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
 export async function notifyExpirations(
   deps: WorkerDeps,
   expired: ExpireResultDetailed,
