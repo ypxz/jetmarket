@@ -333,6 +333,10 @@
     "opCounterWithdrawn": {
       "subject": "Der Käufer hat sein {title}-Gegenangebot zurückgezogen",
       "body": "Der Käufer hat sein Gegenangebot von {currency} {counterAmount} auf Ihr Angebot von {currency} {amount} für \"{title}\" auf {site} zurückgezogen. Ihr Angebot steht weiter — das Gegenangebot ist vom Tisch."
+    },
+    "counterDeclined": {
+      "subject": "Ihr {title}-Gegenangebot wurde abgelehnt",
+      "body": "Der Anbieter hat Ihr Gegenangebot von {counterAmount} {currency} abgelehnt — sein Angebot gilt weiterhin zu {amount} {currency}. Sie können es annehmen oder auf {site} neu verhandeln."
     }
   },
   "listing": {
@@ -1158,6 +1162,11 @@
       "acceptCounterCancel": "Weiter verhandeln",
       "acceptCounterSure": "Deal zum Gegenangebot abschließen?",
       "acceptCounterYes": "Für {amount} abschließen",
+      "declineCounter": "Gegenangebot ablehnen",
+      "declineCounterCancel": "Behalten",
+      "declineCounterSure": "Gegenangebot ablehnen? Der Käufer erfährt, dass Ihr Preis gilt.",
+      "declineCounterWorking": "Wird abgelehnt…",
+      "declineCounterYes": "Ja, ablehnen",
       "acceptCounterWorking": "Abschluss…"
     },
     "billing": {

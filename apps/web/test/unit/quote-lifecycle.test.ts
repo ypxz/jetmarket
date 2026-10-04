@@ -24,6 +24,7 @@ import {
   DELETE as withdrawCounter,
 } from "../../app/api/quotes/[id]/counter/route";
 import { POST as acceptCounter } from "../../app/api/quotes/[id]/accept-counter/route";
+import { POST as declineCounter } from "../../app/api/quotes/[id]/decline-counter/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
 import { POST as moderateListing } from "../../app/api/admin/listings/[id]/status/route";
@@ -375,6 +376,55 @@ describe("POST /api/quotes/[id]/accept-counter (operator, QA-515)", () => {
       params(quote.id),
     );
     expect(lateBuyer.status).toBe(409);
+  });
+});
+
+describe("POST /api/quotes/[id]/decline-counter (operator, QA-519)", () => {
+  it("clears the counter without spending the round; guards the whole way", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, otherUser, quote, buyerEmail, rfq } =
+      await fixture(repo);
+
+    // Anonymous + wrong operator + no-counter-on-table all refuse first.
+    const anon = await declineCounter(post(), params(quote.id));
+    expect(anon.status).toBe(401);
+    asUser(otherUser.id);
+    const wrong = await declineCounter(post(), params(quote.id));
+    expect(wrong.status).toBe(403);
+    asUser(opUser.id);
+    const noCounter = await declineCounter(post(), params(quote.id));
+    expect(noCounter.status).toBe(409);
+
+    // Buyer counters 8000 on the 9000 ask; the op says no.
+    const cnt = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 8000 }),
+      params(quote.id),
+    );
+    expect(cnt.status).toBe(200);
+
+    const res = await declineCounter(post(), params(quote.id));
+    expect(res.status).toBe(200);
+    const after = (await res.json()) as Quote;
+    // The quote still stands at the ask — nothing else moved.
+    expect(after.status).toBe("sent");
+    expect(after.amount).toBe(9000);
+    expect(after.counterAmount).toBeUndefined();
+    expect(after.counteredAt).toBeUndefined();
+
+    // Replay 409s — the counter's gone — but a fresh round re-opens.
+    const again = await declineCounter(post(), params(quote.id));
+    expect(again.status).toBe(409);
+    const recnt = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 8500 }),
+      params(quote.id),
+    );
+    expect(recnt.status).toBe(200);
+    expect((await repo.getQuote(quote.id))!.counterAmount).toBe(8500);
+
+    // Once the quote leaves 'sent' there's nothing to decline.
+    await repo.setQuoteStatus(quote.id, "withdrawn", "sent");
+    const dead = await declineCounter(post(), params(quote.id));
+    expect(dead.status).toBe(409);
   });
 });
 

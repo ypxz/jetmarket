@@ -333,6 +333,10 @@
     "opCounterWithdrawn": {
       "subject": "The buyer withdrew their {title} counter",
       "body": "The buyer pulled their counter of {currency} {counterAmount} on your {currency} {amount} quote for \"{title}\" on {site}. The quote stands as-is — the counter is off the table."
+    },
+    "counterDeclined": {
+      "subject": "Your {title} counter was declined",
+      "body": "The operator declined your counter of {counterAmount} {currency} — the ask still stands at {amount} {currency}. You can accept it or make a new counter from {site}."
     }
   },
   "listing": {
@@ -1158,6 +1162,11 @@
       "acceptCounterCancel": "Keep negotiating",
       "acceptCounterSure": "Close the deal at their counter?",
       "acceptCounterYes": "Close at {amount}",
+      "declineCounter": "Decline counter",
+      "declineCounterCancel": "Keep it",
+      "declineCounterSure": "Decline their counter? They'll be told your ask stands.",
+      "declineCounterWorking": "Declining…",
+      "declineCounterYes": "Yes, decline",
       "acceptCounterWorking": "Closing…"
     },
     "billing": {

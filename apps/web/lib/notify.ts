@@ -176,6 +176,49 @@ export async function notifyCounterWithdrawn(
 }
 
 /**
+ * Tell the buyer the operator declined their counter (QA-519) — the
+ * answer to a lowball that isn't silence: the chip clears and the mail
+ * says the ask still stands. Buyer mails read the RFQ's stamped locale.
+ */
+export async function notifyCounterDeclined(
+  repo: Repo,
+  quote: Quote,
+  rfq: Rfq,
+  counterAmount: number,
+): Promise<void> {
+  try {
+    const listing = rfq.listingId
+      ? await repo.getListing(rfq.listingId)
+      : undefined;
+    const m = await mailCopy(rfq.locale);
+    const title = listing?.title ?? mailT(m, "shared.aListing");
+    const subject = mailT(m, "counterDeclined.subject", { title });
+    const body = mailT(m, "counterDeclined.body", {
+      title,
+      site: site.name,
+      currency: quote.currency,
+      amount: quote.amount,
+      counterAmount,
+    });
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.counter_declined_failed", {
+      quoteId: quote.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
  * Tell the buyer an operator withdrew a quote they had sent. Buyers are
  * unauthenticated, so email is the only channel that reaches them.
  */

@@ -15,6 +15,7 @@ import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 import { ReviseQuote } from "./revise-quote";
 import { AcceptCounter } from "./accept-counter";
+import { DeclineCounter } from "./decline-counter";
 import { DismissAllButton, DismissButton, RestoreAllButton, RestoreButton } from "./dismiss-button";
 import { ReportRfq } from "./report-rfq";
 
@@ -426,18 +427,23 @@ export default async function RfqInboxPage({
                             </Badge>
                           ) : null}
                           {/* QA-515: or take their number outright — the
-                              deal mints at counterAmount. */}
+                              deal mints at counterAmount. QA-519: or
+                              say no outright — the buyer is told the ask
+                              still stands instead of waiting in silence. */}
                           {q.status === "sent" &&
                           q.counterAmount != null &&
                           LIVE_RFQ_STATES.has(r.status) ? (
-                            <AcceptCounter
-                              quoteId={q.id}
-                              amount={formatMoney(
-                                q.counterAmount,
-                                q.currency,
-                                locale,
-                              )}
-                            />
+                            <span className="flex items-center gap-2">
+                              <AcceptCounter
+                                quoteId={q.id}
+                                amount={formatMoney(
+                                  q.counterAmount,
+                                  q.currency,
+                                  locale,
+                                )}
+                              />
+                              <DeclineCounter quoteId={q.id} />
+                            </span>
                           ) : null}
                           {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
                             <>
