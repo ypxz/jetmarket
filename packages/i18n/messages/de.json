@@ -323,6 +323,12 @@
       "yourDeal": "Ihr Abschluss",
       "refParen": " ({ref})",
       "unsubscribe": "Abbestellen"
+    },
+    "opCounterReminder": {
+      "subject": "Noch Zeit für das {title}-Gegenangebot des Käufers",
+      "body": "Ein Käufer hat Ihr Angebot von {currency} {amount} für \"{title}\" auf {site} mit {currency} {counterAmount} kontert — und es wartet noch auf Sie. Nehmen Sie es an oder revidieren Sie, bevor er bei jemand anderem bucht.",
+      "yourInbox": "Ihre Gegenangebote öffnen: {url}",
+      "cta": "Gegenangebot beantworten"
     }
   },
   "listing": {

@@ -1383,6 +1383,113 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     await sql`update operators set unanswered_mailed_at = null where id in (${opA!.id}, ${opF!.id})`;
   });
 
+  it("nudges the operator once when a buyer counter sits unanswered (QA-516)", async () => {
+    const ops = await db
+      .select({ id: operators.id, userId: operators.userId })
+      .from(operators)
+      .limit(3);
+    const [opA, opB, opC] = ops;
+    const tag = Date.now();
+    const old = new Date(Date.now() - 72 * 3_600_000); // 3d > 48h window
+    const fresh = new Date(Date.now() - 60 * 60_000); // 1h — inside window
+    const mkRfq = async () => {
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical: "jets",
+          buyerEmail: `cn-${tag}@x.com`,
+          status: "quoted",
+          createdAt: old,
+          fields: {},
+        })
+        .returning({ id: rfqs.id });
+      return r!;
+    };
+    const mkQuote = async (
+      rfqId: string,
+      operatorId: string,
+      over: { counteredAt: Date | null; status?: string; nudged?: boolean },
+    ) => {
+      const [q] = await db
+        .insert(quotes)
+        .values({
+          rfqId,
+          operatorId,
+          amountMinor: 1_100_000, // $11,000
+          counterAmountMinor: over.counteredAt ? 900_000 : null,
+          counteredAt: over.counteredAt,
+          counterNudgeMailedAt: over.nudged ? new Date() : null,
+          status: (over.status as "sent") ?? "sent",
+        })
+        .returning({ id: quotes.id });
+      return q!;
+    };
+
+    // opA: a 3-day-old unanswered counter — the claim.
+    const ra = await mkRfq();
+    const qa = await mkQuote(ra.id, opA!.id, { counteredAt: old });
+    // opB: fresh counter — still inside the grace window.
+    const rb = await mkRfq();
+    const qb = await mkQuote(rb.id, opB!.id, { counteredAt: fresh });
+    // opC: counter never made — a plain sent quote doesn't nudge.
+    const rc = await mkRfq();
+    const qc = await mkQuote(rc.id, opC!.id, { counteredAt: null });
+
+    const window48 = new Date(Date.now() - 48 * 3_600_000);
+    const sweep = () =>
+      deps().repo.sweepUnansweredCounters({
+        vertical: "jets",
+        olderThan: window48,
+      });
+    const claimed = (await sweep()).filter((r) =>
+      [opA, opB, opC].some((o) => o!.id === r.operatorId),
+    );
+    expect(claimed.map((c) => c.quoteId)).toEqual([qa!.id]);
+    expect(claimed[0]!.counterAmount).toBe(9000);
+    expect(claimed[0]!.askAmount).toBe(11000);
+
+    // Once-ever: the stamp persists; a second sweep misses.
+    const [stamped] = await db
+      .select({ t: quotes.counterNudgeMailedAt })
+      .from(quotes)
+      .where(eq(quotes.id, qa!.id));
+    expect(stamped!.t).toBeTruthy();
+    expect((await sweep()).map((c) => c.quoteId)).not.toContain(qa!.id);
+
+    // Terminal rows fall out even when they'd still read as unanswered.
+    await db
+      .update(quotes)
+      .set({ counterNudgeMailedAt: null, status: "accepted" })
+      .where(eq(quotes.id, qa!.id));
+    expect((await sweep()).map((c) => c.quoteId)).not.toContain(qa!.id);
+
+    // Handler end-to-end: opB's counter aged out manually → mail to the
+    // operator's sign-in email, deep-linked to the Countered inbox.
+    await db
+      .update(quotes)
+      .set({ counteredAt: old })
+      .where(eq(quotes.id, qb!.id));
+    const [opBUser] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, opB!.userId));
+    const { nudgeUnansweredCounters } = await import("../../src/handlers");
+    expect(await nudgeUnansweredCounters(deps())).toBeGreaterThanOrEqual(1);
+    const outbox = readOutbox(outboxDir);
+    const mail = outbox.find(
+      (m) =>
+        m.to === opBUser!.email &&
+        (m.subject ?? "").toLowerCase().includes("counter"),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.text).toContain("/app/rfqs?f=countered");
+
+    await db
+      .delete(quotes)
+      .where(inArray(quotes.id, [qa!.id, qb!.id, qc!.id]));
+    await db.delete(rfqs).where(inArray(rfqs.id, [ra.id, rb.id, rc.id]));
+  });
+
   it("nudges once-ever the operator whose in-vertical book stays empty (QA-477)", async () => {
     const old = new Date(Date.now() - 4 * 86_400_000); // 4d > 48h window
     const fresh = new Date(Date.now() - 60 * 60_000); // 1h — inside grace

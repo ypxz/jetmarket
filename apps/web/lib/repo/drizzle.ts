@@ -1627,6 +1627,9 @@ export class DrizzleRepo implements Repo {
         // QA-511: a revise answers the buyer's counter — next round.
         counterAmountMinor: null,
         counteredAt: null,
+        // QA-516: the answered counter's nudge stamp retires with it —
+        // a re-countered round re-arms the worker's reminder.
+        counterNudgeMailedAt: null,
       })
       .where(
         and(

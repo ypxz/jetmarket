@@ -12,7 +12,7 @@ import {
   searchAlerts,
   users,
 } from "@jetmarket/db/schema";
-import type { OperatorCandidate } from "@jetmarket/domain";
+import { fromMinorUnits, type OperatorCandidate } from "@jetmarket/domain";
 import type { MatchingConfig } from "@jetmarket/verticals";
 
 /** Thin data access for worker handlers — keeps them unit-testable. */
@@ -163,6 +163,30 @@ export interface WorkerRepo {
       operatorName: string | null;
       listingTitle: string | null;
       /** QA-493: buyer-mail locale stamped on the deal's RFQ. */
+      locale: string;
+    }[]
+  >;
+  /** QA-516 unanswered-counter nudge: claim 'sent' quotes whose buyer
+   *  counter sat unanswered past `olderThan` — one statement claims +
+   *  stamps counter_nudge_mailed_at under the row lock so racing ticks
+   *  mail once. Once-ever per counter round (reviseQuote clears the
+   *  counter itself, letting a re-counter re-arm). Terminal quotes and
+   *  dead RFQs are ineligible — the deal mails cover those. */
+  sweepUnansweredCounters(input: {
+    vertical: string;
+    olderThan: Date;
+    limit?: number;
+  }): Promise<
+    {
+      quoteId: string;
+      rfqId: string;
+      operatorId: string;
+      email: string;
+      askAmount: number;
+      counterAmount: number;
+      currency: string;
+      listingTitle: string | null;
+      /** QA-494: recipient's sign-in locale for the nudge mail. */
       locale: string;
     }[]
   >;
@@ -790,6 +814,73 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         left join listings l on l.id = r.listing_id
       `);
       return rows;
+    },
+
+    async sweepUnansweredCounters({ vertical, olderThan, limit = 50 }) {
+      // The countered quote is the funnel's hottest lead — a buyer who
+      // named a price and heard nothing is a deal dying of silence. `due`
+      // picks countered-but-unanswered 'sent' quotes on live RFQs;
+      // `stamped` re-checks counter_nudge_mailed_at IS NULL while updating
+      // so racing ticks mail once. Once-ever per counter round — a revise
+      // clears the counter entirely (and this stamp with it).
+      const rows = await db.execute<{
+        quoteId: string;
+        rfqId: string;
+        operatorId: string;
+        email: string;
+        askMinor: number;
+        counterMinor: number;
+        currency: string;
+        listingTitle: string | null;
+        locale: string;
+      }>(sql`
+        with due as (
+          select q.id
+          from quotes q
+          join rfqs r on r.id = q.rfq_id
+          where r.vertical = ${vertical}
+            and q.status = 'sent'
+            and q.countered_at is not null
+            and q.countered_at < ${olderThan.toISOString()}::timestamptz
+            and q.counter_nudge_mailed_at is null
+            and r.status in ('new', 'matched', 'quoted')
+          limit ${limit}
+        ),
+        stamped as (
+          update quotes q
+          set counter_nudge_mailed_at = now()
+          where q.id in (select id from due)
+            and q.counter_nudge_mailed_at is null
+          returning q.id, q.rfq_id, q.operator_id,
+                    q.amount_minor, q.counter_amount_minor, q.currency
+        )
+        select
+          s.id as "quoteId",
+          s.rfq_id as "rfqId",
+          s.operator_id as "operatorId",
+          u.email,
+          s.amount_minor as "askMinor",
+          s.counter_amount_minor as "counterMinor",
+          s.currency,
+          l.title as "listingTitle",
+          u.locale
+        from stamped s
+        join rfqs r on r.id = s.rfq_id
+        join operators o on o.id = s.operator_id
+        join users u on u.id = o.user_id
+        left join listings l on l.id = r.listing_id
+      `);
+      return rows.map((r) => ({
+        quoteId: r.quoteId,
+        rfqId: r.rfqId,
+        operatorId: r.operatorId,
+        email: r.email,
+        askAmount: fromMinorUnits(r.askMinor, r.currency),
+        counterAmount: fromMinorUnits(r.counterMinor, r.currency),
+        currency: r.currency,
+        listingTitle: r.listingTitle,
+        locale: r.locale,
+      }));
     },
 
     async sweepUnansweredOperators({

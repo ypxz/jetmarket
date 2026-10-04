@@ -92,6 +92,11 @@ export interface WorkerDeps {
    *  your first listing" mail (defaults 48, <=0 disables). Once-ever via
    *  the empty_book_mailed_at stamp — no re-arms. */
   emptyBookNudgeHours?: number;
+  /** QA-516 unanswered-counter nudge: a 'sent' quote whose buyer counter
+   *  sat unanswered this many hours mails the operator once — the
+   *  funnel's hottest lead going cold (defaults 48, <=0 disables).
+   *  Once-ever per counter round via counter_nudge_mailed_at. */
+  counterNudgeHours?: number;
   /** QA-429 overdue-invoice chase: deals stuck 'invoiced' this many hours
    *  mail the operator a payment reminder (defaults 72, <=0 disables).
    *  Re-mails at most once per 7 days via the invoice_reminded_at stamp. */
@@ -708,6 +713,63 @@ export async function nudgeUnansweredOperators(
     } catch (e) {
       logWarn("worker.unanswered_nudge_failed", {
         operatorId: r.operatorId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-516: the funnel's hottest lead going cold — the buyer named a
+ * price and the operator has said nothing for the nudge window. One mail
+ * per counter round (the stamp clears with the counter on a revise, so
+ * a re-countered round can re-arm). Money is formatted the same way the
+ * instant counter mail renders it (display units + currency code).
+ */
+export async function nudgeUnansweredCounters(
+  deps: WorkerDeps,
+): Promise<number> {
+  const hours = deps.counterNudgeHours ?? 48;
+  if (!(hours > 0)) return 0;
+  const now = at(deps).getTime();
+  const rows = await deps.repo.sweepUnansweredCounters({
+    vertical: deps.vertical,
+    olderThan: new Date(now - hours * 3_600_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const inboxUrl = `${origin}${localePath(r.locale, "/app/rfqs?f=countered")}`;
+      const m = await mailCopy(r.locale);
+      const subject = mailT(m, "opCounterReminder.subject", {
+        title: r.listingTitle ?? "—",
+      });
+      const body = mailT(m, "opCounterReminder.body", {
+        title: r.listingTitle ?? "—",
+        site: site.name,
+        currency: r.currency,
+        amount: String(r.askAmount),
+        counterAmount: String(r.counterAmount),
+      });
+      await deps.email.send({
+        to: r.email,
+        subject,
+        text: `${body}\n\n${mailT(m, "opCounterReminder.yourInbox", { url: inboxUrl })}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: inboxUrl, label: mailT(m, "opCounterReminder.cta") },
+        }),
+      });
+      deps.analytics?.track({
+        name: "counter_nudge_sent",
+        props: { quoteId: r.quoteId, rfqId: r.rfqId, operatorId: r.operatorId },
+      });
+    } catch (e) {
+      logWarn("worker.counter_nudge_failed", {
+        quoteId: r.quoteId,
         error: e instanceof Error ? e.message : String(e),
       });
     }

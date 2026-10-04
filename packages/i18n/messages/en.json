@@ -323,6 +323,12 @@
       "yourDeal": "your deal",
       "refParen": " ({ref})",
       "unsubscribe": "Unsubscribe"
+    },
+    "opCounterReminder": {
+      "subject": "Still time to take the buyer's {title} counter",
+      "body": "A buyer countered your {currency} {amount} quote for \"{title}\" on {site} with {currency} {counterAmount} — and it's still waiting on you. Take it or revise before they book someone else.",
+      "yourInbox": "Open your countered leads: {url}",
+      "cta": "Answer the counter"
     }
   },
   "listing": {

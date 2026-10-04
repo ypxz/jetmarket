@@ -12,6 +12,7 @@ import {
   nudgeClosingSoonRfqs,
   nudgeUnratedDeals,
   nudgeUnansweredOperators,
+  nudgeUnansweredCounters,
   nudgeEmptyBookOperators,
   nudgeUnquotedRfqs,
   remindOverdueInvoices,
@@ -154,6 +155,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepUnansweredOperators: async (input) => {
       rec("sweepUnansweredOperators", input);
+      return [];
+    },
+    sweepUnansweredCounters: async (input) => {
+      rec("sweepUnansweredCounters", input);
       return [];
     },
     sweepOverdueInvoices: async (input) => {
@@ -1479,6 +1484,112 @@ describe("nudgeUnansweredOperators (QA-425)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeUnansweredOperators(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeUnansweredCounters (QA-516)", () => {
+  it("disabled when counterNudgeHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepUnansweredCounters: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.counterNudgeHours = 0;
+    expect(await nudgeUnansweredCounters(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claim their Countered inbox link w/ both prices, 48h default", async () => {
+    let call: { vertical: string; olderThan: Date } | null = null;
+    const repo = fakeRepo({
+      sweepUnansweredCounters: async (input) => {
+        call = input;
+        return [
+          {
+            quoteId: "q1",
+            rfqId: "r1",
+            operatorId: "o1",
+            email: "ops@alpine.example",
+            askAmount: 11000,
+            counterAmount: 9000,
+            currency: "USD",
+            listingTitle: "G550 seat",
+            locale: "en",
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo); // counterNudgeHours unset → 48h default
+    expect(await nudgeUnansweredCounters(d)).toBe(1);
+    expect(call!.vertical).toBe("jets");
+    // olderThan = now-48h — deps.now fixed 2026-09-15T12:00Z.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-13T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual(["ops@alpine.example"]);
+    expect(sent[0]!.subject).toContain("counter");
+    // Both prices and the Countered-filter inbox CTA — the fix for the state.
+    expect(sent[0]!.text).toContain("11000");
+    expect(sent[0]!.text).toContain("9000");
+    expect(sent[0]!.text).toContain("/app/rfqs?f=countered");
+  });
+
+  it("QA-494: nudge renders in the operator's users.locale", async () => {
+    const repo = fakeRepo({
+      sweepUnansweredCounters: async () => [
+        {
+          quoteId: "q1",
+          rfqId: "r1",
+          operatorId: "o1",
+          email: "ops@alpine.example",
+          askAmount: 11000,
+          counterAmount: 9000,
+          currency: "USD",
+          listingTitle: "G550 seat",
+          locale: "de",
+        },
+      ],
+    });
+    sent.length = 0;
+    expect(await nudgeUnansweredCounters(deps(repo))).toBe(1);
+    expect(sent[0]!.subject).toContain("Gegenangebot");
+  });
+
+  it("a failed send doesn't stall, zero claims silent", async () => {
+    const row = (email: string, quoteId: string) => ({
+      quoteId,
+      rfqId: "r1",
+      operatorId: "o1",
+      email,
+      askAmount: 100,
+      counterAmount: 90,
+      currency: "USD",
+      listingTitle: null,
+      locale: "en",
+    });
+    const repo = fakeRepo({
+      sweepUnansweredCounters: async () => [
+        row("bad@x.example", "q1"),
+        row("ok@x.example", "q2"),
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeUnansweredCounters(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeUnansweredCounters(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

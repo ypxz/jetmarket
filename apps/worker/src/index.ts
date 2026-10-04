@@ -22,6 +22,7 @@ import {
   notifyExpirations,
   nudgeStaleQuotes,
   nudgeUnansweredOperators,
+  nudgeUnansweredCounters,
   nudgeEmptyBookOperators,
   nudgeClosingSoonRfqs,
   nudgeUnratedDeals,
@@ -88,6 +89,13 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const unansweredNudged = await nudgeUnansweredOperators(deps);
   if (unansweredNudged)
     logInfo("worker.unanswered_nudges", { count: unansweredNudged });
+
+  // Unanswered-counter nudge (QA-516) — the hottest leads: a buyer named
+  // a price and the operator stayed silent past the window. Once per
+  // counter round.
+  const counterNudged = await nudgeUnansweredCounters(deps);
+  if (counterNudged)
+    logInfo("worker.counter_nudges", { count: counterNudged });
 
   // Empty-book nudge (QA-477) — operators past the grace window with zero
   // in-vertical listings get one "create your first listing" mail.
