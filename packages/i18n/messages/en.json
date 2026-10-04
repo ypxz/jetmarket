@@ -891,7 +891,11 @@
     "markSpam": "Mark spam",
     "noRfqs": "No RFQs yet.",
     "concierge": "Concierge: {count} expedites · {total} revenue",
-    "conciergeBadge": "Concierge"
+    "conciergeBadge": "Concierge",
+    "blocked": "Blocked buyers ({count})",
+    "colEmail": "Email",
+    "colBlocked": "Blocked",
+    "noBlocked": "No blocked buyers."
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

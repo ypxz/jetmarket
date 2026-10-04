@@ -444,6 +444,48 @@ export default async function AdminPage({
           </tbody>
         </table></div>
       </section>
+
+      {/* QA-466: the blocked-address registry — the toggle on RFQ rows
+          flips state, but without a list an admin can't audit (or undo)
+          a past block. Same BuyerBlockButton renders the Unblock arm. */}
+      <section className="mt-10" data-testid="admin-blocked">
+        <h2 className="text-lg font-semibold">
+          {t("blocked", { count: blockedRows.length })}
+        </h2>
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colEmail")}</th>
+              <th className="py-2 pr-4">{t("colReason")}</th>
+              <th className="py-2 pr-4">{t("colBlocked")}</th>
+              <th className="py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {blockedRows.map((b) => (
+              <tr key={b.id} data-testid={`blocked-row-${b.email}`}>
+                <td className="py-2 pr-4 font-medium">{b.email}</td>
+                <td className="max-w-60 truncate py-2 pr-4">
+                  {b.reason ?? "—"}
+                </td>
+                <td className="py-2 pr-4 text-muted">
+                  {new Date(b.createdAt).toLocaleDateString("en-US")}
+                </td>
+                <td className="py-2">
+                  <BuyerBlockButton email={b.email} blocked />
+                </td>
+              </tr>
+            ))}
+            {blockedRows.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-muted">
+                  {t("noBlocked")}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table></div>
+      </section>
     </main>
   );
 }

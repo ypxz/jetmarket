@@ -324,6 +324,11 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   expect(blocked.rfqsSpammed).toBe(1);
   expect(blocked.reportsCleared).toBe(1);
 
+  // QA-466: the blocked-address registry lists the row (reason from the
+  // block body renders; unblock acts in place from the same section).
+  const registry = await admin.get('/en/admin');
+  expect(await registry.text()).toContain(`blocked-row-${BUYER}`);
+
   // Blocked: new RFQs 403 (not 404 — the listing exists, the buyer is the
   // problem). The per-RFQ spam mark still works on their history.
   const denied = await mkRfq();
@@ -337,6 +342,9 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   });
   expect(unblock.status()).toBe(200);
   expect(((await unblock.json()) as { blocked: boolean }).blocked).toBe(false);
+  expect(await (await admin.get('/en/admin')).text()).not.toContain(
+    `blocked-row-${BUYER}`,
+  );
   // The first RFQ was spam-flipped by the block, so dedupe (live-only)
   // misses it and this call mints a fresh row — the point is the request
   // clears the block, not which 2xx it gets.
