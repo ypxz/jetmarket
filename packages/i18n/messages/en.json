@@ -504,7 +504,8 @@
       "abusive": "Abusive",
       "other": "Other"
     },
-    "reviseLine": "Revised — was {amount} before {date}"
+    "reviseLine": "Revised — was {amount} before {date}",
+    "newOffer": "New"
   },
   "design": {
     "title": "Design system",

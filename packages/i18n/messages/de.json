@@ -504,7 +504,8 @@
       "abusive": "Missbräuchlich",
       "other": "Sonstiges"
     },
-    "reviseLine": "Überarbeitet — bis {date}: {amount}"
+    "reviseLine": "Überarbeitet — bis {date}: {amount}",
+    "newOffer": "Neu"
   },
   "design": {
     "title": "Designsystem",

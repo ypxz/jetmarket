@@ -115,5 +115,55 @@ test('operator revises a quote; buyer inbox shows the superseded price', async (
     await expect(trail).toContainText(/Revised/i);
     await expect(trail).toContainText(/12,?000/);
     await expect(quote.locator(tidPrefix('quoterev-'))).toHaveCount(1);
+    // QA-531: first-ever look at these terms — the "New" chip rides.
+    await expect(quote.locator(tidPrefix('quote-new-'))).toBeVisible();
+  });
+
+  await step('a second revise re-flags New and adds a rung (QA-531)', async () => {
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    await item.locator(`button${tidPrefix('revise-')}`).first().click();
+    await item.locator(tidPrefix('revise-amount-')).fill('9800');
+    const revResp = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/revise') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await item.locator(tidPrefix('revise-save-')).click();
+    await revResp;
+
+    const loadResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
+    await buyer.reload();
+    await loadResp;
+    const quote = buyer.locator(tidPrefix('quote-')).first();
+    // The revise cleared the seen stamp — new terms re-flag New.
+    await expect(quote.locator(tidPrefix('quote-new-'))).toBeVisible();
+    await expect(quote).toContainText(/9,?800/);
+    // Two rungs now: the 10,500 just replaced leads, the 12,000 trails.
+    const revs = quote.locator(tidPrefix('quoterev-'));
+    await expect(revs).toHaveCount(2);
+    await expect(revs.first()).toContainText(/10,?500/);
+    await expect(revs.last()).toContainText(/12,?000/);
+
+    // And the chip retires once this load stamped the new terms.
+    const loadResp2 = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
+    await buyer.reload();
+    await loadResp2;
+    await expect(
+      buyer.locator(tidPrefix('quote-')).first().locator(tidPrefix('quote-new-')),
+    ).toHaveCount(0);
   });
 });

@@ -63,6 +63,10 @@ interface Quote {
     message?: string;
     supersededAt: string;
   }[];
+  /** QA-531: this load is the buyer's first look at the CURRENT terms —
+   *  buyer_seen_at was still null when the API read it (fresh offer, or
+   *  revised since last view). Retires on the next load. */
+  wasUnseen?: boolean;
 }
 interface Rfq {
   id: string;
@@ -976,6 +980,17 @@ function QuotesInner() {
                           <span className="font-medium">
                             {formatMoney(q.amount, q.currency, locale)}
                           </span>
+                          {/* QA-531: the inbox GET stamps seen-at AFTER
+                              reading — wasUnseen marks exactly the rows
+                              this load is the buyer's first look at
+                              (fresh offer, or revised since last visit).
+                              Filled chip so it pops over the outline
+                              badges; retires on the next load. */}
+                          {q.wasUnseen ? (
+                            <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground" data-testid={`quote-new-${q.id}`}>
+                              {t("newOffer")}
+                            </span>
+                          ) : null}
                           {/* QA-414: cheapest live offer gets the badge — the
                               comparison the sort implies made explicit. */}
                           {q.status === "sent" &&

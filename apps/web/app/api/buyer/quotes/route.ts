@@ -114,6 +114,14 @@ export async function GET(req: Request) {
     arr.push(r);
     revsByQuote.set(r.quoteId, arr);
   }
+  // QA-531: capture the not-yet-seen set BEFORE stamping — the buyer's
+  // "New" chip is exactly the rows buyer_seen_at was still null for on
+  // THIS load (fresh offers + offers revised since the last view, since
+  // a revise clears the stamp). Next load they're stamped and the chip
+  // retires — "new since you last looked", not "new forever".
+  const unseenIds = new Set(
+    quoteRows.filter((q) => !q.buyerSeenAt).map((q) => q.id),
+  );
   // QA-506 read receipts: this GET is the buyer's view event — stamp the
   // quotes it returns so ops see a "seen" chip on their sent quote.
   // Non-fatal: a missed stamp degrades a signal, never the inbox itself.
@@ -216,6 +224,9 @@ export async function GET(req: Request) {
           // QA-530: the operator's superseded terms — the price ladder
           // behind the current number, newest first.
           revisions: revsByQuote.get(q.id) ?? [],
+          // QA-531: this load is the first time the buyer saw the
+          // CURRENT terms — chips a "New" marker on the card.
+          wasUnseen: unseenIds.has(q.id),
           deal:
             q.status === "accepted"
               ? {
