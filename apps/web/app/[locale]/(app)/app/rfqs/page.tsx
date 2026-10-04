@@ -9,6 +9,7 @@ import { operatorRfqView } from "@/lib/rfq-view";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { quoteStateVariant, rfqStateVariant } from "@/lib/state-variant";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
+import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 
@@ -74,6 +75,11 @@ export default async function RfqInboxPage({
       ? repo.countPendingRfqs(operator.id, verticalSlug())
       : 0,
   ]);
+  // QA-416 "New" badge: rows created after the last inbox visit (never
+  // visited → everything is new). One stamp covers owned + matched
+  // deliveries — owned RFQs have no match row by design (self-match is
+  // excluded from fan-out).
+  const lastSeen = operator.inboxSeenAt;
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();
   for (const q of quoteRows) {
@@ -153,6 +159,11 @@ export default async function RfqInboxPage({
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{listing?.title ?? t("listingFallback")}</div>
                   <span className="flex items-center gap-2">
+                    {lastSeen === undefined || r.createdAt > lastSeen ? (
+                      <Badge variant="warning" data-testid={`rfq-new-${r.id}`}>
+                        {t("newBadge")}
+                      </Badge>
+                    ) : null}
                     {r.concierge ? (
                       <Badge variant="success" data-testid={`rfq-concierge-${r.id}`}>
                         {t("conciergeBadge")}
@@ -223,6 +234,8 @@ export default async function RfqInboxPage({
         page={page}
         pages={pages}
       />
+      {/* QA-416: stamps this visit — a reload only badges newer arrivals. */}
+      <MarkRfqsSeen />
     </main>
   );
 }

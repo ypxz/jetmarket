@@ -27,6 +27,9 @@ export interface Operator {
   fleetSummary: string;
   verified: boolean;
   plan: Plan;
+  /** Last time /app/rfqs rendered for this operator — newer inbox arrivals
+   *  badge "New" (QA-416). NULL = inbox never visited (everything is new). */
+  inboxSeenAt?: string;
   createdAt: string;
 }
 
@@ -358,6 +361,11 @@ export interface Repo {
    * are only usable if the matched operator can see and quote the RFQ).
    */
   hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean>;
+  /**
+   * Stamp `inbox_seen_at = now` on the operator (QA-416) — the inbox badges
+   * RFQs created after this stamp. Idempotent by nature (a timestamp write).
+   */
+  markInboxSeen(operatorId: string): Promise<void>;
   /**
    * Record operator matches for an RFQ. Postgres mode writes rfq_matches via
    * the worker; memory mode calls this inline so mock demos exercise the

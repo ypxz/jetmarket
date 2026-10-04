@@ -478,6 +478,45 @@ export function repoContract(
       expect(await repo.countPendingRfqs(delayedOp.id)).toBe(1); // foreign rfq has no dateTo — survives expiry
     });
 
+    it("inbox_seen_at: starts unset, stamps once, survives profile upserts (QA-416)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`seen-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "Seen Op",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      expect(op.inboxSeenAt).toBeUndefined();
+
+      await repo.markInboxSeen(op.id);
+      const stamped = (await repo.getOperator(op.id))!.inboxSeenAt;
+      expect(stamped).toBeTruthy();
+      // A second stamp only moves forward — never reverts.
+      const before = stamped!;
+      await repo.markInboxSeen(op.id);
+      expect(
+        (await repo.getOperator(op.id))!.inboxSeenAt! >= before,
+      ).toBe(true);
+      // Missing ids are a no-op, not a crash.
+      await repo.markInboxSeen(crypto.randomUUID());
+
+      // Profile upserts don't carry the stamp — it must survive untouched.
+      const same = await repo.upsertOperator({
+        userId: u.id,
+        name: "Seen Op Renamed",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      expect(same.id).toBe(op.id);
+      expect((await repo.getOperator(op.id))!.inboxSeenAt).toBeTruthy();
+    });
+
     it("expediteRfq: concierge delivers delayed matches; terminal/repeat flips reject", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

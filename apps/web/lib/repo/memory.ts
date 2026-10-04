@@ -104,7 +104,16 @@ class MemoryRepo implements Repo {
     );
     const id = o.id ?? byUser?.id ?? uid("op");
     const prev = this.operators.get(id);
-    const op: Operator = { ...o, id, createdAt: prev?.createdAt ?? now() };
+    const op: Operator = {
+      ...o,
+      id,
+      createdAt: prev?.createdAt ?? now(),
+      // QA-416: the inbox stamp survives profile upserts (callers never pass
+      // it — upsert is a full-row shape).
+      ...(prev?.inboxSeenAt !== undefined
+        ? { inboxSeenAt: prev.inboxSeenAt }
+        : {}),
+    };
     this.operators.set(id, op);
     return op;
   }
@@ -512,6 +521,11 @@ class MemoryRepo implements Repo {
 
   async hasRfqMatch(rfqId: string, operatorId: string): Promise<boolean> {
     return this.matchVisible(rfqId, operatorId);
+  }
+
+  async markInboxSeen(operatorId: string): Promise<void> {
+    const op = this.operators.get(operatorId);
+    if (op) op.inboxSeenAt = now();
   }
 
   async createRfqMatches(

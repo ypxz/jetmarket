@@ -116,9 +116,22 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
   });
 
   await step('operator quotes the RFQ from the inbox', async () => {
-    await operator.goto('/app/rfqs');
+    // QA-416: the just-arrived RFQ badges "New"; the mount effect stamps
+    // inbox_seen_at so a reload shows none. Capturing the POST makes the
+    // stamp deterministic instead of racing the fire-and-forget fetch.
+    const [seenRes] = await Promise.all([
+      operator.waitForResponse(
+        (r) => r.url().includes('/api/operator/rfqs/seen') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      ),
+      operator.goto('/app/rfqs'),
+    ]);
+    expect(seenRes.ok()).toBeTruthy();
     const item = operator.locator(tidPrefix('rfq-')).filter({ hasText: LISTING_TITLE });
     await expect(item).toBeVisible();
+    await expect(item.locator(tidPrefix('rfq-new-'))).toBeVisible();
+    await operator.reload();
+    await expect(item.locator(tidPrefix('rfq-new-'))).toHaveCount(0);
     await item.locator(tidPrefix('quote-amount-')).fill(QUOTE_AMOUNT);
     await item.locator(tidPrefix('quote-send-')).click();
     await expect(item).toContainText(/quote sent|sent/i);

@@ -729,7 +729,8 @@
       "delayedTeaserCta": "Upgrade to Pro",
       "conciergeBadge": "Concierge",
       "filterAll": "All",
-      "filterNeeds": "Needs a quote"
+      "filterNeeds": "Needs a quote",
+      "newBadge": "New"
     },
     "billing": {
       "title": "Plan & billing",

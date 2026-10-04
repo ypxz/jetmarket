@@ -78,6 +78,7 @@ function toOperator(r: typeof operators.$inferSelect): Operator {
     fleetSummary: r.fleetSummary ?? "",
     verified: r.verified,
     plan: r.plan as Plan,
+    ...(r.inboxSeenAt !== null ? { inboxSeenAt: iso(r.inboxSeenAt) } : {}),
     createdAt: iso(r.createdAt),
   };
 }
@@ -926,6 +927,14 @@ export class DrizzleRepo implements Repo {
       )
       .limit(1);
     return r !== undefined;
+  }
+
+  async markInboxSeen(operatorId: string): Promise<void> {
+    if (!isUuid(operatorId)) return;
+    await this.db
+      .update(operators)
+      .set({ inboxSeenAt: new Date() })
+      .where(eq(operators.id, operatorId));
   }
 
   async createRfqMatches(

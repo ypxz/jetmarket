@@ -41,6 +41,8 @@ export const operators = pgTable(
     fleetSummary: text("fleet_summary"),
     verified: boolean("verified").notNull().default(false),
     plan: text("plan").notNull().default("free"),
+    // QA-416: last /app/rfqs render stamp — newer arrivals badge "New".
+    inboxSeenAt: timestamp("inbox_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
