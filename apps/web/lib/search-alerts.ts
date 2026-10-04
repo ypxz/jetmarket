@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { site } from "@jetmarket/config";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
+import { formatMoney } from "@/lib/format";
 import { logWarn } from "@/lib/log";
 import { listingFilterFor } from "@/lib/search";
 import { verticalConfig, verticalMessages } from "@/lib/vertical";
@@ -167,6 +168,7 @@ async function sendAlertDigest(
   origin: string,
   alert: SearchAlert,
   listings: Listing[],
+  priceDropFrom?: number,
 ): Promise<void> {
   const watch = searchAlertWatchId(alert.params);
   const targetUrl = searchAlertTargetUrl(origin, alert.params);
@@ -175,17 +177,25 @@ async function sendAlertDigest(
   )}`;
   const first = listings[0]?.title ?? "";
   // A watch row only ever matches its one listing — the mail is an update,
-  // not a "new match".
-  const subject = watch
-    ? `A listing you watch was updated — “${first}”`
-    : listings.length === 1
-      ? `New listing matches your saved search — “${first}”`
-      : `${listings.length} new listings match your saved search`;
-  const intro = watch
-    ? `A listing you watch on ${site.name} was updated:`
-    : `${listings.length === 1 ? "A new listing" : "New listings"} on ${site.name} match your saved search:`;
-  const lines = listings.map(
-    (l) => `${l.title} — ${origin}/listing/${l.id}`,
+  // not a "new match". QA-459: when the trigger was a price DECREASE the
+  // mail says so — old→new is the actionable signal (Kayak-style).
+  const drop = watch !== null && priceDropFrom !== undefined;
+  const subject = drop
+    ? `Price dropped — “${first}”`
+    : watch
+      ? `A listing you watch was updated — “${first}”`
+      : listings.length === 1
+        ? `New listing matches your saved search — “${first}”`
+        : `${listings.length} new listings match your saved search`;
+  const intro = drop
+    ? `The listing you watch on ${site.name} dropped in price:`
+    : watch
+      ? `A listing you watch on ${site.name} was updated:`
+      : `${listings.length === 1 ? "A new listing" : "New listings"} on ${site.name} match your saved search:`;
+  const lines = listings.map((l) =>
+    drop
+      ? `${l.title} — was ${formatMoney(priceDropFrom!, l.currency)}, now ${formatMoney(l.price, l.currency)} — ${origin}/listing/${l.id}`
+      : `${l.title} — ${origin}/listing/${l.id}`,
   );
   await emailProvider().send({
     to: alert.email,
@@ -279,6 +289,10 @@ export async function alertSavedSearches(
   repo: Repo,
   listing: Listing,
   origin: string,
+  /** QA-459: set to the pre-write price when this activation was a live
+   *  price DECREASE — watchers get "Price dropped {old} → {new}" instead
+   *  of the generic update. Raises and non-price edits stay generic. */
+  opts?: { priceDropFrom?: number },
 ): Promise<void> {
   try {
     const alerts = await repo.listSearchAlerts({
@@ -309,7 +323,7 @@ export async function alertSavedSearches(
           ...backlog.filter((l) => l.id !== listing.id),
         ];
         try {
-          await sendAlertDigest(origin, alert, batch);
+          await sendAlertDigest(origin, alert, batch, opts?.priceDropFrom);
           await repo.markSearchAlerted(alert.id);
         } catch (e) {
           logWarn("search_alerts.send_failed", {

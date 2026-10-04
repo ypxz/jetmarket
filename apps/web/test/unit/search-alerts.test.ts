@@ -378,7 +378,8 @@ describe("listing watch (QA-407)", () => {
     expect(cres.headers.get("location")).toContain("alert=confirmed");
     sendSpy.mockClear();
 
-    // Price edit on the watched listing → "was updated" mail.
+    // Price cut on the watched listing → QA-459 "Price dropped" mail
+    // (was "was updated" — the drop IS the actionable signal).
     const pres = await patchListing(
       new Request(`http://test.local/api/listings/${id}`, {
         method: "PATCH",
@@ -392,8 +393,10 @@ describe("listing watch (QA-407)", () => {
       (c: unknown[]) => toOf(c) === "watch@test.dev",
     );
     expect(mail).toBeDefined();
-    expect(subjectOf(mail!)).toContain("was updated");
+    expect(subjectOf(mail!)).toContain("Price dropped");
     expect(subjectOf(mail!)).toContain("Watched Jet");
+    expect((mail![0] as { text?: string }).text).toContain("was $12,000");
+    expect((mail![0] as { text?: string }).text).toContain("now $8,000");
     expect((mail![0] as { text?: string }).text).toContain(`/listing/${id}`);
 
     // An unrelated listing edit must NOT mail the watcher.
@@ -411,6 +414,29 @@ describe("listing watch (QA-407)", () => {
     expect(
       sendSpy.mock.calls.filter((c: unknown[]) => toOf(c) === "watch@test.dev"),
     ).toHaveLength(0);
+  });
+
+  it("a price RAISE keeps the generic 'was updated' copy (QA-459)", async () => {
+    const { id } = await activeListing("Raise Jet");
+    await confirmedAlert("raise-watch@test.dev", { watch: id });
+    sendSpy.mockClear();
+    // 12000 → 14000 is a raise — watchers hear the honest generic update,
+    // never 'Price dropped'.
+    const pres = await patchListing(
+      new Request(`http://test.local/api/listings/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ price: 14000 }),
+      }),
+      { params: Promise.resolve({ id }) },
+    );
+    expect(pres.status).toBe(200);
+    const mail = sendSpy.mock.calls.find(
+      (c: unknown[]) => toOf(c) === "raise-watch@test.dev",
+    );
+    expect(mail).toBeDefined();
+    expect(subjectOf(mail!)).toContain("was updated");
+    expect(subjectOf(mail!)).not.toContain("Price dropped");
   });
 
   it("rejects watch+filters (422) and unknown listing ids (404)", async () => {

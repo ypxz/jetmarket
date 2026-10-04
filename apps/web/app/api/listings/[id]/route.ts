@@ -139,10 +139,17 @@ export async function PATCH(
     (patch.attributes !== undefined ||
       patch.price !== undefined ||
       patch.title !== undefined);
+  // QA-459: a live price DECREASE reframes the watch mail — watchers get
+  // "Price dropped {old} → {new}", not the generic update. `listing` is the
+  // pre-write row; raises keep the update copy.
+  const priceDropFrom =
+    patch.price !== undefined && patch.price < listing.price
+      ? listing.price
+      : undefined;
   if (becameActive || liveEdit) {
     const fresh = await repo.getListing(id);
     if (fresh?.status === "active") {
-      await alertSavedSearches(repo, fresh, appOrigin(req));
+      await alertSavedSearches(repo, fresh, appOrigin(req), { priceDropFrom });
     }
   }
   // Archive ends every watch on the listing (QA-408): terminal state means

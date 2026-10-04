@@ -175,6 +175,65 @@ test('search alerts: subscribe → confirm → activation digest → unsubscribe
   }
 });
 
+test('listing watch: a live price cut mails "Price dropped" with old → new (QA-459)', async () => {
+  test.setTimeout(90_000);
+  const sql = postgres(testDb);
+  const WATCHER = `e2e-watch-${run}@jetmarket.local`;
+  const listingId = crypto.randomUUID();
+
+  try {
+    const op = await login(OP_EMAIL, 'operator');
+    const opRes = await op.post('/api/operators', {
+      data: { name: `E2E Watch Ops ${run}`, baseAirport: 'LSZH' },
+    });
+    expect(opRes.status()).toBe(201);
+    // $12,000 active charter straight in the DB.
+    await sql`
+      insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+      select ${listingId}, id, 'jets', 'charter', ${`E2E Drop Charter ${run}`},
+             1200000, 'USD', 'active', '{}', '[]'
+      from operators where user_id = (select id from users where email = ${OP_EMAIL})`;
+
+    // Watch the listing → confirm.
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+    });
+    const sub = await anon.post('/api/search-alerts', {
+      data: { email: WATCHER, params: { watch: listingId } },
+    });
+    expect(sub.status()).toBe(200);
+    const { devConfirmUrl } = (await sub.json()) as { devConfirmUrl?: string };
+    const confPath =
+      new URL(devConfirmUrl!).pathname + new URL(devConfirmUrl!).search;
+    const conf = await anon.get(confPath, { maxRedirects: 0 });
+    expect([301, 302, 303, 307, 308]).toContain(conf.status());
+
+    // Operator cuts the price → watcher gets the framed drop mail.
+    const cut = await op.patch(`/api/listings/${listingId}`, {
+      data: { price: 8000 },
+    });
+    expect(cut.status()).toBe(200);
+    let mail: string | null = null;
+    for (let i = 0; i < 20; i++) {
+      mail = latestMailTo(WATCHER);
+      if (mail && mail.includes('Price dropped')) break;
+      mail = null;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(mail, 'expected a Price dropped mail to the watcher').toBeTruthy();
+    expect(mail!).toContain(`E2E Drop Charter ${run}`);
+    expect(mail!).toContain('was $12,000');
+    expect(mail!).toContain('now $8,000');
+    expect(mail!).toContain(`/listing/${listingId}`);
+  } finally {
+    await sql`delete from search_alerts where email = ${WATCHER}`;
+    await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from operators where user_id in (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email in (${WATCHER}, ${OP_EMAIL})`;
+    await sql.end();
+  }
+});
+
 test('saved search: subscribe reports the live-match count + the UI shows it (QA-415)', async ({ page }) => {
   test.setTimeout(60_000);
   const sql = postgres(testDb);
