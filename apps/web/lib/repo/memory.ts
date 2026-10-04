@@ -1178,6 +1178,32 @@ class MemoryRepo implements Repo {
     return out;
   }
 
+  async listRfqReports(filter: {
+    vertical?: string;
+    rfqId?: string;
+    limit?: number;
+  }): Promise<RfqReport[]> {
+    // Reports carry no vertical — scope through the RFQ (drizzle joins).
+    const rows = [...this.rfqReports.values()].filter((r) => {
+      if (filter.rfqId !== undefined && r.rfqId !== filter.rfqId) return false;
+      if (filter.vertical !== undefined) {
+        const rfq = this.rfqs.get(r.rfqId);
+        if (!rfq || rfq.vertical !== filter.vertical) return false;
+      }
+      return true;
+    });
+    // Same-ms writes: pg's microsecond stamp keeps insert order; memory
+    // ties break by later-insert-first (newest-first, QA-467 parity).
+    return rows
+      .map((r, i) => ({ r, i }))
+      .sort(
+        (a, b) =>
+          b.r.createdAt.localeCompare(a.r.createdAt) || b.i - a.i,
+      )
+      .map((x) => x.r)
+      .slice(0, filter.limit ?? 100);
+  }
+
   async logAdminEvent(
     e: Omit<AdminEvent, "id" | "createdAt">,
   ): Promise<AdminEvent> {

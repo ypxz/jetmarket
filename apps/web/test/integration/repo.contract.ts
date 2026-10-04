@@ -3792,6 +3792,38 @@ export function repoContract(
       expect(counts[rfqA.id]).toBe(2);
       expect(counts[rfqB.id] ?? 0).toBe(0);
       expect(await repo.countRfqReports([])).toEqual({});
+
+      // QA-470: flag detail — vertical resolves through the RFQ, not a
+      // column on the report; newest-first; rfqId + limit filters.
+      const machineryRfq = await repo.createRfq({
+        vertical: "machinery",
+        listingId: null,
+        buyerEmail: `rrep-m-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `rrep-m-${tag}`,
+      });
+      const rMach = await repo.createRfqReport({
+        rfqId: machineryRfq.id,
+        reporterId: op1.id,
+        reason: "spam",
+      });
+      const jets = await repo.listRfqReports({ vertical: "jets" });
+      const jetIds = jets.map((r) => r.id);
+      // Newest-first ordering on this test's rows — prior runs' flags may
+      // also ride the feed, so compare the pair's relative order.
+      expect(jetIds.indexOf(r2!.id)).toBeLessThan(jetIds.indexOf(r1!.id));
+      // A machinery RFQ's flag never lands on the jets feed.
+      expect(jetIds).not.toContain(rMach!.id);
+      expect(
+        (await repo.listRfqReports({ vertical: "machinery" })).map(
+          (r) => r.id,
+        ),
+      ).toContain(rMach!.id);
+      const onA = await repo.listRfqReports({ rfqId: rfqA.id });
+      expect(onA.map((r) => r.id).sort()).toEqual([r1!.id, r2!.id].sort());
+      expect(
+        (await repo.listRfqReports({ vertical: "jets", limit: 1 })).length,
+      ).toBe(1);
     });
   });
 }

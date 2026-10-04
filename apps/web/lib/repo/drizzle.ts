@@ -1785,6 +1785,26 @@ export class DrizzleRepo implements Repo {
     return Object.fromEntries(rows.map((r) => [r.rfqId, r.n]));
   }
 
+  async listRfqReports(filter: {
+    vertical?: string;
+    rfqId?: string;
+    limit?: number;
+  }): Promise<RfqReport[]> {
+    const conds = [];
+    if (filter.rfqId) conds.push(eq(rfqReports.rfqId, filter.rfqId));
+    // Reports carry no vertical — resolve through the RFQ (QA-470, same
+    // rule as listing reports through their listing).
+    if (filter.vertical) conds.push(eq(rfqs.vertical, filter.vertical));
+    const rows = await this.db
+      .select({ report: rfqReports })
+      .from(rfqReports)
+      .innerJoin(rfqs, eq(rfqReports.rfqId, rfqs.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(rfqReports.createdAt))
+      .limit(Math.min(filter.limit ?? 100, 200));
+    return rows.map((r) => toRfqReport(r.report));
+  }
+
   async logAdminEvent(
     e: Omit<AdminEvent, "id" | "createdAt">,
   ): Promise<AdminEvent> {

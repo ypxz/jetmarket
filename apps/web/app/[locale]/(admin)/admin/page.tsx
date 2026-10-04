@@ -63,7 +63,7 @@ export default async function AdminPage({
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? Math.min(rawPage, dealPages) : 1;
   // Wave 2: the lookups that hang off wave-1 rows.
-  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows, rfqFlagCounts] =
+  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows, rfqFlagCounts, rfqFlagRows] =
     await Promise.all([
       repo.listDeals({
         limit: SEARCH_PAGE_SIZE,
@@ -93,7 +93,32 @@ export default async function AdminPage({
       // QA-469: operator flags on the RFQ queue — one grouped count per
       // row powers the "flagged ×N" badge (RFQ side of buyer reports).
       repo.countRfqReports(modRfqs.map((r) => r.id)),
+      // QA-470: the flag detail behind the badge — reason/note/reporter
+      // rows a moderator reads before spam-marking.
+      repo.listRfqReports({ vertical: verticalSlug(), limit: 30 }),
     ]);
+  // QA-470: flag rows join their RFQ (status + buyer), the reporter's
+  // email, and the RFQ's listing title in one batched wave.
+  const [rfqFlagRfqRows, rfqFlagReporterRows] = await Promise.all([
+    repo.listRfqs({ ids: [...new Set(rfqFlagRows.map((r) => r.rfqId))] }),
+    repo.listUsers([...new Set(rfqFlagRows.map((r) => r.reporterId))]),
+  ]);
+  const rfqFlagListingRows = await repo.listListings({
+    ids: [
+      ...new Set(
+        rfqFlagRfqRows
+          .map((r) => r.listingId)
+          .filter((x): x is string => x !== null),
+      ),
+    ],
+  });
+  const rfqFlagRfqs = new Map(rfqFlagRfqRows.map((r) => [r.id, r] as const));
+  const rfqFlagListings = new Map(
+    rfqFlagListingRows.map((l) => [l.id, l.title] as const),
+  );
+  const rfqFlagEmails = new Map(
+    rfqFlagReporterRows.map((u) => [u.id, u.email] as const),
+  );
   // QA-467: audit rows show who did it — resolve admin emails in one go.
   const modEventUserRows = await repo.listUsers([
     ...new Set(
@@ -466,6 +491,64 @@ export default async function AdminPage({
             ) : null}
           </tbody>
         </table></div>
+      </section>
+
+      {/* QA-470: the flag detail behind each RFQ row's "flagged ×N" badge —
+          reason/note/reporter for the moderator's spam call. Read-only:
+          enforcement stays on the RFQ row (spam-mark, buyer block). */}
+      <section className="mt-10" data-testid="admin-rfq-reports">
+        <h2 className="text-lg font-semibold">
+          {t("rfqReports", { count: rfqFlagRows.length })}
+        </h2>
+        {rfqFlagRows.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{t("noRfqReports")}</p>
+        ) : (
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colBuyer")}</th>
+              <th className="py-2 pr-4">{t("colListing")}</th>
+              <th className="py-2 pr-4">{t("colStatus")}</th>
+              <th className="py-2 pr-4">{t("colReason")}</th>
+              <th className="py-2 pr-4">{t("colNote")}</th>
+              <th className="py-2 pr-4">{t("colReporter")}</th>
+              <th className="py-2">{t("colFiled")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rfqFlagRows.map((r) => {
+              const rfq = rfqFlagRfqs.get(r.rfqId);
+              return (
+                <tr key={r.id} data-testid={`rfq-report-${r.id}`}>
+                  <td className="py-2 pr-4 font-medium">
+                    {rfq?.buyerEmail ?? "—"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    {(rfq?.listingId
+                      ? rfqFlagListings.get(rfq.listingId)
+                      : undefined) ?? "—"}
+                  </td>
+                  <td className="py-2 pr-4" data-testid={`rfq-report-status-${r.id}`}>
+                    {rfq?.status ?? "—"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <Badge variant="warning" data-testid={`rfq-report-reason-${r.id}`}>
+                      {r.reason}
+                    </Badge>
+                  </td>
+                  <td className="max-w-60 truncate py-2 pr-4">{r.note ?? ""}</td>
+                  <td className="py-2 pr-4">
+                    {rfqFlagEmails.get(r.reporterId) ?? "—"}
+                  </td>
+                  <td className="py-2">
+                    {new Date(r.createdAt).toLocaleDateString("en-US")}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table></div>
+        )}
       </section>
 
       {/* QA-466: the blocked-address registry — the toggle on RFQ rows

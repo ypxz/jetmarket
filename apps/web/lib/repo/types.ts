@@ -821,6 +821,14 @@ export interface Repo {
   }): Promise<RfqReport | null>;
   /** Admin RFQ rows show a "flagged ×N" badge — one grouped count. */
   countRfqReports(rfqIds: string[]): Promise<Record<string, number>>;
+  /** QA-470: the badge counts but a moderator needs the WHY — newest-
+   *  first flag detail. Reports carry no vertical column: the scope
+   *  resolves through the rfq join (same rule as listing reports). */
+  listRfqReports(filter: {
+    vertical?: string;
+    rfqId?: string;
+    limit?: number;
+  }): Promise<RfqReport[]>;
 
   /** QA-467: append-only moderation audit trail. Every enforcement route
    *  appends after its write (non-fatal — never lets auditability fail a

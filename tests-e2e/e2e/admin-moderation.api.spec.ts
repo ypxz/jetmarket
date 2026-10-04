@@ -404,10 +404,13 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
       })
     ).status(),
   ).toBe(404);
-  // Admin RFQ rows carry the flag count as a badge…
-  expect(await (await admin.get('/en/admin')).text()).toContain(
-    `admin-rfq-flagged-${freshId}`,
-  );
+  const flagId = ((await rfqFlag.json()) as { id: string }).id;
+  // Admin RFQ rows carry the flag count as a badge, and QA-470's flag
+  // detail section shows the WHY (reason badge, reporter, live status).
+  const adminHtml = await (await admin.get('/en/admin')).text();
+  expect(adminHtml).toContain(`admin-rfq-flagged-${freshId}`);
+  expect(adminHtml).toContain(`rfq-report-${flagId}`);
+  expect(adminHtml).toContain(`rfq-report-reason-${flagId}`);
   // …and the flag never blocks enforcement — spam-mark still flips it.
   const spammed = await admin.post(`/api/admin/rfqs/${freshId}/status`, {
     data: { status: 'spam' },
