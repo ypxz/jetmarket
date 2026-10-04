@@ -192,6 +192,9 @@ export interface Quote {
    *  quote with updatedAt !== createdAt was revised — the buyer marks it
    *  "Updated" (QA-445). */
   updatedAt: string;
+  /** Buyer read receipt (QA-506): set the first time their inbox GET
+   *  renders the quote; cleared on revise — new content is unseen again. */
+  buyerSeenAt?: string;
 }
 
 export interface Deal {
@@ -778,6 +781,12 @@ export interface Repo {
     operatorId: string,
     patch: { amount: number; currency: string; message: string },
   ): Promise<Quote | null>;
+
+  /** Buyer read receipt (QA-506): stamps buyer_seen_at on the given quotes
+   *  where still unset — the buyer inbox GET reports which quotes it just
+   *  rendered. Unknown/non-uuid ids are ignored; already-stamped rows keep
+   *  their first-view timestamp. */
+  markQuotesBuyerSeen(quoteIds: string[]): Promise<void>;
 
   /** Job-queue visibility for /admin/jobs (QA-102). Memory mode runs its
    *  fan-out inline — it has no queue, so these are always empty/no-ops. */

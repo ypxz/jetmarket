@@ -95,6 +95,14 @@ export async function GET(req: Request) {
     repo.ratingSummaryPerOperator(opIds),
   ]);
   const dealByQuoteId = new Map(dealByQuote.map((d) => [d.quoteId, d]));
+  // QA-506 read receipts: this GET is the buyer's view event — stamp the
+  // quotes it returns so ops see a "seen" chip on their sent quote.
+  // Non-fatal: a missed stamp degrades a signal, never the inbox itself.
+  try {
+    await repo.markQuotesBuyerSeen(quoteRows.map((q) => q.id));
+  } catch {
+    /* best-effort — never fail an inbox read on a receipt write */
+  }
   // QA-449: post-close contact reveal — once a quote is ACCEPTED the deal
   // is closed and the buyer legitimately reaches the operator directly
   // (the close mail already carries this address; the page shouldn't make

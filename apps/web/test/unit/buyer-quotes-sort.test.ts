@@ -85,4 +85,70 @@ describe("GET /api/buyer/quotes ordering (QA-414)", () => {
       expensive.id,
     ]);
   });
+
+  it("GET stamps buyer_seen_at on rendered quotes; a second GET keeps the first stamp (QA-506)", async () => {
+    const repo = await getMemoryRepo();
+    const tag = Math.random().toString(36).slice(2, 8);
+    const op = await repo.upsertOperator({
+      userId: (await repo.createUser(`op-${tag}@test.dev`, "operator")).id,
+      name: `Ops ${tag}`,
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    const listing = await repo.createListing({
+      operatorId: op.id,
+      vertical: "jets",
+      type: "charter",
+      title: `Jet ${tag}`,
+      price: 9000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const buyerEmail = `buyer-${tag}@test.dev`;
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail,
+      fields: {},
+    });
+    const quote = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: op.id,
+      amount: 5000,
+      currency: "USD",
+      message: "",
+    });
+
+    // The buyer's inbox GET is the view event — this is the stamp.
+    const res = await buyerQuotes(get(buyerEmail, rfq.accessToken));
+    expect(res.status).toBe(200);
+    const first = (await repo.getQuote(quote.id))?.buyerSeenAt;
+    expect(first).toBeDefined();
+
+    // Re-loads don't move the receipt — it records first view, not last.
+    const again = await buyerQuotes(get(buyerEmail, rfq.accessToken));
+    expect(again.status).toBe(200);
+    expect((await repo.getQuote(quote.id))?.buyerSeenAt).toBe(first);
+
+    // A quote minted AFTER that view stays unseen until the next GET —
+    // the op's "unread" signal survives inbox revisits.
+    const late = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: (await repo.upsertOperator({
+        userId: (await repo.createUser(`op2-${tag}@test.dev`, "operator")).id,
+        name: `Ops2 ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      })).id,
+      amount: 4000,
+      currency: "USD",
+      message: "",
+    });
+    expect((await repo.getQuote(late.id))?.buyerSeenAt).toBeUndefined();
+  });
 });

@@ -191,6 +191,21 @@ test('buyer session: inbox + accept/close/rate without the emailed token (QA-474
     expect(
       (await publicCtx.get('/api/operator/deals/export')).status(),
     ).toBe(401);
+
+    // 8. QA-506 read receipts: the step-1 inbox GET stamped the quotes it
+    //    rendered; q3 (minted after, never re-viewed) stays unseen, and the
+    //    op inbox chips the seen quote only.
+    const [seen1] = await sql`
+      select buyer_seen_at from quotes where id = ${q1Id}`;
+    expect(seen1?.buyer_seen_at).not.toBeNull();
+    const [seen3] = await sql`
+      select buyer_seen_at from quotes where id = ${q3Id}`;
+    expect(seen3?.buyer_seen_at).toBeNull();
+    const opInbox = await operator.get('/app/rfqs');
+    expect(opInbox.ok()).toBeTruthy();
+    const opHtml = await opInbox.text();
+    expect(opHtml).toContain(`quote-seen-${q1Id}`);
+    expect(opHtml).not.toContain(`quote-seen-${q3Id}`);
   } finally {
     for (const rid of rfqIds) {
       await sql`delete from rfq_matches where rfq_id = ${rid}`;

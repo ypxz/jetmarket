@@ -1057,6 +1057,8 @@
       "sending": "Sending…",
       "failed": "failed",
       "listingExpired": "listing expired",
+      "seenByBuyer": "seen",
+      "seenByBuyerTitle": "Buyer viewed this quote",
       "listingFallback": "listing",
       "withdraw": "Withdraw",
       "withdrawing": "Withdrawing…",

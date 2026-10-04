@@ -1057,6 +1057,8 @@
       "sending": "Wird gesendet…",
       "failed": "fehlgeschlagen",
       "listingExpired": "Inserat abgelaufen",
+      "seenByBuyer": "gesehen",
+      "seenByBuyerTitle": "Käufer hat dieses Angebot angesehen",
       "listingFallback": "Inserat",
       "withdraw": "Zurückziehen",
       "withdrawing": "Wird zurückgezogen…",

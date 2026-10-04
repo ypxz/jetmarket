@@ -235,6 +235,9 @@ export const quotes = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // QA-506: stamped at the buyer's inbox GET; cleared by reviseQuote —
+    // a revised quote is new content the buyer hasn't seen yet.
+    buyerSeenAt: timestamp("buyer_seen_at", { withTimezone: true }),
   },
   (t) => [
     // One *live* quote per (rfq, operator) — terminal statuses don't count,

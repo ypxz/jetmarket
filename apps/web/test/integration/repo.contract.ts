@@ -473,6 +473,63 @@ export function repoContract(
       expect((await repo.getQuote(quote2.id))?.status).toBe("sent");
     });
 
+    it("markQuotesBuyerSeen stamps first-view once and revise clears it (QA-506)", async () => {
+      const repo = await factory();
+      const tag = `seen-${Date.now()}`;
+      const op = await repo.upsertOperator({
+        userId: (await repo.createUser(`op-${tag}@test.dev`, "operator")).id,
+        name: "Seen Air",
+        baseAirport: "ZRH",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Seen Jet ${tag}`,
+        price: 100,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `seen-${tag}@test.dev`,
+        fields: { ref: "seen" },
+        dedupeKey: `seen-${tag}`,
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 30000,
+        currency: "USD",
+        message: "",
+      });
+      expect(quote.buyerSeenAt).toBeUndefined();
+
+      // First stamp lands; junk ids are ignored; a second stamp keeps the
+      // first timestamp (first-view semantics, not last-view).
+      await repo.markQuotesBuyerSeen([quote.id, "nope", quote.id]);
+      const stamped = (await repo.getQuote(quote.id))?.buyerSeenAt;
+      expect(stamped).toBeDefined();
+      await repo.markQuotesBuyerSeen([quote.id]);
+      expect((await repo.getQuote(quote.id))?.buyerSeenAt).toBe(stamped);
+
+      // A revision is new content — the receipt resets so the op sees the
+      // quote as unread until the buyer re-opens their inbox.
+      const revised = await repo.reviseQuote(quote.id, op.id, {
+        amount: 29000,
+        currency: "USD",
+        message: "re-priced",
+      });
+      expect(revised?.buyerSeenAt).toBeUndefined();
+      await repo.markQuotesBuyerSeen([quote.id]);
+      expect((await repo.getQuote(quote.id))?.buyerSeenAt).toBeDefined();
+    });
+
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {
       const repo = await factory();
       const tag = `cas-${Date.now()}`;

@@ -982,9 +982,19 @@ class MemoryRepo implements Repo {
       currency: patch.currency,
       message: patch.message,
       updatedAt: now(),
+      // QA-506: revised content is unseen — the buyer saw the old terms.
+      buyerSeenAt: undefined,
     };
     this.quotes.set(id, next);
     return next;
+  }
+
+  async markQuotesBuyerSeen(quoteIds: string[]) {
+    const stamp = now();
+    for (const id of quoteIds) {
+      const q = this.quotes.get(id);
+      if (q && !q.buyerSeenAt) this.quotes.set(id, { ...q, buyerSeenAt: stamp });
+    }
   }
 
   async expireRfqs(cutoff: string, vertical?: string) {

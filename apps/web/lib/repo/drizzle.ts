@@ -138,6 +138,7 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
     status: r.status as QuoteStatus,
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
+    ...(r.buyerSeenAt ? { buyerSeenAt: iso(r.buyerSeenAt) } : {}),
   };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
@@ -1564,6 +1565,8 @@ export class DrizzleRepo implements Repo {
         currency: patch.currency,
         message: patch.message,
         updatedAt: new Date(),
+        // QA-506: revised content is unseen — the buyer saw the old terms.
+        buyerSeenAt: null,
       })
       .where(
         and(
@@ -1575,6 +1578,18 @@ export class DrizzleRepo implements Repo {
       )
       .returning();
     return rows[0] ? toQuote(rows[0]) : null;
+  }
+
+  async markQuotesBuyerSeen(quoteIds: string[]) {
+    // Parity with memory impl: non-uuid ids silently skip.
+    const ids = quoteIds.filter(isUuid);
+    if (ids.length === 0) return;
+    await this.db
+      .update(quotes)
+      .set({ buyerSeenAt: new Date() })
+      .where(
+        and(inArray(quotes.id, ids), isNull(quotes.buyerSeenAt)),
+      );
   }
 
   async listJobs(filter?: {

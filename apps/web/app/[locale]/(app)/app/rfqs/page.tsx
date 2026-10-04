@@ -375,6 +375,15 @@ export default async function RfqInboxPage({
                           >
                             {tc(`quoteState.${q.status}`)}
                           </Badge>
+                          {q.buyerSeenAt ? (
+                            <Badge
+                              variant="outline"
+                              data-testid={`quote-seen-${q.id}`}
+                              title={t("seenByBuyerTitle")}
+                            >
+                              {t("seenByBuyer")}
+                            </Badge>
+                          ) : null}
                           {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
                             <>
                               <ReviseQuote
