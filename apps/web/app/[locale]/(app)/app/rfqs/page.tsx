@@ -1,5 +1,5 @@
 import { Badge } from "@jetmarket/ui";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Pager } from "@/components/pager";
 import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
@@ -25,6 +25,7 @@ export default async function RfqInboxPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const locale = await getLocale();
   const params = await searchParams;
   const t = await getTranslations("app.rfqs");
   const tc = await getTranslations("common");
@@ -323,8 +324,7 @@ export default async function RfqInboxPage({
                     >
                       ·{" "}
                       {t("repliesClose", {
-                        date: new Date(r.deadlineAt).toLocaleDateString(
-                          "en-US",
+                        date: new Date(r.deadlineAt).toLocaleDateString(locale,
                           { month: "short", day: "numeric" },
                         ),
                       })}
@@ -355,7 +355,7 @@ export default async function RfqInboxPage({
                         className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
                       >
                         <span className="font-medium">
-                          {formatMoney(q.amount, q.currency)}
+                          {formatMoney(q.amount, q.currency, locale)}
                         </span>
                         <span className="flex items-center gap-2">
                           <Badge

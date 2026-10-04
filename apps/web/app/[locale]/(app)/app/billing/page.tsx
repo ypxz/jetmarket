@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { plans } from "@jetmarket/config";
 import { currentUser } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
@@ -14,6 +14,7 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const locale = await getLocale();
   const t = await getTranslations("app.billing");
   const tc = await getTranslations("checkout");
   const vertical = verticalConfig();
@@ -62,14 +63,14 @@ export default async function BillingPage({
             {t("freeLine", { limit: FREE_LISTING_LIMIT })}
           </p>
           <p className="mt-4 text-2xl font-semibold">
-            {formatMoney(0, billingCurrency)}
+            {formatMoney(0, billingCurrency, locale)}
           </p>
         </div>
         <div className="rounded-md border-2 border-primary p-5">
           <h2 className="font-semibold">{t("pro")}</h2>
           <p className="mt-1 text-sm text-muted">{t("proLine")}</p>
           <p className="mt-4 text-2xl font-semibold">
-            {formatMoney(PRO_PLAN_PRICE_USD, billingCurrency)}
+            {formatMoney(PRO_PLAN_PRICE_USD, billingCurrency, locale)}
             <span className="text-sm font-normal text-muted">{t("perMonth")}</span>
           </p>
           {!operator ? (

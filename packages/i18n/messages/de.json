@@ -1,0 +1,994 @@
+{
+  "common": {
+    "marketplaceNotice": "JetMarket ist ein Marktplatz, kein Makler oder Betreiber. Verträge kommen zwischen Käufer und Anbieter zustande.",
+    "verified": "Verifizierter Anbieter",
+    "unverified": "Nicht verifizierter Anbieter",
+    "loading": "Wird geladen…",
+    "error": "Etwas ist schiefgelaufen",
+    "retry": "Erneut versuchen",
+    "backToSearch": "← Zurück zur Suche",
+    "currencyPerMonth": "/Monat",
+    "quoteState": {
+      "sent": "gesendet",
+      "accepted": "angenommen",
+      "declined": "abgelehnt",
+      "withdrawn": "zurückgezogen"
+    },
+    "rfqState": {
+      "open": "offen",
+      "matched": "in Zustellung",
+      "quoted": "angeboten",
+      "closed": "geschlossen",
+      "expired": "abgelaufen",
+      "spam": "geschlossen"
+    },
+    "invoiceState": {
+      "pending": "ausstehend",
+      "invoiced": "fakturiert",
+      "paid": "bezahlt",
+      "void": "storniert"
+    },
+    "pager": {
+      "label": "Seitennavigation",
+      "prev": "Zurück",
+      "next": "Weiter",
+      "pageOf": "Seite {page} von {pages}"
+    }
+  },
+  "nav": {
+    "myQuotes": "Meine Angebote",
+    "operator": "Anbieter",
+    "admin": "Admin",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "design": "Design",
+    "theme": "Dunkelmodus umschalten",
+    "account": "Konto",
+    "language": "Sprache: {language}",
+    "search": "Suche"
+  },
+  "footer": {
+    "tos": "Nutzungsbedingungen",
+    "privacy": "Datenschutz",
+    "imprint": "Impressum",
+    "contact": "Kontakt",
+    "copyright": "© {year} {name}. Alle Rechte vorbehalten."
+  },
+  "search": {
+    "title": "Inserate durchsuchen",
+    "placeholder": "Modell, Strecke, Anbieter suchen…",
+    "submit": "Filter anwenden",
+    "reset": "Zurücksetzen",
+    "results": "{count, plural, =0 {Keine Inserate} one {# Inserat} other {# Inserate}}",
+    "emptyTitle": "Keine passenden Inserate",
+    "emptyBody": "Lockern Sie die Filter oder probieren Sie eine breitere Kategorie — täglich kommen neue Inserate dazu.",
+    "min": "Min",
+    "max": "Max",
+    "dateFrom": "Von",
+    "dateTo": "Bis",
+    "sortLabel": "Sortieren nach",
+    "sortNewest": "Neueste zuerst",
+    "sortPriceAsc": "Preis: aufsteigend",
+    "sortPriceDesc": "Preis: absteigend",
+    "sortRating": "Beste Bewertung",
+    "alertTitle": "Benachrichtige mich",
+    "alertEmail": "Ihre E-Mail",
+    "alertSubmit": "Diese Suche speichern",
+    "alertSending": "Wird gespeichert…",
+    "alertSent": "Gespeichert — bestätigen Sie die Benachrichtigung per E-Mail.",
+    "alertError": "Benachrichtigung konnte nicht gespeichert werden — bitte erneut versuchen.",
+    "alertConfirmed": "Benachrichtigung bestätigt — neue passende Inserate kommen per E-Mail.",
+    "alertUnsubscribed": "Suchbenachrichtigung abbestellt.",
+    "alertInvalid": "Dieser Benachrichtigungs-Link ist ungültig oder wurde bereits verwendet.",
+    "alertFreqInstant": "Sofort",
+    "alertFreqDaily": "Tägliche Zusammenfassung",
+    "alertMatched": "Aktuell live: „{count}“",
+    "latestTitle": "Neueste Inserate",
+    "verifiedOnly": "Nur verifizierte Anbieter",
+    "minRating": "Nur 4★+ bewertet"
+  },
+  "seo": {
+    "listingsHeading": "Verfügbare Inserate",
+    "browseAll": "Alle passenden Inserate durchsuchen",
+    "genericIntro": "Geprüfte Anbieter auf dieser Strecke — einmal anfragen, Angebote vergleichen.",
+    "emptyTitle": "Auf dieser Strecke gibt es noch keine aktiven Inserate",
+    "emptyBody": "Schauen Sie bald wieder vorbei — Anbieter inserieren auf dieser Strecke regelmäßig.",
+    "results": "{count, plural, =0 {Keine Inserate} one {# Inserat} other {# Inserate}}"
+  },
+  "listing": {
+    "gallery": "Fotos",
+    "photoPlaceholder": "Foto {n}",
+    "attributes": "Flugzeugdaten",
+    "operator": "Anbieter",
+    "basedAt": "Stationiert in {airport}",
+    "rfqCta": "Angebote für dieses Inserat anfragen",
+    "back": "← Zurück zur Suche",
+    "metaDescription": "{title} — {price} auf {siteName}. Fordern Sie ein Angebot vom Anbieter an.",
+    "similar": "Ähnliche Inserate",
+    "watchTitle": "Dieses Inserat beobachten",
+    "watchEmail": "E-Mail für Updates",
+    "watchSubmit": "Beobachten",
+    "watchSending": "Wird gespeichert…",
+    "watchSent": "Beobachtet — bitte bestätigen Sie per E-Mail.",
+    "watchError": "Beobachtung konnte nicht gespeichert werden — bitte erneut versuchen.",
+    "watchFreqInstant": "Sofort",
+    "watchFreqDaily": "Tägliche Zusammenfassung",
+    "watchConfirmed": "Sie beobachten dieses Inserat — wir mailen Ihnen Änderungen.",
+    "watchCount": "{count, plural, one {# Käufer beobachtet dieses Inserat} other {# Käufer beobachten dieses Inserat}}",
+    "viewCount": "{count, plural, one {# Aufruf} other {# Aufrufe}}",
+    "reportToggle": "Dieses Inserat melden",
+    "reportMisleading": "Irreführend oder unzutreffend",
+    "reportUnavailable": "Nicht mehr verfügbar",
+    "reportScam": "Möglicher Betrug",
+    "reportOther": "Sonstiges",
+    "reportNotePlaceholder": "Optionale Details für unser Team",
+    "reportSubmit": "Meldung senden",
+    "reportSending": "Wird gesendet…",
+    "reportSent": "Meldung erhalten — unser Team prüft dieses Inserat."
+  },
+  "rfq": {
+    "title": "Angebot anfragen",
+    "subtitle": "Sagen Sie den Anbietern, was Sie brauchen — sie antworten mit verbindlichen Angeboten.",
+    "forListing": "Für: {title}",
+    "groups": {
+      "route": "Strecke",
+      "dates": "Termine",
+      "contact": "Kontakt"
+    },
+    "submit": "Anfrage senden",
+    "sending": "Wird gesendet…",
+    "thanksTitle": "Anfrage erhalten",
+    "thanksBody": "Ihre Anfrage ging an den Anbieter des Inserats und passende Anbieter. Angebote erscheinen auf Ihrer Angebotsseite und kommen per E-Mail.",
+    "thanksRef": "Referenz: {id}",
+    "viewQuotes": "Meine Anfragen & Angebote ansehen",
+    "honeypotHint": "Dieses Feld leer lassen",
+    "error": "Ihre Anfrage konnte nicht gesendet werden — prüfen Sie die Felder und versuchen Sie es erneut.",
+    "rateLimited": "Zu viele Anfragen — bitte später erneut versuchen.",
+    "repostNotice": "Aus Ihrer früheren Anfrage vorbefüllt — prüfen und senden.",
+    "concierge": {
+      "title": "Schneller Antworten erhalten",
+      "body": "Concierge stellt Ihre Anfrage sofort jedem passenden Anbieter zu — auch Anbietern im Gratis-Tarif, die sie sonst erst nach der Wartezeit sähen.",
+      "cta": "Meine Anfrage beschleunigen — {price}",
+      "ctaBusy": "Wird verarbeitet…",
+      "done": "Concierge aktiv — Ihre Anfrage liegt jetzt bei jedem passenden Anbieter im Posteingang.",
+      "error": "Zahlung fehlgeschlagen — bitte erneut versuchen."
+    }
+  },
+  "quotes": {
+    "title": "Meine Anfragen & Angebote",
+    "emailLabel": "E-Mail aus Ihrer Anfrage",
+    "load": "Laden",
+    "empty": "Keine Anfragen für diese E-Mail.",
+    "waiting": "Warte auf Anbieter-Angebote…",
+    "accept": "Annehmen",
+    "accepted": "Angenommen — Abschluss {id} geschlossen. Der Anbieter erhält die Erfolgsgebühr in Rechnung.",
+    "by": "von {name}",
+    "bestPrice": "Bester Preis",
+    "viewProfile": "Profil ansehen →",
+    "updated": "Aktualisiert",
+    "staleOffer": "Vor Ihrer letzten Aktualisierung gesendet",
+    "dealsCount": "{count, plural, one {# abgeschlossener Auftrag} other {# abgeschlossene Aufträge}}",
+    "decline": "Ablehnen",
+    "operatorUnavailable": "Dieser Anbieter ist nicht verfügbar — sein Angebot kann nicht angenommen werden.",
+    "declinedMsg": "Angebot abgelehnt.",
+    "needLink": "Öffnen Sie den Link aus Ihrer Anfrage- oder Angebots-E-Mail, um Ihre Angebote zu sehen.",
+    "needEmail": "Bitte zuerst Ihre E-Mail eingeben.",
+    "resend": "Meine Links per E-Mail senden",
+    "resendSent": "Falls zu dieser E-Mail Anfragen existieren, sind die Links unterwegs.",
+    "close": "Anfrage schließen",
+    "extend": "7 Tage verlängern",
+    "sortEnding": "Endet zuerst",
+    "offerCount": "{count, plural, one {# Angebot} other {# Angebote}}",
+    "reachOperator": "Abschluss geschlossen — erreichen Sie {name} direkt unter",
+    "ratePrompt": "Diesen Abschluss bewerten:",
+    "ratedMsg": "Sie haben diesen Abschluss mit {rating}/5 bewertet.",
+    "ratingAvg": "★ {avg} ({count, plural, one {# Bewertung} other {# Bewertungen}})",
+    "extendedMsg": "Anfrage verlängert — sie schließt nun in einer Woche.",
+    "edit": "Anfrage bearbeiten",
+    "saveEdit": "Änderungen speichern",
+    "cancelEdit": "Abbrechen",
+    "amendedMsg": "Anfrage aktualisiert — Anbieter, die sie bereits erhalten hatten, wurden benachrichtigt.",
+    "closedMsg": "Anfrage geschlossen — Anbieter mit offenen Angeboten wurden benachrichtigt.",
+    "conciergeBadge": "Concierge",
+    "concierge": {
+      "cta": "Beschleunigen — {price}",
+      "ctaBusy": "Wird verarbeitet…",
+      "done": "Concierge aktiv",
+      "error": "Zahlung fehlgeschlagen"
+    },
+    "deliveredTo": "In {count, plural, one {# Anbieter-Posteingang} other {# Anbieter-Posteingängen}}",
+    "closesOn": "Schließt am {date}",
+    "alertsTitle": "Ihre gespeicherten Suchen",
+    "alertsAll": "alle Inserate",
+    "alertOpen": "Suche öffnen",
+    "alertOff": "Deaktivieren",
+    "alertOn": "Aktivieren",
+    "alertState": {
+      "pending": "Wartet auf Bestätigung",
+      "active": "Aktiv",
+      "off": "Aus"
+    },
+    "alertFreq": {
+      "instant": "sofort",
+      "daily": "tägliche Zusammenfassung"
+    },
+    "alertWatch": "Beobachtet ein Inserat",
+    "alertOpenListing": "Inserat öffnen",
+    "repost": "Erneut anfragen"
+  },
+  "design": {
+    "title": "Designsystem",
+    "subtitle": "Jedes Primitiv und jeder Block, aus tokens.css gerendert",
+    "primitives": "Primitive"
+  },
+  "legal": {
+    "tos": {
+      "title": "Nutzungsbedingungen",
+      "updated": "Zuletzt aktualisiert: {date}",
+      "sections": [
+        {
+          "h": "1. Der Dienst",
+          "body": "{entity} betreibt einen Online-Marktplatz, der Käufer mit unabhängigen Verkäufern und Anbietern verbindet. {entity} ist Marktplatz, nicht Makler, Händler oder Beförderer: Er besitzt, betreibt, prüft oder verkauft die gelisteten Objekte nicht und ist niemals Vertragspartei eines Geschäfts zwischen Nutzern."
+        },
+        {
+          "h": "2. Konten",
+          "body": "Sie melden sich per E-Mail-Magic-Link an — es wird kein Passwort gespeichert. Sie sind für Aktivitäten unter Ihrem Konto und für die Richtigkeit Ihrer Kontaktdaten verantwortlich. Anbieterkonten können manuell verifiziert werden, bevor ihre Inserate Anfragen ohne Verzögerung erhalten."
+        },
+        {
+          "h": "3. Inserate und Angebotsanfragen",
+          "body": "Anbieter inserieren Objekte und Käufer senden Angebotsanfragen (RFQs). {entity} leitet Anfragen an passende Anbieter weiter, die mit Angeboten antworten. Inserate und Angebote sind ausschließlich Aussagen des Anbieters; {entity} prüft weder deren Richtigkeit, Rechtmäßigkeit noch Verfügbarkeit."
+        },
+        {
+          "h": "4. Verträge und Gebühren",
+          "body": "Ein Vertrag kommt ausschließlich zwischen Käufer und Anbieter zustande, wenn ein Angebot angenommen wird. Verkäufer zahlen {entity} eine Erfolgsgebühr auf geschlossene Abschlüsse gemäß dem veröffentlichten Gebührenverzeichnis; Käufer zahlen {entity} nichts. Erfolgsgebühren werden dem Anbieter nach Abschlussbestätigung in Rechnung gestellt."
+        },
+        {
+          "h": "5. Zulässige Nutzung",
+          "body": "Sie dürfen keine rechtswidrigen, irreführenden oder betrügerischen Inserate veröffentlichen, keine Spam- oder automatisierten Anfragen senden, den Dienst nicht scrapen und weder Identität noch Bestand falsch darstellen. {entity} kann Konten sperren und Inhalte entfernen, die gegen diese Bedingungen verstoßen."
+        },
+        {
+          "h": "6. Haftung",
+          "body": "Der Dienst wird „wie besehen“ bereitgestellt. {entity} haftet nicht für Leistungen der Anbieter, den Zustand von Objekten, Ergebnisse von Transaktionen oder indirekte Schäden. Nichts in diesen Bedingungen schränkt eine gesetzlich unbeschränkbare Haftung ein."
+        },
+        {
+          "h": "7. Änderungen",
+          "body": "{entity} kann diese Bedingungen mit Hinweis auf dieser Seite aktualisieren. Die fortgesetzte Nutzung nach einer Änderung gilt als Zustimmung."
+        }
+      ]
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung",
+      "updated": "Zuletzt aktualisiert: {date}",
+      "sections": [
+        {
+          "h": "1. Was wir erheben",
+          "body": "Konto-E-Mail und Rolle; Anbieter-Profildaten (Firmenname, Basis, Flottenübersicht); Inseratsinhalte inklusive Fotos; Anfrage-Feldwerte und die Käufer-E-Mail je Anfrage; Angebote und Abschlussdatensätze."
+        },
+        {
+          "h": "2. Wie wir sie nutzen",
+          "body": "Zum Betrieb des Marktplatzes: Anmeldungen authentifizieren, Anfragen an passende Anbieter weiterleiten, Angebote zustellen, Erfolgsgebühren abrechnen und Missbrauch verhindern (Ratenlimits, Honeypots, Captcha-Prüfungen)."
+        },
+        {
+          "h": "3. Weitergabe",
+          "body": "Anfrage-Details gehen an die Anbieter, denen wir sie zuordnen; Angebote und Kontaktdaten gehen an den anfragenden Käufer. Wir verkaufen keine personenbezogenen Daten. Dienstleister (E-Mail, Zahlungen, Speicher) verarbeiten Daten nur zur Erbringung ihrer Funktion."
+        },
+        {
+          "h": "4. Aufbewahrung",
+          "body": "Inserate, Anfragen, Angebote und Abschlüsse werden aufbewahrt, solange Ihr Konto aktiv ist und wie es für Abrechnung und gesetzliche Pflichten erforderlich ist."
+        },
+        {
+          "h": "5. Ihre Rechte",
+          "body": "Sie können Auskunft, Berichtigung, Export oder Löschung Ihrer personenbezogenen Daten verlangen — schriftlich an {email}. Die Kontolöschung entfernt Ihre Inserate und Ihr Profil; Transaktionsdatensätze werden aufbewahrt, soweit gesetzlich erforderlich."
+        },
+        {
+          "h": "6. Kontakt",
+          "body": "Datenschutzfragen: {email}. Verantwortliche Stelle für diesen Dienst ist {entity}."
+        }
+      ]
+    },
+    "imprint": {
+      "title": "Impressum",
+      "entityLabel": "Betreibergesellschaft",
+      "addressLabel": "Eingetragene Adresse",
+      "registrationLabel": "Handelsregister",
+      "contactLabel": "Kontakt"
+    }
+  },
+  "errors": {
+    "notFoundTitle": "Nicht gefunden",
+    "notFoundBody": "Diese Seite existiert nicht.",
+    "genericTitle": "Etwas ist schiefgelaufen",
+    "notFound": "Seite nicht gefunden",
+    "generic": "Etwas ist schiefgelaufen"
+  },
+  "vertical": {
+    "jets": {
+      "listingTypes": {
+        "charter": "Charterflug",
+        "empty_leg": "Leerflug",
+        "aircraft_sale": "Flugzeug zu verkaufen"
+      },
+      "attributes": {
+        "aircraftCategory": "Kategorie",
+        "model": "Modell",
+        "year": "Baujahr",
+        "seats": "Sitze",
+        "rangeNm": "Reichweite",
+        "baseAirport": "Heimatflughafen",
+        "from": "Startet",
+        "to": "Landet",
+        "date": "Datum",
+        "hoursTotal": "Gesamtstunden"
+      },
+      "categories": {
+        "light": "Light Jet",
+        "mid": "Midsize",
+        "super_mid": "Super-Midsize",
+        "heavy": "Heavy",
+        "ultra_long": "Ultralangstrecke"
+      },
+      "facets": {
+        "type": "Inseratstyp",
+        "aircraftCategory": "Flugzeugkategorie",
+        "from": "Abflug",
+        "to": "Ankunft",
+        "seats": "Sitze",
+        "price": "Preis",
+        "legDate": "Flugdatum"
+      },
+      "units": {
+        "seats": "Sitze",
+        "nm": "NM",
+        "hours": "h",
+        "kg": "kg"
+      },
+      "rfq": {
+        "departure": "Abflug",
+        "arrival": "Ankunft",
+        "dateFrom": "Frühestes Datum",
+        "dateTo": "Spätestes Datum",
+        "passengers": "Passagiere",
+        "budgetUsd": "Budget (USD)",
+        "name": "Vollständiger Name",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "notes": "Hinweise für Anbieter",
+        "placeholders": {
+          "departure": "Zürich oder ZRH",
+          "arrival": "Nizza oder NCE"
+        }
+      },
+      "plans": {
+        "free": {
+          "name": "Gratis",
+          "features": [
+            "3 Inserate",
+            "Anfragen-Posteingang",
+            "Anfragen um 24h verzögert"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "features": [
+            "Unbegrenzte Inserate",
+            "Sofortige Anfragen",
+            "Analytik",
+            "Priorisierte Platzierung"
+          ]
+        }
+      },
+      "seo": {
+        "pages": {
+          "empty-legs-zurich-nice": {
+            "title": "Leerflüge Zürich → Nizza",
+            "intro": "Ermäßigte Positionierungsflüge von Zürich nach Nizza, wenn Anbieter die Strecke ohnehin fliegen."
+          },
+          "empty-legs-geneva-nice": {
+            "title": "Leerflüge Genf → Nizza",
+            "intro": "Gleichgerichtete Positionierungsflüge zwischen Genf und Nizza zum Leerflugpreis."
+          },
+          "empty-legs-london-nice": {
+            "title": "Leerflüge London → Nizza",
+            "intro": "Abflüge aus dem Raum London an die Riviera zu reduzierten Positionierungsraten."
+          },
+          "empty-legs-nice-london": {
+            "title": "Leerflüge Nizza → London",
+            "intro": "Rück-Positionierungsflüge von Nizza zu Londoner Flughäfen."
+          },
+          "empty-legs-london-zurich": {
+            "title": "Leerflüge London → Zürich",
+            "intro": "London–Zürich-Einwegflüge bei Flugzeug-Positionierungen."
+          },
+          "empty-legs-zurich-geneva": {
+            "title": "Leerflüge Zürich → Genf",
+            "intro": "Kurzstrecken-Positionierungen zwischen Zürich und Genf."
+          },
+          "empty-legs-paris-nice": {
+            "title": "Leerflüge Paris → Nizza",
+            "intro": "Paris Le Bourget an die Côte d’Azur auf Positionierungsflügen."
+          },
+          "empty-legs-zurich-malaga": {
+            "title": "Leerflüge Zürich → Málaga",
+            "intro": "Abflüge aus Zürich an die Costa del Sol zu Leerflugpreisen."
+          },
+          "empty-legs-geneva-palma": {
+            "title": "Leerflüge Genf → Palma",
+            "intro": "Positionierungsflüge von Genf nach Palma de Mallorca."
+          },
+          "empty-legs-zurich-ibiza": {
+            "title": "Leerflüge Zürich → Ibiza",
+            "intro": "Saisonale Positionierungen von Zürich nach Ibiza."
+          }
+        },
+        "siteTitle": "JetMarket — Charter, Leerflüge & Flugzeuge zu verkaufen",
+        "siteDescription": "Einmal anfragen, Angebote geprüfter Anbieter erhalten. JetMarket ist ein Marktplatz, kein Makler."
+      },
+      "home": {
+        "eyebrow": "JetMarket",
+        "title": "Charter, Leerflüge und Flugzeuge zu verkaufen von geprüften Anbietern",
+        "subtitle": "Einmal anfragen, Angebote erhalten, eine Gebühr nur bei Abschluss.",
+        "ctaSearch": "Flugzeuge durchsuchen",
+        "ctaOperator": "Ihr Flugzeug inserieren",
+        "searchPlaceholder": "Wohin? Versuchen Sie „Nizza“ oder „G650“",
+        "howItWorks": {
+          "title": "So funktioniert es",
+          "steps": [
+            {
+              "title": "Sagen Sie uns die Reise",
+              "body": "Strecke, Termine, Passagiere und Budget — eine Anfrage erreicht jeden passenden Anbieter."
+            },
+            {
+              "title": "Angebote vergleichen",
+              "body": "Geprüfte Anbieter senden verbindliche Angebote. Verifizierungs-Badge, Flotte und Preis an einem Ort."
+            },
+            {
+              "title": "Fliegen, dann zahlen wir ab",
+              "body": "Sie schließen direkt mit dem Anbieter ab. JetMarket berechnet Anbietern eine Erfolgsgebühr nur bei Abschluss."
+            }
+          ]
+        },
+        "featured": {
+          "title": "Neueste Inserate",
+          "viewAll": "Alle Inserate ansehen"
+        },
+        "pricing": {
+          "title": "Anbieter-Preise",
+          "subtitle": "Gratis starten. Upgraden, wenn die Anfragen fließen."
+        },
+        "faq": {
+          "title": "Fragen",
+          "items": [
+            {
+              "q": "Mit wem schließe ich den Vertrag?",
+              "a": "Immer mit dem Anbieter. JetMarket ist ein Marktplatz, kein Makler — wir ordnen Anfragen Anbietern zu und nehmen eine Erfolgsgebühr von ihnen bei Abschluss."
+            },
+            {
+              "q": "Was kostet mich das als Käufer?",
+              "a": "Nichts. Angebote anzufragen ist gratis; Anbieter zahlen die Plattform."
+            },
+            {
+              "q": "Was ist ein Leerflug?",
+              "a": "Ein Positionierungsflug, den ein Flugzeug ohnehin fliegt — stark ermäßigt verkauft, wenn er zu Ihrer Strecke passt."
+            },
+            {
+              "q": "Sind Anbieter geprüft?",
+              "a": "Anbieter deklarieren Flotte und Nachweise selbst; unser Team verifiziert Unterlagen manuell. Nicht verifizierte Anbieter sind gekennzeichnet und erhalten Anfragen verzögert."
+            },
+            {
+              "q": "Kann ich hier ein Flugzeug kaufen?",
+              "a": "Ja — aircraft_sale-Inserate nehmen Anfragen wie jedes andere entgegen; die Erfolgsgebühr bei geschlossenen Verkäufen beträgt 1,5 %."
+            }
+          ]
+        }
+      },
+      "operator": {
+        "baseLabel": "Heimatflughafen (z. B. ZRH)",
+        "basedAt": "Stationiert in {place}",
+        "fleetLabel": "Flottenübersicht (Modelle, Sitze)"
+      }
+    },
+    "machinery": {
+      "listingTypes": {
+        "for_sale": "Zu verkaufen",
+        "for_rent": "Zu mieten",
+        "auction": "Auktion"
+      },
+      "attributes": {
+        "machineryCategory": "Kategorie",
+        "make": "Marke",
+        "yearOfManufacture": "Baujahr",
+        "hoursUsed": "Betriebsstunden",
+        "weightKg": "Gewicht",
+        "locationCountry": "Land",
+        "monthlyRentEur": "Monatsmiete"
+      },
+      "categories": {
+        "cnc_milling": "CNC-Fräse",
+        "lathe": "Drehmaschine",
+        "press": "Presse",
+        "conveyor": "Förderanlage",
+        "forklift": "Gabelstapler",
+        "generator": "Generator",
+        "other": "Sonstiges"
+      },
+      "facets": {
+        "type": "Inseratstyp",
+        "machineryCategory": "Maschinenkategorie",
+        "price": "Preis",
+        "locationCountry": "Land"
+      },
+      "units": {
+        "hours": "h",
+        "kg": "kg"
+      },
+      "rfq": {
+        "deliveryPostcode": "Liefer-PLZ",
+        "dateFrom": "Benötigt ab",
+        "dateTo": "Benötigt bis",
+        "budgetEur": "Budget (EUR)",
+        "name": "Vollständiger Name",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "notes": "Hinweise für Verkäufer"
+      },
+      "plans": {
+        "free": {
+          "name": "Gratis",
+          "features": [
+            "3 Inserate",
+            "Verzögerte Anfragen"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "features": [
+            "Unbegrenzte Inserate",
+            "Sofortige Anfragen",
+            "Analytik"
+          ]
+        }
+      },
+      "seo": {
+        "pages": {
+          "used-cnc-milling-machines": {
+            "title": "Gebrauchte CNC-Fräsmaschinen",
+            "intro": "Gebrauchte CNC-Bearbeitungszentren verifizierter Händler — Spindelstunden, Steuerung und Zustand von vornherein, eine Anfrage an alle Verkäufer."
+          },
+          "used-forklifts-for-sale": {
+            "title": "Gebrauchte Gabelstapler zu verkaufen",
+            "intro": "Gebrauchte Gabelstapler aus Händlerflotten — Tragfähigkeit, Hubmast und Servicehistorie in jedem Inserat."
+          },
+          "industrial-generators-for-rent": {
+            "title": "Industrie-Generatoren zu mieten",
+            "intro": "Industrie-Generatoren für temporäre Stromversorgung — kVA-Leistung und Lieferung inklusive, Angebote innerhalb eines Tages."
+          },
+          "used-lathes-for-sale": {
+            "title": "Gebrauchte Drehmaschinen zu verkaufen",
+            "intro": "CNC- und konventionelle Drehmaschinen verifizierter Händler — Maschinen, Stunden und Werkzeugausstattung vergleichen, dann Angebot anfragen."
+          },
+          "press-brakes-for-sale": {
+            "title": "Abkantpressen zu verkaufen",
+            "intro": "Hydraulische und CNC-Abkantpressen von Fertigungsbetrieben — Tonnage, Tischlänge und Zustand von vornherein."
+          },
+          "conveyor-systems-for-sale": {
+            "title": "Förderanlagen zu verkaufen",
+            "intro": "Gurt-, Rollen- und Kettenförderlinien aus Werksstilllegungen — Anlage spezifizieren, eine Anfrage senden."
+          },
+          "forklifts-for-rent": {
+            "title": "Gabelstapler zu mieten",
+            "intro": "Gegengewichts- und Lagerstapler zur Kurz- oder Langzeitmiete — geprüfte Vermieter, eine Anfrage."
+          },
+          "cnc-milling-machines-for-rent": {
+            "title": "CNC-Fräsmaschinen zu mieten",
+            "intro": "3- und 5-Achs-Bearbeitungskapazität monatlich mieten — ideal für Überlaufaufträge und Tests."
+          },
+          "decommissioned-equipment-for-sale": {
+            "title": "Stillgelegte Industrieanlagen zu verkaufen",
+            "intro": "Maschinen aus Werksstilllegungen, wie gesehen vom Eigentümer verkauft — Pressen, Förderanlagen und Peripherie zu Räumungspreisen."
+          },
+          "industrial-machinery-auctions": {
+            "title": "Industriemaschinen-Auktionen",
+            "intro": "Zeitgesteuerte Auktionen für gebrauchte Anlagetechnik — nur registrierte Bieter, Prüfvermerke zu jedem Los."
+          }
+        },
+        "siteTitle": "MachineryMarket — Marktplatz für Industriemaschinen",
+        "siteDescription": "Gebrauchte Maschinen verifizierter Händler. Eine Anfrage erreicht jeden Verkäufer; eine Gebühr fällt nur bei Abschluss an."
+      },
+      "home": {
+        "eyebrow": "MachineryMarket",
+        "title": "Gebrauchte Industriemaschinen verifizierter Händler",
+        "subtitle": "Einmal anfragen, Angebote geprüfter Verkäufer und Vermieter vergleichen — eine Gebühr nur bei Abschluss.",
+        "ctaSearch": "Suchen",
+        "ctaOperator": "Ihre Maschinen inserieren",
+        "searchPlaceholder": "Marke, Kategorie, Land suchen…",
+        "howItWorks": {
+          "title": "So funktioniert es",
+          "steps": [
+            {
+              "title": "Sagen Sie uns die Maschine",
+              "body": "Kategorie, Marke, Budget und Liefer-PLZ — eine Anfrage erreicht jeden passenden Händler."
+            },
+            {
+              "title": "Angebote vergleichen",
+              "body": "Geprüfte Händler senden verbindliche Angebote. Verifizierungs-Badge, Datenblatt und Preis an einem Ort."
+            },
+            {
+              "title": "Kaufen oder mieten, dann rechnen wir ab",
+              "body": "Sie schließen direkt mit dem Händler ab. MachineryMarket berechnet Verkäufern eine Erfolgsgebühr nur bei Abschluss."
+            }
+          ]
+        },
+        "featured": {
+          "title": "Neueste Inserate",
+          "viewAll": "Alle Inserate ansehen"
+        },
+        "pricing": {
+          "title": "Händler-Preise",
+          "subtitle": "Gratis starten. Upgraden, wenn die Anfragen fließen."
+        },
+        "faq": {
+          "title": "Fragen",
+          "items": [
+            {
+              "q": "Mit wem schließe ich den Vertrag?",
+              "a": "Immer mit dem Händler. MachineryMarket ist ein Marktplatz, kein Makler — wir ordnen Anfragen Verkäufern zu und nehmen eine Erfolgsgebühr von ihnen bei Abschluss."
+            },
+            {
+              "q": "Was kostet mich das als Käufer?",
+              "a": "Nichts. Angebote anzufragen ist gratis — Händler zahlen die Erfolgsgebühr."
+            },
+            {
+              "q": "Ist die Ausrüstung geprüft?",
+              "a": "Inserate zeigen angegebene Stunden, Zustand und Servicehistorie. Vereinbaren Sie eine Besichtigung direkt mit dem Händler vor dem Kauf."
+            }
+          ]
+        }
+      },
+      "operator": {
+        "baseLabel": "Standort oder Firmensitz (z. B. München)",
+        "basedAt": "Standort {place}",
+        "fleetLabel": "Bestandsübersicht (Marken, Modelle)"
+      }
+    }
+  },
+  "auth": {
+    "loginTitle": "Anmelden",
+    "loginSubtitle": "Geben Sie Ihre E-Mail ein, um einen Magic Link zu erhalten.",
+    "emailLabel": "E-Mail",
+    "emailPlaceholder": "sie@beispiel.ch",
+    "submit": "Magic Link senden",
+    "mockHint": "Mock-Modus: Anmeldung ist sofort, es wird keine E-Mail gesendet.",
+    "logout": "Abmelden",
+    "checkEmail": "Prüfen Sie Ihr Postfach auf einen Magic Link.",
+    "noPassword": "Wir mailen Ihnen einen Magic Link. Kein Passwort nötig.",
+    "buyer": "Ich bin Käufer",
+    "operator": "Ich bin Anbieter",
+    "sentLine": "Link gesendet. Im Mock-Modus ist er auch gleich hier:",
+    "continue": "Weiter zu JetMarket →",
+    "adminTip": "Tipp: Als {email} anmelden für den Adminbereich.",
+    "errors": {
+      "invalidToken": "Dieser Anmelde-Link ist ungültig oder abgelaufen — fordern Sie unten einen neuen an.",
+      "rateLimited": "Zu viele Anmeldeversuche — warten Sie ein paar Minuten und versuchen Sie es erneut."
+    }
+  },
+  "app": {
+    "dashboard": {
+      "becomeOperator": "Anbieter werden",
+      "becomeOperatorBody": "Erstellen Sie Ihr Anbieterprofil, um zu inserieren und Anfragen zu erhalten.",
+      "createProfile": "Anbieterprofil erstellen",
+      "base": "Basis {icao} · {fleet}",
+      "fleetTbd": "Flotte folgt",
+      "verified": "verifiziert",
+      "unverifiedDelay": "nicht verifiziert — Profil in Prüfung",
+      "proPlan": "Pro-Tarif",
+      "freePlan": "Gratis-Tarif",
+      "upgrade": "Upgraden — {price}/Monat",
+      "listings": "Inserate ({count}/{limit})",
+      "newListing": "Neues Inserat",
+      "edit": "Bearbeiten",
+      "duplicate": "Duplizieren",
+      "pause": "Pausieren",
+      "publish": "Veröffentlichen",
+      "archive": "Archivieren",
+      "delete": "Löschen",
+      "deleteConfirm": "Endgültig löschen?",
+      "noListings": "Noch keine Inserate. Erstellen Sie Ihr erstes {types}.",
+      "rfqInbox": "Anfragen-Posteingang ({count} offen)",
+      "openOffers": "Offene Angebote ({count})",
+      "openOfferFallback": "offene Anfrage",
+      "openOfferCta": "Posteingang ansehen →",
+      "offerDeadline": "Anfrage schließt am {date}",
+      "openInbox": "Posteingang öffnen →",
+      "subActive": "Abo aktiv bis {date}",
+      "deals": "Abschlüsse ({count})",
+      "exportDeals": "CSV exportieren",
+      "dealFee": "Gebühr {fee}",
+      "ratedDeal": "Käufer bewertete ★ {rating}",
+      "payFee": "Gebühr zahlen",
+      "paying": "Wird bezahlt…",
+      "payFailed": "Zahlung fehlgeschlagen — erneut versuchen",
+      "editProfile": "Profil bearbeiten",
+      "statsTitle": "Leistung",
+      "statRfqs": "Erhaltene Anfragen",
+      "statQuotes": "Gesendete Angebote",
+      "statWon": "Gewonnene Angebote",
+      "statWinRate": "Gewinnquote",
+      "statReply": "Übliche Antwortzeit",
+      "statRating": "Ø Käuferbewertung",
+      "statsRecent": "Letzte 30 Tage — {rfqs} Anfragen · {quotes} Angebote · {won} gewonnen",
+      "statsProGateTitle": "Leistungsstatistiken sind eine Pro-Funktion",
+      "statsProGateBody": "Erhaltene Anfragen, gesendete Angebote, Gewinnquote — schalten Sie Ihren Anbieter-Trichter mit Pro frei.",
+      "statsProGateCta": "Jetzt upgraden",
+      "expiredHidden": "abgelaufen — für Käufer verborgen (zum Wiedereinstellen bearbeiten)",
+      "watchers": "{count, plural, one {# Beobachter} other {# Beobachter}}",
+      "views": "{count, plural, one {# Aufruf} other {# Aufrufe}}",
+      "requests": "{count, plural, one {# Anfrage} other {# Anfragen}}",
+      "pauseRfqs": "Neue Anfragen pausieren",
+      "resumeRfqs": "Neue Anfragen fortsetzen",
+      "awayBanner": "Sie sind pausiert — neue Anfragen erreichen Ihren Posteingang nicht. Bestehende Zuordnungen und Angebote bleiben unberührt.",
+      "suspendedBanner": "Ihr Konto ist gesperrt — Inserate sind verborgen, Anfragen pausiert und Bearbeitungen deaktiviert. Kontaktieren Sie den Support, wenn Sie das für einen Fehler halten."
+    },
+    "onboarding": {
+      "title": "Anbieterprofil",
+      "subtitle": "Profile starten unverifiziert — unser Team prüft jedes einzelne.",
+      "name": "Firmenname",
+      "save": "Profil speichern",
+      "failed": "fehlgeschlagen"
+    },
+    "newListing": {
+      "title": "Neues Inserat",
+      "titlePh": "Titel (z. B. Leerflug Zürich → Nizza · Phenom 300)",
+      "catLight": "Light Jet",
+      "catMid": "Midsize",
+      "catSuperMid": "Super-Midsize",
+      "catHeavy": "Heavy",
+      "catUltra": "Ultralangstrecke",
+      "modelPh": "Modell (z. B. Phenom 300)",
+      "yearPh": "Baujahr",
+      "seatsPh": "Sitze",
+      "rangePh": "Reichweite (NM)",
+      "pricePh": "Preis ({currency})",
+      "fromPh": "Von (ZRH)",
+      "toPh": "Nach (NCE)",
+      "publish": "Inserat veröffentlichen",
+      "photosLabel": "Fotos (optional — JPG/PNG/SVG, je bis 5 MB)",
+      "upgradeCta": "Auf Pro upgraden — unbegrenzte Inserate →",
+      "failed": "fehlgeschlagen",
+      "publishing": "Wird veröffentlicht…",
+      "typeLabel": "Inseratstyp",
+      "configLoadFailed": "Inseratsformular konnte nicht geladen werden — bitte aktualisieren.",
+      "needProfile": "Erstellen Sie zuerst ein Anbieterprofil"
+    },
+    "rfqs": {
+      "needProfile": "Erstellen Sie zuerst ein Anbieterprofil.",
+      "title": "Anfragen-Posteingang",
+      "empty": "Noch keine Anfragen. Käufer fragen auf Ihren öffentlichen Inseratsseiten an.",
+      "from": "Von {name} · {date}",
+      "anonymousBuyer": "Käufer",
+      "quoteSent": "Angebot gesendet — {amount} ({status})",
+      "amountPh": "Angebotsbetrag",
+      "messagePh": "Nachricht (optional)",
+      "send": "Angebot senden",
+      "sending": "Wird gesendet…",
+      "failed": "fehlgeschlagen",
+      "listingFallback": "Inserat",
+      "withdraw": "Zurückziehen",
+      "withdrawing": "Wird zurückgezogen…",
+      "revise": "Überarbeiten",
+      "reviseCancel": "Abbrechen",
+      "reviseSave": "Speichern",
+      "revising": "Wird gespeichert…",
+      "reviseMessage": "Nachricht (optional)",
+      "dismiss": "Verwerfen",
+      "restore": "Wiederherstellen",
+      "restoreAll": "Alle wiederherstellen ({count})",
+      "dismissAll": "Alle verwerfen ({count})",
+      "dismissAllConfirm": "{count, plural, one {# Anfrage} other {# Anfragen}} aus Ihrem Posteingang verwerfen? Sie wandern nach Verworfen — jederzeit wiederherstellbar.",
+      "repliesClose": "Antworten schließen am {date}",
+      "notOpen": "Diese Anfrage ist {status} — Angebote sind geschlossen.",
+      "noQuotes": "Noch keine Angebote",
+      "delayedTeaser": "{count, plural, one {# Käuferanfrage landet in {hours}h in Ihrem Posteingang} other {# Käuferanfragen landen in {hours}h in Ihrem Posteingang}} — Pro-Anbieter bieten sofort.",
+      "delayedTeaserCta": "Auf Pro upgraden",
+      "conciergeBadge": "Concierge",
+      "filterAll": "Alle",
+      "filterNeeds": "Braucht ein Angebot",
+      "filterDismissed": "Verworfen",
+      "listingFilterAll": "Alle Inserate",
+      "listingFilterClear": "Inseratsfilter aufheben",
+      "newBadge": "Neu",
+      "updatedBadge": "Aktualisiert",
+      "filterAnswered": "Beantwortet",
+      "flag": "Melden",
+      "flagSent": "Gemeldet — unser Team prüft diese Anfrage.",
+      "flagging": "Wird gesendet…",
+      "flagSubmit": "Meldung senden",
+      "flagSpam": "Spam oder Massenwerbung",
+      "flagAbusive": "Beleidigend oder anstößig",
+      "flagDuplicate": "Doppelte Anfrage",
+      "flagOther": "Sonstiges",
+      "flagNotePlaceholder": "Optionale Details für unser Team",
+      "sortEnding": "Endet zuerst"
+    },
+    "billing": {
+      "title": "Tarif & Abrechnung",
+      "free": "Gratis",
+      "freeLine": "{limit} Inserate · Standard-Anfragenzustellung",
+      "pro": "Pro",
+      "proLine": "Unbegrenzte Inserate · sofortiger Anfragen-Posteingang · Analytik",
+      "perMonth": "/Monat",
+      "active": "Aktiv",
+      "activeUntil": "Aktiv bis {date}",
+      "processing": "Mock-Checkout wird verarbeitet…",
+      "failed": "Fehlgeschlagen — erneut versuchen",
+      "upgradeMock": "Mit Mock-Checkout upgraden",
+      "feeNote": "Erfolgsgebühren werden gesondert bei geschlossenen Abschlüssen berechnet: {fees}. Der Checkout läuft im Mock-Modus.",
+      "manageSub": "Abo verwalten",
+      "opening": "Portal wird geöffnet…",
+      "needProfile": "Erstellen Sie zuerst ein Anbieterprofil"
+    },
+    "editListing": {
+      "title": "Inserat bearbeiten",
+      "fieldTitle": "Titel",
+      "fieldPrice": "Preis ({currency})",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "photosLabel": "Fotos (abhaken zum Entfernen; Dateien zum Hinzufügen wählen)",
+      "keepPhoto": "Foto behalten",
+      "failed": "Speichern fehlgeschlagen — erneut versuchen"
+    }
+  },
+  "checkout": {
+    "success": "Zahlung erfolgreich — willkommen bei Pro.",
+    "canceled": "Checkout abgebrochen.",
+    "mockPay": "Zahlen (Mock)"
+  },
+  "admin": {
+    "title": "Admin",
+    "operators": "Anbieter ({count})",
+    "colName": "Name",
+    "colBase": "Basis",
+    "colPlan": "Tarif",
+    "colListings": "Inserate",
+    "colVerified": "Verifiziert",
+    "yes": "ja",
+    "no": "nein",
+    "verify": "Verifizieren",
+    "unverify": "Verifizierung aufheben",
+    "listings": "Inserats-Moderation ({count} gezeigt)",
+    "colTitle": "Titel",
+    "colType": "Typ",
+    "colStatus": "Status",
+    "pauseListing": "Pausieren",
+    "archiveListing": "Archivieren",
+    "noListings": "Keine Inserate.",
+    "ledger": "Gebührenbuch ({count} Abschlüsse · {total} Gebühren)",
+    "colDeal": "Abschluss",
+    "colOperator": "Anbieter",
+    "colBuyer": "Käufer",
+    "colAmount": "Betrag",
+    "colFeePct": "Gebühr %",
+    "colFee": "Gebühr",
+    "colInvoice": "Rechnung",
+    "colRating": "Bewertung",
+    "colClosed": "Geschlossen",
+    "noDeals": "Noch keine abgeschlossenen Aufträge.",
+    "markPaid": "Als bezahlt markieren",
+    "markingPaid": "Wird markiert…",
+    "voidInvoice": "Stornieren",
+    "clearRating": "Bewertung löschen",
+    "clearingRating": "Wird gelöscht…",
+    "suspend": "Sperren",
+    "reinstate": "Wiederherstellen",
+    "suspendedBadge": "Gesperrt",
+    "reports": "Inserats-Meldungen ({count})",
+    "rfqReports": "Anfrage-Meldungen ({count})",
+    "noReports": "Keine offenen Meldungen.",
+    "noRfqReports": "Noch keine Anfrage-Meldungen — Anbieter-Meldungen landen hier.",
+    "colReason": "Grund",
+    "colNote": "Notiz",
+    "colReporter": "Melder",
+    "colFiled": "Eingereicht",
+    "dismissReport": "Verwerfen",
+    "dismissingReport": "Wird verworfen…",
+    "blockBuyer": "Blockieren",
+    "unblockBuyer": "Freigeben",
+    "voiding": "Wird storniert…",
+    "jobs": {
+      "title": "Job-Warteschlange",
+      "backToAdmin": "← Admin-Dashboard",
+      "colKind": "Art",
+      "colStatus": "Status",
+      "colAttempts": "Versuche",
+      "colRunAt": "Lauf um",
+      "colError": "Letzter Fehler",
+      "empty": "Keine Jobs — die Warteschlange ist leer (Memory-Modus hat keine Warteschlange).",
+      "retry": "Erneut versuchen",
+      "retrying": "Wird wiederholt…",
+      "viewJobs": "Job-Warteschlange →"
+    },
+    "viewJobs": "Job-Warteschlange →",
+    "rfqs": "Anfragen ({count})",
+    "colListing": "Inserat",
+    "colCreated": "Erstellt",
+    "markSpam": "Als Spam markieren",
+    "noRfqs": "Noch keine Anfragen.",
+    "concierge": "Concierge: {count} Beschleunigungen · {total} Umsatz",
+    "conciergeBadge": "Concierge",
+    "rfqFlagged": "{count}× gemeldet",
+    "blocked": "Blockierte Käufer ({count})",
+    "colEmail": "E-Mail",
+    "colBlocked": "Blockiert",
+    "noBlocked": "Keine blockierten Käufer.",
+    "activity": "Moderationsverlauf ({count})",
+    "colWhen": "Wann",
+    "colAdmin": "Admin",
+    "colAction": "Aktion",
+    "colTarget": "Ziel",
+    "noActivity": "Noch keine Moderationsaktivität."
+  },
+  "operator": {
+    "listingsTitle": "Aktive Inserate ({count})",
+    "emptyTitle": "Keine aktiven Inserate",
+    "emptyBody": "Dieser Anbieter hat gerade keine aktiven Inserate.",
+    "metaDescription": "{name} — {count} aktive Inserate auf {siteName}. Flotte durchsuchen und Angebot anfragen.",
+    "indexTitle": "Anbieter",
+    "indexMeta": "Geprüfte Anbieter auf {siteName} durchsuchen — Flotten vergleichen und Angebot anfragen.",
+    "indexEmpty": "Noch keine Anbieter",
+    "indexEmptyBody": "Anbieter erscheinen hier, sobald sie ein aktives Inserat veröffentlichen.",
+    "viewProfile": "Profil ansehen →",
+    "memberSince": "Auf {siteName} seit {date}",
+    "dealsClosed": "{count, plural, one {# abgeschlossener Auftrag} other {# abgeschlossene Aufträge}}",
+    "responseTime": "Antwortet üblicherweise in ~{count, plural, one {# Stunde} other {# Stunden}}",
+    "buyerRating": "★ {avg} ({count, plural, one {# Käuferbewertung} other {# Käuferbewertungen}})"
+  },
+  "account": {
+    "title": "Ihr Konto",
+    "operatorTitle": "Anbieter",
+    "openDashboard": "Ihr Dashboard öffnen",
+    "becomeOperator": "Anbieter werden",
+    "requests": "Ihre Anfragen ({count})",
+    "viewInbox": "Ihren Angebots-Posteingang ansehen →",
+    "closesOn": "schließt am {date}",
+    "offerCount": "{count, plural, one {# Angebot} other {# Angebote}} →",
+    "withdraw": "Zurückziehen",
+    "withdrawing": "Wird zurückgezogen…",
+    "withdrawnMsg": "Zurückgezogen — Anbieter wurden benachrichtigt",
+    "withdrawFailed": "Zurückziehen fehlgeschlagen — erneut versuchen.",
+    "noRequests": "Noch keine Anfragen — stellen Sie eine auf einem beliebigen Inserat.",
+    "reports": "Ihre Meldungen ({count})",
+    "noReports": "Sie haben noch keine Inserate gemeldet.",
+    "alerts": "Gespeicherte Suchen ({count})",
+    "noAlerts": "Noch keine gespeicherten Suchen — setzen Sie Filter in der Suche und speichern Sie sie.",
+    "alertAll": "Alle Inserate",
+    "alertWatch": "Beobachtet: {title}",
+    "alertStatus": {
+      "active": "Aktiv",
+      "pending": "Per E-Mail bestätigen",
+      "off": "Aus"
+    },
+    "alertFreq": {
+      "instant": "sofort",
+      "daily": "tägliche Zusammenfassung"
+    },
+    "alertOff": "Deaktivieren",
+    "alertOpen": "Diese Suche ausführen",
+    "alertOpenListing": "Inserat ansehen",
+    "alertOffPending": "Wird deaktiviert…",
+    "alertOffDone": "Aus",
+    "alertOffFailed": "Deaktivieren fehlgeschlagen — erneut versuchen.",
+    "resendConfirm": "Bestätigung erneut senden",
+    "resendPending": "Wird gesendet…",
+    "resendDone": "Gesendet — Postfach prüfen",
+    "resendFailed": "Senden fehlgeschlagen — erneut versuchen.",
+    "reportStatus": {
+      "open": "in Prüfung",
+      "dismissed": "geprüft"
+    },
+    "reason": {
+      "misleading": "irreführend",
+      "unavailable": "nicht verfügbar",
+      "scam": "Betrug",
+      "other": "sonstiges"
+    }
+  }
+}

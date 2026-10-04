@@ -1,7 +1,7 @@
 import { Badge } from "@jetmarket/ui";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
@@ -27,6 +27,7 @@ export const metadata: Metadata = {
 const LIVE = new Set(["open", "matched", "quoted"]);
 
 export default async function AccountPage() {
+  const locale = await getLocale();
   const [t, tc] = await Promise.all([
     getTranslations("account"),
     getTranslations("common"),
@@ -115,7 +116,7 @@ export default async function AccountPage() {
             <li key={r.id} className="py-3" data-testid={`account-rfq-${r.id}`}>
               <span className="flex items-center justify-between gap-4">
                 <span className="text-sm text-muted">
-                  {new Date(r.createdAt).toLocaleDateString("en-US")}
+                  {new Date(r.createdAt).toLocaleDateString(locale)}
                 </span>
                 <span className="flex items-center gap-2">
                   <Badge variant="outline">{tc(`rfqState.${r.status}`)}</Badge>
@@ -134,7 +135,7 @@ export default async function AccountPage() {
                       ) : null}
                       <span className="text-xs text-muted">
                         {t("closesOn", {
-                          date: rfqDeadlineAt(r).toLocaleDateString("en-US", {
+                          date: rfqDeadlineAt(r).toLocaleDateString(locale, {
                             month: "short",
                             day: "numeric",
                           }),
@@ -177,7 +178,7 @@ export default async function AccountPage() {
                       {label}
                     </span>
                     <span className="text-xs text-muted">
-                      {new Date(a.createdAt).toLocaleDateString("en-US")} ·{" "}
+                      {new Date(a.createdAt).toLocaleDateString(locale)} ·{" "}
                       {t(`alertFreq.${a.freq}` as Parameters<typeof t>[0])}
                     </span>
                     {/* QA-478: the saved set deep-links back to its own
@@ -244,7 +245,7 @@ export default async function AccountPage() {
                   </span>
                   <span className="text-xs text-muted">
                     {t(`reason.${r.reason}` as Parameters<typeof t>[0])} ·{" "}
-                    {new Date(r.createdAt).toLocaleDateString("en-US")}
+                    {new Date(r.createdAt).toLocaleDateString(locale)}
                   </span>
                 </span>
                 <Badge

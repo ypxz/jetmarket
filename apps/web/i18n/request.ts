@@ -8,11 +8,12 @@ const catalogs: Record<
   () => Promise<{ default: Record<string, unknown> }>
 > = {
   en: () => import("@jetmarket/i18n/messages/en.json"),
+  de: () => import("@jetmarket/i18n/messages/de.json"),
 };
 
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale;
-  if (!locale || !routing.locales.includes(locale as "en")) {
+  if (!locale || !routing.locales.includes(locale as "en" | "de")) {
     locale = routing.defaultLocale;
   }
   const load = catalogs[locale] ?? catalogs.en!;

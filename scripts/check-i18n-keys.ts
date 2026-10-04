@@ -11,17 +11,72 @@ import { join } from "node:path";
 const ROOT = new URL("..", import.meta.url).pathname;
 const SCAN_DIRS = ["apps"];
 const EXT = new Set([".ts", ".tsx"]);
-const MESSAGES = join(ROOT, "packages/i18n/messages/en.json");
+const MESSAGES_DIR = join(ROOT, "packages/i18n/messages");
+const MESSAGES = join(MESSAGES_DIR, "en.json");
 
-const raw: unknown = JSON.parse(readFileSync(MESSAGES, "utf8"));
-const leaves = new Set<string>();
-(function walk(o: unknown, path: string) {
-  if (o && typeof o === "object") {
-    for (const [k, v] of Object.entries(o)) walk(v, `${path}${k}.`);
-  } else {
-    leaves.add(path.slice(0, -1));
+// Every catalog's leaf-key set must match en's, leaf-for-leaf — a dropped
+// or renamed key otherwise becomes a runtime i18n hole (QA-492). Arrays
+// are leaves too: their items are addressable by index, so a length/key
+// mismatch counts as a leaf diff.
+function leafKeys(o: unknown, path = ""): Map<string, string> {
+  const out = new Map<string, string>();
+  const walk = (x: unknown, p: string) => {
+    if (x && typeof x === "object") {
+      const entries = Array.isArray(x) ? x.entries() : Object.entries(x);
+      for (const [k, v] of entries as Iterable<[string | number, unknown]>) {
+        walk(v, `${p}${k}.`);
+      }
+    } else {
+      out.set(p.slice(0, -1), String(x));
+    }
+  };
+  walk(o, path);
+  return out;
+}
+const enLeaves = leafKeys(JSON.parse(readFileSync(MESSAGES, "utf8")));
+const leaves = new Set(enLeaves.keys());
+
+// ICU placeholders {name} / {a,b,plural} args must line up across locales —
+// a translator that drops `{count}` or renames `{date}` silently renders a
+// raw `{…}` at runtime. Rough check: compare the set of identifier heads.
+function placeholders(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of text.matchAll(/\{\s*([A-Za-z0-9_]+)\s*[,}]/g)) {
+    out.add(m[1]!);
   }
-})(raw, "");
+  return out;
+}
+const catalogBad: string[] = [];
+for (const f of readdirSync(MESSAGES_DIR)) {
+  if (!f.endsWith(".json") || f === "en.json") continue;
+  const other = leafKeys(
+    JSON.parse(readFileSync(join(MESSAGES_DIR, f), "utf8")),
+  );
+  for (const k of enLeaves.keys()) {
+    if (!other.has(k)) catalogBad.push(`${f}: missing ${k}`);
+  }
+  for (const k of other.keys()) {
+    if (!enLeaves.has(k)) catalogBad.push(`${f}: extra ${k}`);
+  }
+  for (const [k, v] of enLeaves) {
+    const ov = other.get(k);
+    if (ov === undefined) continue;
+    if (ov.trim() === "") catalogBad.push(`${f}: empty value ${k}`);
+    const a = [...placeholders(v)].sort().join(",");
+    const b = [...placeholders(ov)].sort().join(",");
+    if (a !== b) {
+      catalogBad.push(`${f}: ${k} placeholders differ — en {${a}} vs {${b}}`);
+    }
+  }
+}
+if (catalogBad.length) {
+  console.error(`check:i18n — ${catalogBad.length} catalog parity issue(s):`);
+  for (const b of catalogBad.slice(0, 40)) console.error(`  ${b}`);
+  if (catalogBad.length > 40) {
+    console.error(`  … and ${catalogBad.length - 40} more`);
+  }
+  process.exit(1);
+}
 
 function* walk(dir: string): Generator<string> {
   for (const e of readdirSync(dir)) {

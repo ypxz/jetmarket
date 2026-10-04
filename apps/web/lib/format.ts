@@ -16,12 +16,16 @@ export function formatMoney(
 }
 
 /** Format a listing attribute value for display (server-side, locale-fixed en). */
-export function formatAttribute(value: unknown, unit?: string): string {
+export function formatAttribute(
+  value: unknown,
+  unit?: string,
+  locale = "en",
+): string {
   if (value === undefined || value === null || value === "") return "—";
   if (typeof value === "number") {
     // Group only when a unit is shown — bare numbers like `year` must read
-    // "2020", not "2,020".
-    const n = unit ? value.toLocaleString("en-US") : String(value);
+    // "2020", not "2,020" / "2.020".
+    const n = unit ? value.toLocaleString(locale) : String(value);
     return unit ? `${n} ${unit}` : n;
   }
   return unit ? `${String(value)} ${unit}` : String(value);

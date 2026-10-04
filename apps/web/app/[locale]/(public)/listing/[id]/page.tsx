@@ -2,7 +2,7 @@ import { Badge, Card, CardBody, CardHeader, CardTitle, Stack, buttonVariants } f
 import { site } from "@jetmarket/config";
 import { cache } from "react";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { AttributeTable } from "@/components/attribute-table";
 import { Gallery } from "@/components/gallery";
@@ -50,9 +50,10 @@ export async function generateMetadata({
   const listing = await load(id);
   if (!listing) return {};
   const t = await getTranslations("listing");
+  const locale = await getLocale();
   const description = t("metaDescription", {
     title: listing.title,
-    price: formatMoney(listing.price, listing.currency),
+    price: formatMoney(listing.price, listing.currency, locale),
     siteName: site.name,
   });
   // og:image comes from ./opengraph-image.tsx — a generated first-party card,
@@ -83,6 +84,7 @@ export default async function ListingPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const locale = await getLocale();
   const { id } = await params;
   const sp = await searchParams;
   // Cards on /search carry the filter query so "back" restores it. searchParams
@@ -140,7 +142,7 @@ export default async function ListingPage({
   if (operatorRow?.suspended) notFound();
   const operator = operatorRow ?? null;
   const memberSince = operator
-    ? new Date(operator.createdAt).toLocaleDateString("en", {
+    ? new Date(operator.createdAt).toLocaleDateString(locale, {
         month: "long",
         year: "numeric",
       })
@@ -204,7 +206,7 @@ export default async function ListingPage({
         </div>
         <div className="text-right">
           <p className="text-2xl font-semibold" data-testid="listing-price">
-            {formatMoney(listing.price, listing.currency)}
+            {formatMoney(listing.price, listing.currency, locale)}
           </p>
           <Link
             href={`/rfq/${listing.id}`}

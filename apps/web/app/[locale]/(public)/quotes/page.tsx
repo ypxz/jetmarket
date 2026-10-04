@@ -7,7 +7,7 @@ import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useRef, useState } from "react";
 import { formatMoney } from "@/lib/format";
 
@@ -75,6 +75,7 @@ function QuotesInner() {
   const t = useTranslations("quotes");
   const tc = useTranslations("common");
   const params = useSearchParams();
+  const locale = useLocale();
   const [email, setEmail] = useState(params.get("email") ?? "");
   // Bearer token: URL fragment first (`#t=` never reaches server logs or
   // Referer), legacy `?t=` fallback for links emailed before the fragment
@@ -491,7 +492,7 @@ function QuotesInner() {
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <span className="text-xs text-muted" data-testid={`rfq-deadline-${r.id}`}>
                         {t("closesOn", {
-                          date: new Date(r.deadlineAt).toLocaleDateString("en-US", {
+                          date: new Date(r.deadlineAt).toLocaleDateString(locale, {
                             month: "short",
                             day: "numeric",
                           }),
@@ -624,7 +625,7 @@ function QuotesInner() {
                       <li key={q.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface p-3" data-testid={`quote-${q.id}`}>
                         <div>
                           <span className="font-medium">
-                            {formatMoney(q.amount, q.currency)}
+                            {formatMoney(q.amount, q.currency, locale)}
                           </span>
                           {/* QA-414: cheapest live offer gets the badge — the
                               comparison the sort implies made explicit. */}

@@ -1,6 +1,6 @@
 import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { Badge } from "@jetmarket/ui";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
@@ -26,6 +26,7 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const locale = await getLocale();
   const params = await searchParams;
   const t = await getTranslations("admin");
   const tc = await getTranslations("common");
@@ -227,13 +228,13 @@ export default async function AdminPage({
         <h2 className="text-lg font-semibold">
           {t("ledger", {
             count: dealTotal,
-            total: formatMoney(feeTotal, siteCurrency),
+            total: formatMoney(feeTotal, siteCurrency, locale),
           })}
         </h2>
         <p className="mt-1 text-sm text-muted" data-testid="admin-concierge-stat">
           {t("concierge", {
             count: conciergeCount,
-            total: formatMoney(CONCIERGE_PRICE_USD * conciergeCount, "USD"),
+            total: formatMoney(CONCIERGE_PRICE_USD * conciergeCount, "USD", locale),
           })}
         </p>
         <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm" data-testid="fee-ledger">
@@ -256,9 +257,9 @@ export default async function AdminPage({
                 <td className="py-2 pr-4 font-mono text-xs">{d.id}</td>
                 <td className="py-2 pr-4">{dealOps.get(d.id)}</td>
                 <td className="py-2 pr-4" data-testid={`deal-buyer-${d.id}`}>{d.buyerEmail ?? "—"}</td>
-                <td className="py-2 pr-4">{formatMoney(d.amount, d.currency)}</td>
+                <td className="py-2 pr-4">{formatMoney(d.amount, d.currency, locale)}</td>
                 <td className="py-2 pr-4">{(d.feePct * 100).toFixed(1)}%</td>
-                <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, d.currency)}</td>
+                <td className="py-2 pr-4 font-medium">{formatMoney(d.feeAmount, d.currency, locale)}</td>
                 <td className="py-2 pr-4" data-testid={`deal-invoice-${d.id}`}>
                   <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
                     {tc(`invoiceState.${d.invoiceStatus}`)}
@@ -285,7 +286,7 @@ export default async function AdminPage({
                     <span className="text-muted">—</span>
                   )}
                 </td>
-                <td className="py-2 text-muted">{new Date(d.closedAt).toLocaleDateString("en-US")}</td>
+                <td className="py-2 text-muted">{new Date(d.closedAt).toLocaleDateString(locale)}</td>
               </tr>
             ))}
             {deals.length === 0 ? (
@@ -386,7 +387,7 @@ export default async function AdminPage({
                   {reportEmails.get(r.reporterId) ?? "—"}
                 </td>
                 <td className="py-2 pr-4">
-                  {new Date(r.createdAt).toLocaleDateString("en-US")}
+                  {new Date(r.createdAt).toLocaleDateString(locale)}
                 </td>
                 <td className="py-2">
                   <span className="inline-flex gap-1">
@@ -467,7 +468,7 @@ export default async function AdminPage({
                   ) : null}
                 </td>
                 <td className="py-2 pr-4 text-muted">
-                  {new Date(r.createdAt).toLocaleDateString("en-US")}
+                  {new Date(r.createdAt).toLocaleDateString(locale)}
                 </td>
                 <td className="py-2">
                   <span className="inline-flex gap-1">
@@ -546,7 +547,7 @@ export default async function AdminPage({
                     {rfqFlagEmails.get(r.reporterId) ?? "—"}
                   </td>
                   <td className="py-2 pr-4">
-                    {new Date(r.createdAt).toLocaleDateString("en-US")}
+                    {new Date(r.createdAt).toLocaleDateString(locale)}
                   </td>
                   <td className="py-2">
                     {rfq && LIVE_RFQ.has(rfq.status) ? (
@@ -585,7 +586,7 @@ export default async function AdminPage({
                   {b.reason ?? "—"}
                 </td>
                 <td className="py-2 pr-4 text-muted">
-                  {new Date(b.createdAt).toLocaleDateString("en-US")}
+                  {new Date(b.createdAt).toLocaleDateString(locale)}
                 </td>
                 <td className="py-2">
                   <BuyerBlockButton email={b.email} blocked />
@@ -623,7 +624,7 @@ export default async function AdminPage({
             {modEvents.map((e) => (
               <tr key={e.id} data-testid={`mod-event-${e.event}`}>
                 <td className="py-2 pr-4 text-muted">
-                  {new Date(e.createdAt).toLocaleDateString("en-US")}
+                  {new Date(e.createdAt).toLocaleDateString(locale)}
                 </td>
                 <td className="max-w-60 truncate py-2 pr-4">
                   {e.adminId ? (modEventEmails.get(e.adminId) ?? "—") : "—"}

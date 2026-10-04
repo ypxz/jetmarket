@@ -2,7 +2,7 @@ import { Badge, Card, CardBody, EmptyState, Grid, Stack } from "@jetmarket/ui";
 import { site } from "@jetmarket/config";
 import { cache } from "react";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { ListingCard } from "@/components/listing-card";
 import { Link } from "@/i18n/navigation";
@@ -69,6 +69,7 @@ export default async function OperatorPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const locale = await getLocale();
   const { id } = await params;
   const t = await getTranslations("operator");
   const ct = await getTranslations("common");
@@ -94,8 +95,7 @@ export default async function OperatorPage({
   const rating = (await repo.ratingSummaryPerOperator([operator.id]))[
     operator.id
   ];
-  const memberSince = new Date(operator.createdAt).toLocaleDateString(
-    "en",
+  const memberSince = new Date(operator.createdAt).toLocaleDateString(locale,
     { month: "long", year: "numeric" },
   );
 

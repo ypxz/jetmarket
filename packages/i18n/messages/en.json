@@ -44,7 +44,8 @@
     "signOut": "Sign out",
     "design": "Design",
     "theme": "Toggle dark mode",
-    "account": "Account"
+    "account": "Account",
+    "language": "Language: {language}"
   },
   "footer": {
     "tos": "Terms of service",

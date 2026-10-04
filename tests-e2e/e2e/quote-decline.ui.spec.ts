@@ -83,7 +83,14 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     await buyer.getByTestId('buyer-load').click();
     const quote = buyer.locator(tidPrefix('quote-')).first();
     await expect(quote).toBeVisible();
+    // Wait on the network, not the DOM — a cold dev-compile of the decline
+    // route can outlast the element timeout even though the request succeeds
+    // (observed flake, QA-492 run).
+    const resp = buyer.waitForResponse(
+      (r) => r.url().includes('/decline') && r.request().method() === 'POST',
+    );
     await quote.locator(tidPrefix('decline-')).click();
+    expect((await resp).status()).toBe(200);
     await expect(buyer.getByTestId('accept-msg')).toContainText(/declined/i);
     // after reload the quote row shows declined and offers no action buttons
     await expect(quote).toContainText('declined');

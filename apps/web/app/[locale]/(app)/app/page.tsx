@@ -1,6 +1,6 @@
 import { Badge } from "@jetmarket/ui";
 import { plans } from "@jetmarket/config";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getVertical } from "@jetmarket/verticals";
 import { currentUser } from "@/lib/auth";
@@ -15,6 +15,7 @@ import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { isExpiredListing } from "@/lib/search";
 
 export default async function OperatorDashboard() {
+  const locale = await getLocale();
   const t = await getTranslations("app.dashboard");
   const tc = await getTranslations("common");
   const vertical = getVertical();
@@ -197,7 +198,7 @@ export default async function OperatorDashboard() {
           {!isPro ? (
             <Link href="/app/billing" className="text-primary underline">
               {t("upgrade", {
-                price: formatMoney(PRO_PLAN_PRICE_USD, plans.pro.currency),
+                price: formatMoney(PRO_PLAN_PRICE_USD, plans.pro.currency, locale),
               })}
             </Link>
           ) : null}
@@ -347,7 +348,7 @@ export default async function OperatorDashboard() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium">
-                    {formatMoney(l.price, l.currency)}
+                    {formatMoney(l.price, l.currency, locale)}
                   </span>
                   <ListingActions listing={l} />
                 </div>
@@ -376,7 +377,7 @@ export default async function OperatorDashboard() {
                 >
                   <div>
                     <div className="font-medium">
-                      {formatMoney(q.amount, q.currency)}
+                      {formatMoney(q.amount, q.currency, locale)}
                     </div>
                     <div className="text-xs text-muted">
                       {listing?.title ?? t("openOfferFallback")} ·{" "}
@@ -385,8 +386,7 @@ export default async function OperatorDashboard() {
                         <span data-testid={`offer-deadline-${q.id}`}>
                           {" "}·{" "}
                           {t("offerDeadline", {
-                            date: rfqDeadlineAt(rfq).toLocaleDateString(
-                              "en-US",
+                            date: rfqDeadlineAt(rfq).toLocaleDateString(locale,
                               { month: "short", day: "numeric" },
                             ),
                           })}
@@ -431,7 +431,7 @@ export default async function OperatorDashboard() {
               >
                 <div>
                   <div className="font-medium">
-                    {formatMoney(d.amount, d.currency)} · {t("dealFee", { fee: formatMoney(d.feeAmount, d.currency) })}
+                    {formatMoney(d.amount, d.currency, locale)} · {t("dealFee", { fee: formatMoney(d.feeAmount, d.currency, locale) })}
                   </div>
                   <div className="text-xs text-muted" data-testid={`deal-context-${d.id}`}>
                     {d.listingTitle ?? t("openOfferFallback")}

@@ -1,5 +1,5 @@
 import { Badge } from "@jetmarket/ui";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
@@ -9,6 +9,7 @@ import { verticalSlug } from "@/lib/vertical";
 import { RetryJobButton } from "./retry-button";
 
 export default async function AdminJobsPage() {
+  const locale = await getLocale();
   const t = await getTranslations("admin.jobs");
   const user = await currentUser();
   if (!user || user.role !== "admin") redirect("/sign-in");
@@ -50,7 +51,7 @@ export default async function AdminJobsPage() {
                   {j.attempts}/{j.maxAttempts}
                 </td>
                 <td className="py-2 pr-4 text-muted">
-                  {new Date(j.runAt).toLocaleString("en-US")}
+                  {new Date(j.runAt).toLocaleString(locale)}
                 </td>
                 <td className="max-w-xs truncate py-2 pr-4 font-mono text-xs text-muted">
                   {j.lastError ?? ""}

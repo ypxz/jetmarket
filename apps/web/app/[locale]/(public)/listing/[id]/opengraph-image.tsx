@@ -17,9 +17,9 @@ export const revalidate = 3600;
 export default async function OgImage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }) {
-  const { id } = await params;
+  const { id, locale } = await params;
   const repo = await getRepo();
   const raw = await repo.getListing(id);
   // Same public-visibility rule as the page — an expired leg's OG card would
@@ -33,7 +33,9 @@ export default async function OgImage({
       ? raw
       : null;
   const title = listing?.title ?? site.name;
-  const price = listing ? formatMoney(listing.price, listing.currency) : "";
+  const price = listing
+    ? formatMoney(listing.price, listing.currency, locale)
+    : "";
   const kind = listing?.type.replace(/_/g, " ") ?? "";
 
   return new ImageResponse(

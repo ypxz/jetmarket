@@ -2,7 +2,7 @@ import { Badge, Card, CardBody } from "@jetmarket/ui";
 import { storageProvider } from "@jetmarket/providers";
 import { getVertical } from "@jetmarket/verticals";
 import type { ComponentType } from "react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { attrsFor, optionLabelKey } from "@/lib/attrs";
 import { formatAttribute, formatAttributeDate, formatMoney } from "@/lib/format";
@@ -19,6 +19,7 @@ interface ListingCardProps {
 }
 
 export async function ListingCard({ listing, operator, from, rating }: ListingCardProps) {
+  const locale = await getLocale();
   const vertical = getVertical();
   const vt = await getTranslations(vertical.copy.namespace);
   const ct = await getTranslations("common");
@@ -39,8 +40,8 @@ export async function ListingCard({ listing, operator, from, rating }: ListingCa
       return optKey
         ? vt(optKey)
         : a.inputType === "date"
-          ? formatAttributeDate(value)
-          : formatAttribute(value, unit);
+          ? formatAttributeDate(value, locale)
+          : formatAttribute(value, unit, locale);
     })
     .filter(Boolean);
 
@@ -69,7 +70,7 @@ export async function ListingCard({ listing, operator, from, rating }: ListingCa
           <div className="flex items-center justify-between gap-2">
             <Badge>{vt(`listingTypes.${listing.type}`)}</Badge>
             <span className="text-sm font-semibold">
-              {formatMoney(listing.price, listing.currency)}
+              {formatMoney(listing.price, listing.currency, locale)}
             </span>
           </div>
           <p className="mt-2 font-medium leading-snug">{listing.title}</p>

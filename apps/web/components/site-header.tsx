@@ -4,6 +4,8 @@ import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { site } from "@jetmarket/config";
 import { ThemeToggle } from "./theme-toggle";
+import { LocaleSwitcher } from "./locale-switcher";
+import { Suspense } from "react";
 
 export async function SiteHeader() {
   const user = await currentUser();
@@ -66,6 +68,11 @@ export async function SiteHeader() {
             </Link>
           ) : null}
           <ThemeToggle label={t("theme")} />
+          {/* Suspense: useSearchParams inside the switcher bails to client
+              render — keep the header's SSR intact while it resolves. */}
+          <Suspense fallback={null}>
+            <LocaleSwitcher />
+          </Suspense>
           {user ? (
             <>
               <span className="hidden truncate text-muted md:inline">
