@@ -6,15 +6,16 @@ import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
 
 /**
  * Tell the operator their quote was not selected — either the buyer declined
- * it explicitly, the buyer accepted a competing quote on the same RFQ, or
- * the buyer closed the request outright.
+ * it explicitly, the buyer accepted a competing quote on the same RFQ,
+ * the buyer closed the request outright, or the listing went terminal
+ * (sold/archived — QA-499's orphan sweep).
  * Email failures never fail the request; the status change already landed.
  */
 export async function notifyQuoteDeclined(
   repo: Repo,
   quote: Quote,
   rfq: Rfq,
-  reason: "declined" | "competing-accepted" | "rfq-closed",
+  reason: "declined" | "competing-accepted" | "rfq-closed" | "listing-ended",
 ): Promise<void> {
   try {
     const operator = await repo.getOperator(quote.operatorId);
@@ -31,7 +32,9 @@ export async function notifyQuoteDeclined(
         ? "opQuoteDeclined.subjectAccepted"
         : reason === "rfq-closed"
           ? "opQuoteDeclined.subjectClosed"
-          : "opQuoteDeclined.subjectDeclined",
+          : reason === "listing-ended"
+            ? "opQuoteDeclined.subjectEnded"
+            : "opQuoteDeclined.subjectDeclined",
       { title },
     );
     const body = mailT(
@@ -40,7 +43,9 @@ export async function notifyQuoteDeclined(
         ? "opQuoteDeclined.bodyAccepted"
         : reason === "rfq-closed"
           ? "opQuoteDeclined.bodyClosed"
-          : "opQuoteDeclined.bodyDeclined",
+          : reason === "listing-ended"
+            ? "opQuoteDeclined.bodyEnded"
+            : "opQuoteDeclined.bodyDeclined",
       {
         title,
         site: site.name,

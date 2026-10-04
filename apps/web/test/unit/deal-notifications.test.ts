@@ -248,4 +248,72 @@ describe("one-off inventory sells out on deal close (QA-498)", () => {
     expect((await repo.getListing(charter.id))?.status).toBe("active");
     asUser(null);
   });
+
+  it("accept sweeps sibling RFQs on the consumed listing (QA-499)", async () => {
+    const repo = await getMemoryRepo();
+    const { listing, rfq, quote, buyerEmail, tag, op, opUser } =
+      await legFixture(repo);
+    // A second buyer asked about the same leg before the deal — dead
+    // demand now: their request closes and the sent quote declines.
+    const rfq2 = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: `b2-${tag}@test.dev`,
+      fields: {},
+    });
+    const quote2 = await repo.createQuote({
+      rfqId: rfq2.id,
+      operatorId: op.id,
+      amount: 4800,
+      currency: "USD",
+      message: "",
+    });
+    // Live demand on the operator's OTHER listing must survive the sweep.
+    const other = await repo.createListing({
+      operatorId: op.id,
+      vertical: "jets",
+      type: "empty_leg",
+      title: `Sibling ${tag}`,
+      price: 9000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const rfqOther = await repo.createRfq({
+      vertical: "jets",
+      listingId: other.id,
+      buyerEmail: `b3-${tag}@test.dev`,
+      fields: {},
+    });
+
+    const res = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    // Orphaned twin: closed, its quote declined, untouched listings live.
+    expect((await repo.getRfq(rfq2.id))?.status).toBe("closed");
+    expect((await repo.getQuote(quote2.id))?.status).toBe("declined");
+    expect((await repo.getRfq(rfqOther.id))?.status).toBe("open");
+    // The operator got the listing-ended decline mail (winner mail is the
+    // deal-closed one — matched by subject, not merely by recipient).
+    const box = email.readOutbox(process.env.EMAIL_OUTBOX_DIR);
+    expect(
+      box.some((m) => m.to === opUser.email && /no longer listed/.test(m.subject)),
+    ).toBe(true);
+  });
+
+  it("PATCH archive sweeps the listing's live RFQs too (QA-499)", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, listing, rfq, quote } = await legFixture(repo);
+    asUser(opUser.id);
+    const res = await patchListing(
+      patch({ status: "archived" }),
+      params(listing.id),
+    );
+    expect(res.status).toBe(200);
+    expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+    expect((await repo.getQuote(quote.id))?.status).toBe("declined");
+    asUser(null);
+  });
 });

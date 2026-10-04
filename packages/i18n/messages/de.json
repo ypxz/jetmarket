@@ -213,9 +213,11 @@
       "subjectAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c angenommen",
       "subjectClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c geschlossen",
       "subjectDeclined": "Ihr Angebot f\u00fcr \u201e{title}\u201c wurde abgelehnt",
+      "subjectEnded": "\u201e{title}\u201c ist nicht mehr gelistet \u2014 Ihr Angebot wurde nicht ausgew\u00e4hlt",
       "bodyAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c auf {site} angenommen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
       "bodyClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c auf {site} geschlossen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
-      "bodyDeclined": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} abgelehnt."
+      "bodyDeclined": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} abgelehnt.",
+      "bodyEnded": "Das Inserat \u201e{title}\u201c ist auf {site} nicht mehr verf\u00fcgbar, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt."
     },
     "opDealClosed": {
       "subject": "Ihr Angebot f\u00fcr \u201e{title}\u201c wurde angenommen",

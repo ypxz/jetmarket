@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
-import { logInfo } from "@/lib/log";
+import { logInfo, logWarn } from "@/lib/log";
 import { auditAdmin } from "@/lib/audit";
 import { notifyListingModerated } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
+import { endListingWatches } from "@/lib/search-alerts";
+import { closeListingRfqs } from "@/lib/sweep";
+import { appOrigin } from "@/lib/origin";
 import { verticalSlug } from "@/lib/vertical";
 
 const ModerateListing = z.object({
@@ -41,6 +44,20 @@ export async function POST(
   // Owner gets a moderation email — a listing silently vanishing from
   // search was the QA-247 gap. Fire-and-forget; never fails the request.
   await notifyListingModerated(repo, listing, data!.status);
+  // QA-499: a moderated listing exits the market exactly like an operator
+  // archive — watches end and the orphaned live RFQs close (their sent
+  // quotes decline). Both teardowns are non-fatal like notify.
+  if (data!.status === "archived") {
+    try {
+      await endListingWatches(repo, listing, appOrigin(req));
+      await closeListingRfqs(repo, listing);
+    } catch (e) {
+      logWarn("admin.listing_teardown_failed", {
+        listingId: id,
+        err: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
   logInfo("admin.listing_moderated", {
     adminId: user.id,
     listingId: id,

@@ -2169,6 +2169,61 @@ export function repoContract(
       void c;
     });
 
+    it("closeLiveRfqsForListing sweeps only that listing's live RFQs (QA-499)", async () => {
+      const repo = await factory();
+      const tag = `orphan-${Date.now().toString(36)}`;
+      const user = await repo.createUser(`op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Orphan Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "pro",
+      });
+      const mk = (title: string) =>
+        repo.createListing({
+          operatorId: op.id,
+          vertical: "jets",
+          type: "empty_leg",
+          title,
+          price: 100,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+        });
+      const home = await mk(`Home ${tag}`);
+      const other = await mk(`Other ${tag}`);
+      const mkRfq = (listingId: string | null, suffix: string) =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId,
+          buyerEmail: `b-${suffix}-${tag}@test.dev`,
+          fields: { ref: suffix },
+          dedupeKey: `orphan-${tag}-${suffix}`,
+        });
+      const live1 = await mkRfq(home.id, "l1");
+      const live2 = await mkRfq(home.id, "l2");
+      const sibling = await mkRfq(other.id, "o");
+      const alreadyClosed = await mkRfq(home.id, "c");
+      await repo.setRfqStatus(alreadyClosed.id, "closed", ["open"]);
+      const listingless = await mkRfq(null, "x");
+
+      // Flips the two live twins, returns them — everything else untouched.
+      const flipped = await repo.closeLiveRfqsForListing(home.id);
+      expect(flipped.map((r) => r.id).sort()).toEqual(
+        [live1.id, live2.id].sort(),
+      );
+      expect((await repo.getRfq(live1.id))?.status).toBe("closed");
+      expect((await repo.getRfq(live2.id))?.status).toBe("closed");
+      expect((await repo.getRfq(sibling.id))?.status).toBe("open");
+      expect((await repo.getRfq(alreadyClosed.id))?.status).toBe("closed");
+      expect((await repo.getRfq(listingless.id))?.status).toBe("open");
+      // Idempotent replay — a double fire (manual mark after auto-sold)
+      // flips nothing.
+      expect(await repo.closeLiveRfqsForListing(home.id)).toEqual([]);
+    });
+
     it("listing cap holds under parallel creates (FOR UPDATE serialization)", async () => {
       const repo = await factory();
       const user = await repo.createUser(

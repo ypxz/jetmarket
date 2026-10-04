@@ -6,7 +6,7 @@ import { successFeePctFor } from "@/lib/fees";
 import { logWarn } from "@/lib/log";
 import { notifyDealClosed, notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
-import { sweepStaleRfqs } from "@/lib/sweep";
+import { closeListingRfqs, sweepStaleRfqs } from "@/lib/sweep";
 import { paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 import { oneOffListingType } from "@jetmarket/verticals";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
@@ -212,6 +212,9 @@ export async function POST(
     try {
       await repo.updateListingStatus(listing.id, "sold");
       await endListingWatches(repo, listing, appOrigin(req));
+      // QA-499: sibling RFQs on the consumed listing are orphaned — their
+      // quotes can never close now. Sweep + decline them (listing-ended).
+      await closeListingRfqs(repo, listing);
     } catch (e) {
       // Non-fatal like notify: the deal is already minted — a missed flip
       // leaves the listing browsable but unsellable (the guard above still

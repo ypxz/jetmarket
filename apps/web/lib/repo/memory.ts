@@ -583,6 +583,18 @@ class MemoryRepo implements Repo {
     this.rfqs.set(id, { ...rfq, status, updatedAt: now() });
     return true;
   }
+  async closeLiveRfqsForListing(listingId: string): Promise<Rfq[]> {
+    // Synchronous check+write loop (QA-333) — no await between read and set.
+    const closed: Rfq[] = [];
+    for (const rfq of this.rfqs.values()) {
+      if (rfq.listingId === listingId && LIVE_RFQ_STATUSES.has(rfq.status)) {
+        const next = { ...rfq, status: "closed" as const, updatedAt: now() };
+        this.rfqs.set(rfq.id, next);
+        closed.push(next);
+      }
+    }
+    return closed;
+  }
   async extendRfqDeadline(id: string, dateTo: string): Promise<boolean> {
     const rfq = this.rfqs.get(id);
     // Same gate as drizzle — synchronous check+write (QA-333); the merge

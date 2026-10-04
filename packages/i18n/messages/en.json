@@ -213,9 +213,11 @@
       "subjectAccepted": "The buyer accepted another quote for \u201c{title}\u201d",
       "subjectClosed": "The buyer closed their request for \u201c{title}\u201d",
       "subjectDeclined": "Your quote for \u201c{title}\u201d was declined",
+      "subjectEnded": "\u201c{title}\u201d is no longer listed \u2014 your quote was not selected",
       "bodyAccepted": "The buyer accepted a different quote for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
       "bodyClosed": "The buyer closed their request for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
-      "bodyDeclined": "The buyer declined your quote of {currency} {amount} for \u201c{title}\u201d on {site}."
+      "bodyDeclined": "The buyer declined your quote of {currency} {amount} for \u201c{title}\u201d on {site}.",
+      "bodyEnded": "The listing \u201c{title}\u201d is no longer available on {site}, so your quote of {currency} {amount} was not selected this time."
     },
     "opDealClosed": {
       "subject": "Your quote for \u201c{title}\u201d was accepted",

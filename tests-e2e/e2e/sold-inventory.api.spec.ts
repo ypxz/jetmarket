@@ -1,4 +1,6 @@
-// QA-498: one-off inventory sells out — a closed deal on an empty_leg or
+// QA-498+499: one-off inventory sells out — a closed deal on an empty_leg or
+// aircraft listing flips it 'sold', ends watches, and sweeps the orphaned
+// sibling RFQs (their sent quotes decline, no second deal can ever mint).
 // for-sale listing flips it to `sold` (terminal like archived but records
 // WHY), ends saved watches, frees the free-tier slot, and blocks a second
 // deal on the consumed seat. Capacity listings (charter) are unaffected.
@@ -159,11 +161,13 @@ test('QA-498: empty_leg accept flips listing to sold and blocks a second deal', 
   const lateRfq = await fileRfq(publicCtx, legId, `sold-late-${run}@x.test`);
   expect(lateRfq.status()).toBe(404);
 
-  // --- no second deal: the pre-sale RFQ's live quote can't mint one -------
+  // --- no second deal: the sale swept the pre-sale RFQ (QA-499) ----------
+  // The orphan close declined buyer2's live quote, so the late accept
+  // 409s on the closed RFQ — before the listing guard is even reached.
   const acc2 = await accept(publicCtx, quote2Id, buyer2, token2);
   expect(acc2.status()).toBe(409);
-  expect(await statusOf('quotes', quote2Id)).toBe('sent');
-  expect(await statusOf('rfqs', rfq2Id)).toBe('quoted');
+  expect(await statusOf('quotes', quote2Id)).toBe('declined');
+  expect(await statusOf('rfqs', rfq2Id)).toBe('closed');
   expect(await statusOf('listings', legId)).toBe('sold');
 
   // --- capacity listing unaffected by the same flow ------------------------

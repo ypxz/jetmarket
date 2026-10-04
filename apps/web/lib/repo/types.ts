@@ -462,6 +462,13 @@ export interface Repo {
     status: RfqStatus,
     expectedIn: RfqStatus[],
   ): Promise<boolean>;
+  /** QA-499: a terminal listing flip (sold/auto or archived/manual) orphans
+   * every live RFQ pinned to it — their quotes can never mint a deal.
+   * Bulk live→closed flip; returns the flipped rows so the caller can
+   * decline their sent quotes and notify the operators (the repo owns only
+   * the atomic status flip, never notifications). Already-terminal rows are
+   * skipped, so the call is idempotent. */
+  closeLiveRfqsForListing(listingId: string): Promise<Rfq[]>;
   /**
    * Buyer-side "more time" (QA-446): CAS-gated write of `fields.dateTo` on
    * a LIVE RFQ — extending pushes the liveness horizon (QA-442's rule)

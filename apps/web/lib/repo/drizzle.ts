@@ -924,6 +924,22 @@ export class DrizzleRepo implements Repo {
       .returning({ id: rfqs.id });
     return rows.length > 0;
   }
+  async closeLiveRfqsForListing(listingId: string): Promise<Rfq[]> {
+    if (!isUuid(listingId)) return [];
+    // One UPDATE under the live-status gate — terminal rows are skipped, so
+    // a replay (double accept, manual mark after auto-sold) flips nothing.
+    const rows = await this.db
+      .update(rfqs)
+      .set({ status: "closed", updatedAt: new Date() })
+      .where(
+        and(
+          eq(rfqs.listingId, listingId),
+          inArray(rfqs.status, ["new", "matched", "quoted"]),
+        ),
+      )
+      .returning();
+    return rows.map(toRfq);
+  }
   async extendRfqDeadline(id: string, dateTo: string): Promise<boolean> {
     if (!isUuid(id)) return false;
     // One CAS: jsonb `||` merges (keeps every other field), the status

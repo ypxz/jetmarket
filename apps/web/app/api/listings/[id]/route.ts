@@ -12,6 +12,7 @@ import {
   alertSavedSearches,
   endListingWatches,
 } from "@/lib/search-alerts";
+import { closeListingRfqs } from "@/lib/sweep";
 import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
@@ -172,6 +173,16 @@ export async function PATCH(
   const endsWatches = data!.status === "archived" || data!.status === "sold";
   if (endsWatches && !terminal) {
     await endListingWatches(repo, listing, appOrigin(req));
+    // QA-499: the same transition orphans every live RFQ on the listing —
+    // close them and decline their sent quotes (listing-ended mail).
+    try {
+      await closeListingRfqs(repo, listing);
+    } catch (e) {
+      logWarn("listing.orphan_rfqs_close_failed", {
+        listingId: listing.id,
+        err: String(e),
+      });
+    }
   }
   if (patch.photos !== undefined) {
     // Orphan sweep: keys dropped by a photos replace would leak objects in

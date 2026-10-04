@@ -1,6 +1,7 @@
 import { repoBackend } from "./repo";
-import type { Repo } from "./repo/types";
+import type { Listing, Repo } from "./repo/types";
 import { verticalSlug } from "./vertical";
+import { notifyQuoteDeclined } from "./notify";
 
 /**
  * Lazy RFQ expiry sweep. The worker ticks every 5s in postgres mode, but
@@ -18,4 +19,33 @@ export async function sweepStaleRfqs(repo: Repo): Promise<void> {
   // invoked under an exported dev URL — QA-277).
   if (repoBackend() !== "memory") return;
   await repo.expireRfqs(new Date().toISOString(), verticalSlug());
+}
+
+/**
+ * QA-499: a terminal listing flip (sold on deal close or manual mark,
+ * archived by the operator) orphans every live RFQ pinned to it — quotes
+ * on those requests can never mint a deal, so letting them run only means
+ * operators quote into a dead request and buyers wait for a reply that
+ * can't pay off. Close the orphans in one bulk flip, decline their sent
+ * quotes, and mail each operator with the `listing-sold` reason — the
+ * notification path is failure-safe (never fails the caller's mutation).
+ *
+ * Called on every transition INTO a terminal listing status; a pause is
+ * not terminal and deliberately doesn't sweep.
+ */
+export async function closeListingRfqs(
+  repo: Repo,
+  listing: Listing,
+): Promise<void> {
+  const orphans = await repo.closeLiveRfqsForListing(listing.id);
+  for (const rfq of orphans) {
+    for (const quote of await repo.listQuotes({ rfqId: rfq.id })) {
+      if (
+        quote.status === "sent" &&
+        (await repo.setQuoteStatus(quote.id, "declined", "sent"))
+      ) {
+        await notifyQuoteDeclined(repo, quote, rfq, "listing-ended");
+      }
+    }
+  }
 }
