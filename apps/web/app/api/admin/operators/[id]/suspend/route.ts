@@ -2,6 +2,7 @@ import { clientIp, err, ok, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo } from "@/lib/log";
 import { auditAdmin } from "@/lib/audit";
+import { analyticsProvider } from "@jetmarket/providers";
 import { notifyOperatorSuspended } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 
@@ -25,6 +26,10 @@ export async function POST(
   const op = await repo.getOperator(id);
   if (!op) return err("not found", 404);
   await repo.setOperatorSuspended(id, !op.suspended);
+  analyticsProvider().track({
+    name: "operator_suspension_toggled",
+    props: { operatorId: id, suspended: !op.suspended },
+  });
   // Enforcement must reach the owner (QA-249 convention). Non-fatal.
   await notifyOperatorSuspended(repo, id, !op.suspended);
   logInfo("admin.operator_suspension_toggled", {

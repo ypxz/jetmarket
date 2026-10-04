@@ -1,5 +1,5 @@
 import { getAttributesSchema, oneOffListingType } from "@jetmarket/verticals";
-import { storageProvider } from "@jetmarket/providers";
+import { analyticsProvider, storageProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
@@ -140,6 +140,19 @@ export async function PATCH(
       }
       throw e;
     }
+    // QA-501: lifecycle observability — same-status rewrites don't count.
+    if (data!.status !== listing.status) {
+      analyticsProvider().track({
+        name: "listing_status_changed",
+        props: {
+          listingId: id,
+          type: listing.type,
+          from: listing.status,
+          to: data!.status,
+          source: "operator",
+        },
+      });
+    }
   }
   if (Object.keys(patch).length) await repo.updateListing(id, patch);
 
@@ -246,6 +259,10 @@ export async function DELETE(
     vertical: verticalSlug(),
   });
   if (!deleted) return err("listing could not be deleted", 409);
+  analyticsProvider().track({
+    name: "listing_deleted",
+    props: { listingId: id, type: listing.type },
+  });
   // Orphan sweep: keys no sibling still references are dead storage (same
   // rule as the PATCH photos sweep — best-effort, never fails the delete).
   if (listing.photos.length) {

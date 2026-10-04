@@ -11,6 +11,7 @@ import { join } from "node:path";
 process.env.EMAIL_OUTBOX_DIR = mkdtempSync(join(tmpdir(), "jm-outbox-"));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { MockInstance } from "vitest";
 
 const jar = new Map<string, string>();
 vi.mock("next/headers", () => ({
@@ -20,7 +21,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-import { email } from "@jetmarket/providers";
+import { analyticsProvider, email } from "@jetmarket/providers";
 import { getMemoryRepo } from "../../lib/repo/memory";
 import { sessionCookie, signSession } from "../../lib/auth";
 import type { Repo } from "../../lib/repo/types";
@@ -112,8 +113,7 @@ describe("POST /api/quotes/[id]/accept notifications (QA-149)", () => {
   });
 });
 
-describe("one-off inventory sells out on deal close (QA-498)", () => {
-  async function legFixture(repo: Repo, type = "empty_leg") {
+async function legFixture(repo: Repo, type = "empty_leg") {
     const tag = Math.random().toString(36).slice(2, 8);
     const opUser = await repo.createUser(`op1-${tag}@test.dev`, "operator");
     const op = await repo.upsertOperator({
@@ -149,8 +149,9 @@ describe("one-off inventory sells out on deal close (QA-498)", () => {
       message: "",
     });
     return { opUser, op, listing, rfq, quote, buyerEmail, tag };
-  }
+}
 
+describe("one-off inventory sells out on deal close (QA-498)", () => {
   it("accept flips an empty_leg to sold, ends watches, blocks the next deal", async () => {
     const repo = await getMemoryRepo();
     const { listing, rfq, quote, buyerEmail, tag } = await legFixture(repo);
@@ -324,5 +325,93 @@ describe("one-off inventory sells out on deal close (QA-498)", () => {
     expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
     expect((await repo.getQuote(quote.id))?.status).toBe("declined");
     asUser(null);
+  });
+});
+
+describe("listing lifecycle analytics (QA-501)", () => {
+  type TrackedEvent = { name?: string; props?: Record<string, unknown> };
+  const eventsNamed = (spy: MockInstance, name: string): TrackedEvent[] =>
+    (spy.mock.calls as unknown[][])
+      .map((c) => c[0] as TrackedEvent)
+      .filter((e) => e.name === name);
+
+  it("accept emits listing_status_changed(source=deal) plus the sweep count", async () => {
+    const repo = await getMemoryRepo();
+    const { listing, rfq, quote, buyerEmail, tag } = await legFixture(repo);
+    // One sibling RFQ with a sent quote — the sweep counts it.
+    const rfq2 = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: `b2-${tag}@test.dev`,
+      fields: {},
+    });
+    await repo.createQuote({
+      rfqId: rfq2.id,
+      operatorId: quote.operatorId,
+      amount: 5000,
+      currency: "USD",
+      message: "",
+    });
+
+    const spy = vi.spyOn(analyticsProvider(), "track");
+    try {
+      const res = await acceptQuote(
+        post({ buyerEmail, token: rfq.accessToken }),
+        params(quote.id),
+      );
+      expect(res.status).toBe(200);
+      const lc = eventsNamed(spy, "listing_status_changed");
+      expect(lc).toHaveLength(1);
+      expect(lc[0]?.props).toMatchObject({
+        listingId: listing.id,
+        type: "empty_leg",
+        from: "active",
+        to: "sold",
+        source: "deal",
+      });
+      expect(lc[0]?.props?.dealId).toBeTruthy();
+      // The orphan sweep is counted too.
+      const swept = eventsNamed(spy, "rfqs_listing_swept");
+      expect(swept).toHaveLength(1);
+      expect(swept[0]?.props).toMatchObject({
+        listingId: listing.id,
+        closed: 1,
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("PATCH emits the transition once; a same-status PATCH stays silent", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, listing } = await legFixture(repo);
+    asUser(opUser.id);
+    const spy = vi.spyOn(analyticsProvider(), "track");
+    try {
+      const res = await patchListing(
+        patch({ status: "paused" }),
+        params(listing.id),
+      );
+      expect(res.status).toBe(200);
+      const lc = eventsNamed(spy, "listing_status_changed");
+      expect(lc).toHaveLength(1);
+      expect(lc[0]?.props).toMatchObject({
+        listingId: listing.id,
+        from: "active",
+        to: "paused",
+        source: "operator",
+      });
+
+      // Re-writing the same status is a no-op, not a transition.
+      const res2 = await patchListing(
+        patch({ status: "paused" }),
+        params(listing.id),
+      );
+      expect(res2.status).toBe(200);
+      expect(eventsNamed(spy, "listing_status_changed")).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+      asUser(null);
+    }
   });
 });

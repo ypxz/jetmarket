@@ -1,3 +1,4 @@
+import { analyticsProvider } from "@jetmarket/providers";
 import { repoBackend } from "./repo";
 import type { Listing, Repo } from "./repo/types";
 import { verticalSlug } from "./vertical";
@@ -51,5 +52,12 @@ export async function closeListingRfqs(
       }
     }
     await notifyBuyerRfqEnded(rfq, listing, origin);
+  }
+  // QA-501: the sweep is otherwise invisible — count the collateral.
+  if (orphans.length) {
+    analyticsProvider().track({
+      name: "rfqs_listing_swept",
+      props: { listingId: listing.id, closed: orphans.length },
+    });
   }
 }

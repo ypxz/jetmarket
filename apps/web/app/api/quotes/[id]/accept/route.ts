@@ -215,6 +215,18 @@ export async function POST(
       // QA-499: sibling RFQs on the consumed listing are orphaned — their
       // quotes can never close now. Sweep + decline them (listing-ended).
       await closeListingRfqs(repo, listing, appOrigin(req));
+      // QA-501: the market-side transition is as observable as the deal.
+      analyticsProvider().track({
+        name: "listing_status_changed",
+        props: {
+          listingId: listing.id,
+          type: listing.type,
+          from: "active",
+          to: "sold",
+          source: "deal",
+          dealId: deal.id,
+        },
+      });
     } catch (e) {
       // Non-fatal like notify: the deal is already minted — a missed flip
       // leaves the listing browsable but unsellable (the guard above still

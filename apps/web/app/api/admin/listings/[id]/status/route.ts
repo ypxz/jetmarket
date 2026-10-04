@@ -3,6 +3,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logInfo, logWarn } from "@/lib/log";
 import { auditAdmin } from "@/lib/audit";
+import { analyticsProvider } from "@jetmarket/providers";
 import { notifyListingModerated } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { endListingWatches } from "@/lib/search-alerts";
@@ -35,6 +36,19 @@ export async function POST(
   if (!listing || listing.vertical !== verticalSlug())
     return err("not found", 404);
   await repo.updateListingStatus(id, data!.status);
+  // QA-501: moderation flips are the same lifecycle event, attributed admin.
+  if (data!.status !== listing.status) {
+    analyticsProvider().track({
+      name: "listing_status_changed",
+      props: {
+        listingId: id,
+        type: listing.type,
+        from: listing.status,
+        to: data!.status,
+        source: "admin",
+      },
+    });
+  }
   // QA-462: archiving a reported listing auto-clears its open flags —
   // the enforcement the flag asked for just happened. Pauses stay open.
   const cleared =

@@ -220,7 +220,20 @@ describe("analytics events on money routes (mock sink)", async () => {
     });
     expect(res.status).toBe(200);
     const newEvents = sink.events.slice(before).map((e) => e.name);
-    expect(newEvents).toEqual(["quote_accepted", "deal_closed"]);
+    expect(newEvents.slice(0, 2)).toEqual(["quote_accepted", "deal_closed"]);
+    // QA-501: this seed listing is one-off — the deal consumes it, the
+    // market-side flip is tracked, and the live RFQs earlier tests pinned
+    // to it are counted by the QA-499 sweep.
+    const lc = events("listing_status_changed").slice(-1)[0]!;
+    expect(lc.props).toMatchObject({
+      listingId: listing.id,
+      from: "active",
+      to: "sold",
+      source: "deal",
+    });
+    const swept = events("rfqs_listing_swept").slice(-1)[0]!;
+    expect(swept.props?.listingId).toBe(listing.id);
+    expect(Number(swept.props?.closed)).toBeGreaterThan(0);
     const deal = events("deal_closed").slice(-1)[0]!;
     expect(deal.props?.quoteId).toBe(quote.id);
     expect(Number(deal.props?.feeAmount)).toBeCloseTo(270); // 3% charter fee
