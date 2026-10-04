@@ -410,3 +410,47 @@ test('listing watch: subscribe → confirm → price edit mails update (QA-407)'
     await sql.end();
   }
 });
+
+test('saved searches manageable on /account with a session (QA-473)', async () => {
+  const sql = postgres(testDb);
+  const ACCT = `e2e-acct-alert-${run}@jetmarket.local`;
+  const OTHER = `e2e-acct-other-${run}@jetmarket.local`;
+  try {
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+    });
+    const sub = await anon.post('/api/search-alerts', {
+      data: { email: ACCT, params: { type: 'charter' } },
+    });
+    expect(sub.status()).toBe(200);
+    const [alert] = await sql`
+      select id from search_alerts where email = ${ACCT}`;
+    expect(alert?.id).toBeTruthy();
+    const alertId = alert!.id as string;
+
+    // Session auth (no bearer token) — the mailbox owner sees their row.
+    const buyer = await login(ACCT);
+    const html1 = await (await buyer.get('/en/account')).text();
+    expect(html1).toContain(`account-alert-${alertId}`);
+    expect(html1).toContain(`account-alert-status-${alertId}`);
+    expect(html1).toContain(`alert-off-${alertId}`);
+
+    // Session POST off — no ?email / token needed; session is the proof.
+    const off = await buyer.post(`/api/search-alerts/${alertId}/off`);
+    expect(off.status()).toBe(200);
+    const [row] = await sql`
+      select status from search_alerts where id = ${alertId}`;
+    expect(row?.status).toBe('off');
+    const html2 = await (await buyer.get('/en/account')).text();
+    expect(html2).toContain(`account-alert-${alertId}`);
+    expect(html2).not.toContain(`alert-off-${alertId}`);
+
+    // A different signed-in mailbox can't touch the row — 404, not leaked.
+    const other = await login(OTHER);
+    expect((await other.post(`/api/search-alerts/${alertId}/off`)).status()).toBe(404);
+  } finally {
+    await sql`delete from search_alerts where email in (${ACCT}, ${OTHER})`;
+    await sql`delete from users where email in (${ACCT}, ${OTHER})`;
+    await sql.end();
+  }
+});

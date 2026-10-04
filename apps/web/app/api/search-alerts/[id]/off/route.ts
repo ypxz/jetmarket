@@ -1,10 +1,12 @@
 import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
+import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 
-// Buyer UI turn-off (QA-405): /quotes renders the mailbox's alerts with a
-// per-row "turn off" — same auth as GET /api/buyer/search-alerts (any live
-// RFQ bearer token for the mailbox). The alert must belong to that email
+// Buyer UI turn-off (QA-405, session path QA-473): two proofs of mailbox
+// ownership — a signed-in session whose email owns the alert (the /account
+// page's button), or possession of any live RFQ bearer token for the
+// mailbox (the emailed-links path). The alert must belong to that email
 // AND this vertical before the 'off' CAS runs (QA-293: scope before CAS).
 export async function POST(
   req: Request,
@@ -15,21 +17,24 @@ export async function POST(
   }
   const { id } = await params;
   const url = new URL(req.url);
-  const email = url.searchParams.get("email");
+  const user = await currentUser();
+  const email = user?.email ?? url.searchParams.get("email");
   const token =
     req.headers.get("x-rfq-token") ?? url.searchParams.get("t");
   if (!email) return err("email required", 400);
-  if (!token) return err("use the link from your email", 401);
+  if (!user && !token) return err("use the link from your email", 401);
   const repo = await getRepo();
   const vertical = verticalSlug();
-  const owns = (
-    await repo.listRfqs({
-      buyerEmail: email,
-      vertical,
-      limit: 200,
-    })
-  ).some((r) => r.accessToken === token);
-  if (!owns) return err("use the link from your email", 401);
+  if (!user) {
+    const owns = (
+      await repo.listRfqs({
+        buyerEmail: email,
+        vertical,
+        limit: 200,
+      })
+    ).some((r) => r.accessToken === token);
+    if (!owns) return err("use the link from your email", 401);
+  }
   const alert = (await repo.listSearchAlerts({ vertical, email })).find(
     (a) => a.id === id,
   );

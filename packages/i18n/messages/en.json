@@ -943,6 +943,23 @@
     "noRequests": "No requests yet — file one from any listing.",
     "reports": "Your reports ({count})",
     "noReports": "You haven't flagged any listings.",
+    "alerts": "Saved searches ({count})",
+    "noAlerts": "No saved searches yet — set filters on Search and save them.",
+    "alertAll": "All listings",
+    "alertWatch": "Watching: {title}",
+    "alertStatus": {
+      "active": "On",
+      "pending": "Confirm via email",
+      "off": "Off"
+    },
+    "alertFreq": {
+      "instant": "instant",
+      "daily": "daily digest"
+    },
+    "alertOff": "Turn off",
+    "alertOffPending": "Turning off…",
+    "alertOffDone": "Off",
+    "alertOffFailed": "Couldn't turn it off — try again.",
     "reportStatus": {
       "open": "under review",
       "dismissed": "reviewed"

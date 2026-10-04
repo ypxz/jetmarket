@@ -6,7 +6,9 @@ import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
+import { searchAlertSummary, searchAlertWatchId } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
+import { AlertOffButton } from "./alert-off-button";
 
 /** QA-468: buyer account surface. Buyers hold real sessions (report filing
  *  requires one) but had nothing under their name — /quotes is a
@@ -27,7 +29,7 @@ export default async function AccountPage() {
   if (!user) redirect("/sign-in");
 
   const repo = await getRepo();
-  const [myRfqs, myReports, operator] = await Promise.all([
+  const [myRfqs, myReports, operator, myAlerts] = await Promise.all([
     repo.listRfqs({
       buyerEmail: user.email,
       vertical: verticalSlug(),
@@ -35,7 +37,19 @@ export default async function AccountPage() {
     }),
     repo.listListingReports({ reporterId: user.id, limit: 50 }),
     repo.getOperatorByUserId(user.id),
+    // QA-473: the QA-405 alerts API never got a UI — session proves the
+    // mailbox, so /account lists every saved search this buyer filed.
+    repo.listSearchAlerts({ vertical: verticalSlug(), email: user.email }),
   ]);
+  // Watch rows carry no facet summary — resolve their listing titles.
+  const watchListingRows = await repo.listListings({
+    ids: [
+      ...new Set(
+        myAlerts.map((a) => searchAlertWatchId(a.params)).filter((w): w is string => !!w),
+      ),
+    ],
+  });
+  const watchListings = new Map(watchListingRows.map((l) => [l.id, l]));
   const reportListingRows = await repo.listListings({
     ids: [...new Set(myReports.map((r) => r.listingId))],
   });
@@ -106,6 +120,59 @@ export default async function AccountPage() {
           {myRfqs.length === 0 ? (
             <li className="py-6 text-sm text-muted" data-testid="account-rfqs-empty">
               {t("noRequests")}
+            </li>
+          ) : null}
+        </ul>
+      </section>
+
+      <section className="mt-10" data-testid="account-alerts">
+        <h2 className="text-lg font-semibold">
+          {t("alerts", { count: myAlerts.length })}
+        </h2>
+        <ul className="mt-4 divide-y divide-border">
+          {myAlerts.map((a) => {
+            const watchId = searchAlertWatchId(a.params);
+            const label = watchId
+              ? t("alertWatch", {
+                  title: watchListings.get(watchId)?.title ?? watchId,
+                })
+              : searchAlertSummary(a.params).join(" · ") || t("alertAll");
+            return (
+              <li key={a.id} className="py-3" data-testid={`account-alert-${a.id}`}>
+                <span className="flex items-center justify-between gap-4">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">
+                      {label}
+                    </span>
+                    <span className="text-xs text-muted">
+                      {new Date(a.createdAt).toLocaleDateString("en-US")} ·{" "}
+                      {t(`alertFreq.${a.freq}` as Parameters<typeof t>[0])}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Badge
+                      variant={
+                        a.status === "active"
+                          ? "success"
+                          : a.status === "pending"
+                            ? "warning"
+                            : "default"
+                      }
+                      data-testid={`account-alert-status-${a.id}`}
+                    >
+                      {t(`alertStatus.${a.status}` as Parameters<typeof t>[0])}
+                    </Badge>
+                    {a.status !== "off" ? (
+                      <AlertOffButton alertId={a.id} />
+                    ) : null}
+                  </span>
+                </span>
+              </li>
+            );
+          })}
+          {myAlerts.length === 0 ? (
+            <li className="py-6 text-sm text-muted" data-testid="account-alerts-empty">
+              {t("noAlerts")}
             </li>
           ) : null}
         </ul>
