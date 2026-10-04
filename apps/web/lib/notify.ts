@@ -17,6 +17,9 @@ export async function notifyQuoteDeclined(
   quote: Quote,
   rfq: Rfq,
   reason: "declined" | "competing-accepted" | "rfq-closed" | "listing-ended",
+  /** QA-508: buyer-picked decline reason — only meaningful on "declined";
+   *  adds a localized "Reason given: …" line so the op learns why. */
+  buyerReason?: string,
 ): Promise<void> {
   try {
     const operator = await repo.getOperator(quote.operatorId);
@@ -54,14 +57,22 @@ export async function notifyQuoteDeclined(
         amount: quote.amount,
       },
     );
+    // QA-508: a named decline reason beats a bare verdict — append the
+    // buyer's own words (localized enum label) to the body.
+    const reasonLine =
+      reason === "declined" && buyerReason
+        ? `\n\n${mailT(m, "opQuoteDeclined.reasonLine", {
+            reason: mailT(m, `opQuoteDeclined.reason_${buyerReason}`),
+          })}`
+        : "";
     await emailProvider().send({
       to: owner.email,
       subject,
-      text: body,
+      text: body + reasonLine,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
-        paragraphs: [body],
+        paragraphs: reasonLine ? [body, reasonLine.trim()] : [body],
       }),
     });
   } catch (e) {

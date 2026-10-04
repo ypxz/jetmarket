@@ -223,6 +223,12 @@
       "bodyAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c auf {site} angenommen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
       "bodyClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c auf {site} geschlossen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
       "bodyDeclined": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} abgelehnt.",
+      "reasonLine": "Angegebener Grund: {reason}.",
+      "reason_price": "zu teuer",
+      "reason_timing": "die Termine passten nicht",
+      "reason_chose_other": "ein anderes Angebot angenommen",
+      "reason_no_longer_needed": "nicht mehr n\u00f6tig",
+      "reason_other": "sonstiges",
       "bodyEnded": "Das Inserat \u201e{title}\u201c ist auf {site} nicht mehr verf\u00fcgbar, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt."
     },
     "opDealClosed": {
@@ -389,6 +395,15 @@
     "staleOffer": "Vor Ihrer letzten Aktualisierung gesendet",
     "dealsCount": "{count, plural, one {# abgeschlossener Auftrag} other {# abgeschlossene Aufträge}}",
     "decline": "Ablehnen",
+    "declineReasonsTitle": "Warum lehnen Sie ab? (optional)",
+    "declineReason": {
+      "price": "Zu teuer",
+      "timing": "Termine passen nicht",
+      "chose_other": "Anderes Angebot angenommen",
+      "no_longer_needed": "Nicht mehr n\u00f6tig",
+      "other": "Sonstiges"
+    },
+    "declineNoReason": "Ohne Grund ablehnen",
     "operatorUnavailable": "Dieser Anbieter ist nicht verfügbar — sein Angebot kann nicht angenommen werden.",
     "declinedMsg": "Angebot abgelehnt.",
     "needLink": "Öffnen Sie den Link aus Ihrer Anfrage- oder Angebots-E-Mail, um Ihre Angebote zu sehen.",
@@ -1059,6 +1074,13 @@
       "failed": "fehlgeschlagen",
       "listingExpired": "Inserat abgelaufen",
       "seenByBuyer": "gesehen",
+      "declineReason": {
+        "price": "zu teuer",
+        "timing": "Termine passten nicht",
+        "chose_other": "anderes Angebot gew\u00e4hlt",
+        "no_longer_needed": "nicht mehr n\u00f6tig",
+        "other": "sonstiges"
+      },
       "seenByBuyerTitle": "Käufer hat dieses Angebot angesehen",
       "listingFallback": "Inserat",
       "withdraw": "Zurückziehen",

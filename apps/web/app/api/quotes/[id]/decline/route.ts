@@ -5,10 +5,14 @@ import { notifyQuoteDeclined } from "@/lib/notify";
 import { analyticsProvider } from "@jetmarket/providers";
 import { verticalSlug } from "@/lib/vertical";
 import { buyerAuthorized } from "@/lib/buyer-auth";
+import { QUOTE_DECLINE_REASONS } from "@/lib/repo/types";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
   token: z.string().max(256).optional().default(""),
+  // QA-508: optional structured decline reason — enum keys only, the
+  // op-facing mail + inbox chip localize the label.
+  reason: z.enum(QUOTE_DECLINE_REASONS).optional(),
 });
 
 // Buyer declines a quote. Gated on the per-RFQ bearer token (QA-39) —
@@ -40,13 +44,27 @@ export async function POST(
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
 
-  if (!(await repo.setQuoteStatus(id, "declined", "sent"))) {
+  if (
+    !(await repo.setQuoteStatus(id, "declined", "sent", {
+      declineReason: data!.reason,
+    }))
+  ) {
     return err("quote already transitioned", 409);
   }
   analyticsProvider().track({
     name: "quote_declined",
-    props: { quoteId: quote.id, rfqId: rfq.id },
+    props: {
+      quoteId: quote.id,
+      rfqId: rfq.id,
+      ...(data!.reason ? { reason: data!.reason } : {}),
+    },
   });
-  await notifyQuoteDeclined(repo, quote, rfq, "declined");
+  await notifyQuoteDeclined(
+    repo,
+    quote,
+    rfq,
+    "declined",
+    data!.reason,
+  );
   return ok(await repo.getQuote(id));
 }

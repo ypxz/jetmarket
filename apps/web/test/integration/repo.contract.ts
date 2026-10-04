@@ -552,6 +552,18 @@ export function repoContract(
         await repo.countQuotes({ operatorId: op.id, buyerSeen: true }),
       ).toBe(1);
       expect(await repo.countQuotes({ operatorId: op.id })).toBe(1);
+
+      // QA-508: the decline reason lands atomically on the status flip —
+      // a declined quote never carries a bare verdict; other flips leave
+      // the field unset.
+      await repo.setQuoteStatus(unseen!.id, "declined", "sent", {
+        declineReason: "timing",
+      });
+      expect((await repo.getQuote(unseen!.id))?.declineReason).toBe(
+        "timing",
+      );
+      await repo.setQuoteStatus(quote.id, "accepted", "sent");
+      expect((await repo.getQuote(quote.id))?.declineReason).toBeUndefined();
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {

@@ -384,6 +384,16 @@ export default async function RfqInboxPage({
                               {t("seenByBuyer")}
                             </Badge>
                           ) : null}
+                          {/* QA-508: why the buyer declined — the enum key
+                              localizes via app.rfqs.declineReason.* */}
+                          {q.status === "declined" && q.declineReason ? (
+                            <Badge
+                              variant="outline"
+                              data-testid={`quote-decline-reason-${q.id}`}
+                            >
+                              {t(`declineReason.${q.declineReason}`)}
+                            </Badge>
+                          ) : null}
                           {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
                             <>
                               <ReviseQuote

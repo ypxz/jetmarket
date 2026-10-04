@@ -166,6 +166,16 @@ export interface ListingReport {
 }
 
 export type QuoteStatus = "sent" | "accepted" | "declined" | "withdrawn";
+/** Buyer-supplied decline reasons (QA-508) — enum keys, never free text:
+ *  ops see structured feedback and every surface localizes the label. */
+export const QUOTE_DECLINE_REASONS = [
+  "price",
+  "timing",
+  "chose_other",
+  "no_longer_needed",
+  "other",
+] as const;
+export type QuoteDeclineReason = (typeof QUOTE_DECLINE_REASONS)[number];
 
 /** Read projection of a background-job row (worker queue) for admin ops. */
 export interface JobInfo {
@@ -195,6 +205,8 @@ export interface Quote {
   /** Buyer read receipt (QA-506): set the first time their inbox GET
    *  renders the quote; cleared on revise — new content is unseen again. */
   buyerSeenAt?: string;
+  /** Buyer-chosen decline reason key (QA-508) — only set on 'declined'. */
+  declineReason?: QuoteDeclineReason;
 }
 
 export interface Deal {
@@ -771,6 +783,9 @@ export interface Repo {
     id: string,
     status: QuoteStatus,
     expected: QuoteStatus,
+    /** QA-508: buyer's decline reason — written atomically with the
+     *  status flip so a declined quote never carries a bare verdict. */
+    opts?: { declineReason?: QuoteDeclineReason },
   ): Promise<boolean>;
   /** Quote revision while the offer is still live (QA-439): CAS-gated
    *  rewrite of amount/currency/message — only a `sent` quote, only its

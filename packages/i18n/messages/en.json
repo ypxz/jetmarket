@@ -223,6 +223,12 @@
       "bodyAccepted": "The buyer accepted a different quote for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
       "bodyClosed": "The buyer closed their request for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
       "bodyDeclined": "The buyer declined your quote of {currency} {amount} for \u201c{title}\u201d on {site}.",
+      "reasonLine": "Reason given: {reason}.",
+      "reason_price": "too expensive",
+      "reason_timing": "dates didn't work",
+      "reason_chose_other": "another offer accepted",
+      "reason_no_longer_needed": "no longer needed",
+      "reason_other": "other",
       "bodyEnded": "The listing \u201c{title}\u201d is no longer available on {site}, so your quote of {currency} {amount} was not selected this time."
     },
     "opDealClosed": {
@@ -389,6 +395,15 @@
     "staleOffer": "Sent before your latest update",
     "dealsCount": "{count, plural, one {# deal closed} other {# deals closed}}",
     "decline": "Decline",
+    "declineReasonsTitle": "Why are you declining? (optional)",
+    "declineReason": {
+      "price": "Too expensive",
+      "timing": "Dates don't work",
+      "chose_other": "Took another offer",
+      "no_longer_needed": "No longer needed",
+      "other": "Other"
+    },
+    "declineNoReason": "Decline without a reason",
     "operatorUnavailable": "This operator isn't available — their offer can't be accepted.",
     "declinedMsg": "Quote declined.",
     "needLink": "Open the link from your RFQ or quote email to view your quotes.",
@@ -1059,6 +1074,13 @@
       "failed": "failed",
       "listingExpired": "listing expired",
       "seenByBuyer": "seen",
+      "declineReason": {
+        "price": "too expensive",
+        "timing": "dates didn't work",
+        "chose_other": "chose another offer",
+        "no_longer_needed": "no longer needed",
+        "other": "other"
+      },
       "seenByBuyerTitle": "Buyer viewed this quote",
       "listingFallback": "listing",
       "withdraw": "Withdraw",

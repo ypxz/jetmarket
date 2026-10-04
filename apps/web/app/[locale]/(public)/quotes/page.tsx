@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useRef, useState } from "react";
 import { formatMoney } from "@/lib/format";
+import { QUOTE_DECLINE_REASONS } from "@/lib/repo/types";
 
 interface Quote {
   id: string;
@@ -94,6 +95,9 @@ function QuotesInner() {
   const [endingFirst, setEndingFirst] = useState(false);
   // QA-481: which live row's inline edit form is open (one at a time).
   const [editingId, setEditingId] = useState<string | null>(null);
+  // QA-508: which quote's decline-reason picker is open — declining is a
+  // two-step so the buyer can say why (optional, structured).
+  const [decliningId, setDecliningId] = useState<string | null>(null);
   // QA-486: one in-flight mutation at a time. Every action below raced a
   // double-click before — accept/close/extend 409'd harmlessly, but a
   // second PATCH succeeded and re-mailed every delivered operator. The ref
@@ -313,16 +317,20 @@ function QuotesInner() {
     await load();
   }
 
-    const decline = (quoteId: string) =>
-    withBusy(() => declineImpl(quoteId));
+    const decline = (quoteId: string, reason?: string) =>
+    withBusy(() => declineImpl(quoteId, reason));
 
-  async function declineImpl(quoteId: string) {
+  async function declineImpl(quoteId: string, reason?: string) {
     let res: Response;
     try {
       res = await fetch(`/api/quotes/${quoteId}/decline`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ buyerEmail: email, token }),
+        body: JSON.stringify({
+          buyerEmail: email,
+          token,
+          ...(reason ? { reason } : {}),
+        }),
       });
     } catch {
       setMsg(tc("error"));
@@ -334,7 +342,61 @@ function QuotesInner() {
       return;
     }
     setMsg(t("declinedMsg"));
+    setDecliningId(null);
     await load();
+  }
+
+  // QA-508: two-step decline — the button reveals structured reason chips;
+  // picking one POSTs with it, "without a reason" POSTs bare.
+  function declineControls(q: Quote) {
+    if (decliningId === q.id) {
+      return (
+        <span
+          className="flex flex-wrap items-center gap-1"
+          data-testid={`decline-picker-${q.id}`}
+        >
+          <span className="text-xs text-muted">
+            {t("declineReasonsTitle")}
+          </span>
+          {QUOTE_DECLINE_REASONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => decline(q.id, r)}
+              disabled={busy}
+              data-testid={`decline-reason-${r}-${q.id}`}
+              className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+            >
+              {t(`declineReason.${r}`)}
+            </button>
+          ))}
+          <button
+            onClick={() => decline(q.id)}
+            disabled={busy}
+            data-testid={`decline-no-reason-${q.id}`}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+          >
+            {t("declineNoReason")}
+          </button>
+          <button
+            onClick={() => setDecliningId(null)}
+            data-testid={`decline-cancel-${q.id}`}
+            className="text-xs text-muted underline"
+          >
+            {t("cancelEdit")}
+          </button>
+        </span>
+      );
+    }
+    return (
+      <button
+        onClick={() => setDecliningId(q.id)}
+        disabled={busy}
+        data-testid={`decline-${q.id}`}
+        className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+      >
+        {t("decline")}
+      </button>
+    );
   }
 
     const closeRfq = (rfqId: string) =>
@@ -737,14 +799,7 @@ function QuotesInner() {
                               >
                                 {t("operatorUnavailable")}
                               </span>
-                              <button
-                                onClick={() => decline(q.id)}
-                                disabled={busy}
-                                data-testid={`decline-${q.id}`}
-                                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                              >
-                                {t("decline")}
-                              </button>
+                              {declineControls(q)}
                             </span>
                           ) : (
                           <span className="flex gap-2">
@@ -756,14 +811,7 @@ function QuotesInner() {
                             >
                               {t("accept")}
                             </button>
-                            <button
-                              onClick={() => decline(q.id)}
-                              disabled={busy}
-                              data-testid={`decline-${q.id}`}
-                              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                            >
-                              {t("decline")}
-                            </button>
+                            {declineControls(q)}
                           </span>
                           )
                         ) : null}

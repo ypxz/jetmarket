@@ -110,12 +110,24 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
         r.request().method() === 'POST' &&
         r.status() === 200,
     );
+    // QA-508: decline is two-step — the button reveals structured reason
+    // chips; picking one POSTs the decline with it.
     await quote.locator(tidPrefix('decline-')).click();
+    await quote.locator(tidPrefix('decline-reason-price-')).click();
     expect((await resp).status()).toBe(200);
     await expect(buyer.getByTestId('accept-msg')).toContainText(/declined/i);
     // after reload the quote row shows declined and offers no action buttons
     await expect(quote).toContainText('declined');
     await expect(quote.locator(tidPrefix('accept-'))).toHaveCount(0);
     await expect(quote.locator(tidPrefix('decline-'))).toHaveCount(0);
+  });
+
+  await step('operator inbox chips the buyer-given reason', async () => {
+    await operator.goto('/app/rfqs');
+    const chip = operator.locator(
+      '[data-testid^="quote-decline-reason-"]',
+    );
+    await expect(chip).toBeVisible();
+    await expect(chip).toContainText('too expensive');
   });
 });

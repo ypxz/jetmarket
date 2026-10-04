@@ -27,6 +27,7 @@ import type {
   Operator,
   Plan,
   Quote,
+  QuoteDeclineReason,
   QuoteStatus,
   Repo,
   Rfq,
@@ -139,6 +140,9 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
     ...(r.buyerSeenAt ? { buyerSeenAt: iso(r.buyerSeenAt) } : {}),
+    ...(r.declineReason
+      ? { declineReason: r.declineReason as QuoteDeclineReason }
+      : {}),
   };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
@@ -1544,10 +1548,17 @@ export class DrizzleRepo implements Repo {
     id: string,
     status: QuoteStatus,
     expected: QuoteStatus,
+    opts?: { declineReason?: QuoteDeclineReason },
   ): Promise<boolean> {
     const rows = await this.db
       .update(quotes)
-      .set({ status, updatedAt: new Date() })
+      .set({
+        status,
+        updatedAt: new Date(),
+        ...(opts?.declineReason
+          ? { declineReason: opts.declineReason }
+          : {}),
+      })
       .where(and(eq(quotes.id, id), eq(quotes.status, expected)))
       .returning({ id: quotes.id });
     return rows.length > 0;

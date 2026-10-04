@@ -120,6 +120,27 @@ describe("POST /api/quotes/[id]/decline (buyer)", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("QA-508: stores a valid decline reason; an unknown reason 422s", async () => {
+    const repo = await getMemoryRepo();
+    const { quote, buyerEmail, rfq } = await fixture(repo);
+
+    const bad = await declineQuote(
+      post({ buyerEmail, token: rfq.accessToken, reason: "rude" }),
+      params(quote.id),
+    );
+    expect(bad.status).toBe(422);
+    // A rejected reason mutates nothing.
+    expect((await repo.getQuote(quote.id))?.status).toBe("sent");
+
+    const res = await declineQuote(
+      post({ buyerEmail, token: rfq.accessToken, reason: "price" }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as Quote).declineReason).toBe("price");
+    expect((await repo.getQuote(quote.id))?.declineReason).toBe("price");
+  });
 });
 
 describe("POST /api/quotes re-quote (QA-18)", () => {

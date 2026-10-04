@@ -110,6 +110,23 @@ describe("notifyQuoteDeclined", () => {
     expect(sent[0]!.text).toContain("USD 9000");
     expect(sent[0]!.text).not.toContain("was declined");
   });
+
+  it("QA-508: a buyer-picked reason appends the localized 'Reason given' line", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, quote, rfq } = await fixture(repo);
+    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+
+    await notifyQuoteDeclined(repo, quote, rfq, "declined", "timing");
+
+    const sent = email
+      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
+      .slice(before)
+      .filter((m) => m.to === opUser.email);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain(
+      "Reason given: dates didn't work.",
+    );
+  });
 });
 
 describe("notifyBuyerQuoteWithdrawn", () => {

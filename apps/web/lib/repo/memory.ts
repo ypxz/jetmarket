@@ -13,6 +13,7 @@ import type {
   Operator,
   Plan,
   Quote,
+  QuoteDeclineReason,
   Repo,
   Rfq,
   RfqReport,
@@ -957,11 +958,16 @@ class MemoryRepo implements Repo {
     if (filter?.buyerSeen) out = out.filter((q) => !!q.buyerSeenAt);
     return out.length;
   }
-  async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"]) {
+  async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"], opts?: { declineReason?: QuoteDeclineReason }) {
     const q = this.quotes.get(id);
     if (!q || q.status !== expected) return false;
     // Parity: pg bumps updated_at on every write (QA-445).
-    this.quotes.set(id, { ...q, status, updatedAt: now() });
+    this.quotes.set(id, {
+      ...q,
+      status,
+      updatedAt: now(),
+      ...(opts?.declineReason ? { declineReason: opts.declineReason } : {}),
+    });
     return true;
   }
 
