@@ -1035,6 +1035,27 @@ class MemoryRepo implements Repo {
     return out;
   }
 
+  async avgResponseHoursPerOperator(
+    operatorIds: string[],
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    const want = new Set(operatorIds);
+    const sum: Record<string, number> = {};
+    const n: Record<string, number> = {};
+    for (const q of this.quotes.values()) {
+      if (!want.has(q.operatorId)) continue;
+      const rfq = this.rfqs.get(q.rfqId);
+      if (rfq?.vertical !== vertical) continue;
+      sum[q.operatorId] =
+        (sum[q.operatorId] ?? 0) +
+        (Date.parse(q.createdAt) - Date.parse(rfq.createdAt)) / 3_600_000;
+      n[q.operatorId] = (n[q.operatorId] ?? 0) + 1;
+    }
+    const out: Record<string, number> = {};
+    for (const id of Object.keys(n)) out[id] = sum[id]! / n[id]!;
+    return out;
+  }
+
   async markSearchAlerted(id: string) {
     const row = this.searchAlertRows.get(id);
     if (row) {

@@ -504,6 +504,17 @@ export interface Repo {
     operatorIds: string[],
     vertical: string,
   ): Promise<Record<string, number>>;
+  /** Buyer-facing responsiveness (QA-434): mean hours from the buyer's RFQ
+   *  submit to each quote (rfq.createdAt is the right baseline — that's the
+   *  request the buyer experienced waiting on). Every quote counts once
+   *  regardless of its later status — a declined/withdrawn quote was still
+   *  a reply. Missing key = no quotes yet in-vertical (profile hides the
+   *  chip rather than showing a fabricated "0h"). Batched like
+   *  countDealsPerOperator. */
+  avgResponseHoursPerOperator(
+    operatorIds: string[],
+    vertical: string,
+  ): Promise<Record<string, number>>;
   /** Queue a matched listing during the mail cooldown — distinct append. */
   appendSearchAlertPending(alertId: string, listingId: string): Promise<void>;
   /** Stamp lastAlertedAt=now and flush the pending queue (post-send). */

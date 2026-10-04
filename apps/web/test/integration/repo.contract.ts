@@ -2320,6 +2320,82 @@ export function repoContract(
       expect(await repo.countDealsPerOperator([], "jets")).toEqual({});
     });
 
+    it("avgResponseHoursPerOperator averages request→quote lag per op (QA-434)", async () => {
+      const repo = await factory();
+      const tag = `rh-${Date.now().toString(36)}`;
+      const mk = async (email: string, rfqVertical = "jets") => {
+        const user = await repo.createUser(email, "operator");
+        const op = await repo.upsertOperator({
+          userId: user.id,
+          name: `Resp ${tag} ${email}`,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: true,
+          plan: "pro",
+        });
+        const listing = await repo.createListing({
+          operatorId: op.id,
+          vertical: rfqVertical,
+          type: "charter",
+          title: `Resp listing ${email}`,
+          price: 9000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+        });
+        const rfq = await repo.createRfq({
+          vertical: rfqVertical,
+          listingId: listing.id,
+          buyerEmail: `buyer-${email}`,
+          fields: {},
+        });
+        return { op, rfq };
+      };
+      const a = await mk(`a-${tag}@test.dev`);
+      const b = await mk(`b-${tag}@test.dev`, "machinery");
+      const quiet = await mk(`c-${tag}@test.dev`);
+      // Every quote counts once regardless of status — declined/withdrawn
+      // were still replies.
+      const quote = await repo.createQuote({
+        rfqId: a.rfq.id,
+        operatorId: a.op.id,
+        amount: 10_000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.setQuoteStatus(quote.id, "declined", "sent");
+      await repo.createQuote({
+        rfqId: b.rfq.id,
+        operatorId: b.op.id,
+        amount: 10_000,
+        currency: "EUR",
+        message: "",
+      });
+
+      const jets = await repo.avgResponseHoursPerOperator(
+        [a.op.id, b.op.id, quiet.op.id, "not-a-uuid"],
+        "jets",
+      );
+      // Suite stamps rfq+quote ~now — the lag is ≈0h on both impls; what's
+      // pinned is per-op grouping, the declined quote counting, and the
+      // vertical join (b's machinery quote must not leak into jets scope).
+      expect(jets[a.op.id]).toBeDefined();
+      expect(jets[a.op.id]).toBeGreaterThanOrEqual(0);
+      expect(jets[a.op.id]).toBeLessThan(1);
+      expect(jets[b.op.id]).toBeUndefined();
+      expect(jets[quiet.op.id]).toBeUndefined();
+      expect(jets["not-a-uuid"]).toBeUndefined();
+      const mach = await repo.avgResponseHoursPerOperator(
+        [a.op.id, b.op.id],
+        "machinery",
+      );
+      expect(mach[a.op.id]).toBeUndefined();
+      expect(mach[b.op.id]).toBeGreaterThanOrEqual(0);
+      expect(
+        await repo.avgResponseHoursPerOperator([], "jets"),
+      ).toEqual({});
+    });
+
     it("listRfqs/countRfqs scope to one listing (QA-430)", async () => {
       const repo = await factory();
       const tag = `lf-${Date.now().toString(36)}`;

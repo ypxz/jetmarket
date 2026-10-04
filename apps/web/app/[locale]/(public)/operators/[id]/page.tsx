@@ -82,6 +82,11 @@ export default async function OperatorPage({
     (await repo.countDealsPerOperator([operator.id], verticalSlug()))[
       operator.id
     ] ?? 0;
+  // QA-434: mean request→quote lag on this vertical; absent with zero
+  // quotes (chip hides rather than fabricating "~0h").
+  const avgResponseH = (
+    await repo.avgResponseHoursPerOperator([operator.id], verticalSlug())
+  )[operator.id];
   const memberSince = new Date(operator.createdAt).toLocaleDateString(
     "en",
     { month: "long", year: "numeric" },
@@ -122,6 +127,13 @@ export default async function OperatorPage({
         {dealCount > 0 ? (
           <Badge variant="outline" data-testid="operator-deals-count">
             {t("dealsClosed", { count: dealCount })}
+          </Badge>
+        ) : null}
+        {avgResponseH !== undefined ? (
+          <Badge variant="outline" data-testid="operator-response-time">
+            {t("responseTime", {
+              count: Math.max(1, Math.round(avgResponseH)),
+            })}
           </Badge>
         ) : null}
       </div>

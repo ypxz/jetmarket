@@ -1657,6 +1657,28 @@ export class DrizzleRepo implements Repo {
     return out;
   }
 
+  async avgResponseHoursPerOperator(
+    operatorIds: string[],
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    const ids = [...new Set(operatorIds)].filter(isUuid);
+    if (!ids.length) return {};
+    const rows = await this.db
+      .select({
+        operatorId: quotes.operatorId,
+        h: sql<number>`avg(extract(epoch from (${quotes.createdAt} - ${rfqs.createdAt})) / 3600.0)::float8`,
+      })
+      .from(quotes)
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+      .where(
+        and(inArray(quotes.operatorId, ids), eq(rfqs.vertical, vertical)),
+      )
+      .groupBy(quotes.operatorId);
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.operatorId] = r.h;
+    return out;
+  }
+
   async appendSearchAlertPending(alertId: string, listingId: string) {
     if (!isUuid(alertId) || !isUuid(listingId)) return;
     // Distinct append: only add when the id isn't already queued.

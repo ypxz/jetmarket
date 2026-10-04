@@ -315,6 +315,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(
         buyer.getByTestId('operator-member-since'),
       ).toContainText('since');
+      // QA-434: the quote went out seconds after submit — "~1 hour".
+      await expect(
+        buyer.getByTestId('operator-response-time'),
+      ).toContainText('~1 hour');
     } finally {
       await sql.end();
     }

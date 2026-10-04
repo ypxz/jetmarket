@@ -848,6 +848,7 @@
     "indexEmptyBody": "Operators appear here as soon as they publish a live listing.",
     "viewProfile": "View profile →",
     "memberSince": "On {siteName} since {date}",
-    "dealsClosed": "{count, plural, one {# deal closed} other {# deals closed}}"
+    "dealsClosed": "{count, plural, one {# deal closed} other {# deals closed}}",
+    "responseTime": "Typically replies in ~{count, plural, one {# hour} other {# hours}}"
   }
 }
