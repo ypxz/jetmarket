@@ -7,7 +7,7 @@ import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { formatMoney } from "@/lib/format";
 
 interface Quote {
@@ -89,6 +89,24 @@ function QuotesInner() {
   const [endingFirst, setEndingFirst] = useState(false);
   // QA-481: which live row's inline edit form is open (one at a time).
   const [editingId, setEditingId] = useState<string | null>(null);
+  // QA-486: one in-flight mutation at a time. Every action below raced a
+  // double-click before — accept/close/extend 409'd harmlessly, but a
+  // second PATCH succeeded and re-mailed every delivered operator. The ref
+  // is the real gate (state lags a render — a same-tick double-click reads
+  // a stale `busy`); the state just feeds `disabled` for affordance.
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  async function withBusy(fn: () => Promise<void>) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await fn();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
 
   async function load(e?: React.FormEvent, tok?: string, ending = endingFirst) {
     e?.preventDefault();
@@ -127,7 +145,10 @@ function QuotesInner() {
 
   // "Lost your link?" — re-emails every request's bearer link to the claimed
   // mailbox (QA-160). Server answers identically whether RFQs exist.
-  async function resend() {
+    const resend = () =>
+    withBusy(() => resendImpl());
+
+  async function resendImpl() {
     if (!email) {
       setMsg(t("needEmail"));
       return;
@@ -203,7 +224,10 @@ function QuotesInner() {
 
   // QA-451: once-ever 1-5 rating on the closed deal — updates the row
   // in place via the same re-fetch the accept/decline handlers use.
-  async function rateDeal(dealId: string, rating: number) {
+    const rateDeal = (dealId: string, rating: number) =>
+    withBusy(() => rateDealImpl(dealId, rating));
+
+  async function rateDealImpl(dealId: string, rating: number) {
     let res: Response;
     try {
       res = await fetch(`/api/deals/${dealId}/rate`, {
@@ -223,7 +247,10 @@ function QuotesInner() {
     await load();
   }
 
-  async function accept(quoteId: string) {
+    const accept = (quoteId: string) =>
+    withBusy(() => acceptImpl(quoteId));
+
+  async function acceptImpl(quoteId: string) {
     let res: Response;
     try {
       res = await fetch(`/api/quotes/${quoteId}/accept`, {
@@ -244,7 +271,10 @@ function QuotesInner() {
     await load();
   }
 
-  async function decline(quoteId: string) {
+    const decline = (quoteId: string) =>
+    withBusy(() => declineImpl(quoteId));
+
+  async function declineImpl(quoteId: string) {
     let res: Response;
     try {
       res = await fetch(`/api/quotes/${quoteId}/decline`, {
@@ -265,7 +295,10 @@ function QuotesInner() {
     await load();
   }
 
-  async function closeRfq(rfqId: string) {
+    const closeRfq = (rfqId: string) =>
+    withBusy(() => closeRfqImpl(rfqId));
+
+  async function closeRfqImpl(rfqId: string) {
     let res: Response;
     try {
       res = await fetch(`/api/rfqs/${rfqId}/close`, {
@@ -288,7 +321,10 @@ function QuotesInner() {
 
   // QA-446: a dying request buys a week in place — quotes and the
   // delivered-to history survive, unlike the QA-410 repost twin.
-  async function extendRfq(rfqId: string) {
+    const extendRfq = (rfqId: string) =>
+    withBusy(() => extendRfqImpl(rfqId));
+
+  async function extendRfqImpl(rfqId: string) {
     let res: Response;
     try {
       res = await fetch(`/api/rfqs/${rfqId}/extend`, {
@@ -312,7 +348,10 @@ function QuotesInner() {
   // QA-481: amend a live request in place — quotes and delivered-to
   // history survive; the PATCH CAS keeps it off terminal rows, the route
   // re-fans-out to newly-fitting operators and mails the rest.
-  async function amendRfq(rfqId: string, fields: Record<string, unknown>) {
+    const amendRfq = (rfqId: string, fields: Record<string, unknown>) =>
+    withBusy(() => amendRfqImpl(rfqId, fields));
+
+  async function amendRfqImpl(rfqId: string, fields: Record<string, unknown>) {
     let res: Response;
     try {
       res = await fetch(`/api/rfqs/${rfqId}`, {
@@ -357,6 +396,7 @@ function QuotesInner() {
         <button
           type="button"
           onClick={resend}
+          disabled={busy}
           data-testid="buyer-resend"
           className="rounded-md border border-border bg-background px-4 py-2 text-sm"
         >
@@ -426,6 +466,7 @@ function QuotesInner() {
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button
                         onClick={() => extendRfq(r.id)}
+                        disabled={busy}
                         data-testid={`extend-rfq-${r.id}`}
                         className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
                       >
@@ -447,6 +488,7 @@ function QuotesInner() {
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button
                         onClick={() => closeRfq(r.id)}
+                        disabled={busy}
                         data-testid={`close-rfq-${r.id}`}
                         className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
                       >
@@ -489,6 +531,7 @@ function QuotesInner() {
                     rfq={r}
                     onSave={(fields) => amendRfq(r.id, fields)}
                     onCancel={() => setEditingId(null)}
+                    disabled={busy}
                     saveLabel={t("saveEdit")}
                     cancelLabel={t("cancelEdit")}
                   />
@@ -588,6 +631,7 @@ function QuotesInner() {
                                       key={n}
                                       type="button"
                                       onClick={() => rateDeal(q.deal!.id!, n)}
+                                      disabled={busy}
                                       data-testid={`rate-${q.deal!.id}-${n}`}
                                       className="mx-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-xs hover:bg-surface"
                                     >
@@ -628,6 +672,7 @@ function QuotesInner() {
                               </span>
                               <button
                                 onClick={() => decline(q.id)}
+                                disabled={busy}
                                 data-testid={`decline-${q.id}`}
                                 className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
                               >
@@ -638,6 +683,7 @@ function QuotesInner() {
                           <span className="flex gap-2">
                             <button
                               onClick={() => accept(q.id)}
+                              disabled={busy}
                               data-testid={`accept-${q.id}`}
                               className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
                             >
@@ -645,6 +691,7 @@ function QuotesInner() {
                             </button>
                             <button
                               onClick={() => decline(q.id)}
+                              disabled={busy}
                               data-testid={`decline-${q.id}`}
                               className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
                             >
@@ -685,12 +732,14 @@ function RfqEditForm({
   onCancel,
   saveLabel,
   cancelLabel,
+  disabled,
 }: {
   rfq: Rfq;
   onSave: (fields: Record<string, unknown>) => void;
   onCancel: () => void;
   saveLabel: string;
   cancelLabel: string;
+  disabled?: boolean;
 }) {
   const [vals, setVals] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -783,7 +832,8 @@ function RfqEditForm({
       <div className="col-span-full flex gap-2">
         <button
           type="submit"
-          className="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground"
+          disabled={disabled}
+          className="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground disabled:opacity-50"
           data-testid={`rfq-edit-save-${rfq.id}`}
         >
           {saveLabel}
