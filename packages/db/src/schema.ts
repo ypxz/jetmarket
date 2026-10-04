@@ -378,6 +378,24 @@ export const rfqDismissals = pgTable(
   (t) => [primaryKey({ columns: [t.rfqId, t.operatorId] })],
 );
 
+export const blockedEmails = pgTable(
+  "blocked_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    reason: text("reason"),
+    createdBy: uuid("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("blocked_emails_email_uniq").on(sql`lower(${t.email})`),
+  ],
+);
+
 export const listingReports = pgTable(
   "listing_reports",
   {

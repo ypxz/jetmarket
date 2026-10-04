@@ -68,6 +68,13 @@ export async function POST(req: Request) {
   const listingOp = await repo.getOperator(listing.operatorId);
   if (listingOp?.suspended) return err("listing not found", 404);
 
+  // QA-463: a blocked buyer address dies here — the account-level kill that
+  // complements the per-RFQ spam mark. 403 (not 404): the listing exists,
+  // the BUYER is the problem.
+  if (await repo.isEmailBlocked(buyerEmail)) {
+    return err("account blocked", 403);
+  }
+
   // RFQ payload shape comes from the active vertical's rfqFields config,
   // scoped to this listing's type — an aircraft_sale inquiry has no trip
   // dates/passengers (QA-147).

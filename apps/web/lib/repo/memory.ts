@@ -2,6 +2,7 @@ import { storageProvider } from "@jetmarket/providers";
 import { rfqDeadlineAt } from "../rfq-deadline";
 import { PlanCapError } from "./types";
 import type {
+  BlockedEmail,
   Deal,
   JobInfo,
   Listing,
@@ -1080,6 +1081,42 @@ class MemoryRepo implements Repo {
       }
     }
     return n;
+  }
+
+  private blockedEmails = new Map<string, BlockedEmail>(); // key: lower email
+
+  async blockBuyerEmail(
+    email: string,
+    opts?: { reason?: string; by?: string },
+  ): Promise<BlockedEmail> {
+    // QA-463: sync check-write (QA-333) — a parallel double-block returns the
+    // same live row instead of racing a second insert.
+    const key = email.toLowerCase();
+    const cur = this.blockedEmails.get(key);
+    if (cur) return cur;
+    const row: BlockedEmail = {
+      id: crypto.randomUUID(),
+      email: key,
+      reason: opts?.reason ?? null,
+      createdBy: opts?.by ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    this.blockedEmails.set(key, row);
+    return row;
+  }
+
+  async unblockBuyerEmail(email: string): Promise<boolean> {
+    return this.blockedEmails.delete(email.toLowerCase());
+  }
+
+  async isEmailBlocked(email: string): Promise<boolean> {
+    return this.blockedEmails.has(email.toLowerCase());
+  }
+
+  async listBlockedEmails(): Promise<BlockedEmail[]> {
+    return [...this.blockedEmails.values()].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
   }
 
   async listDeals(filter?: {

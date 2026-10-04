@@ -14,6 +14,7 @@ import {
   toMinorUnits,
 } from "@jetmarket/domain";
 import type {
+  BlockedEmail,
   Deal,
   JobInfo,
   Listing,
@@ -50,6 +51,7 @@ const {
   magicLinksUsed,
   searchAlerts,
   listingReports,
+  blockedEmails,
 } = schema;
 
 const iso = (d: Date | null | undefined): string =>
@@ -138,6 +140,16 @@ function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
     status: r.status as Subscription["status"],
     currentPeriodEnd: iso(r.currentPeriodEnd),
     ...(r.lastEventAt != null ? { lastEventAt: r.lastEventAt } : {}),
+  };
+}
+
+function toBlockedEmail(r: typeof blockedEmails.$inferSelect): BlockedEmail {
+  return {
+    id: r.id,
+    email: r.email,
+    reason: r.reason,
+    createdBy: r.createdBy,
+    createdAt: iso(r.createdAt),
   };
 }
 
@@ -1639,6 +1651,55 @@ export class DrizzleRepo implements Repo {
       )
       .returning({ id: listingReports.id });
     return rows.length;
+  }
+
+  async blockBuyerEmail(
+    email: string,
+    opts?: { reason?: string; by?: string },
+  ): Promise<BlockedEmail> {
+    const normalized = email.toLowerCase();
+    // QA-463: idempotent — a re-block returns the live row (unique index
+    // on lower(email) guards the race; DO NOTHING + re-select).
+    await this.db
+      .insert(blockedEmails)
+      .values({
+        email: normalized,
+        reason: opts?.reason ?? null,
+        createdBy: opts?.by ?? null,
+      })
+      .onConflictDoNothing();
+    const rows = await this.db
+      .select()
+      .from(blockedEmails)
+      .where(sql`lower(${blockedEmails.email}) = ${normalized}`)
+      .limit(1);
+    return toBlockedEmail(rows[0]!);
+  }
+
+  async unblockBuyerEmail(email: string): Promise<boolean> {
+    const rows = await this.db
+      .delete(blockedEmails)
+      .where(sql`lower(${blockedEmails.email}) = ${email.toLowerCase()}`)
+      .returning({ id: blockedEmails.id });
+    return rows.length > 0;
+  }
+
+  async isEmailBlocked(email: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: blockedEmails.id })
+      .from(blockedEmails)
+      .where(sql`lower(${blockedEmails.email}) = ${email.toLowerCase()}`)
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async listBlockedEmails(): Promise<BlockedEmail[]> {
+    const rows = await this.db
+      .select()
+      .from(blockedEmails)
+      .orderBy(desc(blockedEmails.createdAt))
+      .limit(500);
+    return rows.map(toBlockedEmail);
   }
 
   async ratingSummaryPerOperator(

@@ -23,13 +23,17 @@ export async function POST(
 ) {
   const user = await requireUser("buyer");
   if (!user) return err("forbidden", 403);
+  const repo = await getRepo();
+  // QA-463: a blocked address can't weaponize the flag queue either.
+  if (await repo.isEmailBlocked(user.email)) {
+    return err("account blocked", 403);
+  }
   if (!rateLimit(`listing-report:${clientIp(req)}`, 30, 60 * 60 * 1000)) {
     return err("rate limit exceeded — try again later", 429);
   }
   const parsed = Report.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return err("invalid input", 400);
   const { id } = await params;
-  const repo = await getRepo();
   const listing = await repo.getListing(id);
   // Any live-state listing is reportable; foreign-vertical rows 404 before
   // the write (shared-DB rule — a jets deploy must not queue machinery flags).

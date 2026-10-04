@@ -266,3 +266,62 @@ test('listing reports: flag → queue → dismiss → re-flag allowed (QA-461)',
   const queueCleared = await admin.get('/en/admin');
   expect(await queueCleared.text()).not.toContain(`report-${againId}`);
 });
+
+// Buyer email blocks (QA-463): the account-level kill — a blocked address
+// is refused at RFQ-create (403) until the admin unblocks it.
+test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', async () => {
+  test.setTimeout(60_000);
+
+  const operator = await login(`e2e-blk-operator-${run}@jetmarket.local`, 'operator');
+  const opRes = await operator.post('/api/operators', {
+    data: { name: `E2E Blk Ops ${run}`, baseAirport: 'LSZH', fleetSummary: 'e2e' },
+  });
+  expect(opRes.status()).toBe(201);
+  const listingId = await createListing(operator, `E2E Blk Charter ${run}`);
+
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.2.9' },
+  });
+  const BUYER = `e2e-blk-buyer-${run}@jetmarket.local`;
+  const mkRfq = () =>
+    publicCtx.post('/api/rfqs', {
+      data: {
+        listingId,
+        buyerEmail: BUYER,
+        fields: {
+          departure: 'ZRH',
+          arrival: 'NCE',
+          dateFrom: isoDateIn(14),
+          dateTo: isoDateIn(16),
+          passengers: 4,
+          budgetUsd: 45000,
+          name: 'Buyer Test',
+          email: BUYER,
+        },
+      },
+    });
+  expect((await mkRfq()).status()).toBe(201);
+
+  const admin = await login(ADMIN_EMAIL);
+  const block = await admin.post('/api/admin/buyers/block', {
+    data: { email: BUYER.toUpperCase() }, // case-fold: caps can't slip past
+  });
+  expect(block.status()).toBe(200);
+
+  // Blocked: new RFQs 403 (not 404 — the listing exists, the buyer is the
+  // problem). The per-RFQ spam mark still works on their history.
+  const denied = await mkRfq();
+  expect(denied.status()).toBe(403);
+  expect(((await denied.json()) as { error: string }).error).toContain(
+    'blocked',
+  );
+
+  const unblock = await admin.post('/api/admin/buyers/block', {
+    data: { email: BUYER },
+  });
+  expect(unblock.status()).toBe(200);
+  expect(((await unblock.json()) as { blocked: boolean }).blocked).toBe(false);
+  // Dedupe replay returns the first RFQ's live row (200 idempotent) —
+  // the point is the request clears the block, not which 2xx it gets.
+  expect((await mkRfq()).ok()).toBeTruthy();
+});

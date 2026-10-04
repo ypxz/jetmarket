@@ -101,6 +101,16 @@ export interface Rfq {
   createdAt: string;
 }
 
+/** QA-463: a blocked buyer address — RFQ-create and report filing refuse
+ *  it at the route. Deliberately silent toward the blocked party. */
+export interface BlockedEmail {
+  id: string;
+  email: string;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
 /** QA-461: a buyer flag on a listing — feeds the admin report queue that
  *  backs the moderation/suspension tools. */
 export type ListingReportStatus = "open" | "dismissed";
@@ -769,6 +779,18 @@ export interface Repo {
    *  target makes its flags moot (the moderation queue cleared itself).
    *  Returns the number of open reports closed. */
   resolveListingReportsForListing(listingId: string): Promise<number>;
+
+  /** QA-463: account-level buyer block. RFQs file by buyerEmail — a serial
+   *  abuser needs the ADDRESS stopped, not another per-row spam mark.
+   *  Email is lower-normalized inside; block is idempotent (re-block
+   *  returns the live row), unblock is silent on misses. */
+  blockBuyerEmail(
+    email: string,
+    opts?: { reason?: string; by?: string },
+  ): Promise<BlockedEmail>;
+  unblockBuyerEmail(email: string): Promise<boolean>;
+  isEmailBlocked(email: string): Promise<boolean>;
+  listBlockedEmails(): Promise<BlockedEmail[]>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

@@ -868,6 +868,8 @@
     "colFiled": "Filed",
     "dismissReport": "Dismiss",
     "dismissingReport": "Dismissing…",
+    "blockBuyer": "Block",
+    "unblockBuyer": "Unblock",
     "voiding": "Voiding…",
     "jobs": {
       "title": "Job queue",

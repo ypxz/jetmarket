@@ -17,6 +17,7 @@ import {
   VoidInvoiceButton,
 } from "./mark-paid";
 import { RfqSpamButton } from "./rfq-mod-button";
+import { BuyerBlockButton } from "./buyer-block-button";
 import { DismissReportButton } from "./report-dismiss";
 import { SuspendButton, VerifyButton } from "./verify-button";
 
@@ -34,7 +35,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -53,6 +54,8 @@ export default async function AdminPage({
         vertical: verticalSlug(),
         limit: 50,
       }),
+      // QA-463: blocked buyer addresses — the RFQ rows show their state.
+      repo.listBlockedEmails(),
     ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
@@ -126,6 +129,9 @@ export default async function AdminPage({
     reportUserRows.map((u) => [u.id, u.email] as const),
   );
   const LIVE_RFQ: ReadonlySet<string> = new Set(["open", "matched", "quoted"]);
+  const blockedEmails = new Set(
+    blockedRows.map((b) => b.email.toLowerCase()),
+  );
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -416,9 +422,15 @@ export default async function AdminPage({
                   {new Date(r.createdAt).toLocaleDateString("en-US")}
                 </td>
                 <td className="py-2">
-                  {LIVE_RFQ.has(r.status) ? (
-                    <RfqSpamButton rfqId={r.id} />
-                  ) : null}
+                  <span className="inline-flex gap-1">
+                    {LIVE_RFQ.has(r.status) ? (
+                      <RfqSpamButton rfqId={r.id} />
+                    ) : null}
+                    <BuyerBlockButton
+                      email={r.buyerEmail}
+                      blocked={blockedEmails.has(r.buyerEmail.toLowerCase())}
+                    />
+                  </span>
                 </td>
               </tr>
             ))}

@@ -3540,5 +3540,34 @@ export function repoContract(
         (await repo.listListingReports({})).map((r) => r.id),
       ).not.toContain(doomed!.id);
     });
+
+    it("blocked emails: idempotent block, case-fold, unblock (QA-463)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const email = `Blocked-${tag}@Test.dev`;
+
+      // Block is idempotent — a second block returns the same live row.
+      const b1 = await repo.blockBuyerEmail(email, { reason: "spam burst" });
+      expect(b1.email).toBe(email.toLowerCase());
+      const b2 = await repo.blockBuyerEmail(email.toLowerCase());
+      expect(b2.id).toBe(b1.id);
+      expect((await repo.listBlockedEmails()).map((b) => b.id)).toContain(
+        b1.id,
+      );
+
+      // Case-fold on both the write and the probe — a caps-varied address
+      // can't slip past.
+      expect(await repo.isEmailBlocked(email)).toBe(true);
+      expect(await repo.isEmailBlocked(email.toUpperCase())).toBe(true);
+      expect(await repo.isEmailBlocked(`other-${tag}@test.dev`)).toBe(false);
+
+      // Unblock frees the address; misses are silent.
+      expect(await repo.unblockBuyerEmail(email)).toBe(true);
+      expect(await repo.isEmailBlocked(email)).toBe(false);
+      expect(await repo.unblockBuyerEmail(email)).toBe(false);
+      expect((await repo.listBlockedEmails()).map((b) => b.id)).not.toContain(
+        b1.id,
+      );
+    });
   });
 }
