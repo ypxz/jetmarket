@@ -1179,7 +1179,16 @@
       "declineCounterSure": "Gegenangebot ablehnen? Der Käufer erfährt, dass Ihr Preis gilt.",
       "declineCounterWorking": "Wird abgelehnt…",
       "declineCounterYes": "Ja, ablehnen",
-      "acceptCounterWorking": "Abschluss…"
+      "acceptCounterWorking": "Abschluss…",
+      "counterRoundLineOp": "{amount} geboten — {outcome}",
+      "counterOutcomeOp": {
+        "open": "wartet auf Sie",
+        "answered": "durch Ihre Revision beantwortet",
+        "withdrawn": "vom Käufer zurückgezogen",
+        "declined": "von Ihnen abgelehnt — Ihr Preis bleibt",
+        "accepted": "von Ihnen angenommen — Deal geschlossen",
+        "expired": "mit der Anfrage geschlossen"
+      }
     },
     "billing": {
       "title": "Tarif & Abrechnung",

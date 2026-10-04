@@ -1179,7 +1179,16 @@
       "declineCounterSure": "Decline their counter? They'll be told your ask stands.",
       "declineCounterWorking": "Declining…",
       "declineCounterYes": "Yes, decline",
-      "acceptCounterWorking": "Closing…"
+      "acceptCounterWorking": "Closing…",
+      "counterRoundLineOp": "Countered {amount} — {outcome}",
+      "counterOutcomeOp": {
+        "open": "awaiting you",
+        "answered": "answered by your revise",
+        "withdrawn": "withdrawn by the buyer",
+        "declined": "you declined — your ask stands",
+        "accepted": "you accepted — deal closed",
+        "expired": "closed with the request"
+      }
     },
     "billing": {
       "title": "Plan & billing",

@@ -140,6 +140,17 @@ export default async function RfqInboxPage({
   // visited → everything is new). One stamp covers owned + matched
   // deliveries — owned RFQs have no match row by design (self-match is
   // excluded from fan-out).
+  // QA-523: the resolved counter trail — one batch read for every quote
+  // on the page. The live round stays the `quote-counter-` badge; only
+  // resolved rounds render under the card (same rule as the buyer side).
+  const roundRows = await repo.listCounterRounds(quoteRows.map((q) => q.id));
+  const roundsByQuote = new Map<string, typeof roundRows>();
+  for (const r of roundRows) {
+    if (r.outcome === "open") continue;
+    const arr = roundsByQuote.get(r.quoteId) ?? [];
+    arr.push(r);
+    roundsByQuote.set(r.quoteId, arr);
+  }
   const lastSeen = operator.inboxSeenAt;
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();
@@ -482,6 +493,34 @@ export default async function RfqInboxPage({
                             </>
                           ) : null}
                         </span>
+                        {/* QA-523: their negotiation trail — every counter
+                            the buyer made and how it ended, newest first.
+                            Gauge engagement before spending another round. */}
+                        {(roundsByQuote.get(q.id)?.length ?? 0) > 0 ? (
+                          <ul
+                            className="mt-1 w-full space-y-0.5 text-xs text-muted"
+                            data-testid={`counterrounds-${q.id}`}
+                          >
+                            {(roundsByQuote.get(q.id) ?? []).map((cr) => (
+                              <li
+                                key={cr.id}
+                                data-testid={`counterround-${cr.id}`}
+                              >
+                                {t("counterRoundLineOp", {
+                                  amount: formatMoney(
+                                    cr.amount,
+                                    cr.currency,
+                                    locale,
+                                  ),
+                                  outcome: t(
+                                    `counterOutcomeOp.${cr.outcome}`,
+                                  ),
+                                })}
+                                {cr.note ? ` — \u201c${cr.note}\u201d` : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

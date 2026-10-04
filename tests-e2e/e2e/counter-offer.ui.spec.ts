@@ -322,6 +322,22 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await declineResp;
     await expect(item.locator(tidPrefix('quote-counter-'))).toHaveCount(0);
 
+    // QA-523: the operator's own card keeps the negotiation trail —
+    // the declined 9,200 (with its note) over the withdrawn 9,000.
+    // Both rfqs ride the same listing — the 9,200 amount only appears
+    // in this rfq's trail, so it disambiguates the two items.
+    await operator.goto('/app/rfqs');
+    const opItem = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE })
+      .filter({ hasText: '9,200' });
+    await expect(opItem.locator(tidPrefix('counterrounds-'))).toBeVisible();
+    const opRounds = opItem.locator(tidPrefix('counterround-'));
+    await expect(opRounds).toHaveCount(2);
+    await expect(opRounds.first()).toContainText('declined');
+    await expect(opRounds.first()).toContainText('covers repositioning');
+    await expect(opRounds.last()).toContainText('withdrawn');
+
     // The buyer re-loads: their chip cleared too — the counter round
     // is open again, and they put down 9,100.
     const loadResp = buyer.waitForResponse(
@@ -419,5 +435,17 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await expect(rounds.first()).toContainText('accepted');
     await expect(rounds.nth(1)).toContainText('declined');
     await expect(rounds.last()).toContainText('withdrawn');
+
+    // QA-523: …and the operator's card closes the same trail — accepted
+    // on top, withdrawn at the bottom. 9,100 disambiguates the rfq row.
+    await operator.goto('/app/rfqs');
+    const opFinal = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE })
+      .filter({ hasText: '9,100' })
+      .locator(tidPrefix('counterround-'));
+    await expect(opFinal).toHaveCount(3);
+    await expect(opFinal.first()).toContainText('accepted');
+    await expect(opFinal.last()).toContainText('withdrawn');
   });
 });
