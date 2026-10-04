@@ -1,12 +1,12 @@
 import { Badge, Card, CardBody, EmptyState, Grid, Stack } from "@jetmarket/ui";
 import { site } from "@jetmarket/config";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { browseExpiry } from "@/lib/search";
-import { siteUrl } from "@/lib/seo";
+import { seoAlternates, siteUrl } from "@/lib/seo";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 const jsonLd = (data: object) =>
@@ -28,10 +28,11 @@ const load = async () => {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("operator");
+  const locale = await getLocale();
   return {
     title: `${t("indexTitle")} — ${site.name}`,
     description: t("indexMeta", { siteName: site.name }),
-    alternates: { canonical: `${siteUrl()}/operators` },
+    alternates: seoAlternates(locale, "/operators"),
     twitter: {
       card: "summary",
       title: t("indexTitle"),

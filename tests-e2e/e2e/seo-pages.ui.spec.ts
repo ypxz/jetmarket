@@ -66,3 +66,54 @@ test('operator directory lists seeded operators and links to profiles', async ({
     timeout: 30_000,
   });
 });
+
+// Locale alternates (QA-497): translated indexable pages self-canonical and
+// advertise the hreflang pair so /de can rank instead of collapsing onto the
+// English URL. The sitemap carries the same map as xhtml:link alternates.
+test('de landing page self-canonicals and lists hreflang alternates', async ({
+  page,
+}) => {
+  const res = await page.goto('/de/empty-legs-zurich-nice');
+  expect(res?.status()).toBe(200);
+  await expect(page.getByTestId('seo-page')).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    /\/de\/empty-legs-zurich-nice$/,
+  );
+  await expect(
+    page.locator('link[rel="alternate"][hreflang="de"]'),
+  ).toHaveAttribute('href', /\/de\/empty-legs-zurich-nice$/);
+  const enAlt = page.locator('link[rel="alternate"][hreflang="en"]');
+  await expect(enAlt).toHaveAttribute(
+    'href',
+    /\/empty-legs-zurich-nice$/,
+  );
+  expect(await enAlt.getAttribute('href')).not.toContain('/de/');
+  await expect(
+    page.locator('link[rel="alternate"][hreflang="x-default"]'),
+  ).toHaveAttribute('href', /\/empty-legs-zurich-nice$/);
+});
+
+test('en page canonical + alternates stay unprefixed', async ({ page }) => {
+  const res = await page.goto('/empty-legs-zurich-nice');
+  expect(res?.status()).toBe(200);
+  const canonical = page.locator('link[rel="canonical"]');
+  await expect(canonical).toHaveAttribute(
+    'href',
+    /\/empty-legs-zurich-nice$/,
+  );
+  expect(await canonical.getAttribute('href')).not.toContain('/de/');
+});
+
+test('sitemap.xml emits xhtml:link alternates for de', async ({ request }) => {
+  const res = await request.get('/sitemap.xml');
+  expect(res.status()).toBe(200);
+  const xml = await res.text();
+  expect(xml).toContain('xhtml:link');
+  expect(xml).toContain('hreflang="de"');
+  expect(xml).toContain('hreflang="x-default"');
+  // The /de counterpart of a seeded SEO slug is advertised.
+  expect(xml).toContain('/de/empty-legs-zurich-nice');
+  // No /de prefix ever lands inside an en href.
+  expect(xml).not.toMatch(/hreflang="en" href="[^"]*\/de\//);
+});

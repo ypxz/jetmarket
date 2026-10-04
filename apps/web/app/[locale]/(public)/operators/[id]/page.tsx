@@ -9,7 +9,7 @@ import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { browseExpiry } from "@/lib/search";
-import { siteUrl } from "@/lib/seo";
+import { seoAlternates, siteUrl } from "@/lib/seo";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 // Escape </script> breakouts inside JSON-LD payloads.
@@ -45,6 +45,7 @@ export async function generateMetadata({
   const found = await load(id);
   if (!found) return {};
   const t = await getTranslations("operator");
+  const locale = await getLocale();
   return {
     title: `${found.operator.name} — ${site.name}`,
     description: t("metaDescription", {
@@ -52,6 +53,7 @@ export async function generateMetadata({
       count: found.listings.length,
       siteName: site.name,
     }),
+    alternates: seoAlternates(locale, `/operators/${found.operator.id}`),
     twitter: {
       card: "summary_large_image",
       title: found.operator.name,

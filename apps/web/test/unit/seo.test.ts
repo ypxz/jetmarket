@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { getVertical } from "@jetmarket/verticals";
-import { resolveSeoPage, searchHref, seoSlugs, siteUrl } from "@/lib/seo";
+import {
+  languageUrls,
+  localeUrl,
+  resolveSeoPage,
+  searchHref,
+  seoAlternates,
+  seoSlugs,
+  siteUrl,
+} from "@/lib/seo";
 import { searchListings } from "@/lib/search";
 
 const vertical = getVertical();
@@ -46,5 +54,35 @@ describe("seo landing pages (jets)", () => {
 
   it("siteUrl falls back to the configured domain", async () => {
     expect(siteUrl()).toMatch(/^https?:\/\//);
+  });
+});
+
+// hreflang alternates (QA-497): every indexable page self-canonicals in its
+// own locale and advertises the en/de pair + x-default so translated pages
+// rank instead of collapsing onto the English URL.
+describe("locale-aware alternates", () => {
+  it("localeUrl prefixes only non-default locales", async () => {
+    expect(localeUrl("en", "/listing/l1")).toBe(`${siteUrl()}/listing/l1`);
+    expect(localeUrl("de", "/listing/l1")).toBe(
+      `${siteUrl()}/de/listing/l1`,
+    );
+    expect(localeUrl("de", "/")).toBe(`${siteUrl()}/de`);
+    expect(localeUrl("en", "/")).toBe(`${siteUrl()}/`);
+  });
+
+  it("languageUrls maps every locale plus x-default", async () => {
+    const langs = languageUrls("/empty-legs-zurich-nice");
+    expect(langs.en).toBe(`${siteUrl()}/empty-legs-zurich-nice`);
+    expect(langs.de).toBe(`${siteUrl()}/de/empty-legs-zurich-nice`);
+    expect(langs["x-default"]).toBe(langs.en);
+  });
+
+  it("seoAlternates self-canonicals in the page's locale", async () => {
+    const de = seoAlternates("de", "/operators");
+    expect(de?.canonical).toBe(`${siteUrl()}/de/operators`);
+    const en = seoAlternates("en", "/operators");
+    expect(en?.canonical).toBe(`${siteUrl()}/operators`);
+    // Both emit the same language map.
+    expect(de?.languages).toEqual(en?.languages);
   });
 });

@@ -15,7 +15,7 @@ import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { browseExpiry, isExpiredListing } from "@/lib/search";
 import { verticalSlug } from "@/lib/vertical";
-import { siteUrl } from "@/lib/seo";
+import { localeUrl, seoAlternates, siteUrl } from "@/lib/seo";
 
 // Escape </script> breakouts inside JSON-LD payloads.
 const jsonLd = (data: object) =>
@@ -61,11 +61,11 @@ export async function generateMetadata({
   return {
     title: listing.title,
     description,
-    alternates: { canonical: `${siteUrl()}/listing/${listing.id}` },
+    alternates: seoAlternates(locale, `/listing/${listing.id}`),
     openGraph: {
       title: listing.title,
       description,
-      url: `${siteUrl()}/listing/${listing.id}`,
+      url: localeUrl(locale, `/listing/${listing.id}`),
       siteName: site.name,
       type: "website",
     },

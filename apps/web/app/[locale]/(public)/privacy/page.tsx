@@ -1,9 +1,19 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { seoAlternates } from "@/lib/seo";
 import { site } from "@jetmarket/config";
 
 interface Section {
   h: string;
   body: string;
+}
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("legal.privacy");
+  const locale = await getLocale();
+  return {
+    title: `${t("title")} — ${site.name}`,
+    alternates: seoAlternates(locale, "/privacy"),
+  };
 }
 
 export default async function PrivacyPage() {

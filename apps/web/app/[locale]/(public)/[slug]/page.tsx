@@ -9,7 +9,7 @@ import { routing } from "@/i18n/routing";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
 import { searchListings } from "@/lib/search";
-import { resolveSeoPage, searchHref, seoSlugs, siteUrl } from "@/lib/seo";
+import { localeUrl, resolveSeoPage, searchHref, seoAlternates, seoSlugs, siteUrl } from "@/lib/seo";
 import { ListingCard } from "@/components/listing-card";
 
 // SEO landing pages are generated from vertical.seo.landingPages — any other
@@ -45,12 +45,12 @@ export async function generateMetadata({
   });
   const title = vt(`${slug}.title`);
   const description = def.introKey ? vt(`${slug}.intro`) : undefined;
-  const url = `${siteUrl()}/${slug}`;
+  const url = localeUrl(locale, `/${slug}`);
   // No og:image — listings carry no first-party image assets to reference.
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: seoAlternates(locale, `/${slug}`),
     openGraph: {
       title,
       description,

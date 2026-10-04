@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { seoSlugs, siteUrl } from "@/lib/seo";
+import { languageUrls, seoSlugs, siteUrl } from "@/lib/seo";
 import { getRepo } from "@/lib/repo";
 import { browseExpiry } from "@/lib/search";
 import { verticalSlug } from "@/lib/vertical";
@@ -28,22 +28,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Operator profiles are indexable trust surfaces — one per operator that
   // has at least one active listing (capped alongside the listings cap).
   const operatorIds = [...new Set(listings.map((l) => l.operatorId))];
+  // QA-497: every entry carries its hreflang alternates (xhtml:link) so
+  // crawlers discover the /de page set — languageUrls is the single source
+  // the page <link> tags use too, so the two can't drift.
   return [
     ...staticPaths.map((p) => ({
       url: `${base}/${p}`,
       lastModified: now,
+      alternates: { languages: languageUrls(`/${p}`) },
     })),
     ...seoSlugs().map((slug) => ({
       url: `${base}/${slug}`,
       lastModified: now,
+      alternates: { languages: languageUrls(`/${slug}`) },
     })),
     ...listings.map((l) => ({
       url: `${base}/listing/${l.id}`,
       lastModified: l.createdAt,
+      alternates: { languages: languageUrls(`/listing/${l.id}`) },
     })),
     ...operatorIds.map((id) => ({
       url: `${base}/operators/${id}`,
       lastModified: now,
+      alternates: { languages: languageUrls(`/operators/${id}`) },
     })),
   ];
 }

@@ -1,12 +1,14 @@
 import { Faq, FeatureGrid, Grid, Hero, PricingTable, Section, Container, Stack, Button, Input, buttonVariants } from "@jetmarket/ui";
 import { getVertical } from "@jetmarket/verticals";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
 import { ListingCard } from "@/components/listing-card";
 import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { browseExpiry } from "@/lib/search";
 import { publicOperator } from "@/lib/repo/types";
 import { site } from "@jetmarket/config";
+import { seoAlternates } from "@/lib/seo";
 
 interface FeatureItem { title: string; body: string }
 interface FaqItem { q: string; a: string }
@@ -98,4 +100,10 @@ export default async function LandingPage() {
   );
 }
 
-export const metadata = { title: site.tagline };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: site.tagline,
+    alternates: seoAlternates(locale, "/"),
+  };
+}

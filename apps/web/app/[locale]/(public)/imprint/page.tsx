@@ -1,6 +1,16 @@
 import { Card, CardBody } from "@jetmarket/ui";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { seoAlternates } from "@/lib/seo";
 import { site } from "@jetmarket/config";
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("legal.imprint");
+  const locale = await getLocale();
+  return {
+    title: `${t("title")} — ${site.name}`,
+    alternates: seoAlternates(locale, "/imprint"),
+  };
+}
 
 export default async function ImprintPage() {
   const t = await getTranslations("legal.imprint");
