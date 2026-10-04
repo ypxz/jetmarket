@@ -14,10 +14,16 @@ const jsonLd = (data: object) =>
 
 const load = async () => {
   const repo = await getRepo();
-  return repo.listOperatorDirectory({
+  const rows = await repo.listOperatorDirectory({
     vertical: verticalSlug(),
     ...browseExpiry(),
   });
+  // QA-455: ★ on directory cards — one batched read, same grouped shape as
+  // the search grid (unrated cards hide rather than averaging to zero).
+  const ratings = await repo.ratingSummaryPerOperator(
+    rows.map((r) => r.operator.id),
+  );
+  return rows.map((r) => ({ ...r, rating: ratings[r.operator.id] }));
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -71,7 +77,7 @@ export default async function OperatorsIndexPage() {
         </div>
       ) : (
         <Grid cols={2} className="mt-8" data-testid="operators-index">
-          {rows.map(({ operator, activeCount }) => {
+          {rows.map(({ operator, activeCount, rating }) => {
             const pub = publicOperator(operator);
             return (
               <Card key={operator.id} data-testid={`operator-card-${operator.id}`}>
@@ -89,6 +95,14 @@ export default async function OperatorsIndexPage() {
                       ) : (
                         <Badge variant="warning">{ct("unverified")}</Badge>
                       )}
+                      {rating ? (
+                        <Badge variant="outline" data-testid="operator-rating">
+                          {t("buyerRating", {
+                            avg: rating.avg.toFixed(1),
+                            count: rating.count,
+                          })}
+                        </Badge>
+                      ) : null}
                     </div>
                     <p className="text-sm text-muted">
                       {vt("basedAt", { place: pub.baseAirport || "—" })}

@@ -102,6 +102,7 @@ export default async function OperatorDashboard() {
     quotes30d,
     won30d,
     avgResponseH,
+    ratingSelf,
   ] = isPro
     ? await Promise.all([
         repo.countRfqs({ operatorId: operator.id, vertical: getVertical().slug }),
@@ -127,8 +128,13 @@ export default async function OperatorDashboard() {
             getVertical().slug,
           )
           .then((m) => m[operator.id]),
+        // QA-455: own ★ — the rating buyers left, beside the funnel it
+        // influences.
+        repo
+          .ratingSummaryPerOperator([operator.id])
+          .then((m) => m[operator.id]),
       ])
-    : [0, 0, 0, 0, 0, 0, 0, undefined];
+    : [0, 0, 0, 0, 0, 0, 0, undefined, undefined];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
@@ -228,6 +234,12 @@ export default async function OperatorDashboard() {
                     avgResponseH === undefined
                       ? "—"
                       : `~${Math.max(1, Math.round(avgResponseH))}h`,
+                  ],
+                  [
+                    "statRating",
+                    ratingSelf === undefined
+                      ? "—"
+                      : `★ ${ratingSelf.avg.toFixed(1)} (${ratingSelf.count})`,
                   ],
                 ] as const
               ).map(([key, value]) => (

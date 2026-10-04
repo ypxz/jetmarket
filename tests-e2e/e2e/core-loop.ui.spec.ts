@@ -498,6 +498,11 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(
         buyer.getByTestId('search-result').first().getByTestId('listing-rating'),
       ).toContainText('★ 5.0');
+      // QA-455: the public directory card shows the same badge.
+      await buyer.goto('/operators');
+      await expect(
+        buyer.getByTestId('operators-index').getByTestId('operator-rating'),
+      ).toContainText('★ 5.0');
       // QA-454: the 4★+ facet keeps the rated listing and drops the rest.
       await buyer.goto(
         `/search?q=${encodeURIComponent(LISTING_TITLE)}&minRating=4`,
@@ -543,6 +548,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       'Typical reply',
     );
     await expect(operator.getByTestId('operator-stats')).toContainText('~1h');
+    // QA-455: own ★ beside the funnel it influences — the buyer rated 5.
+    await expect(operator.getByTestId('operator-stats')).toContainText(
+      '★ 5.0 (1)',
+    );
     await expect(operator.getByTestId('stats-recent')).toContainText(
       'Last 30 days',
     );
