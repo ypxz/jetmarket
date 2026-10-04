@@ -615,3 +615,4 @@ Legend: `[]` open · `[~]` in progress (owner) · `[x]` merged · `[!]` blocked 
 | 512 | QA-526: Pro 'Counter win rate' tile — countCounterRoundsByOutcome iface (memory+drizzle+contract), n/m display, e2e 0/3→1/4 | ✅ shipped (b264802) |
 | 513 | QA-527: operator quote templates — name-keyed presets in mig 0050, session CRUD routes, QuoteForm picker+save, e2e save→pick→send | ✅ shipped (9341a5d) |
 | 514 | QA-528: operator rates the buyer — once-ever CAS on deals.operator_rating (mig 0051); avgBuyerScores joins inbox server-side (email never unmasked); 'Rated buyer' chip on next RFQ; RateBuyer on deal wall | ✅ shipped (122869e) |
+| 515 | QA-529: buyer flags a quote — quote_reports mig 0052 (open-dedupe by lower(reporter_email)), /api/quotes/[id]/report bearer/session proof + off_platform reason, admin quote-reports queue + dismiss CAS, buyer-block reporter sweep, two-step Report control on /quotes, upload.ui cold-compile warm fix | ✅ shipped (a906b32) |
