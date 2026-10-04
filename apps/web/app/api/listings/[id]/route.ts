@@ -1,4 +1,4 @@
-import { getAttributesSchema } from "@jetmarket/verticals";
+import { getAttributesSchema, oneOffListingType } from "@jetmarket/verticals";
 import { storageProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
@@ -16,7 +16,7 @@ import { PlanCapError, publicOperator } from "@/lib/repo/types";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 
 const PatchListing = z.object({
-  status: z.enum(["draft", "active", "paused", "archived"]).optional(),
+  status: z.enum(["draft", "active", "paused", "archived", "sold"]).optional(),
   title: z.string().min(3).max(200).optional(),
   price: z.number().positive().max(1e9).optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
@@ -77,17 +77,22 @@ export async function PATCH(
   }
   const { data, error } = await parseBody(req, PatchListing);
   if (error) return error;
-  // Archive is terminal for operators — the UI offers no un-archive and an
-  // admin-archived (moderated) listing must not come back on a PATCH, nor
-  // through the archived→paused→active two-hop (QA-247). Paused → active
+  // Archive AND sold are terminal for operators — the UI offers no un-archive
+  // and an admin-archived (moderated) or deal-consumed listing must not come
+  // back on a PATCH, nor through a two-hop (QA-247, QA-498). Paused → active
   // stays allowed: moderation pause is a nudge the operator fixes and
   // republishes under the plan cap (see below).
-  if (
-    listing.status === "archived" &&
-    data!.status !== undefined &&
-    data!.status !== "archived"
-  ) {
-    return err("archived listings can't be reactivated — contact support", 403);
+  const terminal = listing.status === "archived" || listing.status === "sold";
+  if (terminal && data!.status !== undefined && data!.status !== listing.status) {
+    return err(
+      `${listing.status} listings can't be reactivated — contact support`,
+      403,
+    );
+  }
+  // Manual 'sold' is one-off-inventory only (QA-498): a capacity listing
+  // (charter, rental) is never "sold" — the operator archives it instead.
+  if (data!.status === "sold" && !oneOffListingType(verticalConfig(), listing.type)) {
+    return err("sold only applies to one-off listing types", 422);
   }
   // Validate EVERYTHING before writing — the status write used to run before
   // attribute/photo checks, so a rejected PATCH could still flip status.
@@ -161,10 +166,11 @@ export async function PATCH(
       await alertSavedSearches(repo, fresh, appOrigin(req), { priceDropFrom });
     }
   }
-  // Archive ends every watch on the listing (QA-408): terminal state means
-  // watchers get one "removed" mail and their alert flips off. Pauses keep
-  // the watch — reactivation re-mails through the hook above.
-  if (data!.status === "archived" && listing.status !== "archived") {
+  // Terminal states end every watch on the listing (QA-408, QA-498): archive
+  // OR sold means watchers get one "removed" mail and their alert flips off.
+  // Pauses keep the watch — reactivation re-mails through the hook above.
+  const endsWatches = data!.status === "archived" || data!.status === "sold";
+  if (endsWatches && !terminal) {
     await endListingWatches(repo, listing, appOrigin(req));
   }
   if (patch.photos !== undefined) {

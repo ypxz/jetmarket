@@ -5,7 +5,11 @@
 // Listing type is a slug from the active VerticalConfig.listingTypes —
 // jets: charter|empty_leg|aircraft_sale, machinery: for_sale|for_rent|auction.
 export type ListingType = string;
-export type ListingStatus = "draft" | "active" | "paused" | "archived";
+// `sold` is terminal like `archived` but records WHY the row left the
+// market — a closed deal consumed a one-off listing (QA-498). Operators can
+// also mark a one-off listing sold themselves (off-platform sale); neither
+// state reactivates through PATCH.
+export type ListingStatus = "draft" | "active" | "paused" | "archived" | "sold";
 export type ListingSort = "newest" | "price_asc" | "price_desc" | "rating";
 export type UserRole = "buyer" | "operator" | "admin";
 export type Plan = "free" | "pro";

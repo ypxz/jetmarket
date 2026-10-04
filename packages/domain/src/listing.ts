@@ -15,6 +15,7 @@ export const LISTING_STATUSES = [
   "active",
   "paused",
   "archived",
+  "sold",
 ] as const satisfies readonly ListingStatus[];
 
 export interface ValidationIssue {

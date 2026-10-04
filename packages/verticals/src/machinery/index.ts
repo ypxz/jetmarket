@@ -16,9 +16,10 @@ export const machineryVertical: VerticalConfig = {
   currency: "EUR",
 
   listingTypes: [
-    { slug: "for_sale", labelKey: "listingTypes.for_sale" },
+    // One-off inventory — a closed deal consumes the listing (QA-498).
+    { slug: "for_sale", labelKey: "listingTypes.for_sale", oneOff: true },
     { slug: "for_rent", labelKey: "listingTypes.for_rent" },
-    { slug: "auction", labelKey: "listingTypes.auction" },
+    { slug: "auction", labelKey: "listingTypes.auction", oneOff: true },
   ],
 
   attributes: [

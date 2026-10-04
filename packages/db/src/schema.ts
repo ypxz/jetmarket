@@ -87,7 +87,9 @@ export const listings = pgTable(
     priceMinor: bigint("price_minor", { mode: "number" }),
     currency: text("currency").notNull().default("USD"),
     status: text("status", {
-      enum: ["draft", "active", "paused", "archived"],
+      // 'sold' (QA-498): terminal like archived but records WHY — a closed
+      // deal consumed a one-off listing. App-level enum; the column is TEXT.
+      enum: ["draft", "active", "paused", "archived", "sold"],
     })
       .notNull()
       .default("draft"),

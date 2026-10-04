@@ -8,8 +8,11 @@ import { notifyDealClosed, notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { paymentsProvider, analyticsProvider } from "@jetmarket/providers";
-import { verticalSlug } from "@/lib/vertical";
+import { oneOffListingType } from "@jetmarket/verticals";
+import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { buyerAuthorized } from "@/lib/buyer-auth";
+import { endListingWatches } from "@/lib/search-alerts";
+import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
@@ -51,13 +54,17 @@ export async function POST(
     return err("rfq is no longer open", 409);
   }
   if (quote.status !== "sent") return err(`quote already ${quote.status}`, 409);
-  // The RFQ's listing being archived since the quote was sent must not mint
-  // a deal — archiving is terminal and the row is gone from the market
-  // (QA-300). Check BEFORE the CAS so the 409 doesn't flip anything.
+  // The RFQ's listing being archived or sold since the quote was sent must
+  // not mint a deal — both states are terminal and the row is gone from the
+  // market (QA-300, QA-498). Check BEFORE the CAS so the 409 doesn't flip
+  // anything.
   const parentListing = rfq.listingId
     ? await repo.getListing(rfq.listingId)
     : undefined;
-  if (parentListing?.status === "archived") {
+  if (
+    parentListing?.status === "archived" ||
+    parentListing?.status === "sold"
+  ) {
     return err("listing is no longer available", 409);
   }
   // QA-471: suspension is enforcement, not a suggestion — a suspended
@@ -195,5 +202,27 @@ export async function POST(
 
   // Winner + buyer confirmations (QA-149); internally failure-safe.
   await notifyDealClosed(repo, quote, rfq, deal);
+
+  // One-off inventory is consumed by the deal (QA-498): an empty leg's seat
+  // or an aircraft for sale can't be sold twice, so the listing leaves the
+  // market and its saved searches end with a "sold" notice — same terminal
+  // treatment as archive, with 'sold' recording WHY. Capacity types
+  // (charter) skip this: one plane takes many charters.
+  if (listing && oneOffListingType(verticalConfig(), listing.type)) {
+    try {
+      await repo.updateListingStatus(listing.id, "sold");
+      await endListingWatches(repo, listing, appOrigin(req));
+    } catch (e) {
+      // Non-fatal like notify: the deal is already minted — a missed flip
+      // leaves the listing browsable but unsellable (the guard above still
+      // rejects a second deal attempt once the row is sold).
+      logWarn("listing.sold_flip_failed", {
+        listingId: listing.id,
+        dealId: deal.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   return ok({ quote: await repo.getQuote(id), deal });
 }

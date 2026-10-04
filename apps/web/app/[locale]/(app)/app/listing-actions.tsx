@@ -7,19 +7,26 @@ import { sendAction } from "@/lib/fetch-action";
 import { errText } from "@/lib/error-catalog";
 import type { Listing } from "@/lib/repo/types";
 
-export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "status"> }) {
+export function ListingActions({
+  listing,
+  oneOff = false,
+}: {
+  listing: Pick<Listing, "id" | "status">;
+  /** One-off inventory types get a "mark sold" action (QA-498). */
+  oneOff?: boolean;
+}) {
   const t = useTranslations("app.dashboard");
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<"delete" | "sold" | null>(null);
   const tc = useTranslations("common");
 
   async function remove() {
     if (pending) return;
     // First click arms the confirm; second click actually deletes.
-    if (!confirming) {
-      setConfirming(true);
+    if (confirming !== "delete") {
+      setConfirming("delete");
       return;
     }
     setPending(true);
@@ -30,7 +37,7 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
       });
       if (e) {
         setError(e);
-        setConfirming(false);
+        setConfirming(null);
         return;
       }
       setError(null);
@@ -40,7 +47,17 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
     }
   }
 
-  async function patch(status: "active" | "paused" | "archived") {
+  async function markSold() {
+    if (pending) return;
+    // Terminal like delete — arm first, fire on the second click.
+    if (confirming !== "sold") {
+      setConfirming("sold");
+      return;
+    }
+    await patch("sold");
+  }
+
+  async function patch(status: "active" | "paused" | "archived" | "sold") {
     if (pending) return;
     setPending(true);
     try {
@@ -92,7 +109,7 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
     "rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50";
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {/* Shown on every status incl. archived — cloning is the revive path. */}
+      {/* Shown on every status incl. archived/sold — cloning is the revive path. */}
       <button
         className={btn}
         disabled={pending}
@@ -101,7 +118,7 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
       >
         {t("duplicate")}
       </button>
-      {listing.status !== "archived" ? (
+      {listing.status !== "archived" && listing.status !== "sold" ? (
         <Link
           href={`/app/listings/${listing.id}/edit`}
           className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface"
@@ -130,7 +147,7 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
           {t("publish")}
         </button>
       ) : null}
-      {listing.status !== "archived" ? (
+      {listing.status !== "archived" && listing.status !== "sold" ? (
         <button
           className={btn}
           disabled={pending}
@@ -140,8 +157,21 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
           {t("archive")}
         </button>
       ) : null}
+      {/* One-off inventory sold off-platform (QA-498): terminal like archive
+          but records the sale — two-click confirm. */}
+      {oneOff &&
+      (listing.status === "active" || listing.status === "paused") ? (
+        <button
+          className={btn}
+          disabled={pending}
+          data-testid={`sold-listing-${listing.id}`}
+          onClick={markSold}
+        >
+          {confirming === "sold" ? t("markSoldConfirm") : t("markSold")}
+        </button>
+      ) : null}
       {/* Terminal rows only (draft/archived) — two-click confirm, the row
-          is gone for good (QA-419). */}
+          is gone for good (QA-419). Sold stays: the row documents the deal. */}
       {listing.status === "draft" || listing.status === "archived" ? (
         <button
           className={btn}
@@ -149,7 +179,7 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
           data-testid={`delete-listing-${listing.id}`}
           onClick={remove}
         >
-          {confirming ? t("deleteConfirm") : t("delete")}
+          {confirming === "delete" ? t("deleteConfirm") : t("delete")}
         </button>
       ) : null}
       {error ? (

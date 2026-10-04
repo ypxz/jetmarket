@@ -16,6 +16,13 @@ export interface ListingType {
   /** i18n key inside the vertical's copy namespace. */
   labelKey: string;
   descriptionKey?: string;
+  /**
+   * One-off inventory: a closed deal consumes the listing — accepting a
+   * quote flips it to `sold` and ends saved watches (QA-498). Capacity
+   * listings (charter, rental) leave this unset: one plane takes many
+   * charters, one machine many leases.
+   */
+  oneOff?: boolean;
 }
 
 /**

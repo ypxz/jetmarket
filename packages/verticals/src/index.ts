@@ -34,3 +34,14 @@ export function getVerticalSlug(env: string | undefined = process.env.VERTICAL):
 export function getVertical(slug?: string): VerticalConfig {
   return registry[getVerticalSlug(slug)];
 }
+
+/**
+ * Is `slug` a one-off listing type on `vertical`? One-off inventory is
+ * consumed by a closed deal — the accept route flips it to `sold` (QA-498).
+ */
+export function oneOffListingType(
+  vertical: VerticalConfig,
+  slug: string,
+): boolean {
+  return vertical.listingTypes.find((t) => t.slug === slug)?.oneOff === true;
+}

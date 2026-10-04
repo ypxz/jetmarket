@@ -5,7 +5,14 @@
  */
 import type { Currency } from "./money";
 
-export type ListingStatus = "draft" | "active" | "paused" | "archived";
+/** 'sold' (QA-498): terminal like archived but records WHY — a closed deal
+ *  consumed a one-off listing. */
+export type ListingStatus =
+  | "draft"
+  | "active"
+  | "paused"
+  | "archived"
+  | "sold";
 export type RfqStatus = "new" | "matched" | "quoted" | "closed" | "spam";
 export type MatchState = "delayed" | "pending" | "sent" | "failed";
 export type QuoteStatus =

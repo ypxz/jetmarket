@@ -2,7 +2,7 @@ import { Badge } from "@jetmarket/ui";
 import { plans } from "@jetmarket/config";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getVertical } from "@jetmarket/verticals";
+import { getVertical, oneOffListingType } from "@jetmarket/verticals";
 import { currentUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
 import { ListingActions } from "./listing-actions";
@@ -314,7 +314,7 @@ export default async function OperatorDashboard() {
                 <div>
                   <div className="font-medium">{l.title}</div>
                   <div className="mt-0.5 text-xs text-muted">
-                    {l.type} · {l.status}
+                    {vt(`listingTypes.${l.type}`)} · {t(`status.${l.status}`)}
                     {isExpiredListing(l) ? (
                       <Badge variant="warning" className="ml-2">
                         {t("expiredHidden")}
@@ -350,7 +350,10 @@ export default async function OperatorDashboard() {
                   <span className="text-sm font-medium">
                     {formatMoney(l.price, l.currency, locale)}
                   </span>
-                  <ListingActions listing={l} />
+                  <ListingActions
+                    listing={l}
+                    oneOff={oneOffListingType(vertical, l.type)}
+                  />
                 </div>
               </li>
             ))}

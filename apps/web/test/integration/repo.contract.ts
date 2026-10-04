@@ -2128,6 +2128,47 @@ export function repoContract(
       ).rejects.toMatchObject({ name: "PlanCapError" });
     });
 
+    it("sold listings free the cap like archived ones (QA-498)", async () => {
+      const repo = await factory();
+      const user = await repo.createUser(
+        `soldcap-${Date.now().toString(36)}@test.dev`,
+        "operator",
+      );
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "SoldCap Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const mk = (title: string) =>
+        repo.createListing(
+          {
+            operatorId: op.id,
+            vertical: "jets",
+            type: "empty_leg",
+            title,
+            price: 1000,
+            currency: "USD",
+            photos: [],
+            attributes: {},
+          },
+          { cap: 3 },
+        );
+      const [a, b, c] = await Promise.all([mk("A"), mk("B"), mk("C")]);
+      expect(await repo.countOperatorListings(op.id)).toBe(3);
+      // Fourth under cap 3 rejected — then a sale frees the slot again.
+      await expect(mk("D")).rejects.toMatchObject({ name: "PlanCapError" });
+      await repo.updateListingStatus(a.id, "sold");
+      // The row keeps its state and stops counting everywhere archived did.
+      expect((await repo.getListing(a.id))?.status).toBe("sold");
+      expect(await repo.countOperatorListings(op.id)).toBe(2);
+      await expect(mk("D")).resolves.toMatchObject({ title: "D" });
+      void b;
+      void c;
+    });
+
     it("listing cap holds under parallel creates (FOR UPDATE serialization)", async () => {
       const repo = await factory();
       const user = await repo.createUser(

@@ -22,8 +22,10 @@ vi.mock("next/headers", () => ({
 
 import { email } from "@jetmarket/providers";
 import { getMemoryRepo } from "../../lib/repo/memory";
+import { sessionCookie, signSession } from "../../lib/auth";
 import type { Repo } from "../../lib/repo/types";
 import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
+import { PATCH as patchListing } from "../../app/api/listings/[id]/route";
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (body?: unknown) =>
@@ -73,6 +75,18 @@ async function fixture(repo: Repo) {
   return { opUser, op, listing, rfq, quote, buyerEmail };
 }
 
+const asUser = (id: string | null, sessionVersion = 1) =>
+  id
+    ? jar.set(sessionCookie, signSession(id, sessionVersion))
+    : jar.delete(sessionCookie);
+
+const patch = (body?: unknown) =>
+  new Request("http://test.local/api", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+
 describe("POST /api/quotes/[id]/accept notifications (QA-149)", () => {
   it("emails the winning operator and the buyer on accept", async () => {
     const repo = await getMemoryRepo();
@@ -95,5 +109,143 @@ describe("POST /api/quotes/[id]/accept notifications (QA-149)", () => {
     // Symmetric handoff (QA-243): the buyer gets the operator's email too —
     // a silent operator must not leave a paid deal stranded.
     expect(toBuyer?.text).toContain(opUser.email);
+  });
+});
+
+describe("one-off inventory sells out on deal close (QA-498)", () => {
+  async function legFixture(repo: Repo, type = "empty_leg") {
+    const tag = Math.random().toString(36).slice(2, 8);
+    const opUser = await repo.createUser(`op1-${tag}@test.dev`, "operator");
+    const op = await repo.upsertOperator({
+      userId: opUser.id,
+      name: `OneOff ${tag}`,
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    const listing = await repo.createListing({
+      operatorId: op.id,
+      vertical: "jets",
+      type,
+      title: `OneOff ${tag}`,
+      price: 5000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const buyerEmail = `b1-${tag}@test.dev`;
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail,
+      fields: {},
+    });
+    const quote = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: op.id,
+      amount: 5000,
+      currency: "USD",
+      message: "",
+    });
+    return { opUser, op, listing, rfq, quote, buyerEmail, tag };
+  }
+
+  it("accept flips an empty_leg to sold, ends watches, blocks the next deal", async () => {
+    const repo = await getMemoryRepo();
+    const { listing, rfq, quote, buyerEmail, tag } = await legFixture(repo);
+    // An active listing-watch on the leg — the sale must retire it.
+    await repo.createSearchAlert({
+      vertical: "jets",
+      email: `w-${tag}@t.dev`,
+      params: { watch: listing.id },
+      token: `wt-${tag}`,
+      dedupeKey: `wd-${tag}`,
+    });
+    await repo.confirmSearchAlert(`wt-${tag}`);
+
+    const res = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    expect((await repo.getListing(listing.id))?.status).toBe("sold");
+
+    // The watcher was mailed (in their locale) and the alert went 'off'.
+    const box = email.readOutbox(process.env.EMAIL_OUTBOX_DIR);
+    expect(box.some((m) => m.to === `w-${tag}@t.dev`)).toBe(true);
+    const watches = await repo.listSearchAlerts({
+      vertical: "jets",
+      watchListingId: listing.id,
+    });
+    expect(watches[0]?.status).toBe("off");
+
+    // A second RFQ on the consumed seat can't mint a second deal — the
+    // accept guard treats sold like archived, quote/RFQ stay live.
+    const rfq2 = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: `b2-${tag}@test.dev`,
+      fields: {},
+    });
+    const quote2 = await repo.createQuote({
+      rfqId: rfq2.id,
+      operatorId: quote.operatorId,
+      amount: 4000,
+      currency: "USD",
+      message: "",
+    });
+    const res2 = await acceptQuote(
+      post({ buyerEmail: `b2-${tag}@test.dev`, token: rfq2.accessToken }),
+      params(quote2.id),
+    );
+    expect(res2.status).toBe(409);
+    expect((await repo.getQuote(quote2.id))?.status).toBe("sent");
+    expect((await repo.getRfq(rfq2.id))?.status).not.toBe("closed");
+  });
+
+  it("a charter accept leaves its listing active (capacity, not one-off)", async () => {
+    const repo = await getMemoryRepo();
+    const { listing, rfq, quote, buyerEmail } = await legFixture(
+      repo,
+      "charter",
+    );
+    const res = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    expect((await repo.getListing(listing.id))?.status).toBe("active");
+  });
+
+  it("PATCH marks a one-off listing sold (terminal); charter refuses sold", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, listing } = await legFixture(repo);
+    asUser(opUser.id);
+
+    const res = await patchListing(patch({ status: "sold" }), params(listing.id));
+    expect(res.status).toBe(200);
+    expect((await repo.getListing(listing.id))?.status).toBe("sold");
+
+    // Terminal like archived: every transition out is refused.
+    const back = await patchListing(
+      patch({ status: "active" }),
+      params(listing.id),
+    );
+    expect(back.status).toBe(403);
+
+    // Capacity listing: 'sold' makes no sense — rejected before any write.
+    const { listing: charter, opUser: opUser2 } = await legFixture(
+      repo,
+      "charter",
+    );
+    asUser(opUser2.id);
+    const bad = await patchListing(
+      patch({ status: "sold" }),
+      params(charter.id),
+    );
+    expect(bad.status).toBe(422);
+    expect((await repo.getListing(charter.id))?.status).toBe("active");
+    asUser(null);
   });
 });

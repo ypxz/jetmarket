@@ -24,8 +24,13 @@ export const jetsVertical: VerticalConfig = {
 
   listingTypes: [
     { slug: "charter", labelKey: "listingTypes.charter" },
-    { slug: "empty_leg", labelKey: "listingTypes.empty_leg" },
-    { slug: "aircraft_sale", labelKey: "listingTypes.aircraft_sale" },
+    // One-off inventory — a closed deal consumes the listing (QA-498).
+    { slug: "empty_leg", labelKey: "listingTypes.empty_leg", oneOff: true },
+    {
+      slug: "aircraft_sale",
+      labelKey: "listingTypes.aircraft_sale",
+      oneOff: true,
+    },
   ],
 
   attributes: [

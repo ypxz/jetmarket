@@ -6,7 +6,7 @@
  *  - rfqs.status db "new" -> interface "open"; db also has matched/spam
  *  - deals has no operatorId/amount columns — joined from the parent quote
  */
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, notExists, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, notExists, notInArray, or, sql } from "drizzle-orm";
 import { createDb, expireStaleRfqs, schema, type Db } from "@jetmarket/db";
 import {
   fromMinorUnits,
@@ -604,7 +604,7 @@ export class DrizzleRepo implements Repo {
             and(
               eq(listings.operatorId, l.operatorId),
               eq(listings.vertical, l.vertical),
-              sql`${listings.status} <> 'archived'`,
+              notInArray(listings.status, ["archived", "sold"]),
             ),
           );
         if ((c?.n ?? 0) >= opts.cap) throw new PlanCapError();
@@ -723,12 +723,12 @@ export class DrizzleRepo implements Repo {
           and(
             eq(listings.operatorId, row.operatorId),
             eq(listings.vertical, row.vertical),
-            sql`${listings.status} <> 'archived'`,
+            notInArray(listings.status, ["archived", "sold"]),
           ),
         );
       // The listing itself already counts toward the cap unless archived —
       // reactivating its own row is not an overage, so count the others.
-      const selfCounted = row.status === "archived" ? 0 : 1;
+      const selfCounted = row.status === "archived" || row.status === "sold" ? 0 : 1;
       const others = Math.max(0, (c?.n ?? 0) - selfCounted);
       if (others >= cap) throw new PlanCapError();
       await tx
@@ -786,7 +786,7 @@ export class DrizzleRepo implements Repo {
       .where(
         and(
           inArray(listings.operatorId, operatorIds.filter(isUuid)),
-          sql`${listings.status} <> 'archived'`,
+          notInArray(listings.status, ["archived", "sold"]),
           ...(vertical ? [eq(listings.vertical, vertical)] : []),
         ),
       )
@@ -845,7 +845,7 @@ export class DrizzleRepo implements Repo {
       .where(
         and(
           eq(listings.operatorId, operatorId),
-          sql`${listings.status} <> 'archived'`,
+          notInArray(listings.status, ["archived", "sold"]),
           ...(vertical ? [eq(listings.vertical, vertical)] : []),
         ),
       );

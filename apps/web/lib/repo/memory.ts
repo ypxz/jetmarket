@@ -202,7 +202,7 @@ class MemoryRepo implements Repo {
       for (const x of this.listings.values()) {
         if (
           x.operatorId === l.operatorId &&
-          x.status !== "archived" &&
+          x.status !== "archived" && x.status !== "sold" &&
           x.vertical === l.vertical
         ) {
           n += 1;
@@ -415,7 +415,7 @@ class MemoryRepo implements Repo {
         (x) =>
           x.operatorId === l.operatorId &&
           x.id !== id &&
-          x.status !== "archived" &&
+          x.status !== "archived" && x.status !== "sold" &&
           x.vertical === l.vertical,
       ).length;
       if (others >= opts.cap) throw new PlanCapError();
@@ -433,7 +433,8 @@ class MemoryRepo implements Repo {
     id: string,
     scope: { operatorId: string; vertical: string },
   ): Promise<boolean> {
-    // Sync check-then-write — no yield before the delete (QA-333).
+    // Sync check-then-write — no yield before the delete (QA-333). Sold rows
+    // keep the deal provenance — delete stays draft|archived only.
     const l = this.listings.get(id);
     if (
       !l ||
@@ -502,7 +503,7 @@ class MemoryRepo implements Repo {
     return [...this.listings.values()].filter(
       (l) =>
         l.operatorId === operatorId &&
-        l.status !== "archived" &&
+        l.status !== "archived" && l.status !== "sold" &&
         (vertical === undefined || l.vertical === vertical),
     ).length;
   }
@@ -512,7 +513,7 @@ class MemoryRepo implements Repo {
     for (const l of this.listings.values()) {
       if (
         want.has(l.operatorId) &&
-        l.status !== "archived" &&
+        l.status !== "archived" && l.status !== "sold" &&
         (vertical === undefined || l.vertical === vertical)
       ) {
         out[l.operatorId] = (out[l.operatorId] ?? 0) + 1;
