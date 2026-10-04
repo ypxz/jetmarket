@@ -39,6 +39,10 @@ export interface Operator {
   /** Away switch (QA-427): false = excluded from new RFQ fan-outs.
    *  Already-delivered matches stay in the inbox. Default true. */
   acceptingRfqs: boolean;
+  /** Mail opt-out (QA-505): false = fan-out matches still deliver to the
+   *  inbox but the "new/amended RFQ" email leg is muted. Default true;
+   *  server-owned like acceptingRfqs (upserts preserve it). */
+  notifyRfqMatch: boolean;
   /** Admin enforcement (QA-460): hides supply from public browse, stops
    *  new fan-outs, blocks new listings/quotes. Stronger than
    *  verified=false — a suspended operator cannot trade at all. Default
@@ -280,11 +284,16 @@ export interface Repo {
   consumeMagicLinkSig(sig: string, expiresAt: string): Promise<boolean>;
 
   upsertOperator(
-    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs" | "suspended"> & {
+    o: Omit<
+      Operator,
+      "id" | "createdAt" | "acceptingRfqs" | "notifyRfqMatch" | "suspended"
+    > & {
       id?: string;
       /** Optional on upsert — re-saving a profile keeps the current
-       *  switch (QA-427); the admin flag survives the same way (QA-460). */
+       *  switch (QA-427); the admin flag survives the same way (QA-460),
+       *  and so does the QA-505 mail switch. */
       acceptingRfqs?: boolean;
+      notifyRfqMatch?: boolean;
       suspended?: boolean;
     },
   ): Promise<Operator>;
@@ -312,6 +321,9 @@ export interface Repo {
   /** Away switch (QA-427): flip whether fan-out candidates include this
    *  operator. Does not touch already-delivered matches or the inbox. */
   setOperatorAccepting(id: string, accepting: boolean): Promise<void>;
+  /** Mail switch (QA-505): mute/unmute the fan-out notification email.
+   *  Matches still deliver — only the mail leg is gated. */
+  setOperatorNotifyRfqMatch(id: string, on: boolean): Promise<void>;
   /** Admin enforcement toggle (QA-460). */
   setOperatorSuspended(id: string, suspended: boolean): Promise<void>;
 

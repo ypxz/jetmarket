@@ -935,6 +935,18 @@ export async function quoteNotification(
     return;
   }
 
+  // QA-505: operator muted match mail — the match row still delivered to
+  // their inbox, so mark it 'sent' (leaving 'pending' would re-enqueue via
+  // unnotifiedPendingMatches forever); only the email leg is skipped.
+  if (!ctx.notifyRfqMatch) {
+    logWarn("worker.quote_notification_opted_out", {
+      matchId,
+      rfqId: ctx.rfqId,
+    });
+    await deps.repo.markMatchState(matchId, "sent");
+    return;
+  }
+
   const f = ctx.rfqFields;
   // QA-494: the fan-out mail renders in the recipient's users.locale —
   // envelope, labels, and the generic buyer fallback all resolve per-mail.

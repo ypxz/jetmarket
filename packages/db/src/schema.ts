@@ -55,6 +55,9 @@ export const operators = pgTable(
     // QA-427: operator away switch — false removes them from every fan-out
     // (already-delivered matches stay visible in their inbox).
     acceptingRfqs: boolean("accepting_rfqs").notNull().default(true),
+    // QA-505: RFQ-match mail opt-out — inbox rows still land, only the
+    // email leg is muted (visibility ≠ mail volume).
+    notifyRfqMatch: boolean("notify_rfq_match").notNull().default(true),
     // QA-477: once-ever stamp — an operator whose in-vertical book is still
     // empty past the grace window gets one "create your first listing" mail.
     emptyBookMailedAt: timestamp("empty_book_mailed_at", {

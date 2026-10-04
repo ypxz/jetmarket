@@ -29,6 +29,7 @@ import { MockEmailProvider, readOutbox } from "@jetmarket/providers/email/index"
 import { defaultPlans } from "@jetmarket/domain";
 import {
   deliverDueMatches,
+  handleJob,
   recoverUnfanoutedRfqs,
   remindOverdueInvoices,
   nudgeUnratedDeals,
@@ -564,6 +565,44 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       where kind = 'email.quote_notification'`;
     expect(jobs.map((j) => j.matchId)).toContain(liveMatch!.id);
     expect(jobs.map((j) => j.matchId)).not.toContain(deadMatch!.id);
+  });
+
+  it("mutes match mail for an opted-out op but still marks sent (QA-505)", async () => {
+    // Opt-out ≠ undelivered: the match row is live in their inbox, so the
+    // job completes (match → 'sent') — only the email leg is skipped. A
+    // leftover 'pending' would be re-enqueued by the QA-503 sweep forever.
+    const d = deps();
+    const mineDir = mkdtempSync(join(tmpdir(), "jm-mute-outbox-"));
+    d.email = new MockEmailProvider({ outboxDir: mineDir });
+
+    const [u] = await db
+      .insert(users)
+      .values({ email: `muted-${randomUUID()}@x.com` })
+      .returning({ id: users.id });
+    const [o] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Muted Air", notifyRfqMatch: false })
+      .returning({ id: operators.id });
+    const rfqId = await insertRfq({ name: "Muted", email: "m@x.com" });
+    const [m] = await db
+      .insert(rfqMatches)
+      .values({
+        rfqId,
+        operatorId: o!.id,
+        state: "pending",
+        deliverAt: new Date(),
+      })
+      .returning({ id: rfqMatches.id });
+
+    await handleJob(d, "email.quote_notification", { matchId: m!.id });
+
+    const mails = await readOutbox(mineDir);
+    expect(mails).toHaveLength(0);
+    const [row] = await db
+      .select({ state: rfqMatches.state })
+      .from(rfqMatches)
+      .where(eq(rfqMatches.id, m!.id));
+    expect(row!.state).toBe("sent");
   });
 
   it("re-enqueues fan-out for a 'new' RFQ whose job never landed (QA-168)", async () => {

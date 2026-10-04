@@ -7,6 +7,7 @@ import { currentUser } from "@/lib/auth";
 import { FREE_LISTING_LIMIT, PRO_PLAN_PRICE_USD } from "@/lib/fees";
 import { ListingActions } from "./listing-actions";
 import { AvailabilityToggle } from "./availability-toggle";
+import { NotifyPrefsToggle } from "./notify-prefs-toggle";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { invoiceStateVariant } from "@/lib/state-variant";
@@ -202,8 +203,9 @@ export default async function OperatorDashboard() {
               })}
             </Link>
           ) : null}
-          <div className="mt-1">
+          <div className="mt-1 flex flex-col gap-1">
             <AvailabilityToggle accepting={operator.acceptingRfqs} />
+            <NotifyPrefsToggle on={operator.notifyRfqMatch} />
           </div>
         </div>
       </div>

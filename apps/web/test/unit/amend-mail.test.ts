@@ -118,3 +118,63 @@ describe("emailRfqAmended — old → new diff (QA-482)", () => {
     expect(mail!.text).toContain("Arrival: NCE");
   });
 });
+
+describe("fan-out mail mute (QA-505)", () => {
+  it("an opted-out op gets no amend or new-RFQ mail; opt-in restores", async () => {
+    repo = await getMemoryRepo();
+    const u = await repo.createUser("mute-op@test.dev", "operator");
+    const op = await repo.upsertOperator({
+      userId: u.id,
+      name: "Mute Air",
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    sendSpy = vi
+      .spyOn(emailProvider(), "send")
+      .mockResolvedValue({
+        id: "m1",
+        to: "x@y.z",
+        subject: "s",
+        at: "2026-01-01T00:00:00Z",
+      });
+
+    await repo.setOperatorNotifyRfqMatch(op.id, false);
+    await emailRfqAmended(repo, rfq({ name: "B", departure: "ZRH" }), "Jet", [
+      op.id,
+    ]);
+    expect(sent().filter((m) => m.to === "mute-op@test.dev")).toHaveLength(0);
+
+    await repo.setOperatorNotifyRfqMatch(op.id, true);
+    await emailRfqAmended(repo, rfq({ name: "B", departure: "GVA" }), "Jet", [
+      op.id,
+    ]);
+    expect(sent().filter((m) => m.to === "mute-op@test.dev")).toHaveLength(1);
+  });
+
+  it("emailRfqMatches honors the same mute", async () => {
+    const { emailRfqMatches } = await import("../../lib/fanout");
+    repo = await getMemoryRepo();
+    const u = await repo.createUser("mute-op2@test.dev", "operator");
+    const op = await repo.upsertOperator({
+      userId: u.id,
+      name: "Mute Air 2",
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    sendSpy = vi
+      .spyOn(emailProvider(), "send")
+      .mockResolvedValue({
+        id: "m1",
+        to: "x@y.z",
+        subject: "s",
+        at: "2026-01-01T00:00:00Z",
+      });
+    await repo.setOperatorNotifyRfqMatch(op.id, false);
+    await emailRfqMatches(repo, rfq({ name: "B" }), "Jet", [op.id]);
+    expect(sent().filter((m) => m.to === "mute-op2@test.dev")).toHaveLength(0);
+  });
+});

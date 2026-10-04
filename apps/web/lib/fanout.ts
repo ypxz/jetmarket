@@ -203,6 +203,9 @@ export async function emailRfqMatches(
   // field labels, and the masked-buyer fallback all resolve per-recipient.
   for (const operatorId of operatorIds) {
     const op = opsById?.get(operatorId) ?? (await repo.getOperator(operatorId));
+    // QA-505: muted mail switch — the match row still delivered; skip only
+    // the email leg (same gate as the worker's quote_notification handler).
+    if (op && !op.notifyRfqMatch) continue;
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
     const m = await mailCopy(user.locale);
@@ -270,6 +273,9 @@ export async function emailRfqAmended(
 ) {
   for (const operatorId of operatorIds) {
     const op = await repo.getOperator(operatorId);
+    // QA-505: same mute as the new-request mail — an amend mail to an
+    // opted-out op is still just fan-out volume.
+    if (op && !op.notifyRfqMatch) continue;
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
     // QA-494: per-recipient locale — labels, delta lines, intro, CTA.

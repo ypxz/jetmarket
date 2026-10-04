@@ -115,6 +115,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
+        notifyRfqMatch: true,
         rfqFields: { departure: "ZRH", arrival: "NCE", passengers: 6 },
         buyerEmail: "buyer@x.com",
         rfqConcierge: false,
@@ -558,6 +559,7 @@ describe("handleJob dispatch", () => {
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "de",
         operatorName: "Alpine Jet",
+        notifyRfqMatch: true,
         rfqFields: {
           departure: "ZRH",
           arrival: "NCE",
@@ -594,6 +596,7 @@ describe("handleJob dispatch", () => {
         operatorEmail: "ops@alpine.example",
         operatorLocale: "en",
         operatorName: "Alpine Werkzeug",
+        notifyRfqMatch: true,
         rfqFields: {
           deliveryPostcode: "80331",
           budgetEur: 45000,
@@ -639,6 +642,7 @@ describe("handleJob dispatch", () => {
         operatorEmail: "ops@alpine.example",
         operatorLocale: "en",
         operatorName: "Alpine",
+        notifyRfqMatch: true,
         rfqFields: {
           buyerMail: "secret@buyer.example",
           buyerTel: "+00 111",
@@ -672,6 +676,7 @@ describe("handleJob dispatch", () => {
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
+        notifyRfqMatch: true,
         rfqFields: { departure: "ZRH", arrival: "NCE" },
         buyerEmail: "buyer@x.com",
         rfqConcierge: true,
@@ -700,6 +705,7 @@ describe("handleJob dispatch", () => {
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
+        notifyRfqMatch: true,
         rfqFields: {},
         buyerEmail: "buyer@x.com",
         rfqConcierge: false,
@@ -724,6 +730,7 @@ describe("handleJob dispatch", () => {
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
+        notifyRfqMatch: true,
         rfqFields: {},
         buyerEmail: "buyer@x.com",
         rfqConcierge: false,
@@ -737,6 +744,33 @@ describe("handleJob dispatch", () => {
     });
     expect(sent).toHaveLength(0);
     expect(repo.calls["markMatchState"]).toBeUndefined();
+  });
+
+  it("mutes the mail but still marks sent when the op opted out (QA-505)", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "pending",
+        rfqStatus: "new",
+        operatorEmail: "ops@alpinejet.example",
+        operatorLocale: "en",
+        operatorName: "Alpine Jet",
+        notifyRfqMatch: false,
+        rfqFields: { departure: "ZRH" },
+        buyerEmail: "buyer@x.com",
+        rfqConcierge: false,
+        listingTitle: "Phenom 300 charter",
+      }),
+    });
+    sent.length = 0;
+    await handleJob(deps(repo), "email.quote_notification", {
+      matchId: "m9",
+    });
+    expect(sent).toHaveLength(0);
+    // 'sent', not 'pending' — the unnotifiedPendingMatches crash-recovery
+    // sweep would otherwise re-enqueue the opt-out every tick.
+    expect(repo.calls["markMatchState"]).toEqual([["m9", "sent"]]);
   });
 
   it("throws on unknown job kinds", async () => {
@@ -861,6 +895,7 @@ describe("notifyExpiredListings", () => {
             listingId: "l1",
             title: "ZRH–NCE Phenom leg",
             operatorName: "Alpine Jet",
+        notifyRfqMatch: true,
             operatorEmail: "ops@alpinejet.example",
             locale: "en",
             legDate: "2026-09-14",
@@ -869,6 +904,7 @@ describe("notifyExpiredListings", () => {
             listingId: "l2",
             title: "GVA–LTN G650 leg",
             operatorName: "Lac Air",
+        notifyRfqMatch: true,
             operatorEmail: "desk@lacair.example",
             locale: "en",
             legDate: "2026-09-13",
@@ -899,6 +935,7 @@ describe("notifyExpiredListings", () => {
           listingId: "l1",
           title: "Leg A",
           operatorName: "A",
+        notifyRfqMatch: true,
           operatorEmail: "bad@x.example",
           locale: "en",
             legDate: "2026-09-14",
@@ -907,6 +944,7 @@ describe("notifyExpiredListings", () => {
           listingId: "l2",
           title: "Leg B",
           operatorName: "B",
+        notifyRfqMatch: true,
           operatorEmail: "ok@x.example",
           locale: "en",
             legDate: "2026-09-14",
@@ -1282,6 +1320,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
             accessToken: "tok-one",
             locale: "en",
             operatorName: "Alpine Air",
+        notifyRfqMatch: true,
             listingTitle: "ZRH–NCE Phenom leg",
           },
           {
@@ -1322,6 +1361,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
           accessToken: "t1",
             locale: "en",
           operatorName: "Op",
+        notifyRfqMatch: true,
           listingTitle: null,
         },
         {
@@ -1330,6 +1370,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
           accessToken: "t2",
             locale: "en",
           operatorName: "Op",
+        notifyRfqMatch: true,
           listingTitle: null,
         },
       ],

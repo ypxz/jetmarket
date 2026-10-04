@@ -245,6 +245,9 @@ export interface WorkerRepo {
     /** QA-494: recipient's sign-in locale for the new-RFQ mail. */
     operatorLocale: string;
     operatorName: string;
+    /** QA-505: false = the operator muted RFQ-match mail — the handler
+     * marks the match sent and skips the email leg. */
+    notifyRfqMatch: boolean;
     rfqFields: Record<string, unknown>;
     buyerEmail: string;
     /** Buyer paid for concierge expedite — the operator email flags it as
@@ -488,6 +491,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           operatorEmail: users.email,
           operatorLocale: users.locale,
           operatorName: operators.name,
+          notifyRfqMatch: operators.notifyRfqMatch,
           rfqFields: rfqs.fields,
           rfqStatus: rfqs.status,
           buyerEmail: rfqs.buyerEmail,

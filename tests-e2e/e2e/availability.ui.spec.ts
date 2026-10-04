@@ -53,3 +53,37 @@ test('availability toggle: pause shows banner, persists, resume clears', async (
     ).toHaveText('Pause new requests');
   });
 });
+
+test('notify-prefs toggle: mute label flips and persists (QA-505)', async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const operator = await browser.newPage();
+
+  await step('operator signs up and creates a profile', async () => {
+    await signUpAndLogin(operator, `e2e-ui-mute-${run}@jetmarket.local`, 'operator');
+    await createOperatorProfile(operator, {
+      name: `E2E Mute Ops ${run}`,
+      baseAirport: 'LSZH',
+    });
+  });
+
+  await step('mute flips the label and sticks across reloads', async () => {
+    await operator.goto('/app');
+    await expect(operator.getByTestId('notify-prefs-toggle')).toHaveText(
+      'Mute new-request emails',
+    );
+    await operator.getByTestId('notify-prefs-toggle').click();
+    await expect(operator.getByTestId('notify-prefs-toggle')).toHaveText(
+      'Unmute new-request emails',
+    );
+    await operator.reload();
+    await expect(operator.getByTestId('notify-prefs-toggle')).toHaveText(
+      'Unmute new-request emails',
+    );
+    await operator.getByTestId('notify-prefs-toggle').click();
+    await expect(operator.getByTestId('notify-prefs-toggle')).toHaveText(
+      'Mute new-request emails',
+    );
+  });
+});

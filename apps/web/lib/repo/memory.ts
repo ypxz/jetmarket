@@ -111,9 +111,13 @@ class MemoryRepo implements Repo {
   }
 
   async upsertOperator(
-    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs" | "suspended"> & {
+    o: Omit<
+      Operator,
+      "id" | "createdAt" | "acceptingRfqs" | "notifyRfqMatch" | "suspended"
+    > & {
       id?: string;
       acceptingRfqs?: boolean;
+      notifyRfqMatch?: boolean;
       suspended?: boolean;
     },
   ): Promise<Operator> {
@@ -130,6 +134,9 @@ class MemoryRepo implements Repo {
       // QA-427: default ON; an upsert that doesn't pass the switch keeps the
       // operator's current state (same stamp-survival rule as inboxSeenAt).
       acceptingRfqs: o.acceptingRfqs ?? prev?.acceptingRfqs ?? true,
+      // QA-505: default ON; an upsert that doesn't pass the switch keeps
+      // the operator's current state (same preserve rule as acceptingRfqs).
+      notifyRfqMatch: o.notifyRfqMatch ?? prev?.notifyRfqMatch ?? true,
       // QA-460: default clear; an upsert that doesn't pass the flag keeps
       // the operator's current state (same preserve rule as the switch).
       suspended: o.suspended ?? prev?.suspended ?? false,
@@ -182,6 +189,10 @@ class MemoryRepo implements Repo {
   async setOperatorAccepting(id: string, accepting: boolean) {
     const op = this.operators.get(id);
     if (op) this.operators.set(id, { ...op, acceptingRfqs: accepting });
+  }
+  async setOperatorNotifyRfqMatch(id: string, on: boolean) {
+    const op = this.operators.get(id);
+    if (op) this.operators.set(id, { ...op, notifyRfqMatch: on });
   }
   async setOperatorSuspended(id: string, suspended: boolean) {
     const op = this.operators.get(id);

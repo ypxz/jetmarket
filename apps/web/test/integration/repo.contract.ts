@@ -3701,6 +3701,48 @@ export function repoContract(
       await repo.setOperatorAccepting(`missing-${tag}`, false);
     });
 
+    it("setOperatorNotifyRfqMatch round-trips; upserts preserve the mail switch (QA-505)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`mute-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Mute Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      // Default ON — match mail flows until the operator mutes it.
+      expect(op.notifyRfqMatch).toBe(true);
+      await repo.setOperatorNotifyRfqMatch(op.id, false);
+      expect((await repo.getOperator(op.id))?.notifyRfqMatch).toBe(false);
+      // A profile upsert that doesn't pass the flag keeps the mute (same
+      // preserve rule as acceptingRfqs).
+      await repo.upsertOperator({
+        userId: user.id,
+        name: `Mute Air renamed ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "pro",
+      });
+      expect((await repo.getOperator(op.id))?.notifyRfqMatch).toBe(false);
+      // ...but an upsert MAY pass it explicitly.
+      await repo.upsertOperator({
+        userId: user.id,
+        name: `Mute Air ${tag}`,
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "pro",
+        notifyRfqMatch: true,
+      });
+      expect((await repo.getOperator(op.id))?.notifyRfqMatch).toBe(true);
+      // Unknown id is a silent miss (non-uuid probe-safe on pg).
+      await repo.setOperatorNotifyRfqMatch(`missing-${tag}`, false);
+    });
+
     it("setOperatorSuspended: preserve + browse/directory exclusion (QA-460)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

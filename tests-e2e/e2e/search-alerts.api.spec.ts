@@ -52,6 +52,26 @@ function latestMailTo(email: string): string | null {
   return null;
 }
 
+// Every mail to an address, newest first — an address can legitimately get
+// several from one action (QA-500's orphan sweep mails the buyer on top of
+// the watch-ended mail, so "the latest" is no longer the one being awaited).
+function allMailTo(email: string): string[] {
+  const out: string[] = [];
+  for (const dir of OUTBOX_DIRS) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.eml'))
+      .map((f) => path.join(dir, f))
+      .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    for (const file of files) {
+      const body = fs.readFileSync(file, 'utf8');
+      if (body.toLowerCase().includes(email.toLowerCase())) out.push(body);
+    }
+  }
+  return out;
+}
+
 async function login(email: string, role?: 'operator') {
   const ctx = await request.newContext({
     extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
@@ -392,8 +412,10 @@ test('listing watch: subscribe → confirm → price edit mails update (QA-407)'
     expect(arch.status()).toBe(200);
     let ended: string | null = null;
     for (let i = 0; i < 20 && !ended; i++) {
-      const m = latestMailTo(WATCHER);
-      if (m && m.includes('watch ended')) ended = m;
+      // Scan every mail to the watcher — QA-500's orphan sweep also mails
+      // them "request closed" for the RFQ they filed, and it lands AFTER
+      // the watch-ended mail, so latest-only lookups miss the real one.
+      ended = allMailTo(WATCHER).find((m) => m.includes('watch ended')) ?? null;
       if (!ended) await new Promise((r) => setTimeout(r, 500));
     }
     expect(ended, 'expected a watch-ended mail').toBeTruthy();

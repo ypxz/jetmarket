@@ -59,3 +59,54 @@ describe("GET /api/operators (QA-312)", () => {
     expect(body.name).toBe("Hangar Ops");
   });
 });
+
+describe("POST /api/operator/notify-prefs (QA-505)", () => {
+  it("flips the match-mail switch and persists it; upserts preserve", async () => {
+    const { POST: setPrefs } = await import(
+      "../../app/api/operator/notify-prefs/route"
+    );
+    const repo = await getMemoryRepo();
+    const u = await repo.createUser(
+      `prefs-${Math.random().toString(36).slice(2, 8)}@test.dev`,
+      "operator",
+    );
+    const op = await repo.upsertOperator({
+      userId: u.id,
+      name: "Prefs Air",
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    expect(op.notifyRfqMatch).toBe(true);
+    asUser(u.id);
+
+    const post = (body: unknown) =>
+      new Request("http://test.local/api", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const off = await setPrefs(post({ rfqMatch: false }));
+    expect(off.status).toBe(200);
+    expect((await repo.getOperator(op.id))?.notifyRfqMatch).toBe(false);
+    const on = await setPrefs(post({ rfqMatch: true }));
+    expect(on.status).toBe(200);
+    expect((await repo.getOperator(op.id))?.notifyRfqMatch).toBe(true);
+    asUser(null);
+  });
+
+  it("401s logged out", async () => {
+    const { POST: setPrefs } = await import(
+      "../../app/api/operator/notify-prefs/route"
+    );
+    const res = await setPrefs(
+      new Request("http://test.local/api", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ rfqMatch: false }),
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+});

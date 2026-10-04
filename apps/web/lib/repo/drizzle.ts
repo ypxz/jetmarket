@@ -91,6 +91,7 @@ function toOperator(r: typeof operators.$inferSelect): Operator {
     plan: r.plan as Plan,
     ...(r.inboxSeenAt !== null ? { inboxSeenAt: iso(r.inboxSeenAt) } : {}),
     acceptingRfqs: r.acceptingRfqs,
+    notifyRfqMatch: r.notifyRfqMatch,
     suspended: r.suspended,
     createdAt: iso(r.createdAt),
   };
@@ -474,9 +475,13 @@ export class DrizzleRepo implements Repo {
   }
 
   async upsertOperator(
-    o: Omit<Operator, "id" | "createdAt" | "acceptingRfqs" | "suspended"> & {
+    o: Omit<
+      Operator,
+      "id" | "createdAt" | "acceptingRfqs" | "notifyRfqMatch" | "suspended"
+    > & {
       id?: string;
       acceptingRfqs?: boolean;
+      notifyRfqMatch?: boolean;
       suspended?: boolean;
     },
   ): Promise<Operator> {
@@ -491,6 +496,10 @@ export class DrizzleRepo implements Repo {
       // (the QA-416 stamp convention — upsert is a full-row shape).
       ...(o.acceptingRfqs !== undefined
         ? { acceptingRfqs: o.acceptingRfqs }
+        : {}),
+      // QA-505: same preserve rule — profile upserts keep the mail switch.
+      ...(o.notifyRfqMatch !== undefined
+        ? { notifyRfqMatch: o.notifyRfqMatch }
         : {}),
       // QA-460: an explicit suspend arg writes; omitted preserves
       // (upsert is a full-row shape — the admin flag must survive).
@@ -568,6 +577,13 @@ export class DrizzleRepo implements Repo {
   }
   async setOperatorPlan(id: string, plan: Plan): Promise<void> {
     await this.db.update(operators).set({ plan }).where(eq(operators.id, id));
+  }
+  async setOperatorNotifyRfqMatch(id: string, on: boolean): Promise<void> {
+    if (!isUuid(id)) return;
+    await this.db
+      .update(operators)
+      .set({ notifyRfqMatch: on })
+      .where(eq(operators.id, id));
   }
   async setOperatorAccepting(id: string, accepting: boolean): Promise<void> {
     if (!isUuid(id)) return;

@@ -1007,6 +1007,8 @@
       "views": "{count, plural, one {# Aufruf} other {# Aufrufe}}",
       "requests": "{count, plural, one {# Anfrage} other {# Anfragen}}",
       "pauseRfqs": "Neue Anfragen pausieren",
+      "muteRfqMail": "E-Mails zu neuen Anfragen stummschalten",
+      "unmuteRfqMail": "E-Mails zu neuen Anfragen wieder aktivieren",
       "resumeRfqs": "Neue Anfragen fortsetzen",
       "awayBanner": "Sie sind pausiert — neue Anfragen erreichen Ihren Posteingang nicht. Bestehende Zuordnungen und Angebote bleiben unberührt.",
       "suspendedBanner": "Ihr Konto ist gesperrt — Inserate sind verborgen, Anfragen pausiert und Bearbeitungen deaktiviert. Kontaktieren Sie den Support, wenn Sie das für einen Fehler halten."
