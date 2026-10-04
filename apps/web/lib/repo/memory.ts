@@ -374,6 +374,33 @@ class MemoryRepo implements Repo {
     }
     return true;
   }
+  async listOperatorDirectory(input: {
+    vertical: string;
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    limit?: number;
+  }): Promise<{ operator: import("./types").Operator; activeCount: number }[]> {
+    const counts = new Map<string, number>();
+    for (const l of this.listings.values()) {
+      if (l.vertical !== input.vertical || l.status !== "active") continue;
+      if (input.notExpiredByAttr) {
+        const { type, attr, asOf } = input.notExpiredByAttr;
+        if (l.type === type) {
+          const v = l.attributes[attr];
+          if (typeof v === "string" && v < asOf) continue;
+        }
+      }
+      counts.set(l.operatorId, (counts.get(l.operatorId) ?? 0) + 1);
+    }
+    const rows = [...counts.entries()].flatMap(([operatorId, n]) => {
+      const operator = this.operators.get(operatorId);
+      return operator ? [{ operator, activeCount: n }] : [];
+    });
+    rows.sort(
+      (a, b) =>
+        b.activeCount - a.activeCount || a.operator.id.localeCompare(b.operator.id),
+    );
+    return rows.slice(0, input.limit ?? 96);
+  }
   async countOperatorListings(operatorId: string, vertical?: string) {
     return [...this.listings.values()].filter(
       (l) =>

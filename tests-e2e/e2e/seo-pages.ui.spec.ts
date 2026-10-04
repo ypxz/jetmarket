@@ -32,3 +32,31 @@ test('unknown slug 404s', async ({ page }) => {
   const res = await page.goto('/not-a-real-landing-page');
   expect(res?.status()).toBe(404);
 });
+
+// Operator directory (QA-426): indexable parent of /operators/[id] —
+// cards carry the active count and link through to the profile.
+test('operator directory lists seeded operators and links to profiles', async ({
+  page,
+}) => {
+  const res = await page.goto('/operators');
+  expect(res?.status()).toBe(200);
+  await expect(page.getByTestId('operators-index-title')).toBeVisible();
+  const cards = page.locator('[data-testid^="operator-card-"]');
+  expect(await cards.count()).toBeGreaterThan(0);
+  // Counts are active-only: at least one card shows "Active listings (N)".
+  await expect(page.getByText(/Active listings \(\d+\)/).first()).toBeVisible();
+  // Indexable surface: no robots noindex marker. all() doesn't wait — a
+  // missing meta[name=robots] element IS the indexable state.
+  const robots = await Promise.all(
+    (await page.locator('meta[name="robots"]').all()).map((m) =>
+      m.getAttribute('content'),
+    ),
+  );
+  expect(robots.join(' ')).not.toContain('noindex');
+  const firstProfile = cards
+    .first()
+    .getByRole('link', { name: 'View profile' });
+  await firstProfile.click();
+  await expect(page).toHaveURL(/\/operators\/[0-9a-f-]{36}$/);
+  await expect(page.getByTestId('operator-name')).toBeVisible();
+});

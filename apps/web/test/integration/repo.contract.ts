@@ -2329,5 +2329,108 @@ export function repoContract(
       );
       expect(await repo.retryJob(`missing-${tag}`)).toBe(false);
     });
+
+    it("listOperatorDirectory counts active+unexpired only, per vertical (QA-426)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mkOp = async (n: string) =>
+        repo.upsertOperator({
+          userId: (await repo.createUser(`${n}-${tag}@test.dev`, "operator")).id,
+          name: `Dir ${n} ${tag}`,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: false,
+          plan: "pro",
+        });
+      const mkListing = (
+        operatorId: string,
+        patch: Partial<Parameters<Repo["createListing"]>[0]> = {},
+      ) =>
+        repo.createListing({
+          operatorId,
+          vertical: "jets",
+          type: "empty_leg",
+          title: `Dir leg ${tag}`,
+          price: 1000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+          ...patch,
+        });
+
+      // Two qualifying operators; ordering = most-active first.
+      const opA = await mkOp("a");
+      await mkListing(opA.id, { title: `Dir a1 ${tag}` });
+      await mkListing(opA.id, { title: `Dir a2 ${tag}` });
+      const opB = await mkOp("b");
+      await mkListing(opB.id, { title: `Dir b1 ${tag}` });
+
+      // Disqualified: paused-only, archived-only, foreign-vertical only.
+      const opPaused = await mkOp("p");
+      const paused = await mkListing(opPaused.id, { title: `Dir p1 ${tag}` });
+      await repo.updateListingStatus(paused.id, "paused");
+      const opArch = await mkOp("x");
+      const arch = await mkListing(opArch.id, { title: `Dir x1 ${tag}` });
+      await repo.updateListingStatus(arch.id, "archived");
+      const opForeign = await mkOp("f");
+      await mkListing(opForeign.id, {
+        vertical: "machinery",
+        type: "excavator",
+        title: `Dir f1 ${tag}`,
+      });
+      // Expired dated inventory qualifies ONLY when no expiry predicate is
+      // passed (browse parity is opt-in, same as listListings).
+      const opExp = await mkOp("e");
+      await mkListing(opExp.id, {
+        title: `Dir e1 ${tag}`,
+        attributes: { date: "2000-01-01" },
+      });
+
+      const rows = await repo.listOperatorDirectory({ vertical: "jets" });
+      const mine = rows.filter((r) => r.operator.name.endsWith(tag));
+      expect(mine.map((r) => r.operator.id)).toEqual(
+        expect.arrayContaining([opA.id, opB.id, opExp.id]),
+      );
+      // Most-active first is the one deterministic ordering pin.
+      expect(mine[0]?.operator.id).toBe(opA.id);
+      expect(mine[0]?.activeCount).toBe(2);
+      expect(
+        Object.fromEntries(mine.map((r) => [r.operator.id, r.activeCount])),
+      ).toMatchObject({ [opB.id]: 1, [opExp.id]: 1 });
+      expect(mine.map((r) => r.operator.id)).not.toContain(opPaused.id);
+      expect(mine.map((r) => r.operator.id)).not.toContain(opArch.id);
+      expect(mine.map((r) => r.operator.id)).not.toContain(opForeign.id);
+
+      // With the browse expiry predicate the past-dated leg drops out —
+      // undated legs of the same type stay (NULL-safe parity with browse).
+      const browseRows = await repo.listOperatorDirectory({
+        vertical: "jets",
+        notExpiredByAttr: {
+          type: "empty_leg",
+          attr: "date",
+          asOf: new Date().toISOString().slice(0, 10),
+        },
+      });
+      const browseMine = browseRows.filter((r) =>
+        r.operator.name.endsWith(tag),
+      );
+      expect(browseMine.map((r) => r.operator.id)).toEqual([opA.id, opB.id]);
+
+      // limit clamps; machinery sees only its own operator.
+      expect(
+        await repo.listOperatorDirectory({ vertical: "jets", limit: 1 }),
+      ).toHaveLength(1);
+      const foreign = await repo.listOperatorDirectory({
+        vertical: "machinery",
+      });
+      expect(
+        foreign.filter((r) => r.operator.name.endsWith(tag)),
+      ).toEqual([
+        {
+          operator: expect.objectContaining({ id: opForeign.id }),
+          activeCount: 1,
+        },
+      ]);
+    });
   });
 }

@@ -639,6 +639,46 @@ export class DrizzleRepo implements Repo {
       .groupBy(listings.operatorId);
     return Object.fromEntries(rows.map((r) => [r.operatorId, r.n]));
   }
+  async listOperatorDirectory({
+    vertical,
+    notExpiredByAttr,
+    limit = 96,
+  }: {
+    vertical: string;
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    limit?: number;
+  }): Promise<{ operator: Operator; activeCount: number }[]> {
+    const conds = [
+      eq(listings.vertical, vertical),
+      eq(listings.status, "active"),
+    ];
+    if (notExpiredByAttr) {
+      // Same NULL-safe dated-inventory predicate as listingConds — a
+      // directory count must equal the listings the profile shows.
+      const { type, attr, asOf } = notExpiredByAttr;
+      const v = sql`${listings.attributes} ->> ${attr}`;
+      conds.push(
+        or(
+          ne(listings.type, type),
+          sql`${v} is null`,
+          sql`${v} >= ${asOf}`,
+        )!,
+      );
+    }
+    const rows = await this.db
+      .select({ operator: operators, n: sql<number>`count(*)::int` })
+      .from(listings)
+      .innerJoin(operators, eq(listings.operatorId, operators.id))
+      .where(and(...conds))
+      .groupBy(operators.id)
+      .orderBy(sql`count(*) desc`, operators.id)
+      .limit(limit);
+    return rows.map((r) => ({
+      operator: toOperator(r.operator),
+      activeCount: r.n,
+    }));
+  }
+
   async countOperatorListings(
     operatorId: string,
     vertical?: string,

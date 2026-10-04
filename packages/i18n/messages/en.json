@@ -833,6 +833,11 @@
     "listingsTitle": "Active listings ({count})",
     "emptyTitle": "No active listings",
     "emptyBody": "This operator has no active listings right now.",
-    "metaDescription": "{name} — {count} active listings on {siteName}. Browse the fleet and request a quote."
+    "metaDescription": "{name} — {count} active listings on {siteName}. Browse the fleet and request a quote.",
+    "indexTitle": "Operators",
+    "indexMeta": "Browse vetted operators on {siteName} — compare fleets and request a quote.",
+    "indexEmpty": "No operators yet",
+    "indexEmptyBody": "Operators appear here as soon as they publish a live listing.",
+    "viewProfile": "View profile →"
   }
 }

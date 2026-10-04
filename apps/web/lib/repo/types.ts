@@ -201,6 +201,17 @@ export interface Repo {
     ids?: string[];
   }): Promise<Operator[]>;
   countOperators(): Promise<number>;
+  /** Public operator directory (QA-426): operators with ≥1 ACTIVE listing
+   *  in `vertical`, most-active first — one grouped read, no N+1.
+   *  `notExpiredByAttr` applies the same dated-inventory exclusion browse
+   *  and the /operators/[id] profile use, so the count shown equals the
+   *  listings the profile actually renders. Draft/paused/archived rows
+   *  don't qualify an operator and don't count. */
+  listOperatorDirectory(input: {
+    vertical: string;
+    notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    limit?: number;
+  }): Promise<{ operator: Operator; activeCount: number }[]>;
   setOperatorVerified(id: string, verified: boolean): Promise<void>;
   setOperatorPlan(id: string, plan: Plan): Promise<void>;
 

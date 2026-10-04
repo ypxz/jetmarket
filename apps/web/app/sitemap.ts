@@ -14,7 +14,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   // Only indexable public pages: the home page, legal/imprint, and the
   // dedicated SEO landing slugs. search/quotes/sign-in are no-index surfaces.
-  const staticPaths = ["", "tos", "privacy", "imprint"];
+  // /operators is the indexable directory parent of the operator profiles.
+  const staticPaths = ["", "tos", "privacy", "imprint", "operators"];
   // Live listings are the indexable long tail — cap so a huge inventory
   // can't grow the sitemap unboundedly (search engines cap at 50k/50MB).
   const repo = await getRepo();
