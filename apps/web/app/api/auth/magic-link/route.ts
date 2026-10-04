@@ -3,7 +3,7 @@ import { site } from "@jetmarket/config";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { logWarn } from "@/lib/log";
 import { signMagicLink } from "@/lib/auth";
 import { appOrigin } from "@/lib/origin";
@@ -61,7 +61,9 @@ export async function POST(req: Request) {
         ? "/app"
         : "/app/onboarding"
       : "/";
-  const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}&next=${encodeURIComponent(next)}`;
+  // QA-496: the post-callback landing keeps the page locale the sign-in
+  // form was submitted from — a /de sign-in returns onto /de/app.
+  const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}&next=${encodeURIComponent(localePath(locale, next))}`;
   // QA-493: sign-in mail in the page's locale.
   const m = await mailCopy(locale);
   const subject = mailT(m, "magicLink.subject", { site: site.name });

@@ -270,6 +270,8 @@ export interface WorkerRepo {
       params: Record<string, unknown>;
       token: string;
       pendingIds: string[];
+      /** QA-496: digest mail renders + links in the alert's stamped locale. */
+      locale: string;
     }[]
   >;
   /** Listing titles for digest mail — id+title only, active status kept so
@@ -1011,6 +1013,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           params: searchAlerts.params,
           token: searchAlerts.token,
           pendingIds: searchAlerts.pendingIds,
+          locale: searchAlerts.locale,
         })
         .from(searchAlerts)
         .where(

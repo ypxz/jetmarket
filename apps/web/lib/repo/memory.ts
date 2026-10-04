@@ -1454,15 +1454,15 @@ class MemoryRepo implements Repo {
     return null;
   }
 
-  async unsubscribeSearchAlert(token: string): Promise<boolean> {
+  async unsubscribeSearchAlert(token: string): Promise<SearchAlert | null> {
     for (const row of this.searchAlertRows.values()) {
       if (row.token === token) {
-        if (row.status === "off") return false;
+        if (row.status === "off") return null;
         row.status = "off";
-        return true;
+        return row;
       }
     }
-    return false;
+    return null;
   }
 
   async listSearchAlerts(filter: {

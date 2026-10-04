@@ -15,6 +15,7 @@ import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
 import {
   defaultLocale,
   getMessages,
+  localePath,
   mailCopy,
   mailT,
 } from "@jetmarket/i18n";
@@ -226,8 +227,10 @@ export async function searchAlertFlush(deps: WorkerDeps): Promise<number> {
       // Watch rows (QA-407) link the watched listing and get update copy.
       const watchId =
         typeof alert.params["watch"] === "string" ? alert.params["watch"] : null;
+      // QA-496: digest renders + deep-links in the alert's stamped locale.
+      const m = await mailCopy(alert.locale);
       const targetUrl = watchId
-        ? `${origin}/listing/${watchId}`
+        ? `${origin}${localePath(alert.locale, `/listing/${watchId}`)}`
         : (() => {
             const u = new URL(`${origin}/search`);
             for (const [k, v] of Object.entries(alert.params)) {
@@ -236,17 +239,29 @@ export async function searchAlertFlush(deps: WorkerDeps): Promise<number> {
                   u.searchParams.append(k, String(item));
               }
             }
-            return u.toString();
+            const rel = `${u.pathname}${u.search}`;
+            return `${origin}${localePath(alert.locale, rel)}`;
           })();
       const subject = watchId
-        ? `A listing you watch was updated — “${first}”`
+        ? mailT(m, "alertDigest.subjectWatch", { title: first })
         : live.length === 1
-          ? `New listing matches your saved search — “${first}”`
-          : `${live.length} new listings match your saved search`;
+          ? mailT(m, "alertDigest.subjectOne", { title: first })
+          : mailT(m, "alertDigest.subjectMany", { count: live.length });
       const intro = watchId
-        ? `A listing you watch on ${site.name} was updated:`
-        : `New listings on ${site.name} match your saved search:`;
-      const lines = live.map((l) => `${l.title} — ${origin}/listing/${l.id}`);
+        ? mailT(m, "alertDigest.introWatch", { site: site.name })
+        : mailT(
+            m,
+            live.length === 1
+              ? "alertDigest.introOne"
+              : "alertDigest.introMany",
+            { site: site.name },
+          );
+      const lines = live.map((l) =>
+        mailT(m, "alertDigest.line", {
+          title: l.title,
+          url: `${origin}${localePath(alert.locale, `/listing/${l.id}`)}`,
+        }),
+      );
       await deps.email.send({
         to: alert.email,
         subject,
@@ -255,16 +270,18 @@ export async function searchAlertFlush(deps: WorkerDeps): Promise<number> {
           "",
           ...lines,
           "",
-          `${watchId ? "The listing" : "Your search"}: ${targetUrl}`,
-          `Unsubscribe: ${unsub}`,
+          `${watchId ? mailT(m, "alertConfirm.theListing") : mailT(m, "alertConfirm.yourSearch")}: ${targetUrl}`,
+          `${mailT(m, "shared.unsubscribe")}: ${unsub}`,
         ].join("\n"),
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
-          paragraphs: [intro, ...lines, `Unsubscribe: ${unsub}`],
+          paragraphs: [intro, ...lines, `${mailT(m, "shared.unsubscribe")}: ${unsub}`],
           cta: {
             url: targetUrl,
-            label: watchId ? "View listing" : "See matching listings",
+            label: watchId
+              ? mailT(m, "alertDigest.ctaWatch")
+              : mailT(m, "alertDigest.cta"),
           },
         }),
       });
@@ -402,7 +419,7 @@ export async function nudgeStaleQuotes(deps: WorkerDeps): Promise<number> {
   const origin = `https://${site.domain}`;
   for (const r of rows) {
     try {
-      const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
+      const quotesUrl = `${origin}${localePath(r.locale, "/quotes")}?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
       // QA-493: the buyer reads the RFQ's stamped locale.
@@ -462,7 +479,7 @@ export async function nudgeUnquotedRfqs(deps: WorkerDeps): Promise<number> {
   const origin = `https://${site.domain}`;
   for (const r of rows) {
     try {
-      const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
+      const quotesUrl = `${origin}${localePath(r.locale, "/quotes")}?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
       const m = await mailCopy(r.locale);
@@ -529,7 +546,7 @@ export async function nudgeClosingSoonRfqs(
   const origin = `https://${site.domain}`;
   for (const r of rows) {
     try {
-      const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
+      const quotesUrl = `${origin}${localePath(r.locale, "/quotes")}?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
       const m = await mailCopy(r.locale);
@@ -602,7 +619,7 @@ export async function nudgeUnratedDeals(deps: WorkerDeps): Promise<number> {
   const origin = `https://${site.domain}`;
   for (const r of rows) {
     try {
-      const rateUrl = `${origin}/quotes?email=${encodeURIComponent(
+      const rateUrl = `${origin}${localePath(r.locale, "/quotes")}?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
       const m = await mailCopy(r.locale);
@@ -663,7 +680,7 @@ export async function nudgeUnansweredOperators(
   const origin = `https://${site.domain}`;
   for (const r of rows) {
     try {
-      const inboxUrl = `${origin}/app/rfqs?f=needs`;
+      const inboxUrl = `${origin}${localePath(r.locale, "/app/rfqs?f=needs")}`;
       const m = await mailCopy(r.locale);
       const subject = mailT(
         m,
@@ -717,7 +734,7 @@ export async function nudgeEmptyBookOperators(
   const origin = `https://${site.domain}`;
   for (const r of rows) {
     try {
-      const listUrl = `${origin}/app/listings/new`;
+      const listUrl = `${origin}${localePath(r.locale, "/app/listings/new")}`;
       const m = await mailCopy(r.locale);
       const subject = mailT(m, "opEmptyBook.subject", { site: site.name });
       const body = mailT(m, "opEmptyBook.body");
@@ -780,7 +797,7 @@ export async function remindOverdueInvoices(
         ref,
         site: site.name,
       });
-      const accountUrl = `${origin}/app`;
+      const accountUrl = `${origin}${localePath(r.locale, "/app")}`;
       await deps.email.send({
         to: r.email,
         subject,

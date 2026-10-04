@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localePath } from "@jetmarket/i18n";
 import { clientIp, rateLimit } from "@/lib/api";
 import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
@@ -20,6 +21,13 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/search?alert=invalid", canonical));
   }
   const repo = await getRepo();
-  await repo.unsubscribeSearchAlert(token);
-  return NextResponse.redirect(new URL("/search?alert=unsubscribed", canonical));
+  // QA-496: the returned row carries the alert's locale — land on the
+  // localized search page the mail was written in.
+  const alert = await repo.unsubscribeSearchAlert(token);
+  return NextResponse.redirect(
+    new URL(
+      localePath(alert?.locale, "/search?alert=unsubscribed"),
+      canonical,
+    ),
+  );
 }

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
   const appUrl = appOrigin(req);
   const confirmUrl = `${appUrl}/api/search-alerts/confirm?token=${encodeURIComponent(token)}`;
-  const searchUrl = searchAlertTargetUrl(appUrl, alert.params);
+  const searchUrl = searchAlertTargetUrl(appUrl, alert.params, alert.locale);
   // Confirm mail is the spam vector — failures must not fail the subscribe
   // (the row exists; a re-subscribe re-mints a link).
   try {

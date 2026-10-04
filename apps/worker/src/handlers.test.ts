@@ -437,30 +437,47 @@ describe("searchAlertFlush", () => {
           params: { type: "charter" },
           token: "tok-a1",
           pendingIds: ["l1", "l2", "l-gone"],
+          locale: "en",
+        },
+        {
+          id: "a-de",
+          email: "käufer@x.com",
+          params: {},
+          token: "tok-de",
+          pendingIds: ["l3"],
+          locale: "de",
         },
       ],
-      loadDigestListings: async () => [
-        { id: "l1", title: "Phenom 300", status: "active" },
-        { id: "l2", title: "Citation CJ4", status: "active" },
-        // l-gone never returns — delisted rows drop out of the digest.
-      ],
+      loadDigestListings: async (ids) =>
+        [
+          { id: "l1", title: "Phenom 300", status: "active" },
+          { id: "l2", title: "Citation CJ4", status: "active" },
+          { id: "l3", title: "G650", status: "active" },
+          // l-gone never returns — delisted rows drop out of the digest.
+        ].filter((l) => (ids as string[]).includes(l.id)),
     });
     const n = await searchAlertFlush(deps(repo));
-    expect(n).toBe(1);
-    expect(sent).toHaveLength(1);
+    expect(n).toBe(2);
+    expect(sent).toHaveLength(2);
     expect(sent[0]!.to).toBe("buyer@x.com");
     expect(sent[0]!.subject).toContain("2 new listings");
     expect(sent[0]!.text).toContain("Phenom 300");
     expect(sent[0]!.text).toContain("unsubscribe?token=tok-a1");
-    expect(repo.calls["markSearchAlerted"]).toEqual(["a1"]);
+    // QA-496: the de-stamped alert renders + deep-links in German.
+    const de = sent[1]!;
+    expect(de.to).toBe("käufer@x.com");
+    expect(de.subject).toContain("neues Inserat");
+    expect(de.text).toContain("/de/listing/l3");
+    expect(de.text).toContain("/de/search");
+    expect(repo.calls["markSearchAlerted"]).toEqual(["a1", "a-de"]);
   });
 
   it("clears a fully-delisted backlog silently; a send failure keeps it queued", async () => {
     sent.length = 0;
     const repo = fakeRepo({
       alertBacklogs: async () => [
-        { id: "a-dead", email: "x@x.com", params: {}, token: "t1", pendingIds: ["l1"] },
-        { id: "a-fail", email: "y@y.com", params: {}, token: "t2", pendingIds: ["l2"] },
+        { id: "a-dead", email: "x@x.com", params: {}, token: "t1", pendingIds: ["l1"], locale: "en" },
+        { id: "a-fail", email: "y@y.com", params: {}, token: "t2", pendingIds: ["l2"], locale: "en" },
       ],
       loadDigestListings: async (ids) =>
         (ids as string[]).includes("l1")

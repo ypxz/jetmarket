@@ -4,7 +4,7 @@ import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { site } from "@jetmarket/config";
 import { appOrigin } from "@/lib/origin";
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       title:
         (r.listingId ? listings.get(r.listingId) : undefined) ??
         mailT(m, "buyerLinks.request", { id: r.id }),
-      url: `${appUrl}/quotes?email=${encodeURIComponent(
+      url: `${appUrl}${localePath(data!.locale, "/quotes")}?email=${encodeURIComponent(
         email,
       )}#t=${encodeURIComponent(r.accessToken)}`,
     }),

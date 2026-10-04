@@ -3,6 +3,7 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { applyPaymentEvent } from "@/lib/billing";
 import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
 import { toMinorUnits } from "@jetmarket/domain";
+import { localePath } from "@jetmarket/i18n";
 import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
@@ -73,8 +74,9 @@ export async function POST(
     currency: "USD",
     email: rfq.buyerEmail,
     description: `${site.name} concierge — expedite your request`,
-    successUrl: `${origin}/quotes?email=${email}`,
-    cancelUrl: `${origin}/rfq/thanks?id=${rfq.id}&email=${email}`,
+    // QA-496: payment return lands on the buyer's localized page.
+    successUrl: `${origin}${localePath(rfq.locale, "/quotes")}?email=${email}`,
+    cancelUrl: `${origin}${localePath(rfq.locale, "/rfq/thanks")}?id=${rfq.id}&email=${email}`,
     metadata,
   });
 

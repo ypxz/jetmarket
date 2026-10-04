@@ -1505,9 +1505,12 @@ export function repoContract(
       expect(row.pendingIds).toEqual([]);
       expect(row.lastAlertedAt).not.toBeNull();
 
-      // Unsubscribe flips off; re-subscribe re-arms to pending (re-confirm).
-      expect(await repo.unsubscribeSearchAlert("tok2")).toBe(true);
-      expect(await repo.unsubscribeSearchAlert("tok2")).toBe(false);
+      // Unsubscribe flips off (returns the row for locale-aware redirects);
+      // re-subscribe re-arms to pending (re-confirm).
+      const off = await repo.unsubscribeSearchAlert("tok2");
+      expect(off?.status).toBe("off");
+      expect(off?.id).toBe(first.alert.id);
+      expect(await repo.unsubscribeSearchAlert("tok2")).toBeNull();
       const resub = await repo.createSearchAlert(
         input(`sa-${tag}@test.dev`, "tok3", key),
       );

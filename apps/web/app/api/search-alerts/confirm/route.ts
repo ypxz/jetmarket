@@ -27,7 +27,9 @@ export async function GET(req: Request) {
   if (!alert) {
     return NextResponse.redirect(new URL("/search?alert=invalid", canonical));
   }
-  const target = new URL(searchAlertTargetUrl(canonical, alert.params));
+  const target = new URL(
+    searchAlertTargetUrl(canonical, alert.params, alert.locale),
+  );
   target.searchParams.set("alert", "confirmed");
   return NextResponse.redirect(target);
 }

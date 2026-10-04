@@ -2140,14 +2140,15 @@ export class DrizzleRepo implements Repo {
     return r ? toSearchAlert(r) : null;
   }
 
-  async unsubscribeSearchAlert(token: string): Promise<boolean> {
-    const r = await this.db
+  async unsubscribeSearchAlert(token: string): Promise<SearchAlert | null> {
+    const [r] = await this.db
       .update(searchAlerts)
       .set({ status: "off" })
       .where(
         and(eq(searchAlerts.token, token), ne(searchAlerts.status, "off")),
-      );
-    return (r.count ?? 0) > 0;
+      )
+      .returning();
+    return r ? toSearchAlert(r) : null;
   }
 
   async listSearchAlerts(filter: {

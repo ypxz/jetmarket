@@ -624,8 +624,9 @@ export interface Repo {
    *  needs `params` to redirect onto the saved search) or null when the
    *  token is unknown / already active / unsubscribed. */
   confirmSearchAlert(token: string): Promise<SearchAlert | null>;
-  /** Unsubscribe-link CAS: any non-'off' status → 'off'. */
-  unsubscribeSearchAlert(token: string): Promise<boolean>;
+  /** Unsubscribe-link CAS: any non-'off' status → 'off'. Returns the row so
+   *  callers can render the landing page in the alert's locale (QA-496). */
+  unsubscribeSearchAlert(token: string): Promise<SearchAlert | null>;
   listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlertStatus;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { site } from "@jetmarket/config";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logWarn } from "@/lib/log";
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
   // (their retry would 409 on the live-quote guard). Operator sees the quote
   // in their inbox; the buyer's email can be resent later (QA-155).
   try {
-    const inboxUrl = `${appOrigin(req)}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}#t=${encodeURIComponent(rfq.accessToken)}`;
+    const inboxUrl = `${appOrigin(req)}${localePath(rfq.locale, "/quotes")}?email=${encodeURIComponent(rfq.buyerEmail)}#t=${encodeURIComponent(rfq.accessToken)}`;
     // QA-493: buyer mails read the RFQ's stamped locale.
     const m = await mailCopy(rfq.locale);
     const quoteSubject = mailT(m, "quoteReceived.subject", {

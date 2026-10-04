@@ -187,7 +187,7 @@ export default async function AccountPage() {
                         listing. Off rows keep it too — re-subscribing
                         re-arms. */}
                     <Link
-                      href={searchAlertTargetUrl("", a.params)}
+                      href={searchAlertTargetUrl("", a.params, locale)}
                       data-testid={`account-alert-open-${a.id}`}
                       className="text-xs underline"
                     >

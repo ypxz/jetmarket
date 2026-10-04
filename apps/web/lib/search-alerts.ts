@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { site } from "@jetmarket/config";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { formatMoney } from "@/lib/format";
 import { logWarn } from "@/lib/log";
@@ -55,26 +55,34 @@ export function searchAlertWatchId(
   return typeof w === "string" && w.length > 0 ? w : null;
 }
 
-/** Where an alert's links point: watched listing page, else the saved /search. */
+/** Where an alert's links point: watched listing page, else the saved /search.
+ * QA-496: pass the alert's locale so mailed/redirected links land on the
+ * localized page (/de/...) — empty origin (in-page links) stays unprefixed
+ * because the page itself is already inside the locale segment. */
 export function searchAlertTargetUrl(
   origin: string,
   params: Record<string, unknown>,
+  locale?: string | null,
 ): string {
   const w = searchAlertWatchId(params);
-  return w ? `${origin}/listing/${w}` : searchAlertSearchUrl(origin, params);
+  return w
+    ? `${origin}${localePath(locale, `/listing/${w}`)}`
+    : searchAlertSearchUrl(origin, params, locale);
 }
 
 /** Rebuild the /search URL an alert watches (confirm redirect + mail CTA). */
 export function searchAlertSearchUrl(
   origin: string,
   params: Record<string, unknown>,
+  locale?: string | null,
 ): string {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     for (const item of Array.isArray(v) ? v : [v]) qs.append(k, String(item));
   }
   const q = qs.toString();
-  return `${origin}/search${q ? `?${q}` : ""}`;
+  const path = `/search${q ? `?${q}` : ""}`;
+  return `${origin}${localePath(locale, path)}`;
 }
 
 /** Resolve a dotted labelKey inside the vertical's en messages subtree. */
@@ -172,7 +180,7 @@ async function sendAlertDigest(
   priceDropFrom?: number,
 ): Promise<void> {
   const watch = searchAlertWatchId(alert.params);
-  const targetUrl = searchAlertTargetUrl(origin, alert.params);
+  const targetUrl = searchAlertTargetUrl(origin, alert.params, alert.locale);
   const unsub = `${origin}/api/search-alerts/unsubscribe?token=${encodeURIComponent(
     alert.token,
   )}`;
@@ -206,11 +214,11 @@ async function sendAlertDigest(
           title: l.title,
           old: formatMoney(priceDropFrom!, l.currency, loc),
           new: formatMoney(l.price, l.currency, loc),
-          url: `${origin}/listing/${l.id}`,
+          url: `${origin}${localePath(alert.locale, `/listing/${l.id}`)}`,
         })
       : mailT(m, "alertDigest.line", {
           title: l.title,
-          url: `${origin}/listing/${l.id}`,
+          url: `${origin}${localePath(alert.locale, `/listing/${l.id}`)}`,
         }),
   );
   await emailProvider().send({
@@ -257,7 +265,7 @@ export async function endListingWatches(
     });
     for (const alert of watchers) {
       try {
-        const searchUrl = searchAlertSearchUrl(origin, {});
+        const searchUrl = searchAlertSearchUrl(origin, {}, alert.locale);
         // QA-493: the watcher reads the alert's stamped locale.
         const m = await mailCopy(alert.locale);
         const subject = mailT(m, "watchEnded.subject", {

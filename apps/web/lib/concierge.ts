@@ -4,7 +4,7 @@ import {
   emailProvider,
 } from "@jetmarket/providers";
 import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { enqueueJob } from "@jetmarket/db";
 import { emailRfqMatches } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
@@ -83,7 +83,7 @@ export async function applyConciergePaid(
       const origin =
         process.env.APP_URL?.replace(/\/+$/, "") ?? `https://${site.domain}`;
       const inboxUrl =
-        `${origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}` +
+        `${origin}${localePath(rfq.locale, "/quotes")}?email=${encodeURIComponent(rfq.buyerEmail)}` +
         `#t=${encodeURIComponent(rfq.accessToken)}`;
       const delivered = res.matches.length;
       const subject = mailT(m, "conciergePaid.subject", { title });

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { brandedEmailHtml, captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
 import { canonicalize } from "@/lib/rfq-dedupe";
 import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { z } from "zod";
 import { buildRfqSchema, getVertical, nonContactFields, rfqFieldLabels } from "@jetmarket/verticals";
 import { verticalMessages } from "@/lib/vertical";
@@ -169,13 +169,13 @@ export async function POST(req: Request) {
   // bogus buyerEmail can't weaponize it beyond "someone used your address".
   // Token goes only to the claimed mailbox — same model as magic links.
   const appUrl = appOrigin(req);
-  const inboxUrl = `${appUrl}/quotes?email=${encodeURIComponent(
+  const inboxUrl = `${appUrl}${localePath(rfq.locale, "/quotes")}?email=${encodeURIComponent(
     rfq.buyerEmail,
   )}#t=${encodeURIComponent(rfq.accessToken)}`;
   // Concierge upsell travels in the same mail — the thanks page's concierge
   // card resolves the bearer token out of the fragment (#t= per AGENTS).
   const conciergeUrl =
-    `${appUrl}/rfq/thanks?id=${encodeURIComponent(rfq.id)}` +
+    `${appUrl}${localePath(rfq.locale, "/rfq/thanks")}?id=${encodeURIComponent(rfq.id)}` +
     `&email=${encodeURIComponent(rfq.buyerEmail)}` +
     `#t=${encodeURIComponent(rfq.accessToken)}`;
   // QA-493: the buyer's confirmation mail reads the RFQ's stamped locale.

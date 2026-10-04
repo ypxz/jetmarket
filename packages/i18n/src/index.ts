@@ -74,3 +74,17 @@ export function mailT(
     dot > 0 ? dict[key.slice(0, dot)]?.[key.slice(dot + 1)] : undefined;
   return mailFmt(tpl, vars);
 }
+
+/**
+ * QA-496: prefix an app-relative path with the recipient's locale so mailed
+ * links land on the localized page (/de/quotes?...). /api paths are
+ * locale-free — callers must not pass them. Unknown/default locales keep
+ * the bare path (en is unprefixed).
+ */
+export function localePath(
+  locale: string | null | undefined,
+  path: string,
+): string {
+  if (!locale || locale === defaultLocale) return path;
+  return `/${locale}${path === "/" ? "" : path}`;
+}

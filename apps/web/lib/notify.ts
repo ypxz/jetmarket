@@ -1,5 +1,5 @@
 import { site } from "@jetmarket/config";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
 import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
@@ -216,7 +216,7 @@ export async function notifyDealClosed(
     const origin =
       process.env.APP_URL?.replace(/\/+$/, "") ?? `https://${site.domain}`;
     const rateUrl =
-      `${origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}` +
+      `${origin}${localePath(rfq.locale, "/quotes")}?email=${encodeURIComponent(rfq.buyerEmail)}` +
       `#t=${encodeURIComponent(rfq.accessToken)}`;
     const rateLine = mailT(m, "dealClosed.rate", { url: rateUrl });
     const body =
