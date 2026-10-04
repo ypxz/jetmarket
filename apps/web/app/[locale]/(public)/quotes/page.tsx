@@ -191,6 +191,29 @@ function QuotesInner() {
     await load();
   }
 
+  // QA-446: a dying request buys a week in place — quotes and the
+  // delivered-to history survive, unlike the QA-410 repost twin.
+  async function extendRfq(rfqId: string) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/rfqs/${rfqId}/extend`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(data.error ?? tc("error"));
+      return;
+    }
+    setMsg(t("extendedMsg"));
+    await load();
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -258,6 +281,15 @@ function QuotesInner() {
                       <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-success" data-testid={`concierge-badge-${r.id}`}>
                         {t("concierge.done")}
                       </span>
+                    ) : null}
+                    {["open", "matched", "quoted"].includes(r.status) ? (
+                      <button
+                        onClick={() => extendRfq(r.id)}
+                        data-testid={`extend-rfq-${r.id}`}
+                        className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
+                      >
+                        {t("extend")}
+                      </button>
                     ) : null}
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button

@@ -1032,6 +1032,70 @@ export function repoContract(
       expect(idx(buyerSorted, undated.id)).toBe(0);
     });
 
+    it("extendRfqDeadline rewrites fields.dateTo on live rows only (QA-446)", async () => {
+      const repo = await factory();
+      const tag = `ext-${Date.now()}`;
+      const u = await repo.createUser(`ext-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "Ext Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Ext Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const dated = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `ext-${tag}@test.dev`,
+        fields: { from: "ZRH", dateTo: "2031-01-02" },
+      });
+      const undated = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `ext2-${tag}@test.dev`,
+        fields: { from: "GVA" },
+      });
+
+      // Live rows take the write; every other field survives the merge.
+      expect(await repo.extendRfqDeadline(dated.id, "2031-02-14")).toBe(true);
+      const after = await repo.getRfq(dated.id);
+      expect(after?.fields["dateTo"]).toBe("2031-02-14");
+      expect(after?.fields["from"]).toBe("ZRH");
+      // Undated rows become dated — the write IS the extension.
+      expect(await repo.extendRfqDeadline(undated.id, "2031-02-14")).toBe(
+        true,
+      );
+      expect((await repo.getRfq(undated.id))?.fields["dateTo"]).toBe(
+        "2031-02-14",
+      );
+
+      // Terminal rows refuse — a closed request can't be re-dated to life.
+      expect(
+        await repo.setRfqStatus(dated.id, "closed", [
+          "open",
+          "matched",
+          "quoted",
+        ]),
+      ).toBe(true);
+      expect(await repo.extendRfqDeadline(dated.id, "2032-01-01")).toBe(
+        false,
+      );
+      expect((await repo.getRfq(dated.id))?.fields["dateTo"]).toBe(
+        "2031-02-14",
+      );
+    });
+
     it("countDeliveredMatches counts due rows only, batched (QA-401)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

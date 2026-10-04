@@ -493,6 +493,14 @@ class MemoryRepo implements Repo {
     this.rfqs.set(id, { ...rfq, status });
     return true;
   }
+  async extendRfqDeadline(id: string, dateTo: string): Promise<boolean> {
+    const rfq = this.rfqs.get(id);
+    // Same gate as drizzle — synchronous check+write (QA-333); the merge
+    // keeps every other request field (QA-446).
+    if (!rfq || !LIVE_RFQ_STATUSES.has(rfq.status)) return false;
+    this.rfqs.set(id, { ...rfq, fields: { ...rfq.fields, dateTo } });
+    return true;
+  }
   async expediteRfq(id: string) {
     const rfq = this.rfqs.get(id);
     if (!rfq || rfq.concierge || !LIVE_RFQ_STATUSES.has(rfq.status)) {

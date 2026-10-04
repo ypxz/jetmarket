@@ -327,6 +327,20 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
   });
 
   await step('buyer accepts the quote', async () => {
+    // QA-446: pull the live RFQ's close date in to ~4 days so the Extend
+    // button has something to buy — extending in place beats the QA-410
+    // repost twin (quotes + delivered-to history survive).
+    const sqlx = postgres(process.env.TEST_DATABASE_URL!);
+    let extRfqId = '';
+    try {
+      const [ext] = await sqlx`
+        update rfqs set fields = fields || ${sqlx.json({ dateTo: isoDateIn(3) })}::jsonb
+        where buyer_email = ${BUYER_EMAIL} and status in ('new','matched','quoted')
+        returning id`;
+      extRfqId = ext!.id;
+    } finally {
+      await sqlx.end();
+    }
     // the thanks page's 'view quotes' link carries the per-RFQ bearer token (QA-39)
     await buyer.getByTestId('rfq-view-quotes').click();
     const emailInput = buyer.getByTestId('buyer-email');
@@ -346,6 +360,22 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(
       quote.locator('[data-testid^="quote-updated-"]'),
     ).toContainText(/updated/i);
+    // QA-446: one click on Extend moves the live request's close date to
+    // a week from today — the row stays put, its quote still attached.
+    const extRow = buyer.locator(tid(`buyer-rfq-${extRfqId}`));
+    await expect(extRow).toBeVisible();
+    await extRow.getByTestId(`extend-rfq-${extRfqId}`).click();
+    const weekOut = new Date(Date.now() + 8 * 86_400_000).toLocaleDateString(
+      'en-US',
+      { month: 'short', day: 'numeric' },
+    );
+    await expect(
+      extRow.locator(tid(`rfq-deadline-${extRfqId}`)),
+    ).toContainText(weekOut, { timeout: 15_000 });
+    await expect(
+      extRow.locator(tid(`rfq-state-${extRfqId}`)),
+    ).not.toContainText(/closed/i);
+    // The extended request still carries its live quote — accept it.
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);
   });

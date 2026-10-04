@@ -363,6 +363,15 @@ export interface Repo {
     expectedIn: RfqStatus[],
   ): Promise<boolean>;
   /**
+   * Buyer-side "more time" (QA-446): CAS-gated write of `fields.dateTo` on
+   * a LIVE RFQ — extending pushes the liveness horizon (QA-442's rule)
+   * without a repost, which would mint a fresh RFQ and abandon the
+   * delivered-to history and live quotes. An undated request becomes
+   * dated by the write — deliberate: "more time" is expressed as a
+   * concrete close date. Returns false on a terminal RFQ.
+   */
+  extendRfqDeadline(id: string, dateTo: string): Promise<boolean>;
+  /**
    * Matches of this RFQ still awaiting delivery — the thing a concierge
    * purchase actually buys. pg counts `state='delayed'` (a row whose
    * deliverAt passed but the worker hasn't flipped yet still counts — the

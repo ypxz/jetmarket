@@ -793,6 +793,21 @@ export class DrizzleRepo implements Repo {
       .returning({ id: rfqs.id });
     return rows.length > 0;
   }
+  async extendRfqDeadline(id: string, dateTo: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    // One CAS: jsonb `||` merges (keeps every other field), the status
+    // gate means a terminal RFQ can't be re-dated back to life.
+    const rows = await this.db
+      .update(rfqs)
+      .set({
+        fields: sql`${rfqs.fields} || jsonb_build_object('dateTo', ${dateTo}::text)`,
+      })
+      .where(
+        and(eq(rfqs.id, id), inArray(rfqs.status, ["new", "matched", "quoted"])),
+      )
+      .returning({ id: rfqs.id });
+    return rows.length > 0;
+  }
   async expediteRfq(id: string) {
     if (!isUuid(id)) return { applied: false, matches: [] };
     return this.db.transaction(async (tx) => {
