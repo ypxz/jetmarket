@@ -1,4 +1,5 @@
 import { storageProvider } from "@jetmarket/providers";
+import { rfqDeadlineAt } from "../rfq-deadline";
 import { PlanCapError } from "./types";
 import type {
   Deal,
@@ -522,6 +523,7 @@ class MemoryRepo implements Repo {
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
     vertical?: string;
+    sort?: "deadline";
     limit?: number;
     offset?: number;
   }): Promise<Rfq[]> {
@@ -578,9 +580,14 @@ class MemoryRepo implements Repo {
     }
     // Operator inbox: concierge expedites sort first — the buyer paid for
     // immediate attention (QA-400); buyer/admin lists stay newest-first.
+    // sort="deadline" (QA-443) orders operator lists by the QA-442 liveness
+    // horizon (same rule the sweep enforces) — soonest-dying first.
     out = out.sort(
       (a, b) =>
         (filter?.operatorId ? Number(b.concierge) - Number(a.concierge) : 0) ||
+        (filter?.operatorId && filter.sort === "deadline"
+          ? rfqDeadlineAt(a).getTime() - rfqDeadlineAt(b).getTime()
+          : 0) ||
         b.createdAt.localeCompare(a.createdAt),
     );
     if (filter?.offset) out = out.slice(filter.offset);

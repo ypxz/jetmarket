@@ -759,7 +759,8 @@
       "listingFilterAll": "All listings",
       "listingFilterClear": "clear listing filter",
       "newBadge": "New",
-      "filterAnswered": "Answered"
+      "filterAnswered": "Answered",
+      "sortEnding": "Ending first"
     },
     "billing": {
       "title": "Plan & billing",

@@ -857,6 +857,7 @@ export class DrizzleRepo implements Repo {
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
     vertical?: string;
+    sort?: "deadline";
     limit?: number;
     offset?: number;
   }): Promise<Rfq[]> {
@@ -931,9 +932,25 @@ export class DrizzleRepo implements Repo {
           ),
         )
         // Operator inbox: paid concierge expedites answer first — burying one
-        // under newer unpaid RFQs defeats the $49 promise (QA-400). Other
-        // surfaces (buyer/admin) keep plain newest-first.
-        .orderBy(desc(rfqs.concierge), desc(rfqs.createdAt))
+        // under newer unpaid RFQs defeats the $49 promise (QA-400). Concierge
+        // ordering applies ONLY to operator-scoped lists (QA-443): buyer and
+        // admin surfaces keep plain newest-first — this used to leak the
+        // concierge rank into every listRfqs call on pg while memory
+        // correctly gated it on operatorId. sort="deadline" then orders by
+        // the QA-442 liveness horizon (dated: dateTo+1d; else created+30d —
+        // the sweep's exact predicate) so soonest-dying requests lead.
+        .orderBy(
+          ...(filter?.operatorId ? [desc(rfqs.concierge)] : []),
+          ...(filter?.sort === "deadline" && filter.operatorId
+            ? [
+                sql`case when ${rfqs.fields}->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                      then (${rfqs.fields}->>'dateTo')::date + 1
+                      else ${rfqs.createdAt} + interval '30 days'
+                    end asc`,
+              ]
+            : []),
+          desc(rfqs.createdAt),
+        )
         .$dynamic();
       if (filter.limit !== undefined) q = q.limit(filter.limit);
       if (filter.offset) q = q.offset(filter.offset);

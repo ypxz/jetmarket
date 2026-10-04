@@ -170,6 +170,15 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(
       item.locator('[data-testid^="rfq-deadline-"]'),
     ).toContainText(/replies close/i);
+    // QA-443: the "Ending first" sort toggle is offered beside the views;
+    // it flips ?sort=deadline while keeping the inbox usable.
+    await operator.getByTestId('sort-ending').click();
+    await expect(operator).toHaveURL(/\/app\/rfqs\?sort=deadline/);
+    await expect(
+      operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE }),
+    ).toBeVisible();
+    await operator.getByTestId('sort-ending').click();
+    await expect(operator).toHaveURL(/\/app\/rfqs$/);
 
     // QA-433: the "Answered" view now holds this RFQ — it's the inverse of
     // "needs a quote", which must exclude it (and listing scope composes).

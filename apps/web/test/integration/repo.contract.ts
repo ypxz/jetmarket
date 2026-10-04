@@ -943,6 +943,88 @@ export function repoContract(
       ).toBe(0);
     });
 
+    it("sort='deadline' orders operator lists by the liveness horizon; concierge rank is operator-only (QA-443)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`dl-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "DL Op",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `DL Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      // Small sleeps keep createdAt distinct — the newest-first tiebreak
+      // must stay deterministic on both impls.
+      const pause = () => new Promise((r) => setTimeout(r, 5));
+      const mkRfq = (suffix: string, fields: Record<string, unknown>) =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: `dl-${tag}@test.dev`,
+          fields,
+        });
+      const late = await mkRfq("late", { dateTo: isoIn(60) });
+      await pause();
+      const concierge = await mkRfq("con", { dateTo: isoIn(90) });
+      await repo.expediteRfq(concierge.id);
+      await pause();
+      const soon = await mkRfq("soon", { dateTo: isoIn(5) });
+      await pause();
+      const undated = await mkRfq("und", { from: "ZRH" });
+      const ids = [late.id, concierge.id, soon.id, undated.id];
+
+      const idx = (rows: { id: string }[], id: string) =>
+        rows.findIndex((r) => r.id === id);
+
+      // deadline: concierge still leads (QA-400), then soonest-dying first —
+      // soon (+1d) < undated (+30d) < late (months out), regardless of the
+      // newest-first creation order.
+      const byDeadline = await repo.listRfqs({
+        operatorId: op.id,
+        ids,
+        sort: "deadline",
+      });
+      expect(byDeadline.map((r) => r.id)).toHaveLength(4);
+      expect(idx(byDeadline, concierge.id)).toBe(0);
+      expect(idx(byDeadline, soon.id)).toBeLessThan(idx(byDeadline, undated.id));
+      expect(idx(byDeadline, undated.id)).toBeLessThan(idx(byDeadline, late.id));
+
+      // Default stays concierge-first + newest-first.
+      const newest = await repo.listRfqs({ operatorId: op.id, ids });
+      expect(idx(newest, concierge.id)).toBe(0);
+      expect(idx(newest, undated.id)).toBeLessThan(idx(newest, soon.id));
+
+      // Non-operator lists: concierge rank does NOT leak (the parity fix —
+      // drizzle used to concierge-sort every listRfqs call). Newest-first:
+      // the concierge row is second-oldest, so it must NOT lead.
+      const buyer = await repo.listRfqs({ buyerEmail: `dl-${tag}@test.dev` });
+      expect(buyer.map((r) => r.id)).toEqual(
+        expect.arrayContaining(ids),
+      );
+      expect(idx(buyer, concierge.id)).not.toBe(0);
+      expect(idx(buyer, undated.id)).toBe(0);
+      // sort="deadline" without operatorId is inert — no deadline rank, and
+      // no concierge rank either.
+      const buyerSorted = await repo.listRfqs({
+        buyerEmail: `dl-${tag}@test.dev`,
+        sort: "deadline",
+      });
+      expect(idx(buyerSorted, concierge.id)).not.toBe(0);
+      expect(idx(buyerSorted, undated.id)).toBe(0);
+    });
+
     it("countDeliveredMatches counts due rows only, batched (QA-401)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

@@ -9,11 +9,14 @@ export function ListingFilter({
   listings,
   active,
   f,
+  sort,
   allLabel,
 }: {
   listings: { id: string; title: string }[];
   active: string | null;
   f: string | null;
+  /** QA-443: an active sort survives a listing-scope switch. */
+  sort: string | null;
   allLabel: string;
 }) {
   const router = useRouter();
@@ -23,6 +26,7 @@ export function ListingFilter({
     setPending(true);
     const q = new URLSearchParams();
     if (f) q.set("f", f);
+    if (sort) q.set("sort", sort);
     if (listingId) q.set("listing", listingId);
     const s = q.toString();
     router.push(`/app/rfqs${s ? `?${s}` : ""}`);

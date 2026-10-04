@@ -68,6 +68,12 @@ export default async function RfqInboxPage({
   const listingFilter = ownListings.some((l) => l.id === listingParam)
     ? listingParam
     : undefined;
+  // "Ending first" ordering (QA-443): triage by the QA-442 liveness
+  // horizon — soonest-dying requests surface ahead of newer ones.
+  const sortParam = Array.isArray(params.sort)
+    ? params.sort[0]
+    : params.sort;
+  const sortEnding = sortParam === "deadline" || undefined;
   const total = await repo.countRfqs({
     operatorId: operator.id,
     listingId: listingFilter,
@@ -86,6 +92,7 @@ export default async function RfqInboxPage({
     dismissedOnly: dismissedOnly || undefined,
     answeredOnly: answeredOnly || undefined,
     vertical: verticalSlug(),
+    sort: sortEnding ? "deadline" : undefined,
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
   });
@@ -167,10 +174,12 @@ export default async function RfqInboxPage({
           ] as const
         ).map(([key, label]) => {
           // Listing scope survives view switches — "needs a quote for THIS
-          // listing" is the point of the filter (QA-430).
+          // listing" is the point of the filter (QA-430). An active sort
+          // rides along too — the sort toggle preserves the view (QA-443).
           const q = new URLSearchParams();
           if (key !== "all") q.set("f", key);
           if (listingFilter) q.set("listing", listingFilter);
+          if (sortEnding) q.set("sort", "deadline");
           const s = q.toString();
           return (
             <Link
@@ -192,17 +201,46 @@ export default async function RfqInboxPage({
           listings={ownListings.map((l) => ({ id: l.id, title: l.title }))}
           active={listingFilter ?? null}
           f={f ?? null}
+          sort={sortEnding ? "deadline" : null}
           allLabel={t("listingFilterAll")}
         />
         {listingFilter ? (
           <Link
-            href={f ? `/app/rfqs?f=${f}` : "/app/rfqs"}
+            href={`/app/rfqs${(() => {
+              const q = new URLSearchParams();
+              if (f) q.set("f", f);
+              if (sortEnding) q.set("sort", "deadline");
+              const s = q.toString();
+              return s ? `?${s}` : "";
+            })()}`}
             data-testid="listing-filter-clear"
             className="rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-muted"
           >
             {t("listingFilterClear")}
           </Link>
         ) : null}
+        {(() => {
+          // QA-443: soonest-dying first — pairs with the per-row
+          // "replies close" label; concierge expedites still outrank.
+          const q = new URLSearchParams();
+          if (f) q.set("f", f);
+          if (listingFilter) q.set("listing", listingFilter);
+          if (!sortEnding) q.set("sort", "deadline");
+          const s = q.toString();
+          return (
+            <Link
+              href={`/app/rfqs${s ? `?${s}` : ""}`}
+              data-testid="sort-ending"
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                sortEnding
+                  ? "border-border bg-surface font-medium text-foreground"
+                  : "border-border bg-background text-muted"
+              }`}
+            >
+              {t("sortEnding")}
+            </Link>
+          );
+        })()}
         {dismissableIds.length > 1 ? (
           <DismissAllButton rfqIds={dismissableIds} />
         ) : null}
