@@ -2158,6 +2158,87 @@ export function repoContract(
       ).toBe(1);
     });
 
+    it("countDealsPerOperator groups closed deals per op, vertical-scoped (QA-431)", async () => {
+      const repo = await factory();
+      const tag = `dt-${Date.now().toString(36)}`;
+      const mk = async (email: string, rfqVertical = "jets") => {
+        const user = await repo.createUser(email, "operator");
+        const op = await repo.upsertOperator({
+          userId: user.id,
+          name: `Track ${tag} ${email}`,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: true,
+          plan: "pro",
+        });
+        const listing = await repo.createListing({
+          operatorId: op.id,
+          vertical: rfqVertical,
+          type: "charter",
+          title: `Track listing ${email}`,
+          price: 9000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+        });
+        const rfq = await repo.createRfq({
+          vertical: rfqVertical,
+          listingId: listing.id,
+          buyerEmail: `buyer-${email}`,
+          fields: {},
+        });
+        return { op, listing, rfq };
+      };
+      // Two jets deals for op A, one machinery deal for op B — a buyer
+      // comparing jets quotes must not see machinery volume.
+      const a = await mk(`a-${tag}@test.dev`);
+      const b = await mk(`b-${tag}@test.dev`, "machinery");
+      const close = async (op: (typeof a)["op"], rfq: (typeof a)["rfq"]) => {
+        const quote = await repo.createQuote({
+          rfqId: rfq.id,
+          operatorId: op.id,
+          amount: 10_000,
+          currency: "USD",
+          message: "m",
+        });
+        await repo.createDeal({
+          quoteId: quote.id,
+          operatorId: op.id,
+          amount: 10_000,
+          currency: "USD",
+          feePct: 0.015,
+          feeAmount: 150,
+          invoiceStatus: "paid",
+        });
+      };
+      await close(a.op, a.rfq);
+      const a2 = await repo.createRfq({
+        vertical: "jets",
+        listingId: a.listing.id,
+        buyerEmail: `buyer2-${tag}@test.dev`,
+        fields: {},
+      });
+      await close(a.op, a2);
+      await close(b.op, b.rfq);
+
+      const counts = await repo.countDealsPerOperator(
+        [a.op.id, b.op.id, "not-a-uuid"],
+        "jets",
+      );
+      expect(counts[a.op.id]).toBe(2);
+      expect(counts[b.op.id]).toBeUndefined();
+      expect(counts["not-a-uuid"]).toBeUndefined();
+      // Machinery scope sees only op B's row.
+      const mach = await repo.countDealsPerOperator(
+        [a.op.id, b.op.id],
+        "machinery",
+      );
+      expect(mach[a.op.id]).toBeUndefined();
+      expect(mach[b.op.id]).toBe(1);
+      // Empty input → empty record, no query.
+      expect(await repo.countDealsPerOperator([], "jets")).toEqual({});
+    });
+
     it("listRfqs/countRfqs scope to one listing (QA-430)", async () => {
       const repo = await factory();
       const tag = `lf-${Date.now().toString(36)}`;
@@ -2452,6 +2533,10 @@ export function repoContract(
         currency: "USD",
         message: "",
       });
+      // Other contract tests also mint machinery deals on this shared pg —
+      // assert deltas, not absolutes (QA-431's fixture predates this one).
+      const machBefore = await repo.countDeals({ vertical: "machinery" });
+      const machFeeBefore = await repo.sumDealFees({ vertical: "machinery" });
       await repo.createDeal({
         quoteId: fq.id,
         operatorId: op.id,
@@ -2467,17 +2552,19 @@ export function repoContract(
       });
       expect(
         await repo.listDeals({ vertical: "machinery", limit: 1000 }),
-      ).toHaveLength(1);
-      expect(jetsDeals.length).toBe(allDeals.length);
+      ).toHaveLength(machBefore + 1);
+      expect(jetsDeals.length).toBe(allDeals.length - machBefore);
       expect(await repo.countDeals({ vertical: "jets" })).toBe(
         jetsDeals.length,
       );
-      expect(await repo.countDeals()).toBe(jetsDeals.length + 1);
+      expect(await repo.countDeals()).toBe(allDeals.length + 1);
       // same-operator foreign deal: vertical still wins over operatorId.
       expect(
         await repo.countDeals({ operatorId: op.id, vertical: "jets" }),
       ).toBe(scopedDeals.length);
-      expect(await repo.sumDealFees({ vertical: "machinery" })).toBe(100);
+      expect(await repo.sumDealFees({ vertical: "machinery" })).toBe(
+        machFeeBefore + 100,
+      );
 
       // Jobs queue: memory mode has no queue (always empty/no-op by design);
       // the shared assertion is shape-only — an array and false on unknown id.

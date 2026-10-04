@@ -75,6 +75,17 @@ export default async function OperatorPage({
   if (!found) notFound();
   const { operator, listings } = found;
   const pub = publicOperator(operator);
+  const repo = await getRepo();
+  // Track record (QA-431): deals this operator closed on THIS vertical +
+  // member-since — the trust signals beside the verified badge.
+  const dealCount =
+    (await repo.countDealsPerOperator([operator.id], verticalSlug()))[
+      operator.id
+    ] ?? 0;
+  const memberSince = new Date(operator.createdAt).toLocaleDateString(
+    "en",
+    { month: "long", year: "numeric" },
+  );
 
   const orgLd = {
     "@context": "https://schema.org",
@@ -105,6 +116,14 @@ export default async function OperatorPage({
         ) : (
           <Badge variant="warning">{ct("unverified")}</Badge>
         )}
+        <span className="text-sm text-muted" data-testid="operator-member-since">
+          {t("memberSince", { date: memberSince, siteName: site.name })}
+        </span>
+        {dealCount > 0 ? (
+          <Badge variant="outline" data-testid="operator-deals-count">
+            {t("dealsClosed", { count: dealCount })}
+          </Badge>
+        ) : null}
       </div>
 
       <Card className="mt-6">

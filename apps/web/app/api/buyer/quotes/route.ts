@@ -60,12 +60,15 @@ export async function GET(req: Request) {
     // and the concierge purchase's receipt on the page (QA-401).
     repo.countDeliveredMatches(rfqIds),
   ]);
+  const opIds = [...new Set(quoteRows.map((q) => q.operatorId))];
+  const [opByIdEntries, dealCounts] = await Promise.all([
+    repo.listOperators({ ids: opIds }),
+    // Track record beside every quote (QA-431): deals this operator closed
+    // on THIS vertical — the trust signal a comparison page needs.
+    repo.countDealsPerOperator(opIds, verticalSlug()),
+  ]);
   const opById = new Map(
-    (
-      await repo.listOperators({
-        ids: [...new Set(quoteRows.map((q) => q.operatorId))],
-      })
-    ).map((o) => [o.id, publicOperator(o)] as const),
+    opByIdEntries.map((o) => [o.id, publicOperator(o)] as const),
   );
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();
@@ -121,7 +124,12 @@ export async function GET(req: Request) {
         )
         .map((q) => ({
           ...q,
-          operator: opById.get(q.operatorId) ?? null,
+          operator: (() => {
+            const o = opById.get(q.operatorId);
+            return o
+              ? { ...o, dealsClosed: dealCounts[q.operatorId] ?? 0 }
+              : null;
+          })(),
         })),
     })),
   ));

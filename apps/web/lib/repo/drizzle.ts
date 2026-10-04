@@ -1609,6 +1609,31 @@ export class DrizzleRepo implements Repo {
     return out;
   }
 
+  async countDealsPerOperator(
+    operatorIds: string[],
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    // Non-uuid ids can't bind against the uuid column — drop them rather
+    // than 22P02 (same miss-don't-throw rule as other batched reads).
+    const ids = [...new Set(operatorIds)].filter(isUuid);
+    if (!ids.length) return {};
+    const rows = await this.db
+      .select({
+        operatorId: quotes.operatorId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(deals)
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+      .where(
+        and(inArray(quotes.operatorId, ids), eq(rfqs.vertical, vertical)),
+      )
+      .groupBy(quotes.operatorId);
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.operatorId] = r.n;
+    return out;
+  }
+
   async appendSearchAlertPending(alertId: string, listingId: string) {
     if (!isUuid(alertId) || !isUuid(listingId)) return;
     // Distinct append: only add when the id isn't already queued.

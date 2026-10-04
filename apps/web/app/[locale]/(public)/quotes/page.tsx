@@ -16,7 +16,7 @@ interface Quote {
   currency: string;
   message: string;
   status: string;
-  operator: { name: string; verified: boolean } | null;
+  operator: { name: string; verified: boolean; dealsClosed?: number } | null;
 }
 interface Rfq {
   id: string;
@@ -341,6 +341,9 @@ function QuotesInner() {
                           <span className="text-sm text-muted">
                             {t("by", { name: q.operator?.name ?? "" })}
                             {q.operator?.verified ? ` (${tc("verified")})` : ` (${tc("unverified")})`} · {tc(`quoteState.${q.status}`)}
+                            {(q.operator?.dealsClosed ?? 0) > 0
+                              ? ` · ${t("dealsCount", { count: q.operator!.dealsClosed! })}`
+                              : ""}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
                         </div>

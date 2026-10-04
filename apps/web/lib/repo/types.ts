@@ -491,6 +491,14 @@ export interface Repo {
     operatorId: string,
     vertical: string,
   ): Promise<Record<string, number>>;
+  /** Buyer-facing track record (QA-431): closed-deal count per operator.
+   *  Deals carry no vertical — resolved through quote→rfq so `vertical`
+   *  scopes the count to THIS deploy's deals (QA-313 pattern). Batched so
+   *  the buyer quotes page pays one grouped read for every card. */
+  countDealsPerOperator(
+    operatorIds: string[],
+    vertical: string,
+  ): Promise<Record<string, number>>;
   /** Queue a matched listing during the mail cooldown — distinct append. */
   appendSearchAlertPending(alertId: string, listingId: string): Promise<void>;
   /** Stamp lastAlertedAt=now and flush the pending queue (post-send). */

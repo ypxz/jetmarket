@@ -1014,6 +1014,22 @@ class MemoryRepo implements Repo {
       row.pendingIds.push(listingId);
   }
 
+  async countDealsPerOperator(
+    operatorIds: string[],
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    const want = new Set(operatorIds);
+    const out: Record<string, number> = {};
+    for (const d of this.deals.values()) {
+      const q = this.quotes.get(d.quoteId);
+      if (!q || !want.has(q.operatorId)) continue;
+      // Deals carry no vertical — resolve through the parent RFQ.
+      if (this.rfqs.get(q.rfqId)?.vertical !== vertical) continue;
+      out[q.operatorId] = (out[q.operatorId] ?? 0) + 1;
+    }
+    return out;
+  }
+
   async markSearchAlerted(id: string) {
     const row = this.searchAlertRows.get(id);
     if (row) {

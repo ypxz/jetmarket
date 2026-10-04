@@ -269,6 +269,43 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(deals.filter({ hasText: LISTING_TITLE })).toBeVisible();
   });
 
+  await step('buyer sees the operator track record (QA-431)', async () => {
+    // One closed deal now exists — the quotes API's dealsClosed and the
+    // public profile badge must agree on it.
+    const sql = postgres(process.env.TEST_DATABASE_URL!);
+    try {
+      const [rfq] = await sql<
+        { id: string; token: string }[]
+      >`select id, access_token as "token" from rfqs where listing_id in (
+          select id from listings where title = ${LISTING_TITLE}) and vertical = 'jets'
+          order by created_at limit 1`;
+      const inbox = await buyer.request.get(
+        `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+        { headers: { 'x-rfq-token': rfq!.token } },
+      );
+      const rows = (await inbox.json()) as {
+        id: string;
+        quotes: { operator: { dealsClosed?: number } | null }[];
+      }[];
+      const row = rows.find((r) => r.id === rfq!.id);
+      expect(row?.quotes[0]?.operator?.dealsClosed).toBe(1);
+
+      const [op] = await sql<{ id: string }[]>`
+        select o.id from operators o
+        join users u on u.id = o.user_id
+        where u.email = ${OPERATOR_EMAIL}`;
+      await buyer.goto(`/operators/${op!.id}`);
+      await expect(buyer.getByTestId('operator-deals-count')).toHaveText(
+        '1 deal closed',
+      );
+      await expect(
+        buyer.getByTestId('operator-member-since'),
+      ).toContainText('since');
+    } finally {
+      await sql.end();
+    }
+  });
+
   await step('free limit → upgrade via mock checkout → limit lifted', async () => {
     // third listing still allowed (free = 3)
     await createListing(operator, {

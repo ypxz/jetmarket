@@ -149,6 +149,7 @@
     "accepted": "Accepted — deal {id} closed. Operator will be invoiced the success fee.",
     "by": "by {name}",
     "bestPrice": "Best price",
+    "dealsCount": "{count, plural, one {# deal closed} other {# deals closed}}",
     "decline": "Decline",
     "declinedMsg": "Quote declined.",
     "needLink": "Open the link from your RFQ or quote email to view your quotes.",
@@ -844,6 +845,8 @@
     "indexMeta": "Browse vetted operators on {siteName} — compare fleets and request a quote.",
     "indexEmpty": "No operators yet",
     "indexEmptyBody": "Operators appear here as soon as they publish a live listing.",
-    "viewProfile": "View profile →"
+    "viewProfile": "View profile →",
+    "memberSince": "On {siteName} since {date}",
+    "dealsClosed": "{count, plural, one {# deal closed} other {# deals closed}}"
   }
 }
