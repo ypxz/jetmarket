@@ -16,6 +16,8 @@ interface Quote {
   currency: string;
   message: string;
   status: string;
+  createdAt: string;
+  updatedAt: string;
   operator: { name: string; verified: boolean; dealsClosed?: number } | null;
 }
 interface Rfq {
@@ -349,6 +351,14 @@ function QuotesInner() {
                             r.quotes.find((o) => o.status === "sent")?.id ? (
                             <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid="best-price">
                               {t("bestPrice")}
+                            </span>
+                          ) : null}{" "}
+                          {/* QA-445: a still-live quote touched since
+                              creation was revised — flag it so the buyer
+                              connects the "revised" email to this row. */}
+                          {q.status === "sent" && q.updatedAt !== q.createdAt ? (
+                            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid={`quote-updated-${q.id}`}>
+                              {t("updated")}
                             </span>
                           ) : null}{" "}
                           <span className="text-sm text-muted">

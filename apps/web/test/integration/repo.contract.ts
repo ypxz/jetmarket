@@ -423,6 +423,13 @@ export function repoContract(
       expect(revised?.amount).toBe(45000);
       expect(revised?.message).toBe("sharpened");
       expect(revised?.createdAt).toBe(quote.createdAt);
+      // QA-445: updatedAt tracks writes — untouched quotes carry
+      // updatedAt === createdAt (the buyer's "Updated" badge condition).
+      expect(quote.updatedAt).toBe(quote.createdAt);
+      expect(revised?.updatedAt).toBeDefined();
+      expect(
+        Date.parse(revised!.updatedAt) >= Date.parse(revised!.createdAt),
+      ).toBe(true);
       expect((await repo.getQuote(quote.id))?.status).toBe("sent");
 
       // Terminal status gate: a declined offer can't be revived by an edit.

@@ -123,6 +123,7 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
     message: r.message ?? "",
     status: r.status as QuoteStatus,
     createdAt: iso(r.createdAt),
+    updatedAt: iso(r.updatedAt),
   };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
@@ -1213,7 +1214,7 @@ export class DrizzleRepo implements Repo {
   }
 
   async createQuote(
-    q: Omit<Quote, "id" | "createdAt" | "status">,
+    q: Omit<Quote, "id" | "createdAt" | "status" | "updatedAt">,
   ): Promise<Quote> {
     const [row] = await this.db
       .insert(quotes)

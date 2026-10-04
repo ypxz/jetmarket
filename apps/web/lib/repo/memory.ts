@@ -725,8 +725,9 @@ class MemoryRepo implements Repo {
     return n;
   }
 
-  async createQuote(q: Omit<Quote, "id" | "createdAt" | "status">): Promise<Quote> {
-    const quote: Quote = { ...q, id: uid("quo"), status: "sent", createdAt: now() };
+  async createQuote(q: Omit<Quote, "id" | "createdAt" | "status" | "updatedAt">): Promise<Quote> {
+    const n = now();
+    const quote: Quote = { ...q, id: uid("quo"), status: "sent", createdAt: n, updatedAt: n };
     this.quotes.set(quote.id, quote);
     // Same live-state guard as drizzle (QA-165): a closed/spam RFQ must not
     // resurrect to 'quoted' when a quote create races its terminal flip.
@@ -769,7 +770,8 @@ class MemoryRepo implements Repo {
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"]) {
     const q = this.quotes.get(id);
     if (!q || q.status !== expected) return false;
-    this.quotes.set(id, { ...q, status });
+    // Parity: pg bumps updated_at on every write (QA-445).
+    this.quotes.set(id, { ...q, status, updatedAt: now() });
     return true;
   }
 
@@ -790,6 +792,7 @@ class MemoryRepo implements Repo {
       amount: patch.amount,
       currency: patch.currency,
       message: patch.message,
+      updatedAt: now(),
     };
     this.quotes.set(id, next);
     return next;

@@ -316,6 +316,11 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(row).toHaveCount(1);
     await expect(row).toContainText(REVISED_AMOUNT_FMT);
     await expect(row).toContainText(LISTING_TITLE);
+    // QA-444: the offer row names the request's close date — an offer
+    // dies with its request, so the pipeline shows the horizon.
+    await expect(
+      row.locator('[data-testid^="offer-deadline-"]'),
+    ).toContainText(/request closes/i);
     // The CTA lands back on the RFQ inbox where the live offer sits.
     await row.getByRole('link').click();
     await expect(operator).toHaveURL(/\/app\/rfqs/);
@@ -336,6 +341,11 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       .locator(tidPrefix('quote-'))
       .filter({ hasText: REVISED_AMOUNT_FMT });
     await expect(quote).toBeVisible();
+    // QA-445: the revised offer carries an "Updated" badge — the buyer
+    // connects the revised-email to this row.
+    await expect(
+      quote.locator('[data-testid^="quote-updated-"]'),
+    ).toContainText(/updated/i);
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);
   });

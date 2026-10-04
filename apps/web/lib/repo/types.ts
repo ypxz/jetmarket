@@ -119,6 +119,10 @@ export interface Quote {
   message: string;
   status: QuoteStatus;
   createdAt: string;
+  /** Bumped on every write (status flips, revisions). A still-'sent'
+   *  quote with updatedAt !== createdAt was revised — the buyer marks it
+   *  "Updated" (QA-445). */
+  updatedAt: string;
 }
 
 export interface Deal {
@@ -577,7 +581,7 @@ export interface Repo {
   ): Promise<{ rfqs: number; quotes: number }>;
 
   createQuote(
-    q: Omit<Quote, "id" | "createdAt" | "status">,
+    q: Omit<Quote, "id" | "createdAt" | "status" | "updatedAt">,
   ): Promise<Quote>;
   getQuote(id: string): Promise<Quote | undefined>;
   listQuotes(filter?: {

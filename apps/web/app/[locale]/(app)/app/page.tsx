@@ -10,6 +10,7 @@ import { AvailabilityToggle } from "./availability-toggle";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { invoiceStateVariant } from "@/lib/state-variant";
+import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { isExpiredListing } from "@/lib/search";
 
 export default async function OperatorDashboard() {
@@ -358,6 +359,17 @@ export default async function OperatorDashboard() {
                     <div className="text-xs text-muted">
                       {listing?.title ?? t("openOfferFallback")} ·{" "}
                       {new Date(q.createdAt).toDateString()}
+                      {rfq ? (
+                        <span data-testid={`offer-deadline-${q.id}`}>
+                          {" "}·{" "}
+                          {t("offerDeadline", {
+                            date: rfqDeadlineAt(rfq).toLocaleDateString(
+                              "en-US",
+                              { month: "short", day: "numeric" },
+                            ),
+                          })}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <Link
