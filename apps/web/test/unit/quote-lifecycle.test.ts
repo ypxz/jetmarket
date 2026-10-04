@@ -171,6 +171,30 @@ describe("POST /api/quotes re-quote (QA-18)", () => {
     void op;
     void listing;
   });
+
+  it("QA-510: re-quote allowed after the buyer declines (win-back)", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, quote, buyerEmail, rfq } = await fixture(repo);
+
+    // Buyer declines 'too expensive' — the quote goes terminal.
+    const d = await declineQuote(
+      post({ buyerEmail, token: rfq.accessToken, reason: "price" }),
+      params(quote.id),
+    );
+    expect(d.status).toBe(200);
+
+    // The operator can now mint a sharper offer on the same RFQ.
+    asUser(opUser.id);
+    const req = await createQuote(
+      post({ rfqId: rfq.id, amount: 7800, message: "sharper" }),
+    );
+    expect(req.status).toBe(201);
+    const fresh = (await req.json()) as Quote;
+    expect(fresh.status).toBe("sent");
+    expect(fresh.id).not.toBe(quote.id);
+    // The declined row keeps its reason — history isn't rewritten.
+    expect((await repo.getQuote(quote.id))?.declineReason).toBe("price");
+  });
 });
 
 describe("POST /api/quotes/[id]/withdraw (operator)", () => {

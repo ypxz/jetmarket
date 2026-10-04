@@ -144,4 +144,48 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     await expect(breakdown).toBeVisible();
     await expect(breakdown).toContainText('too expensive ×1');
   });
+
+  await step('operator wins the buyer back with a sharper offer (QA-510)', async () => {
+    // The decline went terminal — the quote form returns under the row's
+    // history so the op can act on the reason instead of losing the deal.
+    await operator.goto('/app/rfqs');
+    const item = operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE });
+    const requote = item.locator('[data-testid^="requote-"]');
+    await expect(requote).toBeVisible();
+    const sendResp = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/api/quotes') &&
+        r.request().method() === 'POST' &&
+        r.status() === 201,
+    );
+    await item.locator(tidPrefix('quote-amount-')).fill('9500');
+    await item.locator(tidPrefix('quote-send-')).click();
+    await sendResp;
+
+    // Buyer reloads: the declined card stays history; the sharper offer
+    // is live and acceptable — the win-back loop closes end to end.
+    const loadResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
+    await buyer.reload();
+    await loadResp;
+    // Only the live offer carries an accept control — the declined card's
+    // "sent {date}" timestamp makes a text match ambiguous.
+    const live = buyer.locator(tidPrefix('quote-')).filter({
+      has: buyer.locator(tidPrefix('accept-')),
+    });
+    await expect(live).toHaveCount(1);
+    const acceptResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/accept') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await live.locator(tidPrefix('accept-')).click();
+    await acceptResp;
+    await expect(buyer.getByTestId('accept-msg')).toContainText(/accepted/i);
+  });
 });

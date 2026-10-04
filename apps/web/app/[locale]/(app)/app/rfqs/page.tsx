@@ -359,6 +359,10 @@ export default async function RfqInboxPage({
                 ) : quotes.length > 0 ? (
                   <>
                   <ul className="mt-3 space-y-2">
+                    {/* QA-510: a declined/withdrawn quote dead-ends the
+                        win-back loop — the repo (and route) already allow
+                        a fresh offer once no live quote remains, so the
+                        form comes back under the history. */}
                     {quotes.map((q) => (
                       <li
                         key={q.id}
@@ -409,6 +413,16 @@ export default async function RfqInboxPage({
                       </li>
                     ))}
                   </ul>
+                  {!quotes.some(
+                    (q) => q.status === "sent" || q.status === "accepted",
+                  ) && LIVE_RFQ_STATES.has(r.status) ? (
+                    <div
+                      className="mt-3"
+                      data-testid={`requote-${r.id}`}
+                    >
+                      <QuoteForm rfqId={r.id} />
+                    </div>
+                  ) : null}
                   {/* QA-472: quoted rows flag too — an op who already
                       quoted an abusive RFQ still needs the signal. */}
                   {LIVE_RFQ_STATES.has(r.status) ? (
