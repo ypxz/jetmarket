@@ -245,6 +245,8 @@ export const deals = pgTable("deals", {
   /** QA-451: the buyer's 1-5 rating — written once via rateDeal CAS. */
   buyerRating: integer("buyer_rating"),
   buyerRatedAt: timestamp("buyer_rated_at", { withTimezone: true }),
+  /** QA-456: unrated-deal nudge stamp — doubles as the once-ever claim. */
+  ratingMailedAt: timestamp("rating_mailed_at", { withTimezone: true }),
   /** QA-429 overdue-invoice reminder stamp — doubles as the 7d cooldown. */
   invoiceRemindedAt: timestamp("invoice_reminded_at", { withTimezone: true }),
 });

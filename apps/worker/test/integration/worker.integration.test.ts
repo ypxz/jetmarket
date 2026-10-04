@@ -31,6 +31,7 @@ import {
   deliverDueMatches,
   recoverUnfanoutedRfqs,
   remindOverdueInvoices,
+  nudgeUnratedDeals,
   rfqFanout,
   searchAlertFlush,
 } from "../../src/handlers";
@@ -333,6 +334,119 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       .update(deals)
       .set({ invoiceStatus: "paid" })
       .where(eq(deals.id, overdue));
+  });
+
+  it("claims unrated deals once, mails the rate link, skips rated/young/foreign (QA-456)", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const [u] = await db
+      .insert(users)
+      .values({ email: `rated-op-${tag}@x.com` })
+      .returning({ id: users.id });
+    const [o] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Nudge Air" })
+      .returning({ id: operators.id });
+    const mkDeal = async (input: {
+      vertical?: string;
+      closedAt: Date;
+      buyerRating?: number;
+      ratingMailed?: boolean;
+      buyerTag?: string;
+    }) => {
+      const [l] = await db
+        .insert(listings)
+        .values({
+          operatorId: o!.id,
+          vertical: input.vertical ?? "jets",
+          type: "charter",
+          title: `RateCtx ${tag}`,
+          priceMinor: 900000,
+          currency: "USD",
+          status: "active",
+          attributes: {},
+        })
+        .returning({ id: listings.id });
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical: input.vertical ?? "jets",
+          listingId: l!.id,
+          buyerEmail: `${input.buyerTag ?? `b`}-${tag}@x.com`,
+          fields: {},
+        })
+        .returning({ id: rfqs.id, accessToken: rfqs.accessToken });
+      const [q] = await db
+        .insert(quotes)
+        .values({
+          rfqId: r!.id,
+          operatorId: o!.id,
+          amountMinor: 100000,
+          currency: "USD",
+          status: "accepted",
+        })
+        .returning({ id: quotes.id });
+      const [d] = await db
+        .insert(deals)
+        .values({
+          quoteId: q!.id,
+          closedAt: input.closedAt,
+          feePct: 0.03,
+          feeAmountMinor: 3000,
+          currency: "USD",
+          invoiceStatus: "paid",
+          ...(input.buyerRating !== undefined
+            ? { buyerRating: input.buyerRating }
+            : {}),
+          ...(input.ratingMailed
+            ? { ratingMailedAt: new Date() }
+            : {}),
+        })
+        .returning({ id: deals.id });
+      return { dealId: d!.id, rfq: r! };
+    };
+    const old = new Date(Date.now() - 4 * 86_400_000); // 4d > 72h window
+    const due = await mkDeal({ closedAt: old, buyerTag: "unrated" });
+    const rated = await mkDeal({ closedAt: old, buyerRating: 5 });
+    const young = await mkDeal({ closedAt: new Date() });
+    const mailed = await mkDeal({ closedAt: old, ratingMailed: true });
+    const foreign = await mkDeal({ closedAt: old, vertical: "machinery" });
+
+    const d = deps();
+    d.unratedNudgeHours = 72;
+    const mineDir = mkdtempSync(join(tmpdir(), "jm-rating-outbox-"));
+    d.email = new MockEmailProvider({ outboxDir: mineDir });
+
+    const claimed = await nudgeUnratedDeals(d);
+    // >=1, not ==1 — earlier tests leave unrated deals in the shared seed
+    // and they are legitimately claimed + mailed on this sweep.
+    expect(claimed).toBeGreaterThanOrEqual(1);
+    const mails = await readOutbox(mineDir);
+    const mine = mails.filter((m) => m.to === `unrated-${tag}@x.com`);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]!.subject).toContain("Nudge Air");
+    expect(mine[0]!.text).toContain(
+      `#t=${encodeURIComponent(due.rfq.accessToken)}`,
+    );
+
+    // Stamp persisted on every claimed row → the immediate re-sweep is
+    // empty; the ineligible fixtures were never claimed either.
+    expect(await nudgeUnratedDeals(d)).toBe(0);
+    const stillOpen = await db
+      .select({ t: deals.ratingMailedAt })
+      .from(deals)
+      .where(
+        inArray(deals.id, [rated.dealId, young.dealId, mailed.dealId, foreign.dealId]),
+      );
+    // `mailed` keeps its stamp; the other three stay untouched.
+    expect(stillOpen.filter((r) => r.t === null)).toHaveLength(3);
+
+    // Teardown: stamp the leftovers a later tick() would otherwise claim —
+    // and they were never stamped by the sweep itself.
+    for (const fixture of [rated, young, foreign])
+      await db
+        .update(deals)
+        .set({ ratingMailedAt: new Date() })
+        .where(eq(deals.id, fixture.dealId));
   });
 
   it("delivers delayed matches on sweep and sends notifications end-to-end", async () => {

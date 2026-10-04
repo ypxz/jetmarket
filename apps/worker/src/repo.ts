@@ -138,6 +138,24 @@ export interface WorkerRepo {
       quoteCount: number;
     }[]
   >;
+  /** QA-456 unrated-deal nudge: claim closed deals old enough to have been
+   *  flown whose buyer never rated — one statement stamps
+   *  rating_mailed_at under the row lock so racing ticks mail once.
+   *  Once-ever per deal (no cooldown — a nudge that didn't convert stays
+   *  quiet; the rate CAS is the terminal state). */
+  sweepUnratedDeals(input: {
+    vertical: string;
+    olderThan: Date;
+    limit?: number;
+  }): Promise<
+    {
+      dealId: string;
+      buyerEmail: string;
+      accessToken: string;
+      operatorName: string | null;
+      listingTitle: string | null;
+    }[]
+  >;
   /** QA-425 unanswered-demand digest: claim operators who have at least
    *  one live, unquoted, undismissed RFQ older than `olderThan` in their
    *  inbox — one statement stamps unanswered_mailed_at under the row lock,
@@ -655,6 +673,51 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           ) as "quoteCount"
         from stamped s
         left join listings l on l.id = s."listingId"
+      `);
+      return rows;
+    },
+
+    async sweepUnratedDeals({ vertical, olderThan, limit = 50 }) {
+      // Same two-phase shape as the other sweeps: `due` picks the claimable
+      // rows, `stamped` re-checks rating_mailed_at IS NULL while updating so
+      // racing ticks mail once. Vertical comes through the deal's rfq —
+      // deals/quotes carry no vertical column (QA-313 rule).
+      const rows = await db.execute<{
+        dealId: string;
+        buyerEmail: string;
+        accessToken: string;
+        operatorName: string | null;
+        listingTitle: string | null;
+      }>(sql`
+        with due as (
+          select d.id
+          from deals d
+          join quotes q on q.id = d.quote_id
+          join rfqs r on r.id = q.rfq_id
+          where r.vertical = ${vertical}
+            and d.buyer_rating is null
+            and d.rating_mailed_at is null
+            and d.closed_at < ${olderThan.toISOString()}::timestamptz
+          limit ${limit}
+        ),
+        stamped as (
+          update deals d
+          set rating_mailed_at = now()
+          where d.id in (select id from due)
+            and d.rating_mailed_at is null
+          returning d.id as "dealId", d.quote_id as "quoteId"
+        )
+        select
+          s."dealId",
+          r.buyer_email as "buyerEmail",
+          r.access_token as "accessToken",
+          o.name as "operatorName",
+          l.title as "listingTitle"
+        from stamped s
+        join quotes q on q.id = s."quoteId"
+        join rfqs r on r.id = q.rfq_id
+        left join operators o on o.id = q.operator_id
+        left join listings l on l.id = r.listing_id
       `);
       return rows;
     },

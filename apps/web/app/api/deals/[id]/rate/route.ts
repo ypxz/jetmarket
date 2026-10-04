@@ -1,3 +1,4 @@
+import { analyticsProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
@@ -42,5 +43,9 @@ export async function POST(
 
   const rated = await repo.rateDeal(id, data!.rating);
   if (!rated) return err("already rated", 409);
+  analyticsProvider().track({
+    name: "deal_rated",
+    props: { dealId: id, rating: data!.rating },
+  });
   return ok({ rated: true, rating: data!.rating });
 }

@@ -10,6 +10,7 @@ import {
   notifyExpirations,
   nudgeStaleQuotes,
   nudgeClosingSoonRfqs,
+  nudgeUnratedDeals,
   nudgeUnansweredOperators,
   nudgeUnquotedRfqs,
   remindOverdueInvoices,
@@ -153,6 +154,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepOverdueInvoices: async (input) => {
       rec("sweepOverdueInvoices", input);
+      return [];
+    },
+    sweepUnratedDeals: async (input) => {
+      rec("sweepUnratedDeals", input);
       return [];
     },
     ...over,
@@ -1113,6 +1118,99 @@ describe("nudgeClosingSoonRfqs (QA-447)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeClosingSoonRfqs(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeUnratedDeals (QA-456)", () => {
+  it("disabled when unratedNudgeHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepUnratedDeals: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unratedNudgeHours = 0;
+    expect(await nudgeUnratedDeals(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed buyer — names the operator, carries the #t= rate link", async () => {
+    let call: { vertical: string; olderThan: Date } | null = null;
+    const repo = fakeRepo({
+      sweepUnratedDeals: async (input) => {
+        call = input;
+        return [
+          {
+            dealId: "d1",
+            buyerEmail: "buyer@x.com",
+            accessToken: "tok-one",
+            operatorName: "Alpine Air",
+            listingTitle: "ZRH–NCE Phenom leg",
+          },
+          {
+            dealId: "d2",
+            buyerEmail: "buyer2@x.com",
+            accessToken: "tok two",
+            operatorName: null,
+            listingTitle: null,
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unratedNudgeHours = 72;
+    expect(await nudgeUnratedDeals(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // olderThan = deps.now - 72h — deps.now is fixed 2026-09-15T12:00Z.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-12T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual(["buyer@x.com", "buyer2@x.com"]);
+    expect(sent[0]!.subject).toBe("How was your deal with Alpine Air?");
+    expect(sent[0]!.text).toContain('deal on "ZRH–NCE Phenom leg"');
+    expect(sent[0]!.text).toContain(
+      "/quotes?email=buyer%40x.com#t=tok-one",
+    );
+    // Fallbacks: missing operator name/listing degrade, token encodes.
+    expect(sent[1]!.subject).toBe("How was your deal with the operator?");
+    expect(sent[1]!.text).toContain("#t=tok%20two");
+  });
+
+  it("defaults to 72h, a failed send doesn't stall, zero claims silent", async () => {
+    const repo = fakeRepo({
+      sweepUnratedDeals: async () => [
+        {
+          dealId: "d1",
+          buyerEmail: "bad@x.example",
+          accessToken: "t1",
+          operatorName: "Op",
+          listingTitle: null,
+        },
+        {
+          dealId: "d2",
+          buyerEmail: "ok@x.example",
+          accessToken: "t2",
+          operatorName: "Op",
+          listingTitle: null,
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // unratedNudgeHours unset → 72h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeUnratedDeals(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeUnratedDeals(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

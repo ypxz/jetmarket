@@ -23,6 +23,7 @@ import {
   nudgeStaleQuotes,
   nudgeUnansweredOperators,
   nudgeClosingSoonRfqs,
+  nudgeUnratedDeals,
   nudgeUnquotedRfqs,
   recoverUnfanoutedRfqs,
   remindOverdueInvoices,
@@ -91,6 +92,12 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   // the operator; the stamp cools down weekly so non-payers get chased.
   const reminded = await remindOverdueInvoices(deps);
   if (reminded) logInfo("worker.invoice_reminders", { count: reminded });
+
+  // Unrated-deal ask (QA-456) — closed deals whose buyer skipped the
+  // close-mail rate link get one "how was it?" mail, once-ever per deal.
+  const ratingNudged = await nudgeUnratedDeals(deps);
+  if (ratingNudged)
+    logInfo("worker.rating_nudges", { count: ratingNudged });
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });

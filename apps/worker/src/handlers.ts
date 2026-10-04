@@ -59,6 +59,11 @@ export interface WorkerDeps {
    *  (defaults 72, <=0 disables). Once-ever per RFQ via the
    *  closing_mailed_at stamp. */
   closingSoonHours?: number;
+  /** QA-456 unrated-deal nudge: a deal closed this many hours ago whose
+   *  buyer still hasn't rated mails them once — the close-mail rate link
+   *  converts most buyers but the rest need one ask (defaults 72, <=0
+   *  disables). Once-ever per deal via the rating_mailed_at stamp. */
+  unratedNudgeHours?: number;
 }
 
 function at(deps: WorkerDeps): Date {
@@ -509,6 +514,58 @@ export async function nudgeClosingSoonRfqs(
     } catch (e) {
       logWarn("worker.closing_soon_nudge_failed", {
         rfqId: r.rfqId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-456 unrated-deal nudge: the deal-closed mail carries the rate link,
+ *  but a buyer who skipped it leaves the operator's ★ record dark — one
+ *  ask, once, after the deal has had time to actually happen. Claims via
+ *  the sweep's rating_mailed_at stamp; a buyer who rated in the meantime
+ *  drops out at the next claim (buyer_rating IS NULL is in the due set).
+ */
+export async function nudgeUnratedDeals(deps: WorkerDeps): Promise<number> {
+  const hours = deps.unratedNudgeHours ?? 72;
+  if (!(hours > 0)) return 0;
+  const rows = await deps.repo.sweepUnratedDeals({
+    vertical: deps.vertical,
+    olderThan: new Date(at(deps).getTime() - hours * 3_600_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const rateUrl = `${origin}/quotes?email=${encodeURIComponent(
+        r.buyerEmail,
+      )}#t=${encodeURIComponent(r.accessToken)}`;
+      const who = r.operatorName ?? "the operator";
+      const subject = `How was your deal with ${who}?`;
+      const body =
+        `Your ${site.name} deal${
+          r.listingTitle ? ` on "${r.listingTitle}"` : ""
+        } closed a few days ago — one tap tells other buyers how ${who} ` +
+        `did, and it takes ten seconds.`;
+      await deps.email.send({
+        to: r.buyerEmail,
+        subject,
+        text: `${body}\n\nRate your deal: ${rateUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: rateUrl, label: "Rate your deal" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "rating_nudge_sent",
+        props: { dealId: r.dealId },
+      });
+    } catch (e) {
+      logWarn("worker.unrated_deal_nudge_failed", {
+        dealId: r.dealId,
         error: e instanceof Error ? e.message : String(e),
       });
     }
