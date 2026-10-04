@@ -77,7 +77,8 @@ test('buyer session: inbox + accept/close/rate without the emailed token (QA-474
     const lres = await operator.post('/api/listings', {
       data: {
         type: 'charter',
-        title: `E2E BS Charter ${run}`,
+        // comma in the title exercises the CSV export's quoting below.
+        title: `E2E BS, Charter ${run}`,
         price: 38000,
         currency: 'USD',
         photos: [],
@@ -170,6 +171,26 @@ test('buyer session: inbox + accept/close/rate without the emailed token (QA-474
       data: { buyerEmail: BUYER, rating: 5 },
     });
     expect(rate.status()).toBe(200);
+
+    // 7. QA-489: operator ledger export — the /app table caps at 20 rows,
+    //    accounting needs the full pull. Own deals only; buyer-role
+    //    sessions and anonymous visitors get 401.
+    const csv = await operator.get('/api/operator/deals/export');
+    expect(csv.status()).toBe(200);
+    expect(csv.headers()['content-type']).toContain('text/csv');
+    expect(csv.headers()['content-disposition']).toContain('attachment');
+    const body = await csv.text();
+    expect(body).toContain('closed_at,listing,amount');
+    expect(body).toContain('"E2E BS, Charter');
+    expect(body).toContain('41000,USD');
+    expect(body).toContain(BUYER);
+    expect(body).toContain(',5');
+    expect(
+      (await stranger.get('/api/operator/deals/export')).status(),
+    ).toBe(401);
+    expect(
+      (await publicCtx.get('/api/operator/deals/export')).status(),
+    ).toBe(401);
   } finally {
     for (const rid of rfqIds) {
       await sql`delete from rfq_matches where rfq_id = ${rid}`;

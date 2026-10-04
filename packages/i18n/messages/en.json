@@ -699,6 +699,7 @@
       "openInbox": "Open inbox →",
       "subActive": "Subscription active until {date}",
       "deals": "Deals ({count})",
+      "exportDeals": "Export CSV",
       "dealFee": "fee {fee}",
       "ratedDeal": "buyer rated ★ {rating}",
       "payFee": "Pay fee",

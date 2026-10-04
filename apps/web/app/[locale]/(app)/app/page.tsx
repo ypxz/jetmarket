@@ -410,7 +410,18 @@ export default async function OperatorDashboard() {
       {deals.length > 0 ? (
         <section className="mt-10" data-testid="operator-deals">
           <h2 className="text-lg font-semibold">
-            {t("deals", { count: dealCount })}
+            {t("deals", { count: dealCount })}{" "}
+            {/* QA-489: the table paginates at 20 — accounting needs the
+                full pull. Plain <a>, not Link: the CSV is a download, and
+                Link prefetch would run the whole export on hover. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a
+              href="/api/operator/deals/export"
+              className="ml-2 text-sm font-normal text-primary underline"
+              data-testid="deals-export"
+            >
+              {t("exportDeals")}
+            </a>
           </h2>
           <ul className="mt-4 divide-y divide-border rounded-md border border-border">
             {deals.map((d) => (
