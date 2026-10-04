@@ -9,6 +9,7 @@ import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { searchAlertSummary, searchAlertWatchId } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 import { AlertOffButton } from "./alert-off-button";
+import { AlertResend } from "./alert-resend";
 import { WithdrawRfq } from "./withdraw-rfq";
 
 /** QA-468: buyer account surface. Buyers hold real sessions (report filing
@@ -168,6 +169,14 @@ export default async function AccountPage() {
                     >
                       {t(`alertStatus.${a.status}` as Parameters<typeof t>[0])}
                     </Badge>
+                    {a.status === "pending" ? (
+                      <AlertResend
+                        email={user.email}
+                        params={a.params}
+                        freq={a.freq}
+                        alertId={a.id}
+                      />
+                    ) : null}
                     {a.status !== "off" ? (
                       <AlertOffButton alertId={a.id} />
                     ) : null}

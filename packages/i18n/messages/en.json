@@ -964,6 +964,10 @@
     "alertOffPending": "Turning off…",
     "alertOffDone": "Off",
     "alertOffFailed": "Couldn't turn it off — try again.",
+    "resendConfirm": "Resend confirmation",
+    "resendPending": "Sending…",
+    "resendDone": "Sent — check your inbox",
+    "resendFailed": "Couldn't send — try again.",
     "reportStatus": {
       "open": "under review",
       "dismissed": "reviewed"

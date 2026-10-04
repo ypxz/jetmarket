@@ -434,6 +434,19 @@ test('saved searches manageable on /account with a session (QA-473)', async () =
     expect(html1).toContain(`account-alert-${alertId}`);
     expect(html1).toContain(`account-alert-status-${alertId}`);
     expect(html1).toContain(`alert-off-${alertId}`);
+    // QA-476: a pending row offers resend — re-subscribing the same params
+    // is the documented path (dedupe rotates the token, re-mails confirm).
+    expect(html1).toContain(`alert-resend-${alertId}`);
+    const resend = await buyer.post('/api/search-alerts', {
+      data: { email: ACCT, params: { type: 'charter' } },
+    });
+    expect(resend.status()).toBe(200);
+    const resendJson = (await resend.json()) as {
+      created: boolean;
+      devConfirmUrl?: string;
+    };
+    expect(resendJson.created).toBe(false);
+    expect(resendJson.devConfirmUrl).toContain('/api/search-alerts/confirm?token=');
 
     // Session POST off — no ?email / token needed; session is the proof.
     const off = await buyer.post(`/api/search-alerts/${alertId}/off`);
