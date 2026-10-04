@@ -737,6 +737,8 @@
       "withdrawing": "Withdrawing…",
       "dismiss": "Dismiss",
       "restore": "Restore",
+      "dismissAll": "Dismiss all ({count})",
+      "dismissAllConfirm": "Dismiss {count, plural, one {# request} other {# requests}} from your inbox? They move to Dismissed — restore anytime.",
       "notOpen": "This request is {status} — quoting is closed.",
       "noQuotes": "No quotes yet",
       "delayedTeaser": "{count, plural, one {# buyer request lands in your inbox in {hours}h} other {# buyer requests land in your inbox in {hours}h}} — Pro operators quote immediately.",

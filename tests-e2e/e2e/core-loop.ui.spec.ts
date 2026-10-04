@@ -215,21 +215,35 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(disRow).toHaveCount(0, { timeout: 15_000 });
       await operator.goto('/app/rfqs');
       await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toBeVisible();
-      // Dismiss it again — the buyer side is unaffected either way.
-      await operator
-        .locator(tid(`rfq-${rfq!.id}`))
-        .getByTestId(`dismiss-rfq-${rfq!.id}`)
-        .click();
+      // QA-438: a second unquoted RFQ makes "Dismiss all (2)" appear — one
+      // click sweeps every dismissable row (the quoted charter row can't be
+      // dismissed and is untouched).
+      const [rfq2] = await sql`
+        insert into rfqs (vertical, listing_id, buyer_email, fields)
+        select 'jets', l.id, ${`e2e-bulk-${run}@jetmarket.local`}, ${sql.json({ from: 'ZRH', to: 'NCE', dateTo: isoDateIn(10) })}
+        from listings l
+        where l.title = ${`E2E UI Empty Leg ${run}`} and l.vertical = 'jets'
+        returning id`;
+      if (!rfq2) throw new Error('bulk-dismiss fixture insert failed');
+      await operator.goto('/app/rfqs');
+      await expect(operator.getByTestId('dismiss-all')).toBeVisible();
+      operator.once('dialog', (d) => void d.accept());
+      await operator.getByTestId('dismiss-all').click();
       await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toHaveCount(0, {
         timeout: 15_000,
       });
+      await expect(operator.locator(tid(`rfq-${rfq2!.id}`))).toHaveCount(0);
+      await expect(operator.locator(tid(`rfq-${other[0]!.id}`))).toBeVisible();
+      await operator.goto('/app/rfqs?f=dismissed');
+      await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toBeVisible();
+      await expect(operator.locator(tid(`rfq-${rfq2!.id}`))).toBeVisible();
       const inbox = await buyer.request.get(
         `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
         { headers: { 'x-rfq-token': rfq!.token } },
       );
       const rows = (await inbox.json()) as { id: string }[];
       expect(rows.map((r) => r.id)).toContain(rfq!.id);
-      await sql`delete from rfqs where id = ${rfq!.id}`;
+      await sql`delete from rfqs where id in (${rfq!.id}, ${rfq2!.id})`;
     } finally {
       await sql.end();
     }

@@ -13,7 +13,7 @@ import { ListingFilter } from "./listing-filter";
 import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
-import { DismissButton, RestoreButton } from "./dismiss-button";
+import { DismissAllButton, DismissButton, RestoreButton } from "./dismiss-button";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
 const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
@@ -139,6 +139,16 @@ export default async function RfqInboxPage({
       quotes: quotesByRfq.get(r.id) ?? [],
     };
   });
+  // QA-438 bulk triage: exactly the rows that offer a per-row DismissButton
+  // (live, unquoted — quoted rows keep their context) get swept by one
+  // click. The server re-proves every id anyway.
+  const dismissableIds = dismissedOnly
+    ? []
+    : rfqRows
+        .filter(({ rfq: r, quotes }) =>
+          LIVE_RFQ_STATES.has(r.status) && quotes.length === 0,
+        )
+        .map(({ rfq: r }) => r.id);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -191,6 +201,9 @@ export default async function RfqInboxPage({
           >
             {t("listingFilterClear")}
           </Link>
+        ) : null}
+        {dismissableIds.length > 1 ? (
+          <DismissAllButton rfqIds={dismissableIds} />
         ) : null}
       </div>
       {pendingRfqs > 0 ? (
