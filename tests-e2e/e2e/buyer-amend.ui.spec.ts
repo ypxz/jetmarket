@@ -7,6 +7,7 @@ import {
   createListing,
   createOperatorProfile,
   fillRfqForm,
+  isoDateIn,
   signUpAndLogin,
   step,
   tidPrefix,
@@ -27,6 +28,7 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
   test.setTimeout(240_000);
   const operator = await browser.newPage();
   const buyer = await browser.newPage();
+  let listingId = '';
 
   await step('operator signs up and lists a charter', async () => {
     await signUpAndLogin(operator, OPERATOR_EMAIL, 'operator');
@@ -57,6 +59,7 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
       await buyer.getByTestId('listing-rfq-cta').click();
       await buyer.waitForURL(/\/rfq\//, { timeout: 15_000 });
     });
+    listingId = buyer.url().match(/\/rfq\/([^/?#]+)/)![1]!;
     await fillRfqForm(buyer, BUYER_EMAIL);
     await buyer.getByTestId('rfq-submit').click();
     await buyer.waitForURL(/\/rfq\/thanks/, { timeout: 15_000 });
@@ -154,5 +157,52 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     await expect(
       quoteCard.locator(tidPrefix('quote-updated-')),
     ).toBeVisible();
+  });
+
+  await step('a new offer lands on focus-refresh — no manual reload (QA-491)', async () => {
+    // The whole-mailbox refresh is the signed-in path (sessionOwns): a
+    // guest's per-RFQ bearer token deliberately scopes the inbox to that
+    // one request, so exercise this on the session view.
+    await signUpAndLogin(buyer, BUYER_EMAIL, 'buyer');
+    await buyer.goto('/quotes');
+    await expect(buyer.locator(tidPrefix('buyer-rfq-'))).toHaveCount(1);
+
+    // Mint a second request + quote out-of-band while the buyer tab stays
+    // parked on /quotes — the real-world "left it open" case. The page's
+    // own request contexts carry each actor's session cookies.
+    const rfqRes = await buyer.request.post('/api/rfqs', {
+      data: {
+        listingId,
+        buyerEmail: BUYER_EMAIL,
+        fields: {
+          departure: 'ZRH',
+          arrival: 'NCE',
+          dateFrom: isoDateIn(14),
+          dateTo: isoDateIn(16),
+          passengers: 2,
+          name: 'Focus Buyer',
+          email: BUYER_EMAIL,
+        },
+      },
+    });
+    expect(rfqRes.status()).toBe(201);
+    const { rfqId: rfq2 } = (await rfqRes.json()) as { rfqId: string };
+    const q2 = await operator.request.post('/api/quotes', {
+      data: { rfqId: rfq2, amount: 12100, currency: 'USD', message: 'second' },
+    });
+    expect(q2.status()).toBe(201);
+
+    // Synthetic tab-return: headless pages stay visible+focused so
+    // bringToFront fires nothing — dispatch the same 'focus' event a real
+    // return delivers, and wait for the refetch it must trigger.
+    const refreshed = buyer.waitForResponse(
+      (r) => r.url().includes('/api/buyer/quotes') && r.ok(),
+      { timeout: 15_000 },
+    );
+    await buyer.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await refreshed;
+    await expect(buyer.locator(tidPrefix('buyer-rfq-'))).toHaveCount(2, {
+      timeout: 10_000,
+    });
   });
 });

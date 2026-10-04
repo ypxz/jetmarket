@@ -126,8 +126,11 @@ function QuotesInner() {
       // param ABSENT so the server fills it from the cookie (QA-480).
       if (email) qs.set("email", email);
       if (ending) qs.set("sort", "deadline");
+      // no-store: the focus-refresh polls this URL and a heuristically
+      // cached copy would keep the inbox stale anyway (QA-491).
       res = await fetch(`/api/buyer/quotes?${qs.toString()}`, {
         headers: { "x-rfq-token": tk },
+        cache: "no-store",
       });
     } catch {
       setMsg(tc("error"));
@@ -223,6 +226,40 @@ function QuotesInner() {
     // mount-only: refresh via the search form; load re-creates per render
     // so it must not be a dep or the effect refetches every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // QA-491: a parked buyer shouldn't have to reload for new offers — the
+  // inbox quietly refetches when the tab wakes. Both signals are hooked:
+  // tab-return fires visibilitychange (hidden→visible) BEFORE focus, and
+  // some window-focus paths only emit focus. Refs mirror the latest
+  // render so the mount-only listener never goes stale. Skips while:
+  // nothing has loaded yet (the email form owns the screen), a mutation
+  // is in flight (rows would churn under a pending accept), the amend
+  // form is open, or the tab isn't the visible one. 10s throttle so
+  // tab-juggling can't hammer the API.
+  const loadRef = useRef(load);
+  const editingRef = useRef(editingId);
+  const rowsRef = useRef(rfqs);
+  const lastAuto = useRef(0);
+  loadRef.current = load;
+  editingRef.current = editingId;
+  rowsRef.current = rfqs;
+  useEffect(() => {
+    const onWake = () => {
+      if (document.visibilityState !== "visible") return;
+      if (busyRef.current || editingRef.current !== null) return;
+      if (rowsRef.current === null) return;
+      const now = Date.now();
+      if (now - lastAuto.current < 10_000) return;
+      lastAuto.current = now;
+      void loadRef.current();
+    };
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+    return () => {
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
   }, []);
 
   // QA-451: once-ever 1-5 rating on the closed deal — updates the row
