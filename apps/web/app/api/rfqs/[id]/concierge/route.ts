@@ -6,6 +6,7 @@ import { toMinorUnits } from "@jetmarket/domain";
 import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
+import { buyerAuthorized } from "@/lib/buyer-auth";
 import {
   paymentsProvider,
   paymentsProviderName,
@@ -13,7 +14,7 @@ import {
 
 const Concierge = z.object({
   buyerEmail: z.string().email().max(254),
-  token: z.string().min(1).max(256),
+  token: z.string().max(256).optional().default(""),
 });
 
 /** Buyer concierge ($49/request): the bearer-token holder pays to expedite
@@ -40,8 +41,7 @@ export async function POST(
   if (
     !rfq ||
     rfq.vertical !== verticalSlug() ||
-    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
-    rfq.accessToken !== data!.token
+    !(await buyerAuthorized(rfq, data!))
   ) {
     return err("not found", 404);
   }

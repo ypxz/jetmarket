@@ -9,11 +9,12 @@ import { getRepo } from "@/lib/repo";
 import { sweepStaleRfqs } from "@/lib/sweep";
 import { paymentsProvider, analyticsProvider } from "@jetmarket/providers";
 import { verticalSlug } from "@/lib/vertical";
+import { buyerAuthorized } from "@/lib/buyer-auth";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
   // Per-RFQ bearer token from the buyer's email link (QA-39).
-  token: z.string().min(1).max(256),
+  token: z.string().max(256).optional().default(""),
 });
 
 export async function POST(
@@ -40,8 +41,7 @@ export async function POST(
   if (
     !rfq ||
     rfq.vertical !== verticalSlug() ||
-    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
-    rfq.accessToken !== data!.token
+    !(await buyerAuthorized(rfq, data!))
   ) {
     return err("not your quote", 403);
   }

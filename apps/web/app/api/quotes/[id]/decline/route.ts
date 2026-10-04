@@ -4,10 +4,11 @@ import { getRepo } from "@/lib/repo";
 import { notifyQuoteDeclined } from "@/lib/notify";
 import { analyticsProvider } from "@jetmarket/providers";
 import { verticalSlug } from "@/lib/vertical";
+import { buyerAuthorized } from "@/lib/buyer-auth";
 
 const Body = z.object({
   buyerEmail: z.string().email().max(254),
-  token: z.string().min(1).max(256),
+  token: z.string().max(256).optional().default(""),
 });
 
 // Buyer declines a quote. Gated on the per-RFQ bearer token (QA-39) —
@@ -33,8 +34,7 @@ export async function POST(
   if (
     !rfq ||
     rfq.vertical !== verticalSlug() ||
-    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
-    rfq.accessToken !== data!.token
+    !(await buyerAuthorized(rfq, data!))
   ) {
     return err("not your quote", 403);
   }

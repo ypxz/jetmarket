@@ -5,10 +5,11 @@ import { logInfo } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { verticalSlug } from "@/lib/vertical";
+import { buyerAuthorized } from "@/lib/buyer-auth";
 
 const ExtendRfq = z.object({
   buyerEmail: z.string().email().max(254),
-  token: z.string().min(1).max(256),
+  token: z.string().max(256).optional().default(""),
 });
 
 const DAY_MS = 86_400_000;
@@ -33,8 +34,7 @@ export async function POST(
   if (
     !rfq ||
     rfq.vertical !== verticalSlug() ||
-    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
-    rfq.accessToken !== data!.token
+    !(await buyerAuthorized(rfq, data!))
   ) {
     return err("not found", 404);
   }

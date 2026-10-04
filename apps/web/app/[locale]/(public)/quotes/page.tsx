@@ -79,10 +79,9 @@ function QuotesInner() {
   async function load(e?: React.FormEvent, tok?: string, ending = endingFirst) {
     e?.preventDefault();
     const tk = tok ?? token;
-    if (!tk) {
-      setMsg(t("needLink"));
-      return;
-    }
+    // QA-474: no token doesn't short-circuit — a signed-in buyer's session
+    // proves their mailbox server-side and the inbox loads anyway (401
+    // below still maps to needLink for anonymous visitors).
     // Token rides a header, not the query string — bearer tokens in URLs
     // persist in server logs, history and Referer (QA-156).
     let res: Response;
@@ -100,7 +99,12 @@ function QuotesInner() {
       setMsg(d.error ?? tc("error"));
       return;
     }
-    setRfqs(await readJsonOr<Rfq[]>(res, []));
+    const rows = await readJsonOr<Rfq[]>(res, []);
+    setRfqs(rows);
+    // Session path (QA-474): the server resolved the mailbox from the
+    // session cookie — backfill the input so action bodies (accept etc.)
+    // carry a real buyerEmail and the field shows who we're acting as.
+    if (!email && rows[0]?.buyerEmail) setEmail(rows[0].buyerEmail);
   }
 
   // "Lost your link?" — re-emails every request's bearer link to the claimed

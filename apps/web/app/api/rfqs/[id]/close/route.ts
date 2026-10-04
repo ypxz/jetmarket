@@ -5,10 +5,11 @@ import { logInfo } from "@/lib/log";
 import { notifyQuoteDeclined } from "@/lib/notify";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
+import { buyerAuthorized } from "@/lib/buyer-auth";
 
 const CloseRfq = z.object({
   buyerEmail: z.string().email().max(254),
-  token: z.string().min(1).max(256),
+  token: z.string().max(256).optional().default(""),
 });
 
 /** Buyer-initiated close (QA-182): the bearer-token holder withdraws their
@@ -31,8 +32,7 @@ export async function POST(
   if (
     !rfq ||
     rfq.vertical !== verticalSlug() ||
-    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
-    rfq.accessToken !== data!.token
+    !(await buyerAuthorized(rfq, data!))
   ) {
     return err("not found", 404);
   }

@@ -4,10 +4,11 @@ import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { notifyDealRated } from "@/lib/notify";
 import { verticalSlug } from "@/lib/vertical";
+import { buyerAuthorized } from "@/lib/buyer-auth";
 
 const Body = z.object({
   buyerEmail: z.string().email(),
-  token: z.string().min(8),
+  token: z.string().max(256).optional().default(""),
   rating: z.number().int().min(1).max(5),
 });
 
@@ -36,8 +37,7 @@ export async function POST(
   if (
     !rfq ||
     rfq.vertical !== verticalSlug() ||
-    rfq.buyerEmail.toLowerCase() !== data!.buyerEmail.toLowerCase() ||
-    rfq.accessToken !== data!.token
+    !(await buyerAuthorized(rfq, data!))
   ) {
     return err("not found", 404);
   }

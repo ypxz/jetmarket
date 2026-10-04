@@ -1,4 +1,5 @@
 import { clientIp, err, noStore, ok, rateLimit } from "@/lib/api";
+import { currentUser } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 import { publicOperator } from "@/lib/repo/types";
@@ -13,20 +14,28 @@ import { rfqFieldLabels, rfqFieldsFor } from "@jetmarket/verticals";
 // possession of the link is proof of inbox (QA-39). New links carry it in the
 // URL fragment (`#t=` — never server-logged, QA-240); the page forwards it as
 // the x-rfq-token header. `?t=` stays accepted for links already emailed.
-// Bare email lookup is deliberately not offered.
+// QA-474: a signed-in buyer's session also proves the mailbox — it scopes
+// the list to their own email (param ignored) so /quotes works without
+// hunting for the emailed link. Bare email lookup stays unoffered.
 export async function GET(req: Request) {
   if (!rateLimit(`buyer-quotes:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
     return err("rate limit exceeded — try again later", 429);
   }
   const url = new URL(req.url);
-  const email = url.searchParams.get("email");
+  const user = await currentUser();
+  // Session covers only ITS OWN mailbox — a session user can still open
+  // another mailbox's inbox with that mailbox's bearer token (assistant
+  // booking for a principal). No session, no token → auth wall.
+  const email = url.searchParams.get("email") ?? user?.email ?? null;
+  const sessionOwns =
+    !!user && user.email.toLowerCase() === email?.toLowerCase();
   // Prefer the header — bearer tokens in query strings persist in server
   // logs, browser history and Referer headers (QA-156). `t` stays accepted
   // for links issued before the header existed.
   const token =
     req.headers.get("x-rfq-token") ?? url.searchParams.get("t");
   if (!email) return err("email required", 400);
-  if (!token) return err("use the link from your email", 401);
+  if (!sessionOwns && !token) return err("use the link from your email", 401);
   const repo = await getRepo();
   // Memory mode has no worker — expire stale RFQs lazily so the buyer inbox
   // shows closed state instead of dead RFQs forever (QA-142).
@@ -46,7 +55,10 @@ export async function GET(req: Request) {
         : {}),
       limit: 200,
     })
-  ).filter((r) => r.accessToken === token);
+    // Session-on-own-mailbox shows the whole inbox; every other case
+    // (token path — session user's foreign link included) filters rows
+    // to the ones that token opens.
+  ).filter((r) => sessionOwns || r.accessToken === token);
   // Batched: one listing + one quote + one operator lookup for the whole
   // inbox — was ~3 queries per quote row (QA-103). Buyers legitimately see
   // every quote on their own RFQs.
