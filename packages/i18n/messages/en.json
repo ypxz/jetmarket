@@ -78,7 +78,8 @@
     "alertUnsubscribed": "Search alert unsubscribed.",
     "alertInvalid": "That alert link is invalid or already used.",
     "alertFreqInstant": "Instant",
-    "alertFreqDaily": "Daily digest"
+    "alertFreqDaily": "Daily digest",
+    "alertMatched": "Live matches right now: '{count}'"
   },
   "seo": {
     "listingsHeading": "Available listings",

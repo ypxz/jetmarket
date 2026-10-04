@@ -175,6 +175,67 @@ test('search alerts: subscribe → confirm → activation digest → unsubscribe
   }
 });
 
+test('saved search: subscribe reports the live-match count + the UI shows it (QA-415)', async ({ page }) => {
+  test.setTimeout(60_000);
+  const sql = postgres(testDb);
+  const MATCHER = `e2e-match-${run}@jetmarket.local`;
+  const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+
+  try {
+    // Two live listings on a unique facet value, one off-value control.
+    const op = await login(OP_EMAIL, 'operator');
+    const opRes = await op.post('/api/operators', {
+      data: { name: `E2E Match Ops ${run}`, baseAirport: 'LSZH' },
+    });
+    expect(opRes.status()).toBe(201);
+    // The `from` facet is a text facet — a bogus code stays unique next to
+    // the seeded airport codes, so the count is exactly our two rows.
+    // sql.json() binds a real jsonb object — a `${string}::jsonb` param is
+    // JSON-serialized by postgres.js and lands as a quoted string instead.
+    const origins = ['XJM99', 'XJM99', 'XJM98'];
+    for (const [i, id] of ids.entries()) {
+      await sql`
+        insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+        select ${id}, id, 'jets', 'charter', ${`E2E Match ${run} ${i}`},
+               1200000, 'USD', 'active', ${sql.json({ from: origins[i] })}, '[]'
+        from operators where user_id = (select id from users where email = ${OP_EMAIL})`;
+    }
+    const [seeded] = await sql`
+      select count(*)::int as n from listings where id = any(${ids}::uuid[])`;
+    expect(seeded?.n, 'fixture listings must exist before the count leg').toBe(3);
+
+    // API leg: the subscribe response carries the current live-match count.
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+    });
+    const sub = await anon.post('/api/search-alerts', {
+      data: { email: MATCHER, params: { type: 'charter', from: 'xjm99' } },
+    });
+    expect(sub.status()).toBe(200);
+    const body = (await sub.json()) as { matchedNow?: number };
+    const [dbCount] = await sql`
+      select count(*)::int as n from listings
+      where vertical = 'jets' and status = 'active' and type = 'charter'
+        and attributes ->> 'from' = 'XJM99'`;
+    expect({ matchedNow: body.matchedNow, dbRows: dbCount?.n }).toEqual({
+      matchedNow: 2,
+      dbRows: 2,
+    });
+
+    // UI leg: submitting the /search alert form renders the count line.
+    await page.goto('/en/search?type=charter&from=xjm99');
+    await page.getByTestId('search-alert-email').fill(MATCHER);
+    await page.getByTestId('search-alert-submit').click();
+    await expect(page.getByTestId('search-alert-matched')).toContainText('2');
+  } finally {
+    await sql`delete from search_alerts where email = ${MATCHER}`;
+    await sql`delete from listings where id in (${ids[0]}, ${ids[1]}, ${ids[2]})`;
+    await sql`delete from operators where user_id in (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email in (${MATCHER}, ${OP_EMAIL})`;
+    await sql.end();
+  }
+});
+
 test('listing watch: subscribe → confirm → price edit mails update (QA-407)', async () => {
   test.setTimeout(90_000);
   const sql = postgres(testDb);

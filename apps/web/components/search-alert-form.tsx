@@ -19,6 +19,7 @@ export function SearchAlertForm({
   errorLabel,
   freqInstantLabel,
   freqDailyLabel,
+  matchedLabel,
 }: {
   params: Record<string, string | string[] | undefined>;
   title: string;
@@ -31,10 +32,13 @@ export function SearchAlertForm({
   errorLabel: string;
   freqInstantLabel: string;
   freqDailyLabel: string;
+  /** "{count}" is replaced with the API's live-match count (QA-415). */
+  matchedLabel?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [matched, setMatched] = useState<number | null>(null);
   // Hydration gate — a pre-hydration submit POSTs natively to the page route.
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
@@ -52,13 +56,15 @@ export function SearchAlertForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, params, freq }),
       });
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+        matchedNow?: number;
+      } | null;
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
         setError(body?.error ?? errorLabel);
         return;
       }
+      setMatched(typeof body?.matchedNow === "number" ? body.matchedNow : null);
       setSent(true);
     } catch {
       setError(errorLabel);
@@ -69,12 +75,17 @@ export function SearchAlertForm({
 
   if (sent) {
     return (
-      <p
+      <div
         className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground"
         data-testid="search-alert-sent"
       >
-        {sentLabel}
-      </p>
+        <p>{sentLabel}</p>
+        {matched !== null && matchedLabel ? (
+          <p className="mt-0.5 text-xs text-muted" data-testid="search-alert-matched">
+            {matchedLabel.replace("{count}", String(matched))}
+          </p>
+        ) : null}
+      </div>
     );
   }
 

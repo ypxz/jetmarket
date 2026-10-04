@@ -10,6 +10,7 @@ import {
   searchAlertTargetUrl,
   searchAlertWatchId,
 } from "@/lib/search-alerts";
+import { listingFilterFor } from "@/lib/search";
 import { verticalSlug } from "@/lib/vertical";
 
 const Subscribe = z.object({
@@ -117,5 +118,15 @@ export async function POST(req: Request) {
 
   const devConfirmUrl =
     process.env.NODE_ENV === "production" ? undefined : confirmUrl;
-  return ok({ ok: true, created, devConfirmUrl });
+  // QA-415: "N live matches now" proves the filter set can fire — 0 reads as
+  // "we'll email you when one lands", not a broken subscribe. Watch rows pin
+  // to their one listing (the 404 gate above already answered it) so the
+  // count query is skipped there. Non-fatal — a count failure never blocks
+  // the subscribe itself.
+  const matchedNow = watchId
+    ? undefined
+    : await repo
+        .countListings(listingFilterFor(params))
+        .catch(() => undefined);
+  return ok({ ok: true, created, devConfirmUrl, matchedNow });
 }

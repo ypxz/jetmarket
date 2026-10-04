@@ -150,6 +150,48 @@ describe("POST /api/search-alerts", () => {
     expect(alerts).toHaveLength(2);
   });
 
+  it("returns the live-match count for the saved filter set (QA-415)", async () => {
+    for (const [title, cat] of [
+      ["SA A", "light"],
+      ["SA B", "light"],
+      ["SA C", "midsize"],
+    ] as const) {
+      await repo.createListing({
+        operatorId: "op_x",
+        vertical: "jets",
+        type: "charter",
+        title,
+        price: 1,
+        currency: "USD",
+        photos: [],
+        attributes: { aircraftCategory: cat, seats: 8 },
+      });
+    }
+    const res = await subscribe({
+      email: "m@test.dev",
+      params: { type: "charter", aircraftCategory: "light" },
+    });
+    const body = (await res.json()) as { matchedNow?: number };
+    expect(body.matchedNow).toBe(2);
+    // watch alerts pin to one listing — the count query is skipped (QA-415).
+    const watched = await repo.createListing({
+      operatorId: "op_x",
+      vertical: "jets",
+      type: "charter",
+      title: "SA W",
+      price: 1,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const watch = await subscribe({
+      email: "m2@test.dev",
+      params: { watch: watched.id },
+    });
+    expect(watch.status).toBe(200);
+    expect(((await watch.json()) as { matchedNow?: number }).matchedNow).toBeUndefined();
+  });
+
   it("rejects a bogus email", async () => {
     const res = await subscribe({ email: "not-an-email", params: {} });
     expect([400, 422]).toContain(res.status);
