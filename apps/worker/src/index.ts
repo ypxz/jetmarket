@@ -22,6 +22,7 @@ import {
   notifyExpirations,
   nudgeStaleQuotes,
   nudgeUnansweredOperators,
+  nudgeEmptyBookOperators,
   nudgeClosingSoonRfqs,
   nudgeUnratedDeals,
   nudgeUnquotedRfqs,
@@ -87,6 +88,12 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const unansweredNudged = await nudgeUnansweredOperators(deps);
   if (unansweredNudged)
     logInfo("worker.unanswered_nudges", { count: unansweredNudged });
+
+  // Empty-book nudge (QA-477) — operators past the grace window with zero
+  // in-vertical listings get one "create your first listing" mail.
+  const emptyBookNudged = await nudgeEmptyBookOperators(deps);
+  if (emptyBookNudged)
+    logInfo("worker.empty_book_nudges", { count: emptyBookNudged });
 
   // Overdue-invoice chase (QA-429) — invoiced deals past the window mail
   // the operator; the stamp cools down weekly so non-payers get chased.

@@ -1304,6 +1304,80 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     await sql`update operators set unanswered_mailed_at = null where id in (${opA!.id}, ${opF!.id})`;
   });
 
+  it("nudges once-ever the operator whose in-vertical book stays empty (QA-477)", async () => {
+    const old = new Date(Date.now() - 4 * 86_400_000); // 4d > 48h window
+    const fresh = new Date(Date.now() - 60 * 60_000); // 1h — inside grace
+    const mkOp = async (emailAddr: string, createdAt: Date, suspended = false) => {
+      const [u] = await db
+        .insert(users)
+        .values({ email: emailAddr })
+        .returning({ id: users.id });
+      const [o] = await db
+        .insert(operators)
+        .values({ userId: u!.id, name: emailAddr, createdAt, suspended })
+        .returning({ id: operators.id });
+      return o!.id;
+    };
+    const mkListing = (operatorId: string, vertical: string) =>
+      db.insert(listings).values({
+        operatorId,
+        vertical,
+        type: "for_sale",
+        title: "Fixture",
+      });
+
+    const tag = randomUUID().slice(0, 8);
+    const opEmpty = await mkOp(`eb-empty-${tag}@x.com`, old); // → nudge
+    const opFresh = await mkOp(`eb-fresh-${tag}@x.com`, fresh); // grace
+    const opListed = await mkOp(`eb-listed-${tag}@x.com`, old);
+    await mkListing(opListed, "jets"); // listed HERE — no nudge
+    const opMach = await mkOp(`eb-mach-${tag}@x.com`, old);
+    await mkListing(opMach, "machinery"); // empty book on jets → nudge
+    const opSusp = await mkOp(`eb-susp-${tag}@x.com`, old, true); // can't list
+    const fixture = [opEmpty, opFresh, opListed, opMach, opSusp];
+
+    const sweep = () =>
+      deps().repo.sweepEmptyBookOperators({
+        vertical: "jets",
+        olderThan: new Date(Date.now() - 48 * 3_600_000),
+      });
+    const ids = (await sweep())
+      .map((r) => r.operatorId)
+      .filter((id) => fixture.includes(id));
+    expect(ids).toContain(opEmpty);
+    expect(ids).toContain(opMach); // foreign-vertical-only book is empty HERE
+    expect(ids).not.toContain(opFresh);
+    expect(ids).not.toContain(opListed);
+    expect(ids).not.toContain(opSusp);
+
+    // Once-ever: the stamp stands, a re-sweep never re-claims.
+    const [stamp] = await db
+      .select({ t: operators.emptyBookMailedAt })
+      .from(operators)
+      .where(eq(operators.id, opEmpty));
+    expect(stamp!.t).toBeTruthy();
+    expect((await sweep()).map((r) => r.operatorId)).not.toContain(opEmpty);
+
+    // Handler end-to-end: branded mail to the operator's user email.
+    const { nudgeEmptyBookOperators } = await import("../../src/handlers");
+    const d2 = deps();
+    d2.emptyBookNudgeHours = 48;
+    // opEmpty already stamped — mint a fresh qualifier for the handler leg.
+    const opMail = await mkOp(`eb-mail-${tag}@x.com`, old);
+    expect(await nudgeEmptyBookOperators(d2)).toBeGreaterThanOrEqual(1);
+    const mail = readOutbox(outboxDir).find(
+      (m) =>
+        m.to === `eb-mail-${tag}@x.com` &&
+        (m.subject ?? "").includes("first listing"),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.text).toContain("/app/listings/new");
+
+    await db.delete(listings).where(inArray(listings.operatorId, [opListed, opMach]));
+    await db.delete(operators).where(inArray(operators.id, [...fixture, opMail]));
+    await sql`delete from users where email like ${"eb-%-" + tag + "@x.com"}`;
+  });
+
   it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {
     // Scale-out safety: two workers polling the same queue must partition
     // the pending set, not duplicate it. Serial tests can't prove the

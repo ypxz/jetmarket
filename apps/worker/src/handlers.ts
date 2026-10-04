@@ -50,6 +50,11 @@ export interface WorkerDeps {
    *  via the unanswered_mailed_at stamp — operators get a periodic pull,
    *  not a drip feed. */
   unansweredNudgeHours?: number;
+  /** QA-477 empty-book nudge: an operator still without a single
+   *  in-vertical listing this many hours after signup gets one "create
+   *  your first listing" mail (defaults 48, <=0 disables). Once-ever via
+   *  the empty_book_mailed_at stamp — no re-arms. */
+  emptyBookNudgeHours?: number;
   /** QA-429 overdue-invoice chase: deals stuck 'invoiced' this many hours
    *  mail the operator a payment reminder (defaults 72, <=0 disables).
    *  Re-mails at most once per 7 days via the invoice_reminded_at stamp. */
@@ -622,6 +627,56 @@ export async function nudgeUnansweredOperators(
       });
     } catch (e) {
       logWarn("worker.unanswered_nudge_failed", {
+        operatorId: r.operatorId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-477: the conversion funnel's first gap — an operator signs up, never
+ * lists, and hears nothing again. Supply acquisition is the marketplace's
+ * first bottleneck; one mail past the grace window asks them to list.
+ * Once-ever: they either act on it or they don't.
+ */
+export async function nudgeEmptyBookOperators(
+  deps: WorkerDeps,
+): Promise<number> {
+  const hours = deps.emptyBookNudgeHours ?? 48;
+  if (!(hours > 0)) return 0;
+  const now = at(deps).getTime();
+  const rows = await deps.repo.sweepEmptyBookOperators({
+    vertical: deps.vertical,
+    olderThan: new Date(now - hours * 3_600_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const listUrl = `${origin}/app/listings/new`;
+      const subject = `Create your first listing on ${site.name}`;
+      const body =
+        `Your operator account is live but your public page is empty — ` +
+        `buyers can't quote what they can't see. Listing takes a few ` +
+        `minutes and puts you in front of every matching request.`;
+      await deps.email.send({
+        to: r.email,
+        subject,
+        text: `${body}\n\nCreate a listing: ${listUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: listUrl, label: "Create a listing" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "empty_book_nudge_sent",
+        props: { operatorId: r.operatorId },
+      });
+    } catch (e) {
+      logWarn("worker.empty_book_nudge_failed", {
         operatorId: r.operatorId,
         error: e instanceof Error ? e.message : String(e),
       });

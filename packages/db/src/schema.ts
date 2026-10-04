@@ -52,6 +52,11 @@ export const operators = pgTable(
     // QA-427: operator away switch — false removes them from every fan-out
     // (already-delivered matches stay visible in their inbox).
     acceptingRfqs: boolean("accepting_rfqs").notNull().default(true),
+    // QA-477: once-ever stamp — an operator whose in-vertical book is still
+    // empty past the grace window gets one "create your first listing" mail.
+    emptyBookMailedAt: timestamp("empty_book_mailed_at", {
+      withTimezone: true,
+    }),
     // QA-460: admin enforcement — hides supply from public browse, stops
     // fan-outs, blocks new listings/quotes. Stronger than verified=false.
     suspended: boolean("suspended").notNull().default(false),

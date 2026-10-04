@@ -12,6 +12,7 @@ import {
   nudgeClosingSoonRfqs,
   nudgeUnratedDeals,
   nudgeUnansweredOperators,
+  nudgeEmptyBookOperators,
   nudgeUnquotedRfqs,
   remindOverdueInvoices,
   rfqFanout,
@@ -154,6 +155,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepOverdueInvoices: async (input) => {
       rec("sweepOverdueInvoices", input);
+      return [];
+    },
+    sweepEmptyBookOperators: async (input) => {
+      rec("sweepEmptyBookOperators", input);
       return [];
     },
     sweepUnratedDeals: async (input) => {
@@ -1286,6 +1291,75 @@ describe("nudgeUnansweredOperators (QA-425)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeUnansweredOperators(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeEmptyBookOperators (QA-477)", () => {
+  it("disabled when emptyBookNudgeHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepEmptyBookOperators: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.emptyBookNudgeHours = 0;
+    expect(await nudgeEmptyBookOperators(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed operator the new-listing link, no cooldown arg", async () => {
+    let call: { vertical: string; olderThan: Date } | null = null;
+    const repo = fakeRepo({
+      sweepEmptyBookOperators: async (input) => {
+        call = input;
+        return [
+          { operatorId: "o1", email: "ops@alpine.example" },
+          { operatorId: "o2", email: "solo@x.example" },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.emptyBookNudgeHours = 48;
+    expect(await nudgeEmptyBookOperators(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // olderThan = now-48h — deps.now fixed 2026-09-15T12:00Z.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-13T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual([
+      "ops@alpine.example",
+      "solo@x.example",
+    ]);
+    // The CTA lands on the new-listing form — the fix for the state.
+    expect(sent[0]!.text).toContain("/app/listings/new");
+    // Vertical-neutral copy — machinery must not get "aircraft" mail.
+    expect(sent[0]!.subject).not.toContain("aircraft");
+  });
+
+  it("defaults to 48h, a failed send doesn't stall, zero claims silent", async () => {
+    const repo = fakeRepo({
+      sweepEmptyBookOperators: async () => [
+        { operatorId: "o1", email: "bad@x.example" },
+        { operatorId: "o2", email: "ok@x.example" },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // emptyBookNudgeHours unset → 48h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeEmptyBookOperators(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+    expect(sent[0]!.subject).toContain("Create your first listing");
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeEmptyBookOperators(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

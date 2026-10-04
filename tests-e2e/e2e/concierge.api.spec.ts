@@ -83,18 +83,22 @@ test('concierge: token-gated $49 expedite flips a delayed match instantly', asyn
     // Precondition: the delayed match is invisible in the op's inbox.
     expect(await inboxHasRfq(op, rfqId)).toBe(false);
 
-    // Auth gate: malformed → 422; wrong token / foreign email → 404.
+    // Auth gate: malformed → 422; missing token, wrong token, foreign
+    // email → 404 (QA-474: token is optional so a session buyer can post
+    // {buyerEmail} alone — an absent token then fails auth like a wrong
+    // one, never falls back to a schema error).
     const anon = await request.newContext({
       extraHTTPHeaders: { 'fly-client-ip': '10.99.8.8' },
     });
-    expect(
-      (
-        await anon.post(`/api/rfqs/${rfqId}/concierge`, {
-          data: { buyerEmail: BUYER_EMAIL },
-        })
-      ).status(),
-    ).toBe(422);
+    for (const payload of [{ token: 'x' }, { buyerEmail: 'not-an-email' }]) {
+      expect(
+        (
+          await anon.post(`/api/rfqs/${rfqId}/concierge`, { data: payload })
+        ).status(),
+      ).toBe(422);
+    }
     for (const payload of [
+      { buyerEmail: BUYER_EMAIL },
       { buyerEmail: BUYER_EMAIL, token: 'wrong' },
       { buyerEmail: 'other@jetmarket.local', token: RFQ_TOKEN },
     ]) {

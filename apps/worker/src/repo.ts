@@ -169,6 +169,17 @@ export interface WorkerRepo {
   }): Promise<
     { operatorId: string; email: string; unansweredCount: number }[]
   >;
+  /** QA-477 empty-book nudge: claim operators whose in-vertical book is
+   *  still empty `olderThan` after signup — one statement stamps
+   *  empty_book_mailed_at under the row lock. Once-ever (no cooldown): an
+   *  operator either lists or doesn't; re-mailing an empty book forever is
+   *  spam, and once they've listed the predicate goes false by itself.
+   *  Suspended operators can't list — mailing them is pointless. */
+  sweepEmptyBookOperators(input: {
+    vertical: string;
+    olderThan: Date;
+    limit?: number;
+  }): Promise<{ operatorId: string; email: string }[]>;
   /** QA-429 overdue-invoice reminder: claim deals stuck 'invoiced' since
    *  before `olderThan` — one statement stamps invoice_reminded_at under
    *  the row lock, and `cooldown` re-arms only after the stamp ages out so
@@ -874,6 +885,45 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         join quotes q on q.id = d.quote_id
         join operators o on o.id = q.operator_id
         join users u on u.id = o.user_id
+      `);
+      return rows;
+    },
+
+    async sweepEmptyBookOperators({ vertical, olderThan, limit = 50 }) {
+      // due → stamped under the row lock (QA-418 pattern). The book check is
+      // in-vertical on purpose: a dealer who only lists on machinery is
+      // empty-book HERE — this deploy's nudge is about this vertical's
+      // supply. Any listing row counts (draft/paused/archived): the nudge
+      // is "create your first listing", not "publish" — a draft means they
+      // already did the thing we nudge about.
+      const rows = await db.execute<{
+        operatorId: string;
+        email: string;
+      }>(sql`
+        with due as (
+          select o.id
+          from operators o
+          where o.empty_book_mailed_at is null
+            and o.created_at < ${olderThan.toISOString()}
+            and not o.suspended
+            and not exists (
+              select 1
+              from listings l
+              where l.operator_id = o.id
+                and l.vertical = ${vertical}
+            )
+          limit ${limit}
+        ),
+        stamped as (
+          update operators o
+          set empty_book_mailed_at = now()
+          where o.id in (select id from due)
+            and o.empty_book_mailed_at is null
+          returning o.id, o.user_id
+        )
+        select s.id as "operatorId", u.email
+        from stamped s
+        join users u on u.id = s.user_id
       `);
       return rows;
     },
