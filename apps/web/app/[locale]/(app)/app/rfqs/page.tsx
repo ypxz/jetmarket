@@ -14,7 +14,7 @@ import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 import { ReviseQuote } from "./revise-quote";
-import { DismissAllButton, DismissButton, RestoreButton } from "./dismiss-button";
+import { DismissAllButton, DismissButton, RestoreAllButton, RestoreButton } from "./dismiss-button";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
 const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
@@ -205,6 +205,9 @@ export default async function RfqInboxPage({
         ) : null}
         {dismissableIds.length > 1 ? (
           <DismissAllButton rfqIds={dismissableIds} />
+        ) : null}
+        {dismissedOnly && rfqRows.length > 1 ? (
+          <RestoreAllButton rfqIds={rfqRows.map(({ rfq: r }) => r.id)} />
         ) : null}
       </div>
       {pendingRfqs > 0 ? (

@@ -105,6 +105,56 @@ export function DismissAllButton({ rfqIds }: { rfqIds: string[] }) {
   );
 }
 
+/** QA-440: the dismissed view's bulk counterpart — a mistaken sweep (or a
+ *  batch re-triage) shouldn't mean restoring one row at a time. DELETE on
+ *  the same bulk route; the server only un-pairs rows this operator
+ *  actually dismissed, so the id list can simply be the visible page. */
+export function RestoreAllButton({ rfqIds }: { rfqIds: string[] }) {
+  const t = useTranslations("app.rfqs");
+  const tc = useTranslations("common");
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function restoreAll() {
+    if (pending || rfqIds.length === 0) return;
+    setPending(true);
+    try {
+      const e = await sendAction("/api/operator/rfqs/dismiss-bulk", {
+        method: "DELETE",
+        body: { ids: rfqIds },
+        fallback: tc("error"),
+      });
+      if (e) {
+        setError(e);
+        return;
+      }
+      setError(null);
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        onClick={restoreAll}
+        disabled={pending}
+        data-testid="restore-all"
+        className="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:bg-surface disabled:opacity-50"
+      >
+        {t("restoreAll", { count: rfqIds.length })}
+      </button>
+      {error ? (
+        <p role="alert" className="text-xs text-danger" data-testid="restore-all-error">
+          {error}
+        </p>
+      ) : null}
+    </span>
+  );
+}
+
 /** QA-421 "Dismissed" view counterpart: restore puts the RFQ back into the
  *  operator's normal inbox (DELETE on the same route). */
 export function RestoreButton({ rfqId }: { rfqId: string }) {

@@ -99,6 +99,7 @@ export default async function OperatorDashboard() {
     rfqs30d,
     quotes30d,
     won30d,
+    avgResponseH,
   ] = isPro
     ? await Promise.all([
         repo.countRfqs({ operatorId: operator.id, vertical: getVertical().slug }),
@@ -116,8 +117,16 @@ export default async function OperatorDashboard() {
           status: "accepted",
           since: since30d,
         }),
+        // QA-441: the buyer-facing trust stat reflected back — ops can see
+        // the reply speed buyers weigh, not just raw counts.
+        repo
+          .avgResponseHoursPerOperator(
+            [operator.id],
+            getVertical().slug,
+          )
+          .then((m) => m[operator.id]),
       ])
-    : [0, 0, 0, 0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0, 0, undefined];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
@@ -212,6 +221,12 @@ export default async function OperatorDashboard() {
                   ["statQuotes", quotesSent],
                   ["statWon", quotesWon],
                   ["statWinRate", winRate === null ? "—" : `${winRate}%`],
+                  [
+                    "statReply",
+                    avgResponseH === undefined
+                      ? "—"
+                      : `~${Math.max(1, Math.round(avgResponseH))}h`,
+                  ],
                 ] as const
               ).map(([key, value]) => (
                 <div

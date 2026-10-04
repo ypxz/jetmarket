@@ -36,3 +36,27 @@ export async function POST(req: Request) {
   }
   return ok({ ok: true, dismissed });
 }
+
+/** DELETE — bulk restore for the "Dismissed" view (QA-440): same body and
+ *  gates; undismissRfq only un-pairs rows the caller actually dismissed,
+ *  so junk ids are silent no-ops like the POST. */
+export async function DELETE(req: Request) {
+  const user = await requireUser("operator");
+  if (!user) return err("unauthorized", 401);
+  if (!rateLimit(`rfq-dismiss-bulk:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
+  const { data, error } = await parseBody(req, BulkDismiss);
+  if (error) return error;
+  const repo = await getRepo();
+  const operator = await repo.getOperatorByUserId(user.id);
+  if (!operator) return err("create an operator profile first", 409);
+  const v = verticalSlug();
+  let restored = 0;
+  for (const id of data!.ids) {
+    const rfq = await repo.getRfq(id);
+    if (!rfq || rfq.vertical !== v) continue;
+    if (await repo.undismissRfq(id, operator.id)) restored += 1;
+  }
+  return ok({ ok: true, restored });
+}

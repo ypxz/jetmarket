@@ -271,6 +271,16 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await operator.goto('/app/rfqs?f=dismissed');
       await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toBeVisible();
       await expect(operator.locator(tid(`rfq-${rfq2!.id}`))).toBeVisible();
+      // QA-440: the bulk sweep has a bulk undo — Restore all on the
+      // dismissed view returns every row to the live inbox in one click.
+      await operator.getByTestId('restore-all').click();
+      await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toHaveCount(0, {
+        timeout: 15_000,
+      });
+      await expect(operator.locator(tid(`rfq-${rfq2!.id}`))).toHaveCount(0);
+      await operator.goto('/app/rfqs');
+      await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toBeVisible();
+      await expect(operator.locator(tid(`rfq-${rfq2!.id}`))).toBeVisible();
       const inbox = await buyer.request.get(
         `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
         { headers: { 'x-rfq-token': rfq!.token } },
@@ -412,6 +422,12 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // Pro unlocks the funnel tiles (QA-202) + rolling-30d line (QA-208).
     await operator.goto('/app');
     await expect(operator.getByTestId('operator-stats')).toBeVisible();
+    // QA-441: the buyer-facing reply-speed stat reflected back — the op
+    // just quoted seconds after the RFQ, so the tile reads ~1h, never 0h.
+    await expect(operator.getByTestId('operator-stats')).toContainText(
+      'Typical reply',
+    );
+    await expect(operator.getByTestId('operator-stats')).toContainText('~1h');
     await expect(operator.getByTestId('stats-recent')).toContainText(
       'Last 30 days',
     );
