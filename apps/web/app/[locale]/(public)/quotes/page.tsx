@@ -146,13 +146,32 @@ function QuotesInner() {
 
   // Auto-load when arriving with ?email= (magic-link/thank-you redirect),
   // then drop any bearer token (query `t` or `#t=` fragment) from the
-  // address bar so it doesn't sit in history.
+  // address bar so it doesn't sit in history. The token moves to
+  // sessionStorage instead (QA-482 fix): replaceState strips the URL but a
+  // guest buyer has no session — a bare reload used to 401 their inbox
+  // away. Same-tab storage only; a fresh tab still needs the mailed link.
   useEffect(() => {
+    let stored = "";
+    try {
+      stored = sessionStorage.getItem("jm-quotes-token") ?? "";
+    } catch {
+      /* storage blocked — token still works from the URL below */
+    }
     const hashToken = new URLSearchParams(window.location.hash.slice(1)).get(
       "t",
     );
-    const effective = token || hashToken || "";
+    const effective = token || hashToken || stored || "";
     if (hashToken && !token) setToken(hashToken);
+    else if (!token && !hashToken && stored) setToken(stored);
+    // Freshly-arrived token (either carrier) overwrites the stash — a
+    // different buyer's link in the same tab must not keep the old one.
+    if (hashToken || params.get("t")) {
+      try {
+        sessionStorage.setItem("jm-quotes-token", effective);
+      } catch {
+        /* storage blocked — reload loses the token again, same as before */
+      }
+    }
     if (params.get("t") || hashToken) {
       const url = new URL(window.location.href);
       url.searchParams.delete("t");
