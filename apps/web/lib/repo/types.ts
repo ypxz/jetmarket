@@ -270,6 +270,10 @@ export interface Repo {
      * `asOf` (ISO date). Missing attr keeps the row (QA-219).
      */
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    /** Only rows whose operator is verified (QA-436 search trust filter).
+     *  Listings whose operator row is missing never match — mirrors the
+     *  EXISTS-subquery semantics, so unverifiable rows hide rather than leak. */
+    verifiedOnly?: boolean;
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
     /** Result order — `newest` (createdAt desc) is the default. */
@@ -289,6 +293,8 @@ export interface Repo {
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    /** See {@link Repo.listListings}. */
+    verifiedOnly?: boolean;
   }): Promise<number>;
   updateListingStatus(
     id: string,

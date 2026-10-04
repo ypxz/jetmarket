@@ -123,6 +123,17 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
               </div>
             );
           })}
+          <label className="flex items-center gap-2 text-sm" htmlFor="f-verified">
+            <input
+              id="f-verified"
+              name="verified"
+              type="checkbox"
+              value="1"
+              defaultChecked={get("verified") === "1"}
+              data-testid="facet-verified"
+            />
+            {t("verifiedOnly")}
+          </label>
           <div className="flex gap-2">
             <Button type="submit" data-testid="facet-apply">
               {t("submit")}

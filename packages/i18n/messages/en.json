@@ -80,7 +80,8 @@
     "alertFreqInstant": "Instant",
     "alertFreqDaily": "Daily digest",
     "alertMatched": "Live matches right now: '{count}'",
-    "latestTitle": "Latest listings"
+    "latestTitle": "Latest listings",
+    "verifiedOnly": "Verified operators only"
   },
   "seo": {
     "listingsHeading": "Available listings",

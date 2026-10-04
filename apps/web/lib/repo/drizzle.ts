@@ -208,6 +208,7 @@ interface ListingFilter {
   facetRanges?: { key: string; min?: number; max?: number }[];
   facetDateRanges?: { key: string; from?: string; to?: string }[];
   notExpiredByAttr?: { type: string; attr: string; asOf: string };
+  verifiedOnly?: boolean;
 }
 
 /** Shared WHERE builder so listListings/countListings never drift apart.
@@ -287,6 +288,13 @@ function listingConds(filter?: ListingFilter) {
         sql`${v} is null`,
         sql`${v} >= ${asOf}`,
       )!,
+    );
+  }
+  if (filter?.verifiedOnly) {
+    // Trust filter (QA-436): EXISTS subquery keeps countListings in sync
+    // without a join — rows whose operator is missing/unverified drop out.
+    conds.push(
+      sql`exists (select 1 from operators o where o.id = ${listings.operatorId} and o.verified)`,
     );
   }
   return conds.length ? and(...conds) : undefined;

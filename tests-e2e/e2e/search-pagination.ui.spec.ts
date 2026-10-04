@@ -64,6 +64,46 @@ test('an empty search still offers the newest listings (QA-432)', async ({
   await expect(page).toHaveURL(/\/listing\//);
 });
 
+// QA-436: the verified-only checkbox adds `verified=1` to the shareable GET —
+// a fresh operator's listing drops out of the filtered page while seed
+// (verified) ops remain.
+test('verified-only filter hides unverified operators (QA-436)', async ({
+  page,
+}) => {
+  const email = `e2e-vo-${Date.now().toString(36)}@jetmarket.local`;
+  await signUpAndLogin(page, email);
+  const createRes = await page.request.post('/api/operators', {
+    data: { name: 'E2E VO Air', baseAirport: 'ZRH', fleetSummary: '' },
+  });
+  expect(createRes.status()).toBe(201);
+  const listingRes = await page.request.post('/api/listings', {
+    data: {
+      type: 'charter',
+      title: 'E2E VO Charter',
+      price: 41000,
+      currency: 'USD',
+      photos: [],
+      attributes: { from: 'ZRH', to: 'NCE', seats: 8 },
+    },
+  });
+  expect(listingRes.status()).toBe(201);
+
+  await page.goto('/search?q=E2E+VO+Charter');
+  await expect(page.getByTestId('search-result')).toHaveCount(1);
+
+  // Same query through the sidebar checkbox → the unverified op's row goes.
+  await page.getByTestId('facet-q').fill('E2E VO Charter');
+  await page.getByTestId('facet-verified').check();
+  await page.getByTestId('facet-apply').click();
+  await expect(page).toHaveURL(/verified=1/);
+  await expect(page).toHaveURL(/q=E2E\+VO\+Charter|q=E2E%20VO%20Charter/);
+  await expect(page.getByTestId('search-result')).toHaveCount(0);
+
+  // A bare verified=1 search still lists the verified seed fleet.
+  await page.goto('/search?verified=1');
+  await expect(page.getByTestId('search-result').first()).toBeVisible();
+});
+
 // QA-178: sort select lives in the same GET form, so it composes with
 // facets and persists through the pager.
 test('search sorts by price and keeps the choice through facets', async ({

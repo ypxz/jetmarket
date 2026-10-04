@@ -27,6 +27,7 @@ interface ParsedParams {
   type?: ListingType;
   query?: string;
   sort?: ListingSort;
+  verifiedOnly?: boolean;
 }
 
 const SORTS: ListingSort[] = ["newest", "price_asc", "price_desc"];
@@ -79,6 +80,9 @@ function parseParams(params: SearchParams): ParsedParams {
     ...(SORTS.includes(sortRaw as ListingSort)
       ? { sort: sortRaw as ListingSort }
       : {}),
+    // QA-436: `verified=1` keeps only verified operators' listings. Any other
+    // value is ignored (fail-open, same posture as unknown sorts).
+    ...(str(params.verified) === "1" ? { verifiedOnly: true } : {}),
   };
 }
 
@@ -144,6 +148,7 @@ function repoFilter(p: ParsedParams) {
     ...(Object.keys(p.exact).length ? { facets: p.exact } : {}),
     ...(facetRanges.length ? { facetRanges } : {}),
     ...(facetDateRanges.length ? { facetDateRanges } : {}),
+    ...(p.verifiedOnly ? { verifiedOnly: true } : {}),
     ...browseExpiry(),
   };
 }

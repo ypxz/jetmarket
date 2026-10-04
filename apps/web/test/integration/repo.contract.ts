@@ -2396,6 +2396,62 @@ export function repoContract(
       ).toEqual({});
     });
 
+    it("listListings/countListings verifiedOnly keeps only verified ops' rows (QA-436)", async () => {
+      const repo = await factory();
+      const tag = `vo-${Date.now().toString(36)}`;
+      const mk = async (email: string, verified: boolean) => {
+        const user = await repo.createUser(email, "operator");
+        const op = await repo.upsertOperator({
+          userId: user.id,
+          name: `VO ${tag} ${email}`,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified,
+          plan: "pro",
+        });
+        return repo.createListing({
+          operatorId: op.id,
+          vertical: "jets",
+          type: "charter",
+          title: `VO ${tag} ${email}`,
+          price: 9000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+        });
+      };
+      const good = await mk(`v-${tag}@test.dev`, true);
+      const bad = await mk(`u-${tag}@test.dev`, false);
+      const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
+      const scoped = { vertical: "jets", status: "active" as const };
+      const filtered = await repo.listListings({
+        ...scoped,
+        verifiedOnly: true,
+        ids: [good.id, bad.id],
+      });
+      expect(ids(filtered)).toEqual([good.id]);
+      // countListings must agree — same shared predicate on both impls
+      // (operatorId scope: countListings takes no ids list).
+      expect(
+        await repo.countListings({
+          ...scoped,
+          verifiedOnly: true,
+          operatorId: good.operatorId,
+        }),
+      ).toBe(1);
+      expect(
+        await repo.countListings({
+          ...scoped,
+          verifiedOnly: true,
+          operatorId: bad.operatorId,
+        }),
+      ).toBe(0);
+      // Unfiltered still sees the unverified op — the flag is additive.
+      expect(
+        await repo.countListings({ ...scoped, operatorId: bad.operatorId }),
+      ).toBe(1);
+    });
+
     it("listRfqs/countRfqs scope to one listing (QA-430)", async () => {
       const repo = await factory();
       const tag = `lf-${Date.now().toString(36)}`;

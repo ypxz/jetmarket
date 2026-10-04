@@ -214,6 +214,7 @@ class MemoryRepo implements Repo {
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    verifiedOnly?: boolean;
     ids?: string[];
     sort?: ListingSort;
     limit?: number;
@@ -250,6 +251,7 @@ class MemoryRepo implements Repo {
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    verifiedOnly?: boolean;
     ids?: string[];
   }): Promise<number> {
     return this.filterListings(filter).length;
@@ -264,6 +266,7 @@ class MemoryRepo implements Repo {
     facetRanges?: { key: string; min?: number; max?: number }[];
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
+    verifiedOnly?: boolean;
     ids?: string[];
   }): Listing[] {
     let out = [...this.listings.values()];
@@ -321,6 +324,12 @@ class MemoryRepo implements Repo {
         const v = l.attributes[attr];
         return typeof v !== "string" || v >= asOf;
       });
+    }
+    if (filter?.verifiedOnly) {
+      // QA-436: EXISTS-parity with drizzle — a missing operator row hides.
+      out = out.filter(
+        (l) => this.operators.get(l.operatorId)?.verified === true,
+      );
     }
     return out;
   }
