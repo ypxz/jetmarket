@@ -1222,7 +1222,8 @@
       "templatePh": "Template…",
       "templateNamePh": "Template name",
       "saveTemplate": "Save template",
-      "buyerRated": "Rated buyer {avg}★ · {count}"
+      "buyerRated": "Rated buyer {avg}★ · {count}",
+      "reviseLineOp": "You revised — was {amount} before {date}"
     },
     "billing": {
       "title": "Plan & billing",

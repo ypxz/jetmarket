@@ -159,6 +159,15 @@ export default async function RfqInboxPage({
     arr.push(r);
     roundsByQuote.set(r.quoteId, arr);
   }
+  // QA-532: the op's own revise ladder — returning to an inbox row, "what
+  // did this offer say before" should be a read, not a memory game.
+  const revRows = await repo.listQuoteRevisions(quoteRows.map((q) => q.id));
+  const revsByQuote = new Map<string, typeof revRows>();
+  for (const r of revRows) {
+    const arr = revsByQuote.get(r.quoteId) ?? [];
+    arr.push(r);
+    revsByQuote.set(r.quoteId, arr);
+  }
   const lastSeen = operator.inboxSeenAt;
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
   const quotesByRfq = new Map<string, typeof quoteRows>();
@@ -542,6 +551,36 @@ export default async function RfqInboxPage({
                                   ),
                                 })}
                                 {cr.note ? ` — \u201c${cr.note}\u201d` : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {/* QA-532: your own revise ladder — the terms this
+                            offer used to carry, newest first (the buyer
+                            sees the same rungs on their card). */}
+                        {(revsByQuote.get(q.id)?.length ?? 0) > 0 ? (
+                          <ul
+                            className="mt-1 w-full space-y-0.5 text-xs text-muted"
+                            data-testid={`oprevhist-${q.id}`}
+                          >
+                            {(revsByQuote.get(q.id) ?? []).map((rev) => (
+                              <li
+                                key={rev.id}
+                                data-testid={`oprev-${rev.id}`}
+                              >
+                                {t("reviseLineOp", {
+                                  amount: formatMoney(
+                                    rev.amount,
+                                    rev.currency,
+                                    locale,
+                                  ),
+                                  date: new Date(
+                                    rev.supersededAt,
+                                  ).toLocaleDateString(locale, {
+                                    month: "short",
+                                    day: "numeric",
+                                  }),
+                                })}
                               </li>
                             ))}
                           </ul>

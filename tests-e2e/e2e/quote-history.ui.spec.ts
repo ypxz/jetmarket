@@ -166,4 +166,18 @@ test('operator revises a quote; buyer inbox shows the superseded price', async (
       buyer.locator(tidPrefix('quote-')).first().locator(tidPrefix('quote-new-')),
     ).toHaveCount(0);
   });
+
+  await step('the operator inbox shows their own ladder (QA-532)', async () => {
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    const trail = item.locator(tidPrefix('oprevhist-'));
+    await expect(trail).toBeVisible();
+    const revs = item.locator(tidPrefix('oprev-'));
+    await expect(revs).toHaveCount(2);
+    // Same newest-first order the buyer sees: 10,500 led, 12,000 trails.
+    await expect(revs.first()).toContainText(/10,?500/);
+    await expect(revs.last()).toContainText(/12,?000/);
+  });
 });

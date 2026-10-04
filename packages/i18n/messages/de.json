@@ -1222,7 +1222,8 @@
       "templatePh": "Vorlage…",
       "templateNamePh": "Vorlagenname",
       "saveTemplate": "Vorlage speichern",
-      "buyerRated": "Bewerteter Käufer {avg}★ · {count}"
+      "buyerRated": "Bewerteter Käufer {avg}★ · {count}",
+      "reviseLineOp": "Von Ihnen überarbeitet — bis {date}: {amount}"
     },
     "billing": {
       "title": "Tarif & Abrechnung",
