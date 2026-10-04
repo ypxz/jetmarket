@@ -7,7 +7,8 @@ import { Pager } from "@/components/pager";
 import { SearchAlertForm } from "@/components/search-alert-form";
 import { getRepo } from "@/lib/repo";
 import { publicOperator } from "@/lib/repo/types";
-import { searchListingsPage } from "@/lib/search";
+import { browseExpiry, searchListingsPage } from "@/lib/search";
+import { verticalSlug } from "@/lib/vertical";
 
 // Parameterized results are disallowed in robots.txt; noindex keeps the
 // crawl surface to the curated SEO landing slugs + listing pages.
@@ -39,6 +40,26 @@ export default async function SearchPage({
     (
       await repo.listOperators({
         ids: [...new Set(listings.map((l) => l.operatorId))],
+      })
+    ).map((o) => [o.id, publicOperator(o)] as const),
+  );
+
+  // QA-432: a zero-result page used to dead-end — surface the newest live
+  // listings under the empty state so a too-tight filter still lands
+  // somewhere browsable (same active+unexpired predicate browse uses).
+  const latest =
+    listings.length === 0
+      ? await repo.listListings({
+          vertical: verticalSlug(),
+          status: "active",
+          limit: 4,
+          ...browseExpiry(),
+        })
+      : [];
+  const latestOps = new Map(
+    (
+      await repo.listOperators({
+        ids: [...new Set(latest.map((l) => l.operatorId))],
       })
     ).map((o) => [o.id, publicOperator(o)] as const),
   );
@@ -89,7 +110,26 @@ export default async function SearchPage({
             />
           </div>
           {listings.length === 0 ? (
-            <EmptyState title={t("emptyTitle")} body={t("emptyBody")} />
+            <>
+              <EmptyState title={t("emptyTitle")} body={t("emptyBody")} />
+              {latest.length > 0 ? (
+                <section className="mt-8" data-testid="search-latest">
+                  <h2 className="mb-3 text-lg font-semibold">
+                    {t("latestTitle")}
+                  </h2>
+                  <Grid cols={2}>
+                    {latest.map((l) => (
+                      <div key={l.id} data-testid="search-latest-item">
+                        <ListingCard
+                          listing={l}
+                          operator={latestOps.get(l.operatorId) ?? null}
+                        />
+                      </div>
+                    ))}
+                  </Grid>
+                </section>
+              ) : null}
+            </>
           ) : (
             <>
               <Grid cols={2} data-testid="search-results">

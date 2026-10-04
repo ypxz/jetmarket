@@ -79,7 +79,8 @@
     "alertInvalid": "That alert link is invalid or already used.",
     "alertFreqInstant": "Instant",
     "alertFreqDaily": "Daily digest",
-    "alertMatched": "Live matches right now: '{count}'"
+    "alertMatched": "Live matches right now: '{count}'",
+    "latestTitle": "Latest listings"
   },
   "seo": {
     "listingsHeading": "Available listings",
@@ -828,7 +829,6 @@
     },
     "viewJobs": "Job queue →",
     "rfqs": "RFQs ({count})",
-    "colBuyer": "Buyer",
     "colListing": "Listing",
     "colCreated": "Created",
     "markSpam": "Mark spam",

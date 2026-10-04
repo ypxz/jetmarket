@@ -43,6 +43,27 @@ test('search paginates results and keeps facet params across pages', async ({
   }
 });
 
+// QA-432: a zero-result page isn't a dead-end — the newest live listings
+// render under the empty state (distinct testid, so `search-result` stays
+// truthful for the actual matches).
+test('an empty search still offers the newest listings (QA-432)', async ({
+  page,
+}) => {
+  await page.goto('/search?q=zzz-no-such-listing-zzz');
+  await expect(page.getByTestId('search-results-count')).toContainText(
+    'No listings',
+  );
+  await expect(page.getByTestId('search-result')).toHaveCount(0);
+  const rail = page.getByTestId('search-latest');
+  await expect(rail).toBeVisible();
+  const items = rail.getByTestId('search-latest-item');
+  await expect(items.first()).toBeVisible();
+  expect(await items.count()).toBeGreaterThan(0);
+  // The rail's cards are real browse entries — they open a listing page.
+  await items.first().getByRole('link').first().click();
+  await expect(page).toHaveURL(/\/listing\//);
+});
+
 // QA-178: sort select lives in the same GET form, so it composes with
 // facets and persists through the pager.
 test('search sorts by price and keeps the choice through facets', async ({
