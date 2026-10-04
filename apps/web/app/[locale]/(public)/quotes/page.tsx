@@ -463,7 +463,12 @@ function QuotesInner() {
                         {t("concierge.done")}
                       </span>
                     ) : null}
-                    {["open", "matched", "quoted"].includes(r.status) ? (
+                    {/* QA-487: the route 409s extends with ≥8d of horizon
+                        left — hide the button while the click would only
+                        error. It reappears inside the extendable window. */}
+                    {["open", "matched", "quoted"].includes(r.status) &&
+                    Date.parse(r.deadlineAt) <
+                      Date.now() + 8 * 86_400_000 ? (
                       <button
                         onClick={() => extendRfq(r.id)}
                         disabled={busy}

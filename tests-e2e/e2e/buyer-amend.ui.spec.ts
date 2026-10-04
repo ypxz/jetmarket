@@ -88,6 +88,9 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     await expect(rfq).toBeVisible();
     // fillRfqForm wrote 'e2e' into the text fields — the echo shows it.
     await expect(rfq.locator(tidPrefix('rfq-echo-'))).toContainText('e2e');
+    // QA-487: the request still has ~16 days of horizon — Extend would
+    // only 409, so the button isn't offered at all.
+    await expect(rfq.locator(tidPrefix('extend-rfq-'))).toHaveCount(0);
 
     await rfq.locator(tidPrefix('edit-rfq-')).click();
     const form = rfq.locator(tidPrefix('rfq-edit-form-'));
@@ -126,13 +129,16 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     // The form mounts on toggle — before that the revise-* match is unique.
     await opQuote.locator('button[data-testid^="revise-"]').click();
     await opQuote.locator('input[data-testid^="revise-amount-"]').fill('12800');
+    // Wait for the revise POST itself — the row's state stays 'sent'
+    // through a revision, so text asserts can't order us after the write.
+    const revised = operator.waitForResponse(
+      (r) => r.url().includes('/revise') && r.ok(),
+      { timeout: 15_000 },
+    );
     await opQuote
       .locator('button[data-testid^="revise-save-"]')
       .click();
-    await expect(opQuote.locator(tidPrefix('quote-state-'))).toContainText(
-      /sent/i,
-      { timeout: 15_000 },
-    );
+    await revised;
 
     await buyer.reload();
     const rfq = buyer.locator(tidPrefix('buyer-rfq-')).first();
