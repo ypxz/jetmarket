@@ -13,6 +13,9 @@ const Body = z.object({
   // own currency. Counters at or above the ask are pointless — the buyer
   // could just accept.
   amount: z.number().int().positive().max(999_999_999),
+  // QA-521: one line of context for the number — "that's with
+  // repositioning included". Optional; 500 chars keeps it a note.
+  note: z.string().trim().max(500).optional(),
 });
 
 // Buyer counters a sent quote (QA-511). Gated on the per-RFQ bearer
@@ -48,14 +51,21 @@ export async function POST(
     return err("a counter must be below the asking price", 422);
   }
 
-  if (!(await repo.counterQuote(id, data!.amount))) {
+  const note = data!.note?.trim() || undefined;
+  if (!(await repo.counterQuote(id, data!.amount, note))) {
     return err("quote already transitioned", 409);
   }
   analyticsProvider().track({
     name: "quote_countered",
-    props: { quoteId: quote.id, rfqId: rfq.id, amount: data!.amount },
+    props: {
+      quoteId: quote.id,
+      rfqId: rfq.id,
+      amount: data!.amount,
+      // Free text doesn't belong in analytics — just whether there was one.
+      hasNote: note !== undefined,
+    },
   });
-  await notifyQuoteCountered(repo, quote, rfq, data!.amount);
+  await notifyQuoteCountered(repo, quote, rfq, data!.amount, note);
   return ok(await repo.getQuote(id));
 }
 

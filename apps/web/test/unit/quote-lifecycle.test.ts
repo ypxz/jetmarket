@@ -251,6 +251,52 @@ describe("POST /api/quotes/[id]/counter (buyer, QA-511)", () => {
     expect(again.status).toBe(409);
   });
 
+  it("QA-521: carries the buyer's one-line note; oversized notes 422", async () => {
+    const repo = await getMemoryRepo();
+    const { quote, buyerEmail, rfq } = await fixture(repo);
+
+    // 501 chars over the note cap → invalid fields, nothing stored.
+    const wordy = await counterQuote(
+      post({
+        buyerEmail,
+        token: rfq.accessToken,
+        amount: 8000,
+        note: "x".repeat(501),
+      }),
+      params(quote.id),
+    );
+    expect(wordy.status).toBe(422);
+
+    const res = await counterQuote(
+      post({
+        buyerEmail,
+        token: rfq.accessToken,
+        amount: 8000,
+        note: "  includes repositioning  ",
+      }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    const stamped = (await res.json()) as Quote;
+    expect(stamped.counterAmount).toBe(8000);
+    expect(stamped.counterMessage).toBe("includes repositioning");
+
+    // The withdraw + fresh round clears the note with the counter.
+    const w = await withdrawCounter(
+      del({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(w.status).toBe(200);
+    expect((await repo.getQuote(quote.id))!.counterMessage).toBeUndefined();
+    const fresh = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 7000 }),
+      params(quote.id),
+    );
+    expect(fresh.status).toBe(200);
+    // No note this round — nothing lingers from the last one.
+    expect(((await fresh.json()) as Quote).counterMessage).toBeUndefined();
+  });
+
   it("404s on unknown quote; 409s once the quote left 'sent'", async () => {
     const missing = await counterQuote(
       post({ buyerEmail: "b@x.dev", token: "t", amount: 1 }),

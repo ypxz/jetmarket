@@ -1013,7 +1013,7 @@ class MemoryRepo implements Repo {
     }
     return out;
   }
-  async counterQuote(id: string, amount: number) {
+  async counterQuote(id: string, amount: number, note?: string) {
     const q = this.quotes.get(id);
     if (!q || q.status !== "sent" || q.counteredAt) return false;
     // Deliberately no updatedAt bump — a counter isn't a revision of the
@@ -1022,6 +1022,8 @@ class MemoryRepo implements Repo {
       ...q,
       counterAmount: amount,
       counteredAt: now(),
+      // QA-521: empty note stores nothing — the field stays absent.
+      ...(note ? { counterMessage: note } : {}),
     });
     return true;
   }
@@ -1035,6 +1037,7 @@ class MemoryRepo implements Repo {
       ...q,
       counterAmount: undefined,
       counteredAt: undefined,
+      counterMessage: undefined,
     });
     return true;
   }
@@ -1074,6 +1077,8 @@ class MemoryRepo implements Repo {
       // QA-511: a revise answers the buyer's counter — next round.
       counterAmount: undefined,
       counteredAt: undefined,
+      // QA-521: the note retires with the round too.
+      counterMessage: undefined,
     };
     this.quotes.set(id, next);
     return next;

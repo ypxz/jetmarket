@@ -147,6 +147,7 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
       ? { counterAmount: fromMinorUnits(r.counterAmountMinor, r.currency) }
       : {}),
     ...(r.counteredAt ? { counteredAt: iso(r.counteredAt) } : {}),
+    ...(r.counterMessage ? { counterMessage: r.counterMessage } : {}),
   };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
@@ -1653,6 +1654,8 @@ export class DrizzleRepo implements Repo {
         // QA-516: the answered counter's nudge stamp retires with it —
         // a re-countered round re-arms the worker's reminder.
         counterNudgeMailedAt: null,
+        // QA-521: the counter's note retires with the round too.
+        counterMessage: null,
       })
       .where(
         and(
@@ -1666,7 +1669,11 @@ export class DrizzleRepo implements Repo {
     return rows[0] ? toQuote(rows[0]) : null;
   }
 
-  async counterQuote(id: string, amount: number): Promise<boolean> {
+  async counterQuote(
+    id: string,
+    amount: number,
+    note?: string,
+  ): Promise<boolean> {
     if (!isUuid(id)) return false;
     // The counter is denominated in the quote's own currency.
     const [q] = await this.db
@@ -1681,6 +1688,9 @@ export class DrizzleRepo implements Repo {
       .set({
         counterAmountMinor: toMinorUnits(amount, q.currency),
         counteredAt: new Date(),
+        // QA-521: the buyer's one-line context rides the counter;
+        // undefined → no note stored.
+        counterMessage: note ?? null,
       })
       .where(
         and(
@@ -1705,6 +1715,7 @@ export class DrizzleRepo implements Repo {
         counterAmountMinor: null,
         counteredAt: null,
         counterNudgeMailedAt: null,
+        counterMessage: null,
       })
       .where(
         and(

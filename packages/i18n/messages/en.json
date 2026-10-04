@@ -233,7 +233,8 @@
     },
     "opQuoteCountered": {
       "subject": "Buyer countered your quote for “{title}”",
-      "body": "The buyer countered your quote of {currency} {amount} for “{title}” on {site} with {currency} {counterAmount}. Revise your offer or stand firm — the quote stays live."
+      "body": "The buyer countered your quote of {currency} {amount} for “{title}” on {site} with {currency} {counterAmount}. Revise your offer or stand firm — the quote stays live.",
+      "note": "They wrote: {note}"
     },
     "opDealClosed": {
       "subject": "Your quote for “{title}” was accepted",
@@ -471,6 +472,7 @@
     "counter": "Counter",
     "counterWithdraw": "Withdraw counter",
     "counterYourPrice": "Your price",
+    "counterNotePlaceholder": "Add a note (optional)",
     "counterSend": "Send counter",
     "counteredYou": "You countered {amount} — awaiting the operator.",
     "counteredMsg": "Counter sent — the operator was emailed.",

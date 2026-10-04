@@ -422,20 +422,32 @@ export default async function RfqInboxPage({
                             </Badge>
                           ) : null}
                           {/* QA-511: the buyer countered — op answers
-                              with a revise (which clears the counter). */}
+                              with a revise (which clears the counter).
+                              QA-521: their one-line note rides under it. */}
                           {q.status === "sent" && q.counterAmount != null ? (
-                            <Badge
-                              variant="warning"
-                              data-testid={`quote-counter-${q.id}`}
-                            >
-                              {t("counteredByBuyer", {
-                                amount: formatMoney(
-                                  q.counterAmount,
-                                  q.currency,
-                                  locale,
-                                ),
-                              })}
-                            </Badge>
+                            <span className="inline-flex flex-col items-end gap-0.5">
+                              <Badge
+                                variant="warning"
+                                data-testid={`quote-counter-${q.id}`}
+                              >
+                                {t("counteredByBuyer", {
+                                  amount: formatMoney(
+                                    q.counterAmount,
+                                    q.currency,
+                                    locale,
+                                  ),
+                                })}
+                              </Badge>
+                              {q.counterMessage ? (
+                                <span
+                                  className="max-w-56 truncate text-xs italic text-muted"
+                                  title={q.counterMessage}
+                                  data-testid={`quote-counter-note-${q.id}`}
+                                >
+                                  “{q.counterMessage}”
+                                </span>
+                              ) : null}
+                            </span>
                           ) : null}
                           {/* QA-515: or take their number outright — the
                               deal mints at counterAmount. QA-519: or

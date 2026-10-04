@@ -243,6 +243,9 @@ export const quotes = pgTable(
     // units) and when; reviseQuote clears both for the next round.
     counterAmountMinor: bigint("counter_amount_minor", { mode: "number" }),
     counteredAt: timestamp("countered_at", { withTimezone: true }),
+    // QA-521: optional one-line note on the counter — "that's with
+    // positioning included" — cleared with the round.
+    counterMessage: text("counter_message"),
     // QA-516: worker nudge stamp — one "answer the counter" mail per
     // countered round; cleared with the counter on revise.
     counterNudgeMailedAt: timestamp("counter_nudge_mailed_at", {

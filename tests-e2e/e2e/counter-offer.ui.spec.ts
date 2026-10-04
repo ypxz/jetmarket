@@ -278,6 +278,11 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     );
     await sent.locator(tidPrefix('counter-')).first().click();
     await buyer.locator(tidPrefix('counter-amount-')).fill('9200');
+    // QA-521: the counter carries a one-line note — the operator should
+    // see "covers repositioning" under the countered badge.
+    await buyer
+      .locator(tidPrefix('counter-note-'))
+      .fill('covers repositioning');
     await buyer.locator(tidPrefix('counter-send-')).click();
     expect((await recounterResp).status()).toBe(200);
     await expect(sent.locator(tidPrefix('counter-sent-'))).toBeVisible();
@@ -302,6 +307,10 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
       .filter({ hasText: LISTING_TITLE })
       .filter({ has: operator.locator(tidPrefix('decline-counter-')) });
     await expect(item).toBeVisible();
+    // QA-521: the buyer's note rides under the countered badge.
+    await expect(
+      item.locator(tidPrefix('quote-counter-note-')),
+    ).toContainText('covers repositioning');
     const declineResp = operator.waitForResponse(
       (r) =>
         r.url().includes('/decline-counter') &&

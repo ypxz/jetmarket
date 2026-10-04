@@ -105,6 +105,8 @@ function QuotesInner() {
   // QA-511: which quote's counter-offer input is open + the draft amount.
   const [counteringId, setCounteringId] = useState<string | null>(null);
   const [counterDraft, setCounterDraft] = useState("");
+  // QA-521: optional one-line note riding the counter.
+  const [counterNote, setCounterNote] = useState("");
   // QA-486: one in-flight mutation at a time. Every action below raced a
   // double-click before — accept/close/extend 409'd harmlessly, but a
   // second PATCH succeeded and re-mailed every delivered operator. The ref
@@ -366,7 +368,12 @@ function QuotesInner() {
       res = await fetch(`/api/quotes/${quoteId}/counter`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ buyerEmail: email, token, amount }),
+        body: JSON.stringify({
+          buyerEmail: email,
+          token,
+          amount,
+          ...(counterNote.trim() ? { note: counterNote.trim() } : {}),
+        }),
       });
     } catch {
       setMsg(tc("error"));
@@ -378,6 +385,7 @@ function QuotesInner() {
       return;
     }
     setCounteringId(null);
+    setCounterNote("");
     setMsg(t("counteredMsg"));
     await load();
   }
@@ -431,6 +439,19 @@ function QuotesInner() {
             className="w-28 rounded-md border border-border bg-background px-2 py-1 text-sm"
           />
           <span className="text-xs text-muted">{q.currency}</span>
+          {/* QA-521: context for the number — "covers repositioning".
+              One line, optional; the operator sees it in the inbox
+              and the counter mail. */}
+          <input
+            type="text"
+            maxLength={500}
+            value={counterNote}
+            onChange={(e) => setCounterNote(e.target.value)}
+            placeholder={t("counterNotePlaceholder")}
+            aria-label={t("counterNotePlaceholder")}
+            data-testid={`counter-note-${q.id}`}
+            className="w-56 rounded-md border border-border bg-background px-2 py-1 text-sm"
+          />
           <button
             onClick={() => counter(q.id)}
             disabled={busy || !(Number(counterDraft) > 0)}
@@ -453,6 +474,7 @@ function QuotesInner() {
       <button
         onClick={() => {
           setCounterDraft(String(Math.max(1, q.amount - 1)));
+          setCounterNote("");
           setCounteringId(q.id);
         }}
         disabled={busy}

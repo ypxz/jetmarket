@@ -233,7 +233,8 @@
     },
     "opQuoteCountered": {
       "subject": "Käufer hat Ihr Angebot für „{title}“ gegengeboten",
-      "body": "Der Käufer hat auf Ihr Angebot von {currency} {amount} für „{title}“ auf {site} ein Gegenangebot von {currency} {counterAmount} gemacht. Überarbeiten Sie Ihr Angebot oder bleiben Sie dabei — das Angebot bleibt aktiv."
+      "body": "Der Käufer hat auf Ihr Angebot von {currency} {amount} für „{title}“ auf {site} ein Gegenangebot von {currency} {counterAmount} gemacht. Überarbeiten Sie Ihr Angebot oder bleiben Sie dabei — das Angebot bleibt aktiv.",
+      "note": "Dazu schrieb der Käufer: {note}"
     },
     "opDealClosed": {
       "subject": "Ihr Angebot für „{title}“ wurde angenommen",
@@ -471,6 +472,7 @@
     "counter": "Gegenangebot",
     "counterWithdraw": "Gegenangebot zurückziehen",
     "counterYourPrice": "Ihr Preis",
+    "counterNotePlaceholder": "Notiz hinzufügen (optional)",
     "counterSend": "Gegenangebot senden",
     "counteredYou": "Sie haben {amount} geboten — warten auf den Anbieter.",
     "counteredMsg": "Gegenangebot gesendet — der Anbieter wurde benachrichtigt.",

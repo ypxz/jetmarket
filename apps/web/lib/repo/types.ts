@@ -213,6 +213,9 @@ export interface Quote {
   counterAmount?: number;
   /** When the live counter was proposed. */
   counteredAt?: string;
+  /** QA-521: optional one-line note the buyer attached to their counter
+   *  ("that's with positioning included") — clears with the round. */
+  counterMessage?: string;
 }
 
 export interface Deal {
@@ -805,7 +808,14 @@ export interface Repo {
    *  quote already left 'sent' or already carries a live counter (one
    *  counter per offer round — reviseQuote clears it for the next).
    *  Amount is in display units, stored minor like the quote itself. */
-  counterQuote(id: string, amount: number): Promise<boolean>;
+  /** QA-521: `note` is the optional one-line context the buyer attaches
+   *  ("8,000 incl. repositioning") — stored with the counter, cleared
+   *  with it. */
+  counterQuote(
+    id: string,
+    amount: number,
+    note?: string,
+  ): Promise<boolean>;
   /** QA-518: withdraw a live counter — the buyer takes their number off
    *  the table before the operator answers. Same CAS as counterQuote
    *  ('sent' + countered); clears the QA-516 nudge stamp too so a

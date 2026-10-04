@@ -93,6 +93,7 @@ export async function notifyQuoteCountered(
   quote: Quote,
   rfq: Rfq,
   counterAmount: number,
+  note?: string,
 ): Promise<void> {
   try {
     const operator = await repo.getOperator(quote.operatorId);
@@ -111,14 +112,20 @@ export async function notifyQuoteCountered(
       amount: quote.amount,
       counterAmount,
     });
+    // QA-521: the buyer's one-line context — "8,000 incl. repositioning" —
+    // rides as its own paragraph so the number and the note both survive
+    // a skim (and the text/plain body stays honest).
+    const noteLine = note
+      ? mailT(m, "opQuoteCountered.note", { note })
+      : undefined;
     await emailProvider().send({
       to: owner.email,
       subject,
-      text: body,
+      text: noteLine ? `${body}\n\n${noteLine}` : body,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
-        paragraphs: [body],
+        paragraphs: noteLine ? [body, noteLine] : [body],
       }),
     });
   } catch (e) {

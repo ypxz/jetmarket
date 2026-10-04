@@ -630,8 +630,18 @@ export function repoContract(
       });
       expect(met?.counterAmount).toBeUndefined();
       expect(met?.counteredAt).toBeUndefined();
-      // The cleared round accepts a fresh counter.
-      expect(await repo.counterQuote(counterTarget!.id, 24000)).toBe(true);
+      // The cleared round accepts a fresh counter — QA-521: this one
+      // carries the buyer's one-line note.
+      expect(
+        await repo.counterQuote(
+          counterTarget!.id,
+          24000,
+          "includes repositioning",
+        ),
+      ).toBe(true);
+      const noted = (await repo.getQuote(counterTarget!.id))!;
+      expect(noted.counterAmount).toBe(24000);
+      expect(noted.counterMessage).toBe("includes repositioning");
 
       // QA-518: withdraw clears the round too — same CAS as countering
       // (nothing to pull → false, terminal → false), and the quote's
@@ -640,13 +650,19 @@ export function repoContract(
       const pulled = (await repo.getQuote(counterTarget!.id))!;
       expect(pulled.counterAmount).toBeUndefined();
       expect(pulled.counteredAt).toBeUndefined();
+      // QA-521: the note clears with the round too.
+      expect(pulled.counterMessage).toBeUndefined();
       // The withdraw doesn't bump updatedAt either — it still carries
       // the revise's stamp, nothing newer (a pull isn't a revision).
       expect(pulled.updatedAt).toBe(met!.updatedAt);
       expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(false);
       expect(await repo.clearQuoteCounter("nope")).toBe(false);
-      // Withdrawn ≠ spent — a fresh counter round opens.
+      // Withdrawn ≠ spent — a fresh counter round opens, and a round
+      // without a note carries nothing from the last one.
       expect(await repo.counterQuote(counterTarget!.id, 22000)).toBe(true);
+      expect(
+        (await repo.getQuote(counterTarget!.id))!.counterMessage,
+      ).toBeUndefined();
       await repo.setQuoteStatus(counterTarget!.id, "accepted", "sent");
       expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(false);
     });
