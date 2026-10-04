@@ -20,6 +20,7 @@ import { POST as createQuote } from "../../app/api/quotes/route";
 import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
 import { POST as declineQuote } from "../../app/api/quotes/[id]/decline/route";
 import { POST as counterQuote } from "../../app/api/quotes/[id]/counter/route";
+import { POST as acceptCounter } from "../../app/api/quotes/[id]/accept-counter/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
 import { POST as moderateListing } from "../../app/api/admin/listings/[id]/status/route";
@@ -258,6 +259,52 @@ describe("POST /api/quotes/[id]/counter (buyer, QA-511)", () => {
       params(quote.id),
     );
     expect(res.status).toBe(409);
+  });
+});
+
+describe("POST /api/quotes/[id]/accept-counter (operator, QA-515)", () => {
+  it("closes the deal at the buyer's counter; guards the whole way", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, otherUser, quote, buyerEmail, rfq } =
+      await fixture(repo);
+
+    // Anonymous + wrong operator + no-counter-on-table all refuse first.
+    const anon = await acceptCounter(post(), params(quote.id));
+    expect(anon.status).toBe(401);
+    asUser(otherUser.id);
+    const wrong = await acceptCounter(post(), params(quote.id));
+    expect(wrong.status).toBe(403);
+    asUser(opUser.id);
+    const noCounter = await acceptCounter(post(), params(quote.id));
+    expect(noCounter.status).toBe(409);
+
+    // Buyer counters 8000 on the 9000 ask.
+    const cnt = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 8000 }),
+      params(quote.id),
+    );
+    expect(cnt.status).toBe(200);
+
+    const res = await acceptCounter(post(), params(quote.id));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      quote: Quote;
+      deal: { amount: number; currency: string; operatorId: string };
+    };
+    expect(body.quote.status).toBe("accepted");
+    // The deal minted at THEIR number — not the original ask.
+    expect(body.deal.amount).toBe(8000);
+    expect(body.deal.operatorId).toBe((await repo.getQuote(quote.id))!.operatorId);
+    expect((await repo.getRfq(rfq.id))!.status).toBe("closed");
+
+    // Replay + buyer's own accept on the closed RFQ both 409.
+    const again = await acceptCounter(post(), params(quote.id));
+    expect(again.status).toBe(409);
+    const lateBuyer = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(lateBuyer.status).toBe(409);
   });
 });
 

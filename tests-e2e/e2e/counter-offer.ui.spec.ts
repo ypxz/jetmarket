@@ -185,4 +185,100 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await acceptResp;
     await expect(buyer.getByTestId('accept-msg')).toContainText(/accepted/i);
   });
+
+  // Round 2 (QA-515): a fresh request on the same listing — this time the
+  // operator takes the buyer's number outright instead of revising.
+  await step('buyer sends a second RFQ', async () => {
+    await buyer.goto('/search');
+    await buyer.getByTestId('facet-q').fill(LISTING_TITLE);
+    await buyer.getByTestId('facet-apply').click();
+    await buyer
+      .getByTestId('search-result')
+      .filter({ hasText: LISTING_TITLE })
+      .first()
+      .click();
+    await buyer.getByTestId('listing-rfq-cta').click();
+    await buyer.waitForURL(/\/rfq\//, { timeout: 15_000 }).catch(async () => {
+      await buyer.getByTestId('listing-rfq-cta').click();
+      await buyer.waitForURL(/\/rfq\//, { timeout: 15_000 });
+    });
+    await fillRfqForm(buyer, BUYER_EMAIL);
+    await buyer.getByTestId('rfq-submit').click();
+    await buyer.waitForURL(/\/rfq\/thanks/, { timeout: 15_000 });
+    await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  await step('operator quotes it; buyer counters 9,000', async () => {
+    await operator.goto('/app/rfqs');
+    // The closed round-1 row shares the listing title — the LIVE row is
+    // the one still offering a quote form.
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE })
+      .filter({ has: operator.locator(tidPrefix('quote-amount-')) });
+    await expect(item).toBeVisible();
+    await item.locator(tidPrefix('quote-amount-')).fill('11000');
+    const sendResp = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/api/quotes') &&
+        r.request().method() === 'POST' &&
+        r.status() === 201,
+    );
+    await item.locator(tidPrefix('quote-send-')).click();
+    await sendResp;
+
+    await buyer.getByTestId('rfq-view-quotes').click();
+    const emailInput = buyer.getByTestId('buyer-email');
+    if (!(await emailInput.inputValue())) await emailInput.fill(BUYER_EMAIL);
+    const loadResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
+    await buyer.getByTestId('buyer-load').click();
+    await loadResp;
+    // The sent card is the only one still offering actions — the
+    // round-1 card is accepted/terminal (counter controls render only
+    // on 'sent' + live RFQ).
+    const sent = buyer.locator(tidPrefix('quote-')).filter({
+      has: buyer.locator(tidPrefix('accept-')),
+    });
+    await expect(sent).toBeVisible();
+    const resp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/counter') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await sent.locator(tidPrefix('counter-')).first().click();
+    await buyer.locator(tidPrefix('counter-amount-')).fill('9000');
+    await buyer.locator(tidPrefix('counter-send-')).click();
+    expect((await resp).status()).toBe(200);
+  });
+
+  await step('operator takes the counter — deal closes at 9,000 (QA-515)', async () => {
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE })
+      .filter({ has: operator.locator(tidPrefix('accept-counter-')) });
+    await expect(item).toBeVisible();
+    const resp = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/accept-counter') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await item.locator(tidPrefix('accept-counter-')).click();
+    await item.locator(tidPrefix('accept-counter-yes-')).click();
+    await resp;
+    await expect(item.locator(tidPrefix('accept-counter-error-'))).toHaveCount(0);
+
+    // Deal row on the dashboard carries the countered price — not the ask.
+    await operator.goto('/app');
+    await expect(operator.locator('main')).toContainText('9,000');
+  });
 });

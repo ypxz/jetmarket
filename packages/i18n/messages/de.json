@@ -1140,7 +1140,12 @@
       "flagNotePlaceholder": "Optionale Details für unser Team",
       "sortEnding": "Endet zuerst",
       "counteredByBuyer": "Gegenangebot {amount}",
-      "filterCountered": "Gegenangebot"
+      "filterCountered": "Gegenangebot",
+      "acceptCounter": "Die {amount} nehmen",
+      "acceptCounterCancel": "Weiter verhandeln",
+      "acceptCounterSure": "Deal zum Gegenangebot abschließen?",
+      "acceptCounterYes": "Für {amount} abschließen",
+      "acceptCounterWorking": "Abschluss…"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

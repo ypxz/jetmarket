@@ -14,6 +14,7 @@ import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 import { ReviseQuote } from "./revise-quote";
+import { AcceptCounter } from "./accept-counter";
 import { DismissAllButton, DismissButton, RestoreAllButton, RestoreButton } from "./dismiss-button";
 import { ReportRfq } from "./report-rfq";
 
@@ -423,6 +424,20 @@ export default async function RfqInboxPage({
                                 ),
                               })}
                             </Badge>
+                          ) : null}
+                          {/* QA-515: or take their number outright — the
+                              deal mints at counterAmount. */}
+                          {q.status === "sent" &&
+                          q.counterAmount != null &&
+                          LIVE_RFQ_STATES.has(r.status) ? (
+                            <AcceptCounter
+                              quoteId={q.id}
+                              amount={formatMoney(
+                                q.counterAmount,
+                                q.currency,
+                                locale,
+                              )}
+                            />
                           ) : null}
                           {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
                             <>

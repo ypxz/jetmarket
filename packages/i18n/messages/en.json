@@ -1140,7 +1140,12 @@
       "flagNotePlaceholder": "Optional details for our team",
       "sortEnding": "Ending first",
       "counteredByBuyer": "Countered {amount}",
-      "filterCountered": "Countered"
+      "filterCountered": "Countered",
+      "acceptCounter": "Take the {amount}",
+      "acceptCounterCancel": "Keep negotiating",
+      "acceptCounterSure": "Close the deal at their counter?",
+      "acceptCounterYes": "Close at {amount}",
+      "acceptCounterWorking": "Closing…"
     },
     "billing": {
       "title": "Plan & billing",
