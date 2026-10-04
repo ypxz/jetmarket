@@ -57,6 +57,9 @@ export default async function RfqInboxPage({
   // "Answered" view (QA-433): needsQuote's inverse — the RFQs where this
   // operator already holds a live quote, i.e. their outstanding offers.
   const answeredOnly = f === "answered";
+  // "Countered" view (QA-513): the hottest leads — RFQs where this
+  // operator's quote carries an unanswered buyer counter.
+  const counteredOnly = f === "countered";
   // Per-listing triage (QA-430): only their own listings may filter — a
   // foreign/unknown id falls back to the unfiltered inbox.
   const ownListings = await repo.listListings({
@@ -82,6 +85,7 @@ export default async function RfqInboxPage({
     needsQuote: needsOnly || undefined,
     dismissedOnly: dismissedOnly || undefined,
     answeredOnly: answeredOnly || undefined,
+    counteredOnly: counteredOnly || undefined,
     vertical: verticalSlug(),
   });
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
@@ -93,6 +97,7 @@ export default async function RfqInboxPage({
     needsQuote: needsOnly || undefined,
     dismissedOnly: dismissedOnly || undefined,
     answeredOnly: answeredOnly || undefined,
+    counteredOnly: counteredOnly || undefined,
     vertical: verticalSlug(),
     sort: sortEnding ? "deadline" : undefined,
     limit: SEARCH_PAGE_SIZE,
@@ -179,6 +184,7 @@ export default async function RfqInboxPage({
             ["all", t("filterAll")],
             ["needs", t("filterNeeds")],
             ["answered", t("filterAnswered")],
+            ["countered", t("filterCountered")],
             ["dismissed", t("filterDismissed")],
           ] as const
         ).map(([key, label]) => {
@@ -197,7 +203,11 @@ export default async function RfqInboxPage({
               data-testid={`filter-${key}`}
               className={`rounded-md px-3 py-1.5 text-sm ${
                 f === key ||
-                (key === "all" && !needsOnly && !dismissedOnly && !answeredOnly)
+                (key === "all" &&
+                  !needsOnly &&
+                  !dismissedOnly &&
+                  !answeredOnly &&
+                  !counteredOnly)
                   ? "bg-primary text-primary-foreground font-medium"
                   : "border border-border bg-background text-muted"
               }`}

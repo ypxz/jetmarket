@@ -34,10 +34,11 @@ describe("MockAuthProvider", () => {
     expect(got?.id).toBe(session.id);
     expect(got?.email).toBe(session.email);
 
-    // tampered signature rejected
-    expect(
-      await a.getSession(`${SESSION_COOKIE_NAME}=${cookie.slice(0, -2)}00`),
-    ).toBeNull();
+    // tampered signature rejected — flip the last hex char to a *different*
+    // value (appending fixed bytes is a no-op when the sig already ends
+    // with them: ~1/256 flake, QA-514).
+    const tampered = `${cookie.slice(0, -1)}${cookie.endsWith("0") ? "1" : "0"}`;
+    expect(await a.getSession(`${SESSION_COOKIE_NAME}=${tampered}`)).toBeNull();
     // wrong cookie name / missing
     expect(await a.getSession("other=x")).toBeNull();
     expect(await a.getSession(null)).toBeNull();

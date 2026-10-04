@@ -1139,7 +1139,8 @@
       "flagOther": "Other",
       "flagNotePlaceholder": "Optional details for our team",
       "sortEnding": "Ending first",
-      "counteredByBuyer": "Countered {amount}"
+      "counteredByBuyer": "Countered {amount}",
+      "filterCountered": "Countered"
     },
     "billing": {
       "title": "Plan & billing",

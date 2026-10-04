@@ -588,6 +588,10 @@ export interface Repo {
      * the operator can review the outstanding queue they already created.
      * Declined/withdrawn quotes don't count: no live quote is in play. */
     answeredOnly?: boolean;
+    /** "Countered" inbox view (QA-513): only meaningful with `operatorId`
+     *  — RFQs where the operator's own quote holds a live buyer counter
+     *  (countered_at set on a still-'sent' quote). The hottest leads. */
+    counteredOnly?: boolean;
     /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
     vertical?: string;
     /** Inbox ordering (QA-443): default newest-first; "deadline" orders
@@ -727,6 +731,9 @@ export interface Repo {
     /** Same "answered" inclusion as listRfqs (QA-433) — totals must match
      * the filtered page on both impls. */
     answeredOnly?: boolean;
+    /** Same "countered" inclusion as listRfqs (QA-513) — totals must match
+     * the filtered page on both impls. */
+    counteredOnly?: boolean;
     /** Same per-listing scope as listRfqs (QA-430) — the filtered inbox's
      *  page total. */
     listingId?: string;

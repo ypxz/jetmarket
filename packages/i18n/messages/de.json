@@ -1139,7 +1139,8 @@
       "flagOther": "Sonstiges",
       "flagNotePlaceholder": "Optionale Details für unser Team",
       "sortEnding": "Endet zuerst",
-      "counteredByBuyer": "Gegenangebot {amount}"
+      "counteredByBuyer": "Gegenangebot {amount}",
+      "filterCountered": "Gegenangebot"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

@@ -1088,6 +1088,7 @@ export class DrizzleRepo implements Repo {
     needsQuote?: boolean;
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
+    counteredOnly?: boolean;
     vertical?: string;
     sort?: "deadline";
     limit?: number;
@@ -1158,6 +1159,19 @@ export class DrizzleRepo implements Repo {
                     where q.rfq_id = ${rfqs.id}
                       and q.operator_id = ${filter.operatorId}
                       and q.status in ('sent','accepted')
+                  )`,
+                ]
+              : []),
+            ...(filter.counteredOnly
+              ? [
+                  // "Countered" (QA-513): a live buyer counter sits on
+                  // this operator's quote — the hottest leads.
+                  sql`exists (
+                    select 1 from quotes q
+                    where q.rfq_id = ${rfqs.id}
+                      and q.operator_id = ${filter.operatorId}
+                      and q.status = 'sent'
+                      and q.countered_at is not null
                   )`,
                 ]
               : []),
@@ -1241,6 +1255,7 @@ export class DrizzleRepo implements Repo {
     needsQuote?: boolean;
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
+    counteredOnly?: boolean;
     listingId?: string;
     vertical?: string;
     statusNot?: RfqStatus[];
@@ -1308,6 +1323,16 @@ export class DrizzleRepo implements Repo {
             where q.rfq_id = ${rfqs.id}
               and q.operator_id = ${filter.operatorId}
               and q.status in ('sent','accepted')
+          )`,
+        );
+      if (filter.counteredOnly)
+        conds.push(
+          sql`exists (
+            select 1 from quotes q
+            where q.rfq_id = ${rfqs.id}
+              and q.operator_id = ${filter.operatorId}
+              and q.status = 'sent'
+              and q.countered_at is not null
           )`,
         );
       const [r] = await this.db

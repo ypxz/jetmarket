@@ -683,6 +683,7 @@ class MemoryRepo implements Repo {
     needsQuote?: boolean;
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
+    counteredOnly?: boolean;
     vertical?: string;
     sort?: "deadline";
     limit?: number;
@@ -737,6 +738,21 @@ class MemoryRepo implements Repo {
         out = out.filter((r) =>
           filter.answeredOnly ? quoted.has(r.id) : !quoted.has(r.id),
         );
+      }
+      // QA-513 "countered": the lead is hot — the buyer put a number on
+      // the table and it hasn't been answered yet (revise clears it).
+      if (filter.counteredOnly) {
+        const countered = new Set(
+          [...this.quotes.values()]
+            .filter(
+              (q) =>
+                q.operatorId === opId &&
+                q.status === "sent" &&
+                q.counteredAt !== undefined,
+            )
+            .map((q) => q.rfqId),
+        );
+        out = out.filter((r) => countered.has(r.id));
       }
     }
     // Operator inbox: concierge expedites sort first — the buyer paid for
@@ -874,6 +890,7 @@ class MemoryRepo implements Repo {
     operatorId?: string;
     needsQuote?: boolean;
     answeredOnly?: boolean;
+    counteredOnly?: boolean;
     listingId?: string;
     vertical?: string;
     statusNot?: Rfq["status"][];

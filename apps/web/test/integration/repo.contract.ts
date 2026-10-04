@@ -1111,6 +1111,112 @@ export function repoContract(
       ).toBe(0);
     });
 
+    it("counteredOnly shows only RFQs holding a live buyer counter (QA-513)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mkOp = async (n: string) => {
+        const u = await repo.createUser(`ct-${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: true,
+          plan: "pro",
+        });
+      };
+      const [owner, op, other] = await Promise.all([
+        mkOp("ctowner"),
+        mkOp("ctop"),
+        mkOp("ctother"),
+      ]);
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `CT Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const hotRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `ct-h-${tag}@test.dev`,
+        fields: {},
+      });
+      const coldRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `ct-c-${tag}@test.dev`,
+        fields: {},
+      });
+      await repo.createRfqMatches([
+        { rfqId: hotRfq.id, operatorId: op.id, listingId: listing.id },
+        { rfqId: coldRfq.id, operatorId: op.id, listingId: listing.id },
+      ]);
+      const hot = await repo.createQuote({
+        rfqId: hotRfq.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "",
+      });
+      const cold = await repo.createQuote({
+        rfqId: coldRfq.id,
+        operatorId: op.id,
+        amount: 8500,
+        currency: "USD",
+        message: "",
+      });
+      // Another operator's countered quote must not light op's view.
+      const foreign = await repo.createQuote({
+        rfqId: coldRfq.id,
+        operatorId: other.id,
+        amount: 8000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.counterQuote(foreign!.id, 7000);
+
+      // No counter yet — the view is empty.
+      expect(
+        await repo.listRfqs({ operatorId: op.id, counteredOnly: true }),
+      ).toEqual([]);
+
+      await repo.counterQuote(hot!.id, 8200);
+      const countered = await repo.listRfqs({
+        operatorId: op.id,
+        counteredOnly: true,
+      });
+      expect(countered.map((r) => r.id)).toEqual([hotRfq.id]);
+      // Pagination total mirrors the filtered page.
+      expect(
+        await repo.countRfqs({ operatorId: op.id, counteredOnly: true }),
+      ).toBe(1);
+
+      // An uncountered live quote doesn't qualify; a terminal row falls
+      // out too (accept ends the negotiation).
+      expect(
+        (await repo.listRfqs({ operatorId: op.id, counteredOnly: true }))
+          .map((r) => r.id),
+      ).not.toContain(coldRfq.id);
+      await repo.setQuoteStatus(hot!.id, "accepted", "sent");
+      expect(
+        await repo.listRfqs({ operatorId: op.id, counteredOnly: true }),
+      ).toEqual([]);
+
+      // A revise-clear is already covered by QA-511's pin; cover the
+      // reverse: a fresh counter after decline frees nothing (declined
+      // quotes can't be countered — repo guard).
+      await repo.setQuoteStatus(cold!.id, "declined", "sent");
+      expect(await repo.counterQuote(cold!.id, 5000)).toBe(false);
+      expect(
+        await repo.listRfqs({ operatorId: op.id, counteredOnly: true }),
+      ).toEqual([]);
+    });
+
     it("sort='deadline' orders operator lists by the liveness horizon; concierge rank is operator-only (QA-443)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

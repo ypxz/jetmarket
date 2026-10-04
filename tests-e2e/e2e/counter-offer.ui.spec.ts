@@ -126,6 +126,21 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     ).toBeVisible();
   });
 
+  await step('the Countered inbox filter isolates the hot lead (QA-513)', async () => {
+    await operator.goto('/app/rfqs');
+    await operator.getByTestId('filter-countered').click();
+    await expect(operator).toHaveURL(/f=countered/);
+    // The countered RFQ is the whole view — nothing else qualifies.
+    const rows = operator.locator('li[data-testid^="rfq-"]');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText(LISTING_TITLE);
+    // The plain inbox keeps it too (a counter doesn't move the row).
+    await operator.getByTestId('filter-all').click();
+    await expect(
+      operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE }),
+    ).toBeVisible();
+  });
+
   await step('operator meets it with a revise — the round clears', async () => {
     await operator.goto('/app/rfqs');
     const item = operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE });
