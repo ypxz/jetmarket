@@ -173,17 +173,26 @@ export async function notifyDealClosed(
     const contact = owner
       ? `Reach them directly at ${owner.email} — they have also been notified.`
       : "The operator has been notified and will contact you to arrange fulfilment.";
+    // QA-452: the rating surface lives on the buyer inbox — the only moment
+    // a buyer is guaranteed to return for is the close mail, so the once-
+    // ever stars ride this link (same bearer deep-link as the fan-out mail).
+    const origin =
+      process.env.APP_URL?.replace(/\/+$/, "") ?? `https://${site.domain}`;
+    const rateUrl =
+      `${origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}` +
+      `#t=${encodeURIComponent(rfq.accessToken)}`;
+    const rateLine = `Rate how it went — it takes ten seconds and helps the next buyer: ${rateUrl}`;
     const body =
       `You accepted ${operator?.name ?? "the operator"}'s quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
       contact;
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,
-      text: body,
+      text: `${body} ${rateLine}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
-        paragraphs: [body],
+        paragraphs: [body, rateLine],
       }),
     });
   } catch (e) {

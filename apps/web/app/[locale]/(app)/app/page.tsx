@@ -419,6 +419,12 @@ export default async function OperatorDashboard() {
                   <div className="text-xs text-muted">
                     {new Date(d.closedAt).toDateString()}
                     {d.invoiceRef ? ` · ${d.invoiceRef}` : ""}
+                    {/* QA-452: the buyer's once-ever rating, seen by the op. */}
+                    {d.buyerRating !== undefined ? (
+                      <span data-testid={`deal-rating-${d.id}`}>
+                        {` · ${t("ratedDeal", { rating: d.buyerRating })}`}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <span className="flex items-center gap-2">

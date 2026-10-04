@@ -682,6 +682,7 @@
       "subActive": "Subscription active until {date}",
       "deals": "Deals ({count})",
       "dealFee": "fee {fee}",
+      "ratedDeal": "buyer rated ★ {rating}",
       "payFee": "Pay fee",
       "paying": "Paying…",
       "payFailed": "Payment failed — retry",
@@ -875,6 +876,7 @@
     "viewProfile": "View profile →",
     "memberSince": "On {siteName} since {date}",
     "dealsClosed": "{count, plural, one {# deal closed} other {# deals closed}}",
-    "responseTime": "Typically replies in ~{count, plural, one {# hour} other {# hours}}"
+    "responseTime": "Typically replies in ~{count, plural, one {# hour} other {# hours}}",
+    "buyerRating": "★ {avg} ({count, plural, one {# buyer rating} other {# buyer ratings}})"
   }
 }

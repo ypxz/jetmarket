@@ -101,7 +101,7 @@ export default async function ListingPage({
   // Operator card and the similar rail both hang off `listing` — parallel.
   // QA-437: the trust trio rides along — the listing page is where the RFQ
   // decision happens, so member-since/deals/response-time surface here too.
-  const [operatorRow, similarRows, watchCount, dealCount, avgResponseH] =
+  const [operatorRow, similarRows, watchCount, dealCount, avgResponseH, rating] =
     await Promise.all([
       repo.getOperator(listing.operatorId),
       repo.listListings({
@@ -126,6 +126,11 @@ export default async function ListingPage({
         .catch(() => 0),
       repo
         .avgResponseHoursPerOperator([listing.operatorId], verticalSlug())
+        .then((m) => m[listing.operatorId])
+        .catch(() => undefined),
+      // QA-452: ★ rides the RFQ decision point with the rest of the trio.
+      repo
+        .ratingSummaryPerOperator([listing.operatorId])
         .then((m) => m[listing.operatorId])
         .catch(() => undefined),
     ]);
@@ -298,6 +303,14 @@ export default async function ListingPage({
                     <Badge variant="outline" data-testid="operator-response-time">
                       {ot("responseTime", {
                         count: Math.max(1, Math.round(avgResponseH)),
+                      })}
+                    </Badge>
+                  ) : null}
+                  {rating ? (
+                    <Badge variant="outline" data-testid="operator-rating">
+                      {ot("buyerRating", {
+                        avg: rating.avg.toFixed(1),
+                        count: rating.count,
                       })}
                     </Badge>
                   ) : null}

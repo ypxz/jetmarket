@@ -87,6 +87,11 @@ export default async function OperatorPage({
   const avgResponseH = (
     await repo.avgResponseHoursPerOperator([operator.id], verticalSlug())
   )[operator.id];
+  // QA-452: buyer ratings — the reputation the QA-451 stars accumulate,
+  // beside the rest of the trust signals. Hides until the first rating.
+  const rating = (await repo.ratingSummaryPerOperator([operator.id]))[
+    operator.id
+  ];
   const memberSince = new Date(operator.createdAt).toLocaleDateString(
     "en",
     { month: "long", year: "numeric" },
@@ -133,6 +138,14 @@ export default async function OperatorPage({
           <Badge variant="outline" data-testid="operator-response-time">
             {t("responseTime", {
               count: Math.max(1, Math.round(avgResponseH)),
+            })}
+          </Badge>
+        ) : null}
+        {rating ? (
+          <Badge variant="outline" data-testid="operator-rating">
+            {t("buyerRating", {
+              avg: rating.avg.toFixed(1),
+              count: rating.count,
             })}
           </Badge>
         ) : null}

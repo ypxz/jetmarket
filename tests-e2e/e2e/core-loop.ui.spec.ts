@@ -425,6 +425,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // mock mode flips it through the emulated webhook instantly.
     await operator.locator('[data-testid^="pay-fee-"]').first().click();
     await expect(deals.getByText('paid')).toBeVisible();
+    // QA-452: the buyer's 5-star rating shows to the operator on the deal row.
+    await expect(
+      deals.locator('[data-testid^="deal-rating-"]'),
+    ).toContainText('★ 5');
   });
 
   await step('buyer sees the operator track record (QA-431)', async () => {
@@ -463,6 +467,10 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(
         buyer.getByTestId('operator-response-time'),
       ).toContainText('~1 hour');
+      // QA-452: the rating the buyer left in the accept leg surfaced here.
+      await expect(buyer.getByTestId('operator-rating')).toHaveText(
+        '★ 5.0 (1 buyer rating)',
+      );
 
       // QA-437: the same trio rides the listing page's operator card — the
       // RFQ decision point gets the trust signals, not just the profile.
@@ -478,6 +486,9 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(
         buyer.getByTestId('operator-response-time'),
       ).toContainText('~1 hour');
+      await expect(buyer.getByTestId('operator-rating')).toHaveText(
+        '★ 5.0 (1 buyer rating)',
+      );
     } finally {
       await sql.end();
     }
