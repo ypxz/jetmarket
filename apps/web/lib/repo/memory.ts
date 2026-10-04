@@ -587,17 +587,39 @@ class MemoryRepo implements Repo {
       }
     }
     // Operator inbox: concierge expedites sort first — the buyer paid for
-    // immediate attention (QA-400); buyer/admin lists stay newest-first.
-    // sort="deadline" (QA-443) orders operator lists by the QA-442 liveness
-    // horizon (same rule the sweep enforces) — soonest-dying first.
-    out = out.sort(
-      (a, b) =>
-        (filter?.operatorId ? Number(b.concierge) - Number(a.concierge) : 0) ||
-        (filter?.operatorId && filter.sort === "deadline"
-          ? rfqDeadlineAt(a).getTime() - rfqDeadlineAt(b).getTime()
-          : 0) ||
-        b.createdAt.localeCompare(a.createdAt),
-    );
+    // immediate attention (QA-400); admin lists stay newest-first.
+    // sort="deadline" (QA-443) orders user-scoped lists (operator or buyer
+    // inbox) by the QA-442 liveness horizon — soonest-dying live row first;
+    // terminal rows always trail live ones (QA-448: a dead deadline isn't
+    // 'ending soon', it's gone).
+    const deadlineSort =
+      filter?.sort === "deadline" &&
+      (filter?.operatorId !== undefined || filter?.buyerEmail !== undefined);
+    out = out.sort((a, b) => {
+      // Concierge stays the top rank wherever it's visible (operator
+      // inbox) — a paid expedite outranks liveness too (QA-443 order).
+      const conciergeArm = filter?.operatorId
+        ? Number(b.concierge) - Number(a.concierge)
+        : 0;
+      const createdArm = b.createdAt.localeCompare(a.createdAt);
+      if (deadlineSort) {
+        const la = LIVE_RFQ_STATUSES.has(a.status) ? 0 : 1;
+        const lb = LIVE_RFQ_STATUSES.has(b.status) ? 0 : 1;
+        if (la !== lb) return la - lb;
+        if (la === 0) {
+          return (
+            conciergeArm ||
+            rfqDeadlineAt(a).getTime() - rfqDeadlineAt(b).getTime() ||
+            createdArm
+          );
+        }
+        // Terminal group: parity with drizzle — concierge rank still
+        // applies within it, then createdAt-desc (the deadline arm is
+        // meaningless on dead rows, QA-448).
+        return conciergeArm || createdArm;
+      }
+      return conciergeArm || createdArm;
+    });
     if (filter?.offset) out = out.slice(filter.offset);
     if (filter?.limit !== undefined) out = out.slice(0, filter.limit);
     return out;

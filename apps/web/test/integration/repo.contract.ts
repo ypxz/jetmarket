@@ -990,23 +990,34 @@ export function repoContract(
       const soon = await mkRfq("soon", { dateTo: isoIn(5) });
       await pause();
       const undated = await mkRfq("und", { from: "ZRH" });
-      const ids = [late.id, concierge.id, soon.id, undated.id];
+      await pause();
+      // QA-448: a terminal row — dead deadline, must trail every live row
+      // even though its horizon is technically 'soonest'.
+      const dead = await mkRfq("dead", { dateTo: isoIn(1) });
+      await repo.setRfqStatus(dead.id, "closed", [
+        "open",
+        "matched",
+        "quoted",
+      ]);
+      const ids = [late.id, concierge.id, soon.id, undated.id, dead.id];
 
       const idx = (rows: { id: string }[], id: string) =>
         rows.findIndex((r) => r.id === id);
 
       // deadline: concierge still leads (QA-400), then soonest-dying first —
       // soon (+1d) < undated (+30d) < late (months out), regardless of the
-      // newest-first creation order.
+      // newest-first creation order. Terminal rows trail every live row
+      // (QA-448) — the dead row's stale horizon can't lead.
       const byDeadline = await repo.listRfqs({
         operatorId: op.id,
         ids,
         sort: "deadline",
       });
-      expect(byDeadline.map((r) => r.id)).toHaveLength(4);
+      expect(byDeadline.map((r) => r.id)).toHaveLength(5);
       expect(idx(byDeadline, concierge.id)).toBe(0);
       expect(idx(byDeadline, soon.id)).toBeLessThan(idx(byDeadline, undated.id));
       expect(idx(byDeadline, undated.id)).toBeLessThan(idx(byDeadline, late.id));
+      expect(idx(byDeadline, dead.id)).toBe(4);
 
       // Default stays concierge-first + newest-first.
       const newest = await repo.listRfqs({ operatorId: op.id, ids });
@@ -1015,21 +1026,32 @@ export function repoContract(
 
       // Non-operator lists: concierge rank does NOT leak (the parity fix —
       // drizzle used to concierge-sort every listRfqs call). Newest-first:
-      // the concierge row is second-oldest, so it must NOT lead.
+      // the dead row was created last, so it leads; concierge (third-oldest)
+      // must NOT.
       const buyer = await repo.listRfqs({ buyerEmail: `dl-${tag}@test.dev` });
       expect(buyer.map((r) => r.id)).toEqual(
         expect.arrayContaining(ids),
       );
+      expect(idx(buyer, dead.id)).toBe(0);
       expect(idx(buyer, concierge.id)).not.toBe(0);
-      expect(idx(buyer, undated.id)).toBe(0);
-      // sort="deadline" without operatorId is inert — no deadline rank, and
-      // no concierge rank either.
+      // sort="deadline" on the buyer inbox (QA-448): same liveness order as
+      // the operator inbox minus the concierge rank — soon < undated < late
+      // < concierge(+91d), terminal row last.
       const buyerSorted = await repo.listRfqs({
         buyerEmail: `dl-${tag}@test.dev`,
         sort: "deadline",
       });
-      expect(idx(buyerSorted, concierge.id)).not.toBe(0);
-      expect(idx(buyerSorted, undated.id)).toBe(0);
+      expect(idx(buyerSorted, soon.id)).toBe(0);
+      expect(idx(buyerSorted, undated.id)).toBeLessThan(
+        idx(buyerSorted, late.id),
+      );
+      expect(idx(buyerSorted, late.id)).toBeLessThan(
+        idx(buyerSorted, concierge.id),
+      );
+      expect(idx(buyerSorted, dead.id)).toBe(buyerSorted.length - 1);
+      // Admin/unscoped lists stay inert — no user scope, no deadline rank.
+      const adminSorted = await repo.listRfqs({ ids, sort: "deadline" });
+      expect(idx(adminSorted, dead.id)).toBe(0);
     });
 
     it("extendRfqDeadline rewrites fields.dateTo on live rows only (QA-446)", async () => {

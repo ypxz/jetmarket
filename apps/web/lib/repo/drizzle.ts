@@ -956,8 +956,18 @@ export class DrizzleRepo implements Repo {
         // the QA-442 liveness horizon (dated: dateTo+1d; else created+30d —
         // the sweep's exact predicate) so soonest-dying requests lead.
         .orderBy(
+          // QA-448: under sort="deadline" the liveness bucket leads —
+          // terminal rows trail live ones even when they're concierge
+          // expedites; concierge keeps rank-1 inside the live group.
+          ...(filter?.sort === "deadline" &&
+          (filter.operatorId || filter.buyerEmail)
+            ? [
+                sql`case when ${rfqs.status} in ('new', 'matched', 'quoted') then 0 else 1 end asc`,
+              ]
+            : []),
           ...(filter?.operatorId ? [desc(rfqs.concierge)] : []),
-          ...(filter?.sort === "deadline" && filter.operatorId
+          ...(filter?.sort === "deadline" &&
+          (filter.operatorId || filter.buyerEmail)
             ? [
                 sql`case when ${rfqs.fields}->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
                       then (${rfqs.fields}->>'dateTo')::date + 1
@@ -988,7 +998,21 @@ export class DrizzleRepo implements Repo {
       .select()
       .from(rfqs)
       .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(rfqs.createdAt))
+      .orderBy(
+        // QA-448: the buyer inbox gets the same "Ending first" sort the
+        // operator branch has — live rows by the horizon, terminal rows
+        // last. Admin/unscoped lists stay plain newest-first.
+        ...(filter?.sort === "deadline" && filter.buyerEmail
+          ? [
+              sql`case when ${rfqs.status} in ('new', 'matched', 'quoted') then 0 else 1 end asc`,
+              sql`case when ${rfqs.fields}->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                    then (${rfqs.fields}->>'dateTo')::date + 1
+                    else ${rfqs.createdAt} + interval '30 days'
+                  end asc`,
+            ]
+          : []),
+        desc(rfqs.createdAt),
+      )
       .$dynamic();
     if (filter?.limit !== undefined) q = q.limit(filter.limit);
     if (filter?.offset) q = q.offset(filter.offset);

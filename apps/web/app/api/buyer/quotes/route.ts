@@ -39,6 +39,11 @@ export async function GET(req: Request) {
       // Per-vertical inbox: foreign-vertical RFQ tokens never resolve
       // here — that deploy's own origin serves them (QA-297).
       vertical: verticalSlug(),
+      // "Ending first" chip on /quotes — same deadline sort the operator
+      // inbox has (QA-448).
+      ...(url.searchParams.get("sort") === "deadline"
+        ? { sort: "deadline" as const }
+        : {}),
       limit: 200,
     })
   ).filter((r) => r.accessToken === token);

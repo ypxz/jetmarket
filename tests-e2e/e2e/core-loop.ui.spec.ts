@@ -375,6 +375,16 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(
       extRow.locator(tid(`rfq-state-${extRfqId}`)),
     ).not.toContainText(/closed/i);
+    // QA-448: each request carries its live offers count, and the
+    // "Ending first" chip re-sorts the inbox (single request here —
+    // the pin is that the row + token survive the re-fetch).
+    await expect(
+      extRow.locator(tid(`offer-count-${extRfqId}`)),
+    ).toContainText(/1 offer/i);
+    await buyer.getByTestId('buyer-sort-ending').click();
+    await expect(
+      buyer.locator(tid(`buyer-rfq-${extRfqId}`)),
+    ).toBeVisible();
     // The extended request still carries its live quote — accept it.
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);

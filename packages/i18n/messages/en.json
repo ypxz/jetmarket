@@ -161,6 +161,8 @@
     "resendSent": "If that email has requests, the links are on the way.",
     "close": "Close request",
     "extend": "Extend 7 days",
+    "sortEnding": "Ending first",
+    "offerCount": "{count, plural, one {# offer} other {# offers}}",
     "extendedMsg": "Request extended — it now closes a week from today.",
     "closedMsg": "Request closed — operators with open quotes were notified.",
     "conciergeBadge": "Concierge",

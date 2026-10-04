@@ -426,12 +426,13 @@ export interface Repo {
     answeredOnly?: boolean;
     /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
     vertical?: string;
-    /** Inbox ordering (QA-443): default newest-first; "deadline" orders by
-     *  the QA-442 liveness horizon ascending — requests that stop
-     *  collecting quotes soonest surface first. Only meaningful with
-     *  `operatorId` (the operator inbox); concierge expedites still
-     *  outrank either way there, and ONLY there — non-operator lists are
-     *  plain newest-first. */
+    /** Inbox ordering (QA-443): default newest-first; "deadline" orders
+     *  live rows by the QA-442 liveness horizon ascending — requests that
+     *  stop collecting quotes soonest surface first; terminal rows always
+     *  sort after live ones by createdAt-desc (QA-448). Applied on
+     *  user-scoped lists (operator or buyer inbox); concierge expedites
+     *  still outrank on the operator inbox, and ONLY there — admin lists
+     *  are plain newest-first. */
     sort?: "deadline";
     /** Page slice applied after other filters, newest-first. */
     limit?: number;

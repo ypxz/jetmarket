@@ -57,7 +57,11 @@ function QuotesInner() {
   // effects have run so fast clicks can't outrun hydration (QA-240).
   const [ready, setReady] = useState(false);
 
-  async function load(e?: React.FormEvent, tok?: string) {
+  // "Ending first" triage — same deadline sort the operator inbox has
+  // (QA-448): soonest-dying live request first, terminal rows last.
+  const [endingFirst, setEndingFirst] = useState(false);
+
+  async function load(e?: React.FormEvent, tok?: string, ending = endingFirst) {
     e?.preventDefault();
     const tk = tok ?? token;
     if (!tk) {
@@ -69,7 +73,7 @@ function QuotesInner() {
     let res: Response;
     try {
       res = await fetch(
-        `/api/buyer/quotes?email=${encodeURIComponent(email)}`,
+        `/api/buyer/quotes?email=${encodeURIComponent(email)}${ending ? "&sort=deadline" : ""}`,
         { headers: { "x-rfq-token": tk } },
       );
     } catch {
@@ -242,6 +246,22 @@ function QuotesInner() {
         >
           {t("resend")}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const v = !endingFirst;
+            setEndingFirst(v);
+            void load(undefined, undefined, v);
+          }}
+          data-testid="buyer-sort-ending"
+          className={`rounded-md px-4 py-2 text-sm ${
+            endingFirst
+              ? "border border-border bg-surface font-medium text-foreground"
+              : "border border-border bg-background text-muted"
+          }`}
+        >
+          {t("sortEnding")}
+        </button>
       </form>
       {msg ? <p className="mt-4 rounded-md bg-surface p-3 text-sm" data-testid="accept-msg">{msg}</p> : null}
       {rfqs ? (
@@ -267,6 +287,11 @@ function QuotesInner() {
                   </div>
                   <span className="flex items-center gap-3">
                     <span className="text-xs text-muted" data-testid={`rfq-state-${r.id}`}>{tc(`rfqState.${r.status}`)}</span>
+                    {r.quotes.length > 0 ? (
+                      <span className="text-xs text-muted" data-testid={`offer-count-${r.id}`}>
+                        {t("offerCount", { count: r.quotes.length })}
+                      </span>
+                    ) : null}
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <span className="text-xs text-muted" data-testid={`rfq-deadline-${r.id}`}>
                         {t("closesOn", {
