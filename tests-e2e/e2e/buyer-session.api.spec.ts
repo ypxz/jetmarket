@@ -5,7 +5,7 @@
 // own). Stranger sessions 404 like a bad token always did.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
 import postgres from 'postgres';
-import { isoDateIn } from '../helpers/flow';
+import { isoDateIn, signUpAndLogin } from '../helpers/flow';
 
 test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.6.6' } });
 
@@ -242,6 +242,63 @@ test('account page: withdraw a live request via session (QA-475)', async () => {
     await sql`delete from operators where user_id in
       (select id from users where email = ${OP_EMAIL})`;
     await sql`delete from users where email in (${OP_EMAIL}, ${BUYER})`;
+    await sql.end();
+  }
+});
+
+test('quotes inbox auto-loads for a signed-in buyer, no click needed (QA-480)', async ({
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const sql = postgres(testDb, { max: 1 });
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.6.7' },
+  });
+  const page = await browser.newPage();
+  let listingId = '';
+  let rfqId = '';
+  try {
+    const operator = await login(`e2e-bs-auto-op-${run}@jetmarket.local`, 'operator');
+    expect(
+      (
+        await operator.post('/api/operators', {
+          data: { name: `E2E Auto Ops ${run}`, baseAirport: 'LSZH' },
+        })
+      ).status(),
+    ).toBe(201);
+    const lres = await operator.post('/api/listings', {
+      data: {
+        type: 'charter',
+        title: `E2E Auto Charter ${run}`,
+        price: 38000,
+        currency: 'USD',
+        photos: [],
+        attributes: {},
+      },
+    });
+    expect(lres.status()).toBe(201);
+    listingId = ((await lres.json()) as { id: string }).id;
+
+    rfqId = (await mkRfq(publicCtx, listingId, BUYER)).rfqId;
+
+    // Signed-in buyer opens /quotes bare — no ?email, no #t= token. The
+    // session resolves their mailbox and the row appears on its own;
+    // the email input backfills to who we're acting as.
+    await signUpAndLogin(page, BUYER, 'buyer');
+    await page.goto('/quotes');
+    await expect(page.getByTestId(`buyer-rfq-${rfqId}`)).toBeVisible();
+    await expect(page.getByTestId('buyer-email')).toHaveValue(BUYER);
+  } finally {
+    await page.close();
+    if (rfqId) {
+      await sql`delete from rfq_matches where rfq_id = ${rfqId}`;
+      await sql`delete from rfqs where id = ${rfqId}`;
+    }
+    if (listingId) await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${`e2e-bs-auto-op-${run}@jetmarket.local`})`;
+    await sql`delete from users where email in
+      (${`e2e-bs-auto-op-${run}@jetmarket.local`}, ${BUYER})`;
     await sql.end();
   }
 });

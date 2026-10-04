@@ -86,10 +86,14 @@ function QuotesInner() {
     // persist in server logs, history and Referer (QA-156).
     let res: Response;
     try {
-      res = await fetch(
-        `/api/buyer/quotes?email=${encodeURIComponent(email)}${ending ? "&sort=deadline" : ""}`,
-        { headers: { "x-rfq-token": tk } },
-      );
+      const qs = new URLSearchParams();
+      // Empty `email=` would 400 the request — the session path needs the
+      // param ABSENT so the server fills it from the cookie (QA-480).
+      if (email) qs.set("email", email);
+      if (ending) qs.set("sort", "deadline");
+      res = await fetch(`/api/buyer/quotes?${qs.toString()}`, {
+        headers: { "x-rfq-token": tk },
+      });
     } catch {
       setMsg(tc("error"));
       return;
@@ -145,7 +149,20 @@ function QuotesInner() {
       window.history.replaceState(null, "", url.toString());
     }
     setReady(true);
-    if (email) void load(undefined, effective);
+    if (email) {
+      void load(undefined, effective);
+    } else {
+      // QA-480: a signed-in buyer lands here with no email/token — their
+      // session already proves the mailbox server-side (QA-474). Resolve
+      // it once and auto-load; anonymous visitors get {user:null} and
+      // keep the form untouched (no needLink flash on first paint).
+      void fetch("/api/auth/me")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { user?: { email?: string | null } | null } | null) => {
+          if (d?.user?.email) void load(undefined, effective);
+        })
+        .catch(() => {});
+    }
     // mount-only: refresh via the search form; load re-creates per render
     // so it must not be a dep or the effect refetches every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
