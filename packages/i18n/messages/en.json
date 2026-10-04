@@ -127,6 +127,7 @@
     "honeypotHint": "Leave this field empty",
     "error": "Could not send your request — check the fields and try again.",
     "rateLimited": "Too many requests — try again later.",
+    "repostNotice": "Prefilled from your earlier request — review and send.",
     "concierge": {
       "title": "Get answers faster",
       "body": "Concierge delivers your request to every matching operator right now — including operators on the free plan who would otherwise see it after the delay window.",
@@ -176,7 +177,8 @@
       "daily": "daily digest"
     },
     "alertWatch": "Watching a listing",
-    "alertOpenListing": "Open listing"
+    "alertOpenListing": "Open listing",
+    "repost": "Request again"
   },
   "design": {
     "title": "Design system",

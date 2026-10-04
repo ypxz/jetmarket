@@ -96,6 +96,24 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
     await expect(quote.locator(tidPrefix('accept-'))).toHaveCount(0);
   });
 
+  await step('closed RFQ reposts prefilled onto the live listing (QA-410)', async () => {
+    // Terminal request + still-browseable listing → "Request again" hands the
+    // field map to the RFQ form via sessionStorage.
+    const rfq = buyer.locator(tidPrefix('buyer-rfq-')).first();
+    await rfq.locator(tidPrefix('repost-rfq-')).click();
+    await buyer.waitForURL(/\/rfq\//, { timeout: 15_000 });
+    await expect(buyer.getByTestId('rfq-repost-note')).toBeVisible({
+      timeout: 10_000,
+    });
+    // fillRfqForm wrote 'e2e' into text fields + the buyer email.
+    await expect(buyer.getByTestId('rfq-field-departure')).toHaveValue('e2e');
+    await expect(buyer.getByTestId('rfq-field-email')).toHaveValue(BUYER_EMAIL);
+    // second open of the same form shows a blank field (stash consumed once)
+    await buyer.reload();
+    await expect(buyer.getByTestId('rfq-repost-note')).toHaveCount(0);
+    await expect(buyer.getByTestId('rfq-field-departure')).toHaveValue('');
+  });
+
   await step('closed zero-quote RFQ shows no waiting copy (QA-379)', async () => {
     // A request that ends before any quote arrives must not keep saying
     // "Waiting for operator quotes…" — the line used to render for every

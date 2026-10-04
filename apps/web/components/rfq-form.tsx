@@ -25,6 +25,8 @@ interface RfqFormProps {
   honeypotHint: string;
   /** Field-key → default value from the source listing's attributes. */
   prefill?: Record<string, string>;
+  /** Shown when a repost stash prefilled the form (QA-410). */
+  repostLabel?: string;
   /** Turnstile site key — renders the widget; empty = captcha provider mock/dev. */
   turnstileSiteKey?: string;
 }
@@ -43,6 +45,7 @@ export function RfqForm({
   rateLimitedLabel,
   honeypotHint,
   prefill,
+  repostLabel,
   turnstileSiteKey,
 }: RfqFormProps) {
   const router = useRouter();
@@ -53,6 +56,33 @@ export function RfqForm({
   // route has no POST handler so a fast click 405s instead of creating the
   // RFQ. Disabled-submit waits are also what e2e relies on (QA-245).
   const [ready, setReady] = useState(false);
+  // Repost (QA-410): /quotes stashed a previous request's field map under
+  // jm-rfq-repost:<listingId>. Read it post-mount (SSR can't see it) and
+  // remount the form on it so uncontrolled defaultValues apply.
+  const [repost, setRepost] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    try {
+      const key = `jm-rfq-repost:${listingId}`;
+      const raw = sessionStorage.getItem(key);
+      if (raw) {
+        sessionStorage.removeItem(key);
+        const parsed = JSON.parse(raw) as unknown;
+        if (parsed && typeof parsed === "object") {
+          const clean: Record<string, string> = {};
+          for (const [k, v] of Object.entries(
+            parsed as Record<string, unknown>,
+          )) {
+            if (typeof v === "string" || typeof v === "number")
+              clean[k] = String(v);
+          }
+          setRepost(clean);
+        }
+      }
+    } catch {
+      /* corrupt/absent stash — blank form */
+    }
+  }, [listingId]);
 
   // Load the Turnstile script only when a site key is configured; the widget
   // injects a hidden `cf-turnstile-response` input into the form on its own.
@@ -129,7 +159,20 @@ export function RfqForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6" data-testid="rfq-form">
+    <form
+      key={repost ? "repost" : "fresh"}
+      onSubmit={onSubmit}
+      className="space-y-6"
+      data-testid="rfq-form"
+    >
+      {repost && repostLabel ? (
+        <p
+          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted"
+          data-testid="rfq-repost-note"
+        >
+          {repostLabel}
+        </p>
+      ) : null}
       {sections.map((s, i) => (
         <fieldset key={s.group ?? i} className="space-y-4">
           {s.group && groupLabels[s.group] ? (
@@ -151,7 +194,7 @@ export function RfqForm({
                       name={f.key}
                       required={f.required}
                       placeholder={f.placeholder}
-                      defaultValue={prefill?.[f.key]}
+                      defaultValue={repost?.[f.key] ?? prefill?.[f.key]}
                       data-testid={`rfq-field-${f.key}`}
                     />
                   ) : f.type === "select" ? (
@@ -160,7 +203,7 @@ export function RfqForm({
                       name={f.key}
                       required={f.required}
                       data-testid={`rfq-field-${f.key}`}
-                      defaultValue={prefill?.[f.key] ?? ""}
+                      defaultValue={repost?.[f.key] ?? prefill?.[f.key] ?? ""}
                     >
                       <option value="" disabled>
                         {f.placeholder ?? "—"}
@@ -178,7 +221,7 @@ export function RfqForm({
                       type={f.type}
                       required={f.required}
                       placeholder={f.placeholder}
-                      defaultValue={prefill?.[f.key]}
+                      defaultValue={repost?.[f.key] ?? prefill?.[f.key]}
                       data-testid={`rfq-field-${f.key}`}
                     />
                   )}

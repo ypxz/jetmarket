@@ -24,6 +24,9 @@ interface Rfq {
   concierge?: boolean;
   buyerEmail: string;
   createdAt: string;
+  /** The request's own field map — echoed by the API for the repost
+   *  handoff (QA-410); contact keys ride along for the form to reuse. */
+  fields?: Record<string, unknown>;
   // Operators the request actually reached (delayed matches don't count).
   deliveredTo: number;
   listing: { id: string; title: string; currency: string; browseable?: boolean } | null;
@@ -249,6 +252,30 @@ function QuotesInner() {
                       >
                         {t("close")}
                       </button>
+                    ) : null}
+                    {/* QA-410 repost: a dead request on a still-live listing
+                        offers "Request again" — the field map hands off via
+                        sessionStorage (same-tab only; a new tab degrades to a
+                        blank form, never a data leak). */}
+                    {!["open", "matched", "quoted"].includes(r.status) &&
+                    r.listing?.browseable ? (
+                      <a
+                        href={`/rfq/${r.listing.id}`}
+                        onClick={() => {
+                          try {
+                            sessionStorage.setItem(
+                              `jm-rfq-repost:${r.listing!.id}`,
+                              JSON.stringify(r.fields ?? {}),
+                            );
+                          } catch {
+                            /* storage full/blocked — repost degrades to blank */
+                          }
+                        }}
+                        className="text-xs underline underline-offset-4"
+                        data-testid={`repost-rfq-${r.id}`}
+                      >
+                        {t("repost")}
+                      </a>
                     ) : null}
                   </span>
                 </div>

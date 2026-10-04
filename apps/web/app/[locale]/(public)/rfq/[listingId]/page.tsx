@@ -76,6 +76,7 @@ export default async function RfqPage({
           rateLimitedLabel={t("rateLimited")}
           honeypotHint={t("honeypotHint")}
           prefill={prefill}
+          repostLabel={t("repostNotice")}
           turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined}
         />
       </div>
