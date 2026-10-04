@@ -22,6 +22,7 @@ import {
   notifyExpirations,
   nudgeStaleQuotes,
   nudgeUnansweredOperators,
+  nudgeClosingSoonRfqs,
   nudgeUnquotedRfqs,
   recoverUnfanoutedRfqs,
   remindOverdueInvoices,
@@ -73,6 +74,12 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const unquotedNudged = await nudgeUnquotedRfqs(deps);
   if (unquotedNudged)
     logInfo("worker.unquoted_nudges", { count: unquotedNudged });
+
+  // Closing-soon buyer nudge (QA-447) — live RFQs entering their liveness
+  // window mail the buyer once: accept or extend before the horizon.
+  const closingSoonNudged = await nudgeClosingSoonRfqs(deps);
+  if (closingSoonNudged)
+    logInfo("worker.closing_soon_nudges", { count: closingSoonNudged });
 
   // Unanswered-demand digest (QA-425) — operators with live, unquoted RFQs
   // get a cooled-down pull back to the Needs-quote inbox view.

@@ -129,6 +129,13 @@ export const rfqs = pgTable(
     noQuotesMailedAt: timestamp("no_quotes_mailed_at", {
       withTimezone: true,
     }),
+    // QA-447: once-only stamp — the "closing soon" nudge mails the buyer
+    // at most once per RFQ that enters its liveness window live; NULL
+    // rows are claimable. An extend that pushes the horizon out does NOT
+    // reset it — engaged buyers don't need a second warning.
+    closingMailedAt: timestamp("closing_mailed_at", {
+      withTimezone: true,
+    }),
     status: text("status", {
       enum: ["new", "matched", "quoted", "closed", "spam"],
     })

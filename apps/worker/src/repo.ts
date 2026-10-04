@@ -119,6 +119,25 @@ export interface WorkerRepo {
       matchCount: number;
     }[]
   >;
+  /** QA-447 closing-soon nudge: claim live RFQs whose liveness horizon
+   *  (the expire sweep's exact rule) lands within `dyingBefore` — one
+   *  statement stamps closing_mailed_at under the row lock so racing
+   *  ticks mail once. Rows already past the horizon (dead but unswept)
+   *  are ineligible — the expired mail covers them. */
+  sweepClosingSoonRfqs(input: {
+    vertical: string;
+    dyingBefore: Date;
+    limit?: number;
+  }): Promise<
+    {
+      rfqId: string;
+      buyerEmail: string;
+      accessToken: string;
+      listingTitle: string | null;
+      closesOn: string;
+      quoteCount: number;
+    }[]
+  >;
   /** QA-425 unanswered-demand digest: claim operators who have at least
    *  one live, unquoted, undismissed RFQ older than `olderThan` in their
    *  inbox — one statement stamps unanswered_mailed_at under the row lock,
@@ -565,6 +584,75 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             select count(*)::int from rfq_matches m
             where m.rfq_id = s."rfqId" and m.state <> 'delayed'
           ) as "matchCount"
+        from stamped s
+        left join listings l on l.id = s."listingId"
+      `);
+      return rows;
+    },
+
+    async sweepClosingSoonRfqs({ vertical, dyingBefore, limit = 50 }) {
+      // 'new'/'matched'/'quoted' + the QA-442 horizon inside the window =
+      // the request dies soon and the buyer was never warned. The dated
+      // arm is the expire predicate's own deadline form (dateTo+1d), the
+      // undated arm the +30d horizon — both must be strictly ahead of now
+      // (past-horizon rows belong to the expired mail). The stamped CTE
+      // re-checks closing_mailed_at IS NULL under the row lock — a racing
+      // tick mails nobody twice, and a QA-446 extend that lands between
+      // claim and send is acceptable (the warning just came true early).
+      const rows = await db.execute<{
+        rfqId: string;
+        buyerEmail: string;
+        accessToken: string;
+        listingTitle: string | null;
+        closesOn: string;
+        quoteCount: number;
+      }>(sql`
+        with due as (
+          select r.id
+          from rfqs r
+          where r.vertical = ${vertical}
+            and r.status in ('new', 'matched', 'quoted')
+            and r.closing_mailed_at is null
+            and (
+              (r.fields->>'dateTo' ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                and (r.fields->>'dateTo')::date + 1
+                  between now()::date and ${dyingBefore.toISOString()}::date)
+              or
+              (coalesce(r.fields->>'dateTo', '') !~ '^\\d{4}-\\d{2}-\\d{2}$'
+                and r.created_at + interval '30 days'
+                  between now() and ${dyingBefore.toISOString()}::timestamptz)
+            )
+          limit ${limit}
+        ),
+        stamped as (
+          update rfqs r
+          set closing_mailed_at = now()
+          where r.id in (select id from due)
+            and r.closing_mailed_at is null
+          returning
+            r.id as "rfqId",
+            r.buyer_email as "buyerEmail",
+            r.access_token as "accessToken",
+            r.listing_id as "listingId",
+            r.fields->>'dateTo' as "dateTo",
+            r.created_at as "createdAt"
+        )
+        select
+          s."rfqId",
+          s."buyerEmail",
+          s."accessToken",
+          l.title as "listingTitle",
+          (
+            case
+              when s."dateTo" ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                then (s."dateTo"::date + 1)::text
+              else (s."createdAt" + interval '30 days')::date::text
+            end
+          ) as "closesOn",
+          (
+            select count(*)::int from quotes q
+            where q.rfq_id = s."rfqId" and q.status = 'sent'
+          ) as "quoteCount"
         from stamped s
         left join listings l on l.id = s."listingId"
       `);

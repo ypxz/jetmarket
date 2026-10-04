@@ -9,6 +9,7 @@ import {
   notifyExpiredListings,
   notifyExpirations,
   nudgeStaleQuotes,
+  nudgeClosingSoonRfqs,
   nudgeUnansweredOperators,
   nudgeUnquotedRfqs,
   remindOverdueInvoices,
@@ -140,6 +141,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepUnquotedRfqs: async (input) => {
       rec("sweepUnquotedRfqs", input);
+      return [];
+    },
+    sweepClosingSoonRfqs: async (input) => {
+      rec("sweepClosingSoonRfqs", input);
       return [];
     },
     sweepUnansweredOperators: async (input) => {
@@ -1009,6 +1014,105 @@ describe("nudgeUnquotedRfqs (QA-423)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeUnquotedRfqs(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeClosingSoonRfqs (QA-447)", () => {
+  it("disabled when closingSoonHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepClosingSoonRfqs: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.closingSoonHours = 0;
+    expect(await nudgeClosingSoonRfqs(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed buyer — copy names the close date + live quotes", async () => {
+    let call: { vertical: string; dyingBefore: Date } | null = null;
+    const repo = fakeRepo({
+      sweepClosingSoonRfqs: async (input) => {
+        call = input;
+        return [
+          {
+            rfqId: "r1",
+            buyerEmail: "buyer@x.com",
+            accessToken: "tok-one",
+            listingTitle: "ZRH–NCE Phenom leg",
+            closesOn: "2026-09-17",
+            quoteCount: 2,
+          },
+          {
+            rfqId: "r2",
+            buyerEmail: "buyer2@x.com",
+            accessToken: "tok two",
+            listingTitle: null,
+            closesOn: "2026-09-16",
+            quoteCount: 0,
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.closingSoonHours = 72;
+    expect(await nudgeClosingSoonRfqs(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // dyingBefore = deps.now + 72h — deps.now is fixed 2026-09-15T12:00Z.
+    expect(call!.dyingBefore.toISOString()).toBe("2026-09-18T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual(["buyer@x.com", "buyer2@x.com"]);
+    expect(sent[0]!.subject).toBe("Your request closes Sep 17, 2026");
+    // Quoted requests count the live offers; quote-less ones say it dies
+    // quiet — both point at the week-extension (QA-446).
+    expect(sent[0]!.text).toContain("2 operator quotes are still live");
+    expect(sent[0]!.text).toContain("Extend it by a week");
+    expect(sent[0]!.text).toContain("ZRH–NCE Phenom leg");
+    expect(sent[1]!.text).toContain("no quotes have landed yet");
+    // Fragment-token deep link (AGENTS: bearer tokens travel in #t=).
+    expect(sent[0]!.text).toContain("/quotes?email=buyer%40x.com#t=tok-one");
+  });
+
+  it("defaults to 72h, a failed send doesn't stall, zero claims silent", async () => {
+    const repo = fakeRepo({
+      sweepClosingSoonRfqs: async () => [
+        {
+          rfqId: "r1",
+          buyerEmail: "bad@x.example",
+          accessToken: "t1",
+          listingTitle: "A",
+          closesOn: "2026-09-16",
+          quoteCount: 1,
+        },
+        {
+          rfqId: "r2",
+          buyerEmail: "ok@x.example",
+          accessToken: "t2",
+          listingTitle: "B",
+          closesOn: "2026-09-16",
+          quoteCount: 1,
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // closingSoonHours unset → 72h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeClosingSoonRfqs(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+    expect(sent[0]!.text).toContain("1 operator quote is still live");
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeClosingSoonRfqs(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

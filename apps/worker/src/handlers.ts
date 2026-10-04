@@ -54,6 +54,11 @@ export interface WorkerDeps {
    *  mail the operator a payment reminder (defaults 72, <=0 disables).
    *  Re-mails at most once per 7 days via the invoice_reminded_at stamp. */
   invoiceReminderHours?: number;
+  /** QA-447 closing-soon nudge: a live RFQ whose liveness horizon lands
+   *  within this many hours mails the buyer once — accept or extend
+   *  (defaults 72, <=0 disables). Once-ever per RFQ via the
+   *  closing_mailed_at stamp. */
+  closingSoonHours?: number;
 }
 
 function at(deps: WorkerDeps): Date {
@@ -434,6 +439,75 @@ export async function nudgeUnquotedRfqs(deps: WorkerDeps): Promise<number> {
       });
     } catch (e) {
       logWarn("worker.unquoted_nudge_failed", {
+        rfqId: r.rfqId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-447 closing-soon buyer nudge: a live request entering its liveness
+ *  window (the QA-442 horizon, inside `closingSoonHours`) mails the buyer
+ *  once — the mail names the close date, counts the live quotes still
+ *  answerable, and offers the QA-446 week-extension so demand survives
+ *  instead of silently expiring. Claims once per RFQ via the sweep's
+ *  closing_mailed_at stamp; rows already past the horizon are the
+ *  expired mail's job, not this one's.
+ */
+export async function nudgeClosingSoonRfqs(
+  deps: WorkerDeps,
+): Promise<number> {
+  const hours = deps.closingSoonHours ?? 72;
+  if (!(hours > 0)) return 0;
+  const rows = await deps.repo.sweepClosingSoonRfqs({
+    vertical: deps.vertical,
+    dyingBefore: new Date(at(deps).getTime() + hours * 3_600_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
+        r.buyerEmail,
+      )}#t=${encodeURIComponent(r.accessToken)}`;
+      const closes = new Date(`${r.closesOn}T00:00:00.000Z`)
+        .toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        });
+      const subject = `Your request closes ${closes}`;
+      const quotesLine =
+        r.quoteCount > 0
+          ? `${r.quoteCount} operator quote${
+              r.quoteCount === 1 ? "" : "s"
+            } ${r.quoteCount === 1 ? "is" : "are"} still live on it — accept one before it dies`
+          : "no quotes have landed yet — the request dies quiet";
+      const body =
+        `Your request${
+          r.listingTitle ? ` for "${r.listingTitle}"` : ""
+        } on ${site.name} closes ${closes} — ${quotesLine}. ` +
+        `Need more time? Extend it by a week from your requests page and ` +
+        `everything waiting on it stays alive.`;
+      await deps.email.send({
+        to: r.buyerEmail,
+        subject,
+        text: `${body}\n\nYour request: ${quotesUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: quotesUrl, label: "View your request" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "closing_soon_nudge_sent",
+        props: { rfqId: r.rfqId, quotes: r.quoteCount },
+      });
+    } catch (e) {
+      logWarn("worker.closing_soon_nudge_failed", {
         rfqId: r.rfqId,
         error: e instanceof Error ? e.message : String(e),
       });

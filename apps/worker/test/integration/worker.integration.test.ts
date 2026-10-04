@@ -991,6 +991,93 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     );
   });
 
+  it("nudges the buyer once when a live request enters its liveness window (QA-447)", async () => {
+    const [op] = await db.select({ id: operators.id }).from(operators).limit(1);
+    const tag = Date.now();
+    const mkRfq = async (
+      status: "new" | "matched" | "quoted" | "closed",
+      fields: Record<string, unknown>,
+      createdAt?: Date,
+      vertical = "jets",
+    ) => {
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical,
+          buyerEmail: `closing-${tag}@x.com`,
+          status,
+          fields,
+          ...(createdAt ? { createdAt } : {}),
+        })
+        .returning({ id: rfqs.id, accessToken: rfqs.accessToken });
+      return r!;
+    };
+    const day = 24 * 3_600_000;
+    // Deadline math (QA-442): dated rows die at dateTo+1d, undated at
+    // createdAt+30d. The sweep claims horizons inside [now, +72h].
+    const rfqDatedIn = await mkRfq("quoted", { dateTo: isoIn(2) }); // dies +3d
+    const rfqDyingToday = await mkRfq("matched", { dateTo: isoIn(-1) }); // dies today
+    const rfqDatedOut = await mkRfq("quoted", { dateTo: isoIn(10) }); // +11d
+    const rfqDeadUnswept = await mkRfq("new", { dateTo: isoIn(-3) }); // horizon -2d — expired mail's row
+    const rfqUndatedIn = await mkRfq("new", {}, new Date(Date.now() - 28 * day)); // horizon +2d
+    const rfqUndatedOut = await mkRfq("new", {}, new Date(Date.now() - 5 * day)); // +25d
+    const rfqUndatedDead = await mkRfq("new", {}, new Date(Date.now() - 35 * day)); // horizon -5d
+    const rfqClosed = await mkRfq("closed", { dateTo: isoIn(2) });
+    const rfqMachinery = await mkRfq("matched", { dateTo: isoIn(2) }, undefined, "machinery");
+    const [staleQuote] = await db
+      .insert(quotes)
+      .values({ rfqId: rfqDatedIn.id, operatorId: op!.id, amountMinor: 42000, status: "sent" })
+      .returning({ id: quotes.id });
+
+    const dyingBefore = new Date(Date.now() + 72 * 3_600_000);
+    const claimed = await deps().repo.sweepClosingSoonRfqs({ vertical: "jets", dyingBefore });
+    const ids = claimed.map((c) => c.rfqId);
+    expect(ids).toEqual(
+      expect.arrayContaining([rfqDatedIn.id, rfqDyingToday.id, rfqUndatedIn.id]),
+    );
+    for (const out of [rfqDatedOut, rfqDeadUnswept, rfqUndatedOut, rfqUndatedDead, rfqClosed, rfqMachinery])
+      expect(ids).not.toContain(out.id);
+    const mine = claimed.find((c) => c.rfqId === rfqDatedIn.id)!;
+    expect(mine.quoteCount).toBe(1);
+    // closesOn echoes the QA-442 horizon — dated rows show dateTo+1d.
+    expect(mine.closesOn).toBe(
+      new Date(new Date(`${isoIn(2)}T00:00:00.000Z`).getTime() + day)
+        .toISOString()
+        .slice(0, 10),
+    );
+
+    // Once-only: stamp persisted, re-sweep misses.
+    const [stamped] = await db
+      .select({ t: rfqs.closingMailedAt })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqDatedIn.id));
+    expect(stamped!.t).toBeTruthy();
+    expect(
+      (await deps().repo.sweepClosingSoonRfqs({ vertical: "jets", dyingBefore }))
+        .map((c) => c.rfqId),
+    ).not.toContain(rfqDatedIn.id);
+
+    // Handler end-to-end: a fresh in-window RFQ → branded outbox mail.
+    const rfqMail = await mkRfq("matched", { dateTo: isoIn(2) });
+    const { nudgeClosingSoonRfqs } = await import("../../src/handlers");
+    expect(await nudgeClosingSoonRfqs(deps())).toBeGreaterThanOrEqual(1);
+    const outbox = readOutbox(outboxDir);
+    const mail = outbox.find(
+      (m) => m.to === `closing-${tag}@x.com` && (m.subject ?? "").includes("closes"),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.text).toContain(`#t=${encodeURIComponent(rfqMail.accessToken)}`);
+
+    await db.delete(quotes).where(eq(quotes.id, staleQuote!.id));
+    await db.delete(rfqs).where(
+      inArray(rfqs.id, [
+        rfqDatedIn.id, rfqDyingToday.id, rfqDatedOut.id, rfqDeadUnswept.id,
+        rfqUndatedIn.id, rfqUndatedOut.id, rfqUndatedDead.id, rfqClosed.id,
+        rfqMachinery.id, rfqMail.id,
+      ]),
+    );
+  });
+
   it("digests operators with live unanswered RFQs, weekly at most (QA-425)", async () => {
     const ops = await db
       .select({ id: operators.id, userId: operators.userId })
