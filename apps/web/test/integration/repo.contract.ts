@@ -3409,5 +3409,107 @@ export function repoContract(
       ).toBe(true);
       await repo.setOperatorSuspended(`missing-${tag}`, true); // silent miss
     });
+
+    it("listing reports: dedupe, vertical scope, dismiss CAS (QA-461)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const user = await repo.createUser(`rep-op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Rep Ops ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Rep Charter ${tag}`,
+        attributes: {},
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        status: "active",
+      });
+      const foreign = await repo.createListing({
+        operatorId: op.id,
+        vertical: "machinery",
+        type: "excavator",
+        title: `Rep Machine ${tag}`,
+        attributes: {},
+        price: 8000,
+        currency: "EUR",
+        photos: [],
+        status: "active",
+      });
+      const buyer = await repo.createUser(`rep-b-${tag}@test.dev`, "buyer");
+      const buyer2 = await repo.createUser(`rep-b2-${tag}@test.dev`, "buyer");
+
+      // File + dedupe: a second OPEN flag by the same reporter returns null;
+      // a different reporter on the same listing files fine.
+      const r1 = await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: buyer.id,
+        reason: "scam",
+        note: "asked for wire transfer",
+      });
+      expect(r1).not.toBeNull();
+      expect(r1!.status).toBe("open");
+      expect(r1!.resolvedAt).toBeNull();
+      expect(
+        await repo.createListingReport({
+          listingId: listing.id,
+          reporterId: buyer.id,
+          reason: "other",
+        }),
+      ).toBeNull();
+      const r2 = await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: buyer2.id,
+        reason: "unavailable",
+      });
+      expect(r2).not.toBeNull();
+      const rf = await repo.createListingReport({
+        listingId: foreign.id,
+        reporterId: buyer.id,
+        reason: "misleading",
+      });
+      expect(rf).not.toBeNull();
+
+      // Queue: newest first, status + vertical scoped via the listing join.
+      const open = await repo.listListingReports({ status: "open" });
+      expect(open.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r1!.id, r2!.id, rf!.id]),
+      );
+      const jetsOnly = await repo.listListingReports({
+        status: "open",
+        vertical: "jets",
+      });
+      expect(jetsOnly.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r1!.id, r2!.id]),
+      );
+      expect(jetsOnly.map((r) => r.id)).not.toContain(rf!.id);
+
+      // Dismiss CAS: once → true + stamp; again → false (repeat click 409s).
+      expect(await repo.resolveListingReport(r1!.id)).toBe(true);
+      expect((await repo.listListingReports({ status: "open" }))
+        .map((r) => r.id)).not.toContain(r1!.id);
+      expect((await repo.listListingReports({ status: "dismissed" }))
+        .map((r) => r.id)).toContain(r1!.id);
+      expect(await repo.resolveListingReport(r1!.id)).toBe(false);
+      expect(await repo.resolveListingReport(`missing-${tag}`)).toBe(false);
+
+      // A dismissed flag doesn't block a fresh one — the reporter can flag
+      // again if the listing persists.
+      const r3 = await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: buyer.id,
+        reason: "scam",
+      });
+      expect(r3).not.toBeNull();
+      expect(r3!.id).not.toBe(r1!.id);
+    });
   });
 }

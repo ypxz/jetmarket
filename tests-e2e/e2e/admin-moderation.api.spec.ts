@@ -202,3 +202,57 @@ test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', 
     ).ok(),
   ).toBeTruthy();
 });
+
+// Listing reports (QA-461): buyers flag supply into the admin queue —
+// dedupe 409s a repeat open flag, the queue shows it, dismiss CAS closes
+// it, and a dismissed flag doesn't block a fresh one.
+test('listing reports: flag → queue → dismiss → re-flag allowed (QA-461)', async () => {
+  test.setTimeout(60_000);
+
+  const operator = await login(`e2e-rep-operator-${run}@jetmarket.local`, 'operator');
+  const opRes = await operator.post('/api/operators', {
+    data: { name: `E2E Rep Ops ${run}`, baseAirport: 'LSZH', fleetSummary: 'e2e' },
+  });
+  expect(opRes.status()).toBe(201);
+  const listingId = await createListing(operator, `E2E Rep Charter ${run}`);
+
+  const buyer = await login(`e2e-rep-buyer-${run}@jetmarket.local`);
+  const report = await buyer.post(`/api/listings/${listingId}/report`, {
+    data: { reason: 'scam', note: 'asked for wire transfer' },
+  });
+  expect(report.status()).toBe(201);
+  const reportId = ((await report.json()) as { id: string }).id;
+
+  // Repeat open flag by the same buyer dedupes to a 409, not a queue clone.
+  const dup = await buyer.post(`/api/listings/${listingId}/report`, {
+    data: { reason: 'other' },
+  });
+  expect(dup.status()).toBe(409);
+
+  // The admin queue renders it (server-side page carries the row testid).
+  const admin = await login(ADMIN_EMAIL);
+  const queue = await admin.get('/en/admin');
+  expect(queue.ok()).toBeTruthy();
+  expect(await queue.text()).toContain(`report-${reportId}`);
+
+  // Dismiss CAS: once 200, repeat 409; the queue drops the row.
+  const dismiss = await admin.post(`/api/admin/reports/${reportId}/dismiss`);
+  expect(dismiss.status()).toBe(200);
+  expect(
+    (await admin.post(`/api/admin/reports/${reportId}/dismiss`)).status(),
+  ).toBe(409);
+  const queueAfter = await admin.get('/en/admin');
+  expect(await queueAfter.text()).not.toContain(`report-${reportId}`);
+
+  // A dismissed flag doesn't block a fresh report on the same listing.
+  const again = await buyer.post(`/api/listings/${listingId}/report`, {
+    data: { reason: 'unavailable' },
+  });
+  expect(again.status()).toBe(201);
+
+  // Anonymous browsers can't file flags — the write sink is authenticated.
+  const anon = await (
+    await request.newContext()
+  ).post(`/api/listings/${listingId}/report`, { data: { reason: 'scam' } });
+  expect(anon.status()).toBe(403);
+});

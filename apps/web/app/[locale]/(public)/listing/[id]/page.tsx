@@ -8,6 +8,7 @@ import { AttributeTable } from "@/components/attribute-table";
 import { Gallery } from "@/components/gallery";
 import { ListingCard } from "@/components/listing-card";
 import { SearchAlertForm } from "@/components/search-alert-form";
+import { ReportListing } from "./report-listing";
 import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
@@ -320,6 +321,8 @@ export default async function ListingPage({
                 </div>
               ) : null}
               <p className="text-xs text-muted">{ct("marketplaceNotice")}</p>
+              {/* QA-461: the demand side's flag — feeds the admin queue. */}
+              <ReportListing listingId={listing.id} />
             </Stack>
           </CardBody>
         </Card>

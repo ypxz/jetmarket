@@ -17,6 +17,8 @@ import type {
   Deal,
   JobInfo,
   Listing,
+  ListingReport,
+  ListingReportStatus,
   ListingSort,
   ListingStatus,
   ListingType,
@@ -47,6 +49,7 @@ const {
   jobs,
   magicLinksUsed,
   searchAlerts,
+  listingReports,
 } = schema;
 
 const iso = (d: Date | null | undefined): string =>
@@ -135,6 +138,21 @@ function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
     status: r.status as Subscription["status"],
     currentPeriodEnd: iso(r.currentPeriodEnd),
     ...(r.lastEventAt != null ? { lastEventAt: r.lastEventAt } : {}),
+  };
+}
+
+function toListingReport(
+  r: typeof listingReports.$inferSelect,
+): ListingReport {
+  return {
+    id: r.id,
+    listingId: r.listingId,
+    reporterId: r.reporterId,
+    reason: r.reason,
+    note: r.note,
+    status: r.status as ListingReportStatus,
+    createdAt: iso(r.createdAt),
+    resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
   };
 }
 
@@ -1548,6 +1566,64 @@ export class DrizzleRepo implements Repo {
       .returning({ id: deals.id });
     return rows.length > 0;
   }
+  async createListingReport(input: {
+    listingId: string;
+    reporterId: string;
+    reason: string;
+    note?: string;
+  }): Promise<ListingReport | null> {
+    // QA-461: ON CONFLICT DO NOTHING against the partial unique index —
+    // a repeat open flag returns null instead of stacking queue rows.
+    const rows = await this.db
+      .insert(listingReports)
+      .values({
+        listingId: input.listingId,
+        reporterId: input.reporterId,
+        reason: input.reason,
+        note: input.note ?? null,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return rows[0] ? toListingReport(rows[0]) : null;
+  }
+
+  async listListingReports(opts?: {
+    status?: ListingReportStatus;
+    vertical?: string;
+    limit?: number;
+  }): Promise<ListingReport[]> {
+    const conds = [];
+    if (opts?.status) conds.push(eq(listingReports.status, opts.status));
+    // Reports carry no vertical — resolve through the listing (QA-461).
+    if (opts?.vertical) {
+      conds.push(eq(listings.vertical, opts.vertical));
+    }
+    const rows = await this.db
+      .select({ report: listingReports })
+      .from(listingReports)
+      .innerJoin(listings, eq(listingReports.listingId, listings.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(listingReports.createdAt))
+      .limit(opts?.limit ?? 200);
+    return rows.map((r) => toListingReport(r.report));
+  }
+
+  async resolveListingReport(id: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    // QA-461: CAS on open — a repeat dismiss 409s instead of rewriting.
+    const rows = await this.db
+      .update(listingReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(
+          eq(listingReports.id, id),
+          eq(listingReports.status, "open"),
+        ),
+      )
+      .returning({ id: listingReports.id });
+    return rows.length > 0;
+  }
+
   async ratingSummaryPerOperator(
     operatorIds: string[],
   ): Promise<Record<string, { avg: number; count: number }>> {

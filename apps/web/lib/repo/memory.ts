@@ -5,6 +5,8 @@ import type {
   Deal,
   JobInfo,
   Listing,
+  ListingReport,
+  ListingReportStatus,
   ListingSort,
   Operator,
   Plan,
@@ -997,6 +999,69 @@ class MemoryRepo implements Repo {
       [...acc].map(([id, a]) => [id, { avg: a.sum / a.count, count: a.count }]),
     );
   }
+
+  private listingReports = new Map<string, ListingReport>();
+
+  async createListingReport(input: {
+    listingId: string;
+    reporterId: string;
+    reason: string;
+    note?: string;
+  }): Promise<ListingReport | null> {
+    // QA-461: one open flag per (listing, reporter) — a repeat returns null
+    // (same dedupe contract the pg partial unique index enforces).
+    for (const r of this.listingReports.values()) {
+      if (
+        r.listingId === input.listingId &&
+        r.reporterId === input.reporterId &&
+        r.status === "open"
+      ) {
+        return null;
+      }
+    }
+    const row: ListingReport = {
+      id: crypto.randomUUID(),
+      listingId: input.listingId,
+      reporterId: input.reporterId,
+      reason: input.reason,
+      note: input.note ?? null,
+      status: "open",
+      createdAt: new Date().toISOString(),
+      resolvedAt: null,
+    };
+    this.listingReports.set(row.id, row);
+    return row;
+  }
+
+  async listListingReports(opts?: {
+    status?: ListingReportStatus;
+    vertical?: string;
+    limit?: number;
+  }): Promise<ListingReport[]> {
+    let out = [...this.listingReports.values()];
+    if (opts?.status) out = out.filter((r) => r.status === opts.status);
+    // Reports carry no vertical — resolve through the listing (QA-461).
+    if (opts?.vertical) {
+      out = out.filter(
+        (r) => this.listings.get(r.listingId)?.vertical === opts.vertical,
+      );
+    }
+    out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return out.slice(0, opts?.limit ?? 200);
+  }
+
+  async resolveListingReport(id: string): Promise<boolean> {
+    const r = this.listingReports.get(id);
+    // Sync check-write mirrors the pg CAS — closed/missing rows return false.
+    if (!r || r.status !== "open") return false;
+    this.listingReports.set(id, {
+      ...r,
+      status: "dismissed",
+      resolvedAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
   async listDeals(filter?: {
     operatorId?: string;
     vertical?: string;

@@ -113,7 +113,16 @@
     "watchFreqDaily": "Daily digest",
     "watchConfirmed": "You're watching this listing — we'll email you when it changes.",
     "watchCount": "{count, plural, one {# buyer is watching this listing} other {# buyers are watching this listing}}",
-    "viewCount": "{count, plural, one {# view} other {# views}}"
+    "viewCount": "{count, plural, one {# view} other {# views}}",
+    "reportToggle": "Report this listing",
+    "reportMisleading": "Misleading or inaccurate",
+    "reportUnavailable": "No longer available",
+    "reportScam": "Possible scam",
+    "reportOther": "Other",
+    "reportNotePlaceholder": "Optional details for our team",
+    "reportSubmit": "Send report",
+    "reportSending": "Sending…",
+    "reportSent": "Report received — our team will review this listing."
   },
   "rfq": {
     "title": "Request a quote",
@@ -851,6 +860,14 @@
     "suspend": "Suspend",
     "reinstate": "Reinstate",
     "suspendedBadge": "Suspended",
+    "reports": "Listing reports ({count})",
+    "noReports": "No open reports.",
+    "colReason": "Reason",
+    "colNote": "Note",
+    "colReporter": "Reporter",
+    "colFiled": "Filed",
+    "dismissReport": "Dismiss",
+    "dismissingReport": "Dismissing…",
     "voiding": "Voiding…",
     "jobs": {
       "title": "Job queue",

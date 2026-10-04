@@ -101,6 +101,20 @@ export interface Rfq {
   createdAt: string;
 }
 
+/** QA-461: a buyer flag on a listing — feeds the admin report queue that
+ *  backs the moderation/suspension tools. */
+export type ListingReportStatus = "open" | "dismissed";
+export interface ListingReport {
+  id: string;
+  listingId: string;
+  reporterId: string;
+  reason: string;
+  note: string | null;
+  status: ListingReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
 export type QuoteStatus = "sent" | "accepted" | "declined" | "withdrawn";
 
 /** Read projection of a background-job row (worker queue) for admin ops. */
@@ -727,6 +741,29 @@ export interface Repo {
   ratingSummaryPerOperator(
     operatorIds: string[],
   ): Promise<Record<string, { avg: number; count: number }>>;
+
+  /** QA-461: buyer flags a listing for admin review. One OPEN report per
+   *  (listing, reporter) — a repeat flag returns null (route 409s) instead
+   *  of stacking duplicate queue rows; a dismissed report doesn't block a
+   *  fresh flag. */
+  createListingReport(input: {
+    listingId: string;
+    reporterId: string;
+    reason: string;
+    note?: string;
+  }): Promise<ListingReport | null>;
+
+  /** QA-461: admin report queue — newest first, optionally scoped to one
+   *  status and one vertical (via the listing join). */
+  listListingReports(opts?: {
+    status?: ListingReportStatus;
+    vertical?: string;
+    limit?: number;
+  }): Promise<ListingReport[]>;
+
+  /** QA-461: admin dismisses a report — CAS on status='open' so a repeat
+   *  click 409s instead of rewriting. False when nothing open was found. */
+  resolveListingReport(id: string): Promise<boolean>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

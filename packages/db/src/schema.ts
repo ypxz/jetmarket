@@ -378,6 +378,35 @@ export const rfqDismissals = pgTable(
   (t) => [primaryKey({ columns: [t.rfqId, t.operatorId] })],
 );
 
+export const listingReports = pgTable(
+  "listing_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    status: text("status", { enum: ["open", "dismissed"] })
+      .notNull()
+      .default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // One open flag per reporter per listing (QA-461).
+    uniqueIndex("listing_reports_open_dedupe")
+      .on(t.listingId, t.reporterId)
+      .where(sql`status = 'open'`),
+    index("listing_reports_status_idx").on(t.status, t.createdAt),
+  ],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type OperatorRow = typeof operators.$inferSelect;
 export type ListingRow = typeof listings.$inferSelect;

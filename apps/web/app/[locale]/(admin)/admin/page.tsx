@@ -17,6 +17,7 @@ import {
   VoidInvoiceButton,
 } from "./mark-paid";
 import { RfqSpamButton } from "./rfq-mod-button";
+import { DismissReportButton } from "./report-dismiss";
 import { SuspendButton, VerifyButton } from "./verify-button";
 
 export default async function AdminPage({
@@ -33,7 +34,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -46,12 +47,18 @@ export default async function AdminPage({
       repo.listRfqs({ limit: 50, vertical: verticalSlug() }),
       // Concierge expedites are platform revenue too — count alongside fees.
       repo.countRfqs({ vertical: verticalSlug(), concierge: true }),
+      // QA-461: buyer flags — open reports queue, newest first.
+      repo.listListingReports({
+        status: "open",
+        vertical: verticalSlug(),
+        limit: 50,
+      }),
     ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? Math.min(rawPage, dealPages) : 1;
   // Wave 2: the lookups that hang off wave-1 rows.
-  const [deals, listingCountRows, modOpRows, rfqListingRows] =
+  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows] =
     await Promise.all([
       repo.listDeals({
         limit: SEARCH_PAGE_SIZE,
@@ -74,6 +81,10 @@ export default async function AdminPage({
           ),
         ],
       }),
+      repo.listListings({
+        ids: [...new Set(reports.map((r) => r.listingId))],
+      }),
+      repo.listUsers([...new Set(reports.map((r) => r.reporterId))]),
     ]);
   // One grouped query + one Map build — was 100 sequential counts (QA-100).
   const listingCounts = new Map(Object.entries(listingCountRows));
@@ -101,6 +112,14 @@ export default async function AdminPage({
   // listing delete, so titles resolve via a batch lookup with a fallback.
   const rfqListingTitles = new Map(
     rfqListingRows.map((l) => [l.id, l.title] as const),
+  );
+  // QA-461: report rows resolve their listing title + reporter email in
+  // batch — no per-row lookups.
+  const reportListingTitles = new Map(
+    reportListingRows.map((l) => [l.id, l.title] as const),
+  );
+  const reportEmails = new Map(
+    reportUserRows.map((u) => [u.id, u.email] as const),
   );
   const LIVE_RFQ: ReadonlySet<string> = new Set(["open", "matched", "quoted"]);
 
@@ -275,6 +294,52 @@ export default async function AdminPage({
             ) : null}
           </tbody>
         </table></div>
+      </section>
+
+      <section className="mt-10" data-testid="admin-reports">
+        <h2 className="text-lg font-semibold">
+          {t("reports", { count: reports.length })}
+        </h2>
+        {reports.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{t("noReports")}</p>
+        ) : (
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colTitle")}</th>
+              <th className="py-2 pr-4">{t("colReason")}</th>
+              <th className="py-2 pr-4">{t("colNote")}</th>
+              <th className="py-2 pr-4">{t("colReporter")}</th>
+              <th className="py-2 pr-4">{t("colFiled")}</th>
+              <th className="py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {reports.map((r) => (
+              <tr key={r.id} data-testid={`report-${r.id}`}>
+                <td className="py-2 pr-4 font-medium">
+                  {reportListingTitles.get(r.listingId) ?? "—"}
+                </td>
+                <td className="py-2 pr-4">
+                  <Badge variant="warning" data-testid={`report-reason-${r.id}`}>
+                    {r.reason}
+                  </Badge>
+                </td>
+                <td className="max-w-60 truncate py-2 pr-4">{r.note ?? ""}</td>
+                <td className="py-2 pr-4">
+                  {reportEmails.get(r.reporterId) ?? "—"}
+                </td>
+                <td className="py-2 pr-4">
+                  {new Date(r.createdAt).toLocaleDateString("en-US")}
+                </td>
+                <td className="py-2">
+                  <DismissReportButton reportId={r.id} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+        )}
       </section>
 
       <section className="mt-10">
