@@ -319,6 +319,21 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(
         buyer.getByTestId('operator-response-time'),
       ).toContainText('~1 hour');
+
+      // QA-437: the same trio rides the listing page's operator card — the
+      // RFQ decision point gets the trust signals, not just the profile.
+      const [lst] = await sql<{ id: string }[]>`
+        select id from listings where title = ${LISTING_TITLE}`;
+      await buyer.goto(`/listing/${lst!.id}`);
+      await expect(
+        buyer.getByTestId('operator-deals-count'),
+      ).toHaveText('1 deal closed');
+      await expect(
+        buyer.getByTestId('operator-member-since'),
+      ).toContainText('since');
+      await expect(
+        buyer.getByTestId('operator-response-time'),
+      ).toContainText('~1 hour');
     } finally {
       await sql.end();
     }

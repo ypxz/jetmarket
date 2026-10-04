@@ -94,30 +94,48 @@ export default async function ListingPage({
   const backHref = from ? `/search?${from}` : "/search";
   const t = await getTranslations("listing");
   const ct = await getTranslations("common");
+  const ot = await getTranslations("operator");
   const listing = await load(id);
   if (!listing) notFound();
   const repo = await getRepo();
   // Operator card and the similar rail both hang off `listing` — parallel.
-  const [operatorRow, similarRows, watchCount] = await Promise.all([
-    repo.getOperator(listing.operatorId),
-    repo.listListings({
-      vertical: listing.vertical,
-      type: listing.type,
-      status: "active",
-      limit: 5,
-      ...browseExpiry(),
-    }),
-    // QA-408 social proof — active watchers on this listing only.
-    repo
-      .listSearchAlerts({
+  // QA-437: the trust trio rides along — the listing page is where the RFQ
+  // decision happens, so member-since/deals/response-time surface here too.
+  const [operatorRow, similarRows, watchCount, dealCount, avgResponseH] =
+    await Promise.all([
+      repo.getOperator(listing.operatorId),
+      repo.listListings({
         vertical: listing.vertical,
+        type: listing.type,
         status: "active",
-        watchListingId: listing.id,
-      })
-      .then((rows) => rows.length)
-      .catch(() => 0),
-  ]);
+        limit: 5,
+        ...browseExpiry(),
+      }),
+      // QA-408 social proof — active watchers on this listing only.
+      repo
+        .listSearchAlerts({
+          vertical: listing.vertical,
+          status: "active",
+          watchListingId: listing.id,
+        })
+        .then((rows) => rows.length)
+        .catch(() => 0),
+      repo
+        .countDealsPerOperator([listing.operatorId], verticalSlug())
+        .then((m) => m[listing.operatorId] ?? 0)
+        .catch(() => 0),
+      repo
+        .avgResponseHoursPerOperator([listing.operatorId], verticalSlug())
+        .then((m) => m[listing.operatorId])
+        .catch(() => undefined),
+    ]);
   const operator = operatorRow ?? null;
+  const memberSince = operator
+    ? new Date(operator.createdAt).toLocaleDateString("en", {
+        month: "long",
+        year: "numeric",
+      })
+    : null;
 
   // Same-type siblings keep the buyer in the browse loop when this one
   // doesn't fit — 5 fetched so dropping self still yields up to 4.
@@ -260,6 +278,31 @@ export default async function ListingPage({
                 {t("basedAt", { airport: operator?.baseAirport ?? "—" })} ·{" "}
                 {operator?.fleetSummary}
               </p>
+              {operator ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="text-xs text-muted"
+                    data-testid="operator-member-since"
+                  >
+                    {ot("memberSince", {
+                      date: memberSince!,
+                      siteName: site.name,
+                    })}
+                  </span>
+                  {dealCount > 0 ? (
+                    <Badge variant="outline" data-testid="operator-deals-count">
+                      {ot("dealsClosed", { count: dealCount })}
+                    </Badge>
+                  ) : null}
+                  {avgResponseH !== undefined ? (
+                    <Badge variant="outline" data-testid="operator-response-time">
+                      {ot("responseTime", {
+                        count: Math.max(1, Math.round(avgResponseH)),
+                      })}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
               <p className="text-xs text-muted">{ct("marketplaceNotice")}</p>
             </Stack>
           </CardBody>
