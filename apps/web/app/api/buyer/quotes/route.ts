@@ -166,6 +166,13 @@ export async function GET(req: Request) {
               ? {
                   ...o,
                   dealsClosed: dealCounts[q.operatorId] ?? 0,
+                  // QA-472: a suspended operator's offer can't be
+                  // accepted — surface the state so the inbox doesn't
+                  // offer a dead Accept button (post-reinstate it
+                  // clears and the offer revives).
+                  ...(opsByIdFull.get(q.operatorId)?.suspended
+                    ? { unavailable: true }
+                    : {}),
                   ratingAvg: ratingSummary[q.operatorId]?.avg,
                   ratingCount: ratingSummary[q.operatorId]?.count,
                   contactEmail:

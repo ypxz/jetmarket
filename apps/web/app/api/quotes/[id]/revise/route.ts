@@ -31,6 +31,9 @@ export async function POST(
   const repo = await getRepo();
   const operator = await repo.getOperatorByUserId(user.id);
   if (!operator) return err("create an operator profile first", 409);
+  // QA-472: revising is a market-facing write — same suspension gate as
+  // quote creation. (Withdraw stays open: retreat is cleanup, not trade.)
+  if (operator.suspended) return err("account suspended", 403);
 
   const { id } = await params;
   const quote = await repo.getQuote(id);

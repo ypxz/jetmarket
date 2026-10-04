@@ -28,6 +28,9 @@ interface Quote {
     /** QA-449: post-close reach-back — only present on the accepted quote
      *  (the deal's closed; the buyer legitimately gets the contact). */
     contactEmail?: string;
+    /** QA-472: the operator is suspended — the offer can't be accepted
+     *  while it lasts (it revives on reinstate, it isn't voided). */
+    unavailable?: boolean;
   } | null;
   /** QA-451: on accepted quotes — the deal id to rate + the rating given. */
   deal?: { id?: string; buyerRating?: number };
@@ -503,6 +506,26 @@ function QuotesInner() {
                         </div>
                         {q.status === "sent" &&
                         ["open", "matched", "quoted"].includes(r.status) ? (
+                          q.operator?.unavailable ? (
+                            <span className="flex items-center gap-2">
+                              {/* QA-472: don't offer an Accept that can
+                                  only 409 — the suspended offer is dead
+                                  while it lasts; Decline still clears it. */}
+                              <span
+                                className="text-xs text-muted"
+                                data-testid={`unavailable-${q.id}`}
+                              >
+                                {t("operatorUnavailable")}
+                              </span>
+                              <button
+                                onClick={() => decline(q.id)}
+                                data-testid={`decline-${q.id}`}
+                                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                              >
+                                {t("decline")}
+                              </button>
+                            </span>
+                          ) : (
                           <span className="flex gap-2">
                             <button
                               onClick={() => accept(q.id)}
@@ -519,6 +542,7 @@ function QuotesInner() {
                               {t("decline")}
                             </button>
                           </span>
+                          )
                         ) : null}
                       </li>
                     ))}

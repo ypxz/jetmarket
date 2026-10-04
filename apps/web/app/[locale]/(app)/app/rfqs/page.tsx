@@ -334,6 +334,7 @@ export default async function RfqInboxPage({
                     <RestoreButton rfqId={r.id} />
                   </div>
                 ) : quotes.length > 0 ? (
+                  <>
                   <ul className="mt-3 space-y-2">
                     {quotes.map((q) => (
                       <li
@@ -366,6 +367,14 @@ export default async function RfqInboxPage({
                       </li>
                     ))}
                   </ul>
+                  {/* QA-472: quoted rows flag too — an op who already
+                      quoted an abusive RFQ still needs the signal. */}
+                  {LIVE_RFQ_STATES.has(r.status) ? (
+                    <div className="mt-2">
+                      <ReportRfq rfqId={r.id} />
+                    </div>
+                  ) : null}
+                  </>
                 ) : LIVE_RFQ_STATES.has(r.status) ? (
                   <div className="mt-3 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">

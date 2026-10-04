@@ -221,6 +221,30 @@ test('admin suspension: supply hides, writes 403, reinstate restores (QA-460)', 
   );
   expect(acceptWhileSuspended.status()).toBe(409);
 
+  // QA-472: revising is a market-facing write — suspended ops 403 it like
+  // quote creation. (Withdraw stays open: retreat is cleanup, not trade.)
+  expect(
+    (
+      await operator.post(`/api/quotes/${liveQuoteId}/revise`, {
+        data: { amount: 43000, currency: 'USD' },
+      })
+    ).status(),
+  ).toBe(403);
+  // The buyer inbox flags the dead offer instead of a 409-on-click.
+  const buyerInbox = await publicCtx.get(
+    `/api/buyer/quotes?email=${encodeURIComponent(SUS_BUYER)}`,
+    { headers: { 'x-rfq-token': liveToken } },
+  );
+  expect(buyerInbox.ok()).toBeTruthy();
+  const inboxRfqs = (await buyerInbox.json()) as {
+    id: string;
+    quotes: { id: string; operator?: { unavailable?: boolean } | null }[];
+  }[];
+  const susRfq = inboxRfqs.find((r) => r.id === liveRfqId);
+  expect(
+    susRfq?.quotes.find((q) => q.id === liveQuoteId)?.operator?.unavailable,
+  ).toBe(true);
+
   // Reinstate restores everything in one toggle.
   const reinstate = await admin.post(
     `/api/admin/operators/${operatorId}/suspend`,

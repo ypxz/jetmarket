@@ -166,6 +166,7 @@
     "updated": "Updated",
     "dealsCount": "{count, plural, one {# deal closed} other {# deals closed}}",
     "decline": "Decline",
+    "operatorUnavailable": "This operator isn't available — their offer can't be accepted.",
     "declinedMsg": "Quote declined.",
     "needLink": "Open the link from your RFQ or quote email to view your quotes.",
     "needEmail": "Enter your email first.",
