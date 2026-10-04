@@ -57,6 +57,7 @@ export async function GET(req: Request) {
   // accepts — the marketplace intro is its fee; raw contact details pre-deal
   // invite off-platform deals that bypass it (QA-152).
   const vertical = verticalConfig();
+  const lastSeen = operator.inboxSeenAt;
   return noStore(ok(
     rfqs.map((rfq) => {
       const listing = rfq.listingId
@@ -64,6 +65,12 @@ export async function GET(req: Request) {
         : null;
       return {
         ...operatorRfqView(rfq, listing?.type, vertical),
+        // QA-482 — "request changed since your last visit" (never visited →
+        // since creation); the inbox renders it as the Updated badge.
+        updatedSinceSeen:
+          lastSeen === undefined
+            ? rfq.updatedAt > rfq.createdAt
+            : rfq.updatedAt > lastSeen,
         listing,
         // own quotes only — matched operators must not see competitors' amounts (QA-73)
         quotes: quotesByRfq.get(rfq.id) ?? [],

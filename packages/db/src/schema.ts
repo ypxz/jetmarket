@@ -152,6 +152,12 @@ export const rfqs = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // QA-482: bumped on every content write (amend / deadline extend /
+    // status transition) — operator inbox marks a request "Updated" when
+    // this passes their match's deliver_at.
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     index("rfqs_status_idx").on(t.status, t.createdAt),

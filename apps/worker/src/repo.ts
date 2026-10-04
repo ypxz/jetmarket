@@ -361,9 +361,11 @@ export function createWorkerRepo(db: Db): WorkerRepo {
 
     async markRfqMatched(rfqId) {
       // Conditional: never resurrect a closed/spam RFQ back to matched.
+      // updated_at bumps with every content write (QA-482) — the operator
+      // inbox's "Updated" badge compares it to their last visit.
       await db
         .update(rfqs)
-        .set({ status: "matched" })
+        .set({ status: "matched", updatedAt: new Date() })
         .where(and(eq(rfqs.id, rfqId), eq(rfqs.status, "new")));
     },
 

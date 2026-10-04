@@ -99,6 +99,10 @@ export interface Rfq {
   concierge: boolean;
   status: RfqStatus;
   createdAt: string;
+  /** Content-write stamp (QA-482) — bumped on amend/extend/status writes.
+   *  An operator's match delivered before this = the request changed since
+   *  they first saw it. */
+  updatedAt: string;
 }
 
 /** QA-469: an operator's flag on an abusive RFQ — feeds the admin
@@ -421,7 +425,7 @@ export interface Repo {
   createRfq(
     r: Omit<
       Rfq,
-      "id" | "createdAt" | "status" | "accessToken" | "concierge"
+      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge"
     > & {
       /** sha256 natural key — collides only with a LIVE twin (open/matched/
        * quoted); inserting over a terminal RFQ mints a fresh row (QA-228). */

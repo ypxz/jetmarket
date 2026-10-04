@@ -48,7 +48,7 @@ export async function expireStaleRfqsDetailed(
   const vcond = vertical ? sql`AND vertical = ${vertical}` : sql``;
   const rows = await db.execute(sql`
     WITH expired_rfqs AS (
-      UPDATE rfqs SET status = 'closed'
+      UPDATE rfqs SET status = 'closed', updated_at = now()
       WHERE status IN ('new', 'matched', 'quoted')
         ${vcond}
         AND (

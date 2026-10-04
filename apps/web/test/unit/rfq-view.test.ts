@@ -30,6 +30,7 @@ const rfq: Rfq = {
   },
   status: "open",
   createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 describe("operatorRfqView — contact masking (QA-152)", () => {

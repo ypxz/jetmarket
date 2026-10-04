@@ -437,7 +437,9 @@ class MemoryRepo implements Repo {
     // FK `set null` parity with pg: RFQs and their match deliveries lose
     // the listing link, never the row.
     for (const [rid, r] of this.rfqs) {
-      if (r.listingId === id) this.rfqs.set(rid, { ...r, listingId: null });
+      if (r.listingId === id) {
+        this.rfqs.set(rid, { ...r, listingId: null, updatedAt: now() });
+      }
     }
     for (const [rid, m] of this.rfqMatches) {
       const next = new Map(m);
@@ -514,7 +516,7 @@ class MemoryRepo implements Repo {
   async createRfq(
     r: Omit<
       Rfq,
-      "id" | "createdAt" | "status" | "accessToken" | "concierge"
+      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge"
     > & {
       dedupeKey?: string;
       accessToken?: string;
@@ -532,13 +534,17 @@ class MemoryRepo implements Repo {
     }
     const { dedupeKey, accessToken, ...rest } = r;
     void dedupeKey;
+    // One stamp for both — separate now() calls can straddle a millisecond
+    // and fake "amended since creation" on a never-edited row.
+    const stamped = now();
     const rfq: Rfq = {
       ...rest,
       id: uid("rfq"),
       status: "open",
       concierge: false,
       accessToken: accessToken ?? crypto.randomUUID(),
-      createdAt: now(),
+      createdAt: stamped,
+      updatedAt: stamped,
     };
     this.rfqs.set(rfq.id, rfq);
     if (r.dedupeKey) this.rfqDedupe.set(r.dedupeKey, rfq.id);
@@ -555,7 +561,7 @@ class MemoryRepo implements Repo {
   async setRfqStatus(id: string, status: Rfq["status"], expectedIn: Rfq["status"][]) {
     const rfq = this.rfqs.get(id);
     if (!rfq || !expectedIn.includes(rfq.status)) return false;
-    this.rfqs.set(id, { ...rfq, status });
+    this.rfqs.set(id, { ...rfq, status, updatedAt: now() });
     return true;
   }
   async extendRfqDeadline(id: string, dateTo: string): Promise<boolean> {
@@ -563,7 +569,11 @@ class MemoryRepo implements Repo {
     // Same gate as drizzle — synchronous check+write (QA-333); the merge
     // keeps every other request field (QA-446).
     if (!rfq || !LIVE_RFQ_STATUSES.has(rfq.status)) return false;
-    this.rfqs.set(id, { ...rfq, fields: { ...rfq.fields, dateTo } });
+    this.rfqs.set(id, {
+      ...rfq,
+      fields: { ...rfq.fields, dateTo },
+      updatedAt: now(),
+    });
     return true;
   }
   async updateRfqFields(
@@ -585,7 +595,7 @@ class MemoryRepo implements Repo {
     for (const [k, v] of this.rfqDedupe) {
       if (v === id) this.rfqDedupe.delete(k);
     }
-    this.rfqs.set(id, { ...rfq, fields });
+    this.rfqs.set(id, { ...rfq, fields, updatedAt: now() });
     this.rfqDedupe.set(dedupeKey, id);
     return true;
   }
@@ -608,6 +618,7 @@ class MemoryRepo implements Repo {
     // Check-to-write is synchronous — a parallel call can't interleave the
     // flag set with the match flip (same QA-333 rule as every mutator).
     rfq.concierge = true;
+    rfq.updatedAt = now();
     const matches: { id: string; operatorId: string }[] = [];
     for (const [operatorId, m] of this.rfqMatches.get(id) ?? []) {
       // Still-delayed = deliverAt strictly in the future; already-due rows
@@ -808,7 +819,10 @@ class MemoryRepo implements Repo {
     // Mirror markRfqMatched: only off the initial state, never resurrect.
     if (rows.length) {
       const rfq = this.rfqs.get(rows[0]!.rfqId);
-      if (rfq && rfq.status === "open") rfq.status = "matched";
+      if (rfq && rfq.status === "open") {
+        rfq.status = "matched";
+        rfq.updatedAt = now();
+      }
     }
   }
 
@@ -871,7 +885,7 @@ class MemoryRepo implements Repo {
         rfq.status === "matched" ||
         rfq.status === "quoted")
     ) {
-      this.rfqs.set(rfq.id, { ...rfq, status: "quoted" });
+      this.rfqs.set(rfq.id, { ...rfq, status: "quoted", updatedAt: now() });
     }
     return quote;
   }
@@ -948,7 +962,7 @@ class MemoryRepo implements Repo {
     );
     let quotes = 0;
     for (const r of expired) {
-      this.rfqs.set(r.id, { ...r, status: "expired" });
+      this.rfqs.set(r.id, { ...r, status: "expired", updatedAt: now() });
       for (const q of this.quotes.values()) {
         if (q.rfqId === r.id && q.status === "sent") {
           this.quotes.set(q.id, { ...q, status: "declined" });
@@ -1280,7 +1294,7 @@ class MemoryRepo implements Repo {
         r.buyerEmail.toLowerCase() === key &&
         (r.status === "open" || r.status === "matched" || r.status === "quoted")
       ) {
-        this.rfqs.set(id, { ...r, status: "spam" });
+        this.rfqs.set(id, { ...r, status: "spam", updatedAt: now() });
         n += 1;
       }
     }

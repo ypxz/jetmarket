@@ -146,6 +146,13 @@ export default async function RfqInboxPage({
       rfq: operatorRfqView(r, listing?.type, vertical),
       listing,
       quotes: quotesByRfq.get(r.id) ?? [],
+      // QA-482 "Updated" badge — the request changed since the operator's
+      // last inbox visit (never visited → amended since creation). The
+      // amend path bumps updatedAt on every content write.
+      updated:
+        lastSeen === undefined
+          ? r.updatedAt > r.createdAt
+          : r.updatedAt > lastSeen,
     };
   });
   // QA-438 bulk triage: exactly the rows that offer a per-row DismissButton
@@ -271,7 +278,7 @@ export default async function RfqInboxPage({
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
-          {rfqRows.map(({ rfq: r, listing, quotes }) => {
+          {rfqRows.map(({ rfq: r, listing, quotes, updated }) => {
             return (
               <li
                 key={r.id}
@@ -284,6 +291,11 @@ export default async function RfqInboxPage({
                     {lastSeen === undefined || r.createdAt > lastSeen ? (
                       <Badge variant="warning" data-testid={`rfq-new-${r.id}`}>
                         {t("newBadge")}
+                      </Badge>
+                    ) : null}
+                    {updated ? (
+                      <Badge variant="outline" data-testid={`rfq-updated-${r.id}`}>
+                        {t("updatedBadge")}
                       </Badge>
                     ) : null}
                     {r.concierge ? (

@@ -1272,6 +1272,67 @@ export function repoContract(
       expect(await repo.listRfqMatchOperatorIds("rfq-missing")).toEqual([]);
     });
 
+    it("updatedAt stamps every rfq content write (QA-482)", async () => {
+      const repo = await factory();
+      const tag = `uat-${Date.now().toString(36)}`;
+      const sleep = (ms: number) =>
+        new Promise((r) => setTimeout(r, ms));
+      const u = await repo.createUser(`uat-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "Stamp Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Stamp Jet ${tag}`,
+        price: 6000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `uatb-${tag}@test.dev`,
+        fields: { from: "ZRH", to: "NCE", dateTo: isoIn(10) },
+      });
+      // Creation stamps both clocks at once — "amended since creation"
+      // stays false until a real write lands.
+      expect(rfq.updatedAt).toBe(rfq.createdAt);
+
+      // Content write (fields) bumps it.
+      await sleep(5);
+      expect(
+        await repo.updateRfqFields(rfq.id, { from: "GVA" }, `uatk-${tag}`),
+      ).toBe(true);
+      const amended = (await repo.getRfq(rfq.id))!;
+      expect(amended.updatedAt > rfq.updatedAt).toBe(true);
+
+      // Content write (deadline) bumps it too.
+      await sleep(5);
+      expect(await repo.extendRfqDeadline(rfq.id, "2032-01-01")).toBe(true);
+      const extended = (await repo.getRfq(rfq.id))!;
+      expect(extended.updatedAt > amended.updatedAt).toBe(true);
+
+      // And a status transition.
+      await sleep(5);
+      expect(
+        await repo.setRfqStatus(rfq.id, "closed", [
+          "open",
+          "matched",
+          "quoted",
+        ]),
+      ).toBe(true);
+      const closed = (await repo.getRfq(rfq.id))!;
+      expect(closed.updatedAt > extended.updatedAt).toBe(true);
+    });
+
     it("countDeliveredMatches counts due rows only, batched (QA-401)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

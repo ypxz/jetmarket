@@ -128,6 +128,8 @@ export async function PATCH(
       updated,
       listing?.title,
       mailTargets.map((o) => o.id),
+      // pre-amend fields — the mail leads with an old → new diff (QA-482)
+      rfq.fields,
     );
   } catch (e) {
     logWarn("rfq.amend_notify_failed", {

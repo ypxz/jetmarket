@@ -130,8 +130,11 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
  */
 /** Shared mail details for RFQ operator notices: masked buyer name, the
  *  vertical's declared field lines (QA-234) plus undeclared extras, and
- *  the route string the subject carries. */
-function rfqMailDetails(f: Record<string, unknown>) {
+ *  the route string the subject carries. `prev` (QA-482) adds a
+ *  "Label: old → new" diff of just the changed fields — the amend mail
+ *  leads with it so operators spot the delta instead of re-reading
+ *  every line. */
+function rfqMailDetails(f: Record<string, unknown>, prev?: Record<string, unknown>) {
   const vertical = verticalConfig();
   // Buyer contact stays masked until a deal closes (QA-152) — name only.
   const buyerName =
@@ -148,10 +151,28 @@ function rfqMailDetails(f: Record<string, unknown>) {
   const detailLines = detailKeys
     .filter((k) => f[k] !== undefined && f[k] !== null && String(f[k]) !== "")
     .map((k) => `${labels.get(k) ?? k}: ${String(f[k])}`);
+  // Union over old+new keys so a REMOVED field diffs too ("Old → —").
+  const diffKeys = prev
+    ? [
+        ...detailKeys,
+        ...Object.keys(prev).filter(
+          (k) => !CONTACT_KEYS.has(k) && !detailKeys.includes(k),
+        ),
+      ]
+    : [];
+  const changedLines = diffKeys
+    .map((k) => {
+      const blank = (v: unknown) =>
+        v === undefined || v === null || String(v) === "";
+      const before = blank(prev![k]) ? "—" : String(prev![k]);
+      const after = blank(f[k]) ? "—" : String(f[k]);
+      return before === after ? null : `${labels.get(k) ?? k}: ${before} → ${after}`;
+    })
+    .filter((x): x is string => x !== null);
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
     .filter(Boolean)
     .join(" → ");
-  return { buyerName, detailLines, route };
+  return { buyerName, detailLines, changedLines, route };
 }
 
 export async function emailRfqMatches(
@@ -217,11 +238,23 @@ export async function emailRfqAmended(
   rfq: Rfq,
   listingTitle: string | undefined,
   operatorIds: string[],
+  prevFields?: Record<string, unknown>,
 ) {
-  const { buyerName, detailLines, route } = rfqMailDetails(rfq.fields);
+  const { buyerName, detailLines, changedLines, route } = rfqMailDetails(
+    rfq.fields,
+    prevFields,
+  );
   const subject = ["Updated RFQ", route, listingTitle]
     .filter(Boolean)
     .join(" — ");
+  // Lead with the delta when the caller supplies the pre-amend fields —
+  // "Departure: ZRH → GVA" answers "what changed?" in one glance. A no-op
+  // edit or missing prev falls back to the full detail lines.
+  const bodyLines = changedLines.length > 0 ? changedLines : detailLines;
+  const intro =
+    changedLines.length > 0
+      ? `The buyer updated their request for quotation on ${site.name} — here's what changed.`
+      : `The buyer updated their request for quotation on ${site.name} — the latest details are below.`;
   for (const operatorId of operatorIds) {
     const op = await repo.getOperator(operatorId);
     const user = op ? await repo.getUser(op.userId) : undefined;
@@ -231,17 +264,16 @@ export async function emailRfqAmended(
         to: user.email,
         subject,
         text:
-          `The buyer updated their request for quotation on ${site.name} — ` +
-          `the latest details are below.\n\n` +
-          `${detailLines.join("\n")}\n` +
+          `${intro}\n\n` +
+          `${bodyLines.join("\n")}\n` +
           `Buyer: ${buyerName}\n\n` +
           `Open your operator inbox to review or quote.`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [
-            `The buyer updated their request for quotation on ${site.name} — the request below reflects the latest version.`,
-            ...detailLines,
+            intro,
+            ...bodyLines,
             `Buyer: ${buyerName}`,
             "Open your operator inbox to review or quote.",
           ],

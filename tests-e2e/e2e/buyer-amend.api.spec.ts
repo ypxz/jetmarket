@@ -8,7 +8,7 @@ import postgres from 'postgres';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isoDateIn } from '../helpers/flow';
+import { isoDateIn, signUpAndLogin } from '../helpers/flow';
 
 test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.8.8' } });
 
@@ -93,7 +93,7 @@ async function mkRfq(
   return (await res.json()) as { rfqId: string; accessToken: string };
 }
 
-test('buyer amendment: PATCH replaces fields, re-keys dedupe, mails owner (QA-481)', async () => {
+test('buyer amendment: PATCH replaces fields, re-keys dedupe, mails owner (QA-481)', async ({ page }) => {
   test.setTimeout(90_000);
   const sql = postgres(testDb, { max: 1 });
   const publicCtx = await request.newContext({
@@ -163,6 +163,10 @@ test('buyer amendment: PATCH replaces fields, re-keys dedupe, mails owner (QA-48
     }
     expect(mail, 'expected an Updated RFQ mail to the listing owner').toBeTruthy();
     expect(mail!).toContain('GVA');
+    // QA-482 — the mail leads with the old → new diff, not the full dump.
+    expect(mail!).toContain('what changed');
+    expect(mail!).toContain('Departure: ZRH → GVA');
+    expect(mail!).toContain('Passengers: 4 → 6');
 
     // 3. Dedupe collision — amending to the twin's exact live details takes
     // the twin's dedupe key → 409, no write.
@@ -173,6 +177,48 @@ test('buyer amendment: PATCH replaces fields, re-keys dedupe, mails owner (QA-48
         })
       ).status(),
     ).toBe(409);
+
+    // 3b. Operator-side "Updated" signal (QA-482) — the API flag marks the
+    // amended request (op never visited → compared to createdAt); the twin
+    // stays false. Then the UI badge: op opens the inbox (marks seen), we
+    // amend once more, and a reload shows the Updated chip.
+    const opInbox = await operator.get('/api/operator/rfqs');
+    const opRows = (await opInbox.json()) as {
+      id: string;
+      updatedSinceSeen?: boolean;
+    }[];
+    expect(opRows.find((r) => r.id === rfq.rfqId)?.updatedSinceSeen).toBe(true);
+    expect(opRows.find((r) => r.id === twin.rfqId)?.updatedSinceSeen).toBe(
+      false,
+    );
+
+    await signUpAndLogin(page, OP_EMAIL, 'operator');
+    await page.goto('/app/rfqs');
+    await page
+      .waitForResponse(
+        (r) => r.url().includes('/api/operator/rfqs/seen'),
+        { timeout: 30_000 },
+      )
+      .catch(() => {});
+    const again = await buyer.patch(`/api/rfqs/${rfq.rfqId}`, {
+      data: {
+        buyerEmail: BUYER,
+        fields: rfqFields(BUYER, { arrival: 'LIN' }),
+      },
+    });
+    expect(again.status()).toBe(200);
+    await page.goto('/app/rfqs');
+    await expect(page.getByTestId(`rfq-updated-${rfq.rfqId}`)).toBeVisible({
+      timeout: 30_000,
+    });
+    // Created before that visit — the New badge is gone, only Updated shows.
+    await expect(
+      page.getByTestId(`rfq-new-${rfq.rfqId}`),
+    ).not.toBeVisible();
+    // The untouched twin never got a content write — no Updated chip.
+    await expect(
+      page.getByTestId(`rfq-updated-${twin.rfqId}`),
+    ).not.toBeVisible();
 
     // 4. A stranger session can't amend — uniform-denial 404.
     const stranger = await login(STRANGER);

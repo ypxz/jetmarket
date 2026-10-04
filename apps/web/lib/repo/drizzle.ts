@@ -121,6 +121,7 @@ function toRfq(r: typeof rfqs.$inferSelect): Rfq {
     status: (r.status === "new" ? "open" : r.status) as RfqStatus,
     concierge: r.concierge,
     createdAt: iso(r.createdAt),
+    updatedAt: iso(r.updatedAt),
   };
 }
 function toQuote(r: typeof quotes.$inferSelect): Quote {
@@ -836,7 +837,7 @@ export class DrizzleRepo implements Repo {
   async createRfq(
     r: Omit<
       Rfq,
-      "id" | "createdAt" | "status" | "accessToken" | "concierge"
+      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge"
     > & {
       dedupeKey?: string;
       accessToken?: string;
@@ -890,7 +891,7 @@ export class DrizzleRepo implements Repo {
       s === "open" ? "new" : s === "expired" ? "closed" : s;
     const rows = await this.db
       .update(rfqs)
-      .set({ status: toDb(status) })
+      .set({ status: toDb(status), updatedAt: new Date() })
       .where(
         and(eq(rfqs.id, id), inArray(rfqs.status, expectedIn.map(toDb))),
       )
@@ -905,6 +906,7 @@ export class DrizzleRepo implements Repo {
       .update(rfqs)
       .set({
         fields: sql`${rfqs.fields} || jsonb_build_object('dateTo', ${dateTo}::text)`,
+        updatedAt: new Date(),
       })
       .where(
         and(eq(rfqs.id, id), inArray(rfqs.status, ["new", "matched", "quoted"])),
@@ -922,7 +924,7 @@ export class DrizzleRepo implements Repo {
     // caller-recomputed dedupe key — one CAS under the live-status gate.
     const rows = await this.db
       .update(rfqs)
-      .set({ fields, dedupeKey })
+      .set({ fields, dedupeKey, updatedAt: new Date() })
       .where(
         and(eq(rfqs.id, id), inArray(rfqs.status, ["new", "matched", "quoted"])),
       )
@@ -960,7 +962,7 @@ export class DrizzleRepo implements Repo {
     return this.db.transaction(async (tx) => {
       const flipped = await tx
         .update(rfqs)
-        .set({ concierge: true })
+        .set({ concierge: true, updatedAt: new Date() })
         .where(
           and(
             eq(rfqs.id, id),
@@ -1391,7 +1393,7 @@ export class DrizzleRepo implements Repo {
     // Mirror the worker's markRfqMatched — only off 'new', never resurrect.
     await this.db
       .update(rfqs)
-      .set({ status: "matched" })
+      .set({ status: "matched", updatedAt: new Date() })
       .where(and(eq(rfqs.id, rows[0]!.rfqId), eq(rfqs.status, "new")));
   }
 
@@ -1418,7 +1420,7 @@ export class DrizzleRepo implements Repo {
     // write) and let a second deal mint (QA-165).
     await this.db
       .update(rfqs)
-      .set({ status: "quoted" })
+      .set({ status: "quoted", updatedAt: new Date() })
       .where(
         and(eq(rfqs.id, q.rfqId), inArray(rfqs.status, ["new", "matched", "quoted"])),
       );
@@ -1887,7 +1889,7 @@ export class DrizzleRepo implements Repo {
     // per-row spam mark (QA-181).
     const rows = await this.db
       .update(rfqs)
-      .set({ status: "spam" })
+      .set({ status: "spam", updatedAt: new Date() })
       .where(
         and(
           sql`lower(${rfqs.buyerEmail}) = ${email.toLowerCase()}`,

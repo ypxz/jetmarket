@@ -25,6 +25,9 @@ export function operatorRfqView(
     listingId: rfq.listingId,
     status: rfq.status,
     createdAt: rfq.createdAt,
+    // QA-482: content-write stamp — the inbox marks "Updated" when this
+    // passes the operator's last visit (inboxSeenAt).
+    updatedAt: rfq.updatedAt,
     buyerName: typeof rfq.fields["name"] === "string" ? rfq.fields["name"] : null,
     concierge: rfq.concierge,
     // QA-442: derived liveness deadline — non-contact, so it rides the
