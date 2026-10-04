@@ -32,6 +32,7 @@ import type {
   QuoteDeclineReason,
   QuoteReport,
   QuoteReportStatus,
+  QuoteRevision,
   QuoteStatus,
   QuoteTemplate,
   Repo,
@@ -55,6 +56,7 @@ const {
   rfqDismissals,
   quotes,
   quoteCounterRounds,
+  quoteRevisions,
   operatorRfqNotes,
   operatorQuoteTemplates,
   deals,
@@ -173,6 +175,20 @@ function toCounterRound(
     outcome: r.outcome as CounterRoundOutcome,
     createdAt: iso(r.createdAt),
     ...(r.resolvedAt ? { resolvedAt: iso(r.resolvedAt) } : {}),
+  };
+}
+
+function toQuoteRevision(
+  r: typeof quoteRevisions.$inferSelect,
+): QuoteRevision {
+  return {
+    id: r.id,
+    quoteId: r.quoteId,
+    rfqId: r.rfqId,
+    amount: fromMinorUnits(r.amountMinor, r.currency),
+    currency: r.currency,
+    ...(r.message ? { message: r.message } : {}),
+    supersededAt: iso(r.supersededAt),
   };
 }
 function toRfqNote(
@@ -1711,6 +1727,21 @@ export class DrizzleRepo implements Repo {
     opts?: { counterOutcome?: "answered" | "accepted" },
   ): Promise<Quote | null> {
     const rows = await this.db.transaction(async (tx) => {
+      // QA-530: pin the pre-revise terms under FOR UPDATE — a racing
+      // revise blocks on the row lock, then re-reads OUR new terms and
+      // logs those (not the same prior state twice). Without the lock,
+      // two concurrent revises could each log v0 while the card ends v2
+      // — the trail would lose v1 entirely.
+      const prev = await tx
+        .select({
+          rfqId: quotes.rfqId,
+          amountMinor: quotes.amountMinor,
+          currency: quotes.currency,
+          message: quotes.message,
+        })
+        .from(quotes)
+        .where(eq(quotes.id, id))
+        .for("update");
       const won = await tx
         .update(quotes)
         .set({
@@ -1738,6 +1769,17 @@ export class DrizzleRepo implements Repo {
           ),
         )
         .returning();
+      // Log the superseded terms in the same tx — a quote the CAS
+      // rejected (dead RFQ, wrong owner, terminal) leaves no trail row.
+      if (won[0] && prev[0]) {
+        await tx.insert(quoteRevisions).values({
+          quoteId: id,
+          rfqId: prev[0].rfqId,
+          amountMinor: prev[0].amountMinor,
+          currency: prev[0].currency,
+          message: prev[0].message,
+        });
+      }
       // The counter was answered by new terms — or outright taken
       // when the revise IS the accept-counter close.
       if (won[0]) {
@@ -1836,6 +1878,17 @@ export class DrizzleRepo implements Repo {
       .where(inArray(quoteCounterRounds.quoteId, ids))
       .orderBy(desc(quoteCounterRounds.createdAt));
     return rows.map(toCounterRound);
+  }
+
+  async listQuoteRevisions(quoteIds: string[]): Promise<QuoteRevision[]> {
+    const ids = quoteIds.filter(isUuid);
+    if (!ids.length) return [];
+    const rows = await this.db
+      .select()
+      .from(quoteRevisions)
+      .where(inArray(quoteRevisions.quoteId, ids))
+      .orderBy(desc(quoteRevisions.supersededAt), desc(quoteRevisions.id));
+    return rows.map(toQuoteRevision);
   }
 
   async countCounterRoundsByOutcome(

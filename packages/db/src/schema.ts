@@ -295,6 +295,32 @@ export const quoteCounterRounds = pgTable(
   (t) => [index("quote_counter_rounds_quote_id_idx").on(t.quoteId)],
 );
 
+// QA-530: superseded quote terms — each revise logs the (amount, currency,
+// message) it replaced inside the same CAS, so the buyer's card shows the
+// ladder "was X → now Y" instead of a bare 'updated' bump.
+export const quoteRevisions = pgTable(
+  "quote_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    rfqId: uuid("rfq_id")
+      .notNull()
+      .references(() => rfqs.id, { onDelete: "cascade" }),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: text("currency").notNull(),
+    message: text("message"),
+    supersededAt: timestamp("superseded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("quote_revisions_quote_id_idx").on(t.quoteId),
+    index("quote_revisions_rfq_id_idx").on(t.rfqId),
+  ],
+);
+
 export const deals = pgTable("deals", {
   id: uuid("id").primaryKey().defaultRandom(),
   quoteId: uuid("quote_id")

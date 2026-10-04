@@ -90,19 +90,29 @@ export async function GET(req: Request) {
   );
   // QA-451: deal id + rating attach to ACCEPTED quotes — the buyer rates
   // the deal in place; ratingSummary feeds the operator trust line.
-  const [dealByQuote, ratingSummary, counterRounds] = await Promise.all([
-    repo.listDeals({ quoteIds: quoteRows.map((q) => q.id) }),
-    repo.ratingSummaryPerOperator(opIds),
-    // QA-522: negotiation trail — what became of each counter the buyer
-    // proposed (withdrawn/declined/answered/accepted), one batch join.
-    repo.listCounterRounds(quoteRows.map((q) => q.id)),
-  ]);
+  const [dealByQuote, ratingSummary, counterRounds, revisions] =
+    await Promise.all([
+      repo.listDeals({ quoteIds: quoteRows.map((q) => q.id) }),
+      repo.ratingSummaryPerOperator(opIds),
+      // QA-522: negotiation trail — what became of each counter the buyer
+      // proposed (withdrawn/declined/answered/accepted), one batch join.
+      repo.listCounterRounds(quoteRows.map((q) => q.id)),
+      // QA-530: superseded term-sets — the operator's revise history on
+      // each offer ("was X → now Y"), same batch shape as the rounds.
+      repo.listQuoteRevisions(quoteRows.map((q) => q.id)),
+    ]);
   const dealByQuoteId = new Map(dealByQuote.map((d) => [d.quoteId, d]));
   const roundsByQuote = new Map<string, typeof counterRounds>();
   for (const r of counterRounds) {
     const arr = roundsByQuote.get(r.quoteId) ?? [];
     arr.push(r);
     roundsByQuote.set(r.quoteId, arr);
+  }
+  const revsByQuote = new Map<string, typeof revisions>();
+  for (const r of revisions) {
+    const arr = revsByQuote.get(r.quoteId) ?? [];
+    arr.push(r);
+    revsByQuote.set(r.quoteId, arr);
   }
   // QA-506 read receipts: this GET is the buyer's view event — stamp the
   // quotes it returns so ops see a "seen" chip on their sent quote.
@@ -203,6 +213,9 @@ export async function GET(req: Request) {
           counterRounds: (roundsByQuote.get(q.id) ?? []).filter(
             (r) => r.outcome !== "open",
           ),
+          // QA-530: the operator's superseded terms — the price ladder
+          // behind the current number, newest first.
+          revisions: revsByQuote.get(q.id) ?? [],
           deal:
             q.status === "accepted"
               ? {

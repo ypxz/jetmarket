@@ -17,6 +17,7 @@ import type {
   Quote,
   QuoteDeclineReason,
   QuoteReport,
+  QuoteRevision,
   QuoteTemplate,
   Repo,
   Rfq,
@@ -47,6 +48,8 @@ class MemoryRepo implements Repo {
   // QA-522: counter-round audit rows keyed by quote — appended on counter,
   // resolved on the round's exit.
   counterRounds = new Map<string, CounterRound[]>();
+  // QA-530: superseded quote terms per quoteId, newest-first via unshift.
+  private quoteRevisions = new Map<string, QuoteRevision[]>();
   deals = new Map<string, Deal>();
   subscriptions = new Map<string, Subscription>();
   /** rfqId -> operatorId -> match row (memory-mode fan-out, QA-89). */
@@ -1078,6 +1081,20 @@ class MemoryRepo implements Repo {
     // Newest first — contract + drizzle parity.
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+  async listQuoteRevisions(quoteIds: string[]) {
+    const out: QuoteRevision[] = [];
+    for (const id of quoteIds) {
+      const revs = this.quoteRevisions.get(id);
+      if (revs) out.push(...revs);
+    }
+    // Newest first — contract + drizzle parity (same-ms ties keep their
+    // unshift order, matching insert order).
+    return out.sort((a, b) =>
+      b.supersededAt === a.supersededAt
+        ? 0
+        : b.supersededAt.localeCompare(a.supersededAt),
+    );
+  }
   async countCounterRoundsByOutcome(operatorId: string) {
     let accepted = 0;
     let resolved = 0;
@@ -1211,12 +1228,13 @@ class MemoryRepo implements Repo {
     if (!q || q.operatorId !== operatorId || q.status !== "sent") return null;
     const rfq = this.rfqs.get(q.rfqId);
     if (!rfq || !LIVE_RFQ_STATUSES.has(rfq.status)) return null;
+    const stamp = now();
     const next: Quote = {
       ...q,
       amount: patch.amount,
       currency: patch.currency,
       message: patch.message,
-      updatedAt: now(),
+      updatedAt: stamp,
       // QA-506: revised content is unseen — the buyer saw the old terms.
       buyerSeenAt: undefined,
       // QA-511: a revise answers the buyer's counter — next round.
@@ -1225,6 +1243,20 @@ class MemoryRepo implements Repo {
       // QA-521: the note retires with the round too.
       counterMessage: undefined,
     };
+    // QA-530: log the superseded terms BEFORE the overwrite — sync with
+    // the CAS so a parallel revise can't split or skip a generation
+    // (QA-333). unshift keeps the trail newest-first like pg's desc read.
+    const revs = this.quoteRevisions.get(id) ?? [];
+    revs.unshift({
+      id: `rev-${revs.length}-${stamp}`,
+      quoteId: id,
+      rfqId: q.rfqId,
+      amount: q.amount,
+      currency: q.currency,
+      ...(q.message ? { message: q.message } : {}),
+      supersededAt: stamp,
+    });
+    this.quoteRevisions.set(id, revs);
     this.quotes.set(id, next);
     // QA-522: the counter was answered by new terms — or outright taken
     // when the revise IS the accept-counter close.

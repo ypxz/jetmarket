@@ -54,6 +54,15 @@ interface Quote {
     createdAt: string;
     resolvedAt?: string;
   }[];
+  /** QA-530: superseded terms from the operator's revises — the price
+   *  ladder behind the current offer, newest first. */
+  revisions?: {
+    id: string;
+    amount: number;
+    currency: string;
+    message?: string;
+    supersededAt: string;
+  }[];
 }
 interface Rfq {
   id: string;
@@ -1112,6 +1121,41 @@ function QuotesInner() {
                                       ),
                                     })}
                                     {r.note ? ` — “${r.note}”` : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                          {/* QA-530: operator revise history — what the
+                              offer USED to say, newest first. The card's
+                              top price is current; these are the rungs
+                              below it ("was X → now Y" — the drop is the
+                              close-signal the revise mail hinted at). */}
+                          {(q.revisions?.length ?? 0) > 0 ? (
+                            <div
+                              className="mt-1"
+                              data-testid={`quotehistory-${q.id}`}
+                            >
+                              <ul className="mt-0.5 space-y-0.5">
+                                {q.revisions!.map((rev) => (
+                                  <li
+                                    key={rev.id}
+                                    className="text-xs text-muted"
+                                    data-testid={`quoterev-${rev.id}`}
+                                  >
+                                    {t("reviseLine", {
+                                      amount: formatMoney(
+                                        rev.amount,
+                                        rev.currency,
+                                        locale,
+                                      ),
+                                      date: new Date(
+                                        rev.supersededAt,
+                                      ).toLocaleDateString(locale, {
+                                        month: "short",
+                                        day: "numeric",
+                                      }),
+                                    })}
                                   </li>
                                 ))}
                               </ul>

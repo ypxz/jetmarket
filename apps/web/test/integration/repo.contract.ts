@@ -473,6 +473,112 @@ export function repoContract(
       expect((await repo.getQuote(quote2.id))?.status).toBe("sent");
     });
 
+    it("revise history logs superseded terms inside the CAS, newest-first (QA-530)", async () => {
+      const repo = await factory();
+      const tag = `qh-${Date.now()}`;
+      const op = await repo.upsertOperator({
+        userId: (await repo.createUser(`qh-o-${tag}@test.dev`, "operator")).id,
+        name: "QH Air",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const rival = await repo.upsertOperator({
+        userId: (await repo.createUser(`qh-r-${tag}@test.dev`, "operator")).id,
+        name: "Rival",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `qh-b-${tag}@test.dev`,
+        fields: {},
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 25000,
+        currency: "USD",
+        message: "first pass",
+      });
+      const untouched = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: rival.id,
+        amount: 24000,
+        currency: "USD",
+        message: "",
+      });
+
+      // Never revised → no trail; unknown/junk ids ignore cleanly.
+      expect(await repo.listQuoteRevisions([quote.id])).toEqual([]);
+      expect(await repo.listQuoteRevisions([])).toEqual([]);
+      expect(await repo.listQuoteRevisions([`junk-${tag}`])).toEqual([]);
+
+      // Failed revises (foreign owner, terminal status) must not log —
+      // the trail only records terms that actually existed.
+      expect(
+        await repo.reviseQuote(quote.id, rival.id, {
+          amount: 1,
+          currency: "USD",
+          message: "hijack",
+        }),
+      ).toBeNull();
+      expect(await repo.listQuoteRevisions([quote.id])).toEqual([]);
+
+      // First revise: the trail captures the ORIGINAL terms (25,000),
+      // the quote carries the new number.
+      const v2 = await repo.reviseQuote(quote.id, op.id, {
+        amount: 22000,
+        currency: "USD",
+        message: "sharpened",
+      });
+      expect(v2).not.toBeNull();
+      const trail1 = await repo.listQuoteRevisions([quote.id]);
+      expect(trail1).toHaveLength(1);
+      expect(trail1[0]!.quoteId).toBe(quote.id);
+      expect(trail1[0]!.rfqId).toBe(rfq.id);
+      expect(trail1[0]!.amount).toBe(25000);
+      expect(trail1[0]!.currency).toBe("USD");
+      expect(trail1[0]!.message).toBe("first pass");
+      expect(trail1[0]!.supersededAt).toBeTruthy();
+
+      // Second revise: newest-first ladder — the rung just replaced
+      // (22,000/sharpened) leads, the original trails it.
+      const v3 = await repo.reviseQuote(quote.id, op.id, {
+        amount: 20500,
+        currency: "USD",
+        message: "final",
+      });
+      expect(v3).not.toBeNull();
+      const trail2 = await repo.listQuoteRevisions([quote.id]);
+      expect(trail2).toHaveLength(2);
+      expect(trail2[0]!.amount).toBe(22000);
+      expect(trail2[0]!.message).toBe("sharpened");
+      expect(trail2[1]!.amount).toBe(25000);
+      expect(trail2[1]!.message).toBe("first pass");
+      expect((await repo.getQuote(quote.id))!.amount).toBe(20500);
+
+      // Batch read spans quotes; the never-revised offer contributes
+      // nothing; a terminal-gated revise logs no row.
+      expect(await repo.setQuoteStatus(quote.id, "declined", "sent")).toBe(
+        true,
+      );
+      expect(
+        await repo.reviseQuote(quote.id, op.id, {
+          amount: 1,
+          currency: "USD",
+          message: "zombie",
+        }),
+      ).toBeNull();
+      const batch = await repo.listQuoteRevisions([quote.id, untouched.id]);
+      expect(batch).toHaveLength(2);
+      expect(batch.every((r) => r.quoteId === quote.id)).toBe(true);
+    });
+
     it("markQuotesBuyerSeen stamps first-view once and revise clears it (QA-506)", async () => {
       const repo = await factory();
       const tag = `seen-${Date.now()}`;

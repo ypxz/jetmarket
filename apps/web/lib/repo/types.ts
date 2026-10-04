@@ -260,6 +260,22 @@ export interface CounterRound {
   resolvedAt?: string;
 }
 
+/** QA-530: a superseded term-set — the (amount, currency, message) a
+ *  revise replaced, logged inside the revise's CAS. The live quote row
+ *  carries current terms; these rows (newest-first) are the buyer's
+ *  provenance trail — "was $24,000" under the new number. */
+export interface QuoteRevision {
+  id: string;
+  quoteId: string;
+  rfqId: string;
+  /** Superseded amount in display units + the currency it was offered in
+   *  (a later revise may flip the quote's — the row's doesn't move). */
+  amount: number;
+  currency: string;
+  message?: string;
+  supersededAt: string;
+}
+
 /** QA-527: saved quote preset — operators re-type the same offer shapes,
  *  so a named (amount, message) pair can be dropped into the inbox form.
  *  `amount` is DISPLAY units: the quote picks up the listing's currency at
@@ -899,6 +915,10 @@ export interface Repo {
   /** QA-522: counter-round history for a batch of quotes — the buyer
    *  inbox joins this once per page; newest round first. */
   listCounterRounds(quoteIds: string[]): Promise<CounterRound[]>;
+  /** QA-530: the superseded-terms trail for the buyer's quote cards —
+   *  every term-set a revise replaced, newest first. Unknown/non-uuid
+   *  ids are ignored; never-revised quotes contribute no rows. */
+  listQuoteRevisions(quoteIds: string[]): Promise<QuoteRevision[]>;
   /** QA-526: counter-lifecycle conversion for the Pro funnel — resolved
    *  rounds on this operator's quotes and how many closed 'accepted'.
    *  Open rounds aren't outcomes yet and don't count. */

@@ -503,7 +503,8 @@
       "spam": "Spam",
       "abusive": "Missbräuchlich",
       "other": "Sonstiges"
-    }
+    },
+    "reviseLine": "Überarbeitet — bis {date}: {amount}"
   },
   "design": {
     "title": "Designsystem",
