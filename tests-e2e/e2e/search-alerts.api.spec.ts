@@ -179,7 +179,8 @@ test('saved search: subscribe reports the live-match count + the UI shows it (QA
   test.setTimeout(60_000);
   const sql = postgres(testDb);
   const MATCHER = `e2e-match-${run}@jetmarket.local`;
-  const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  const [idA, idB, idC] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  const ids = [idA, idB, idC];
 
   try {
     // Two live listings on a unique facet value, one off-value control.
@@ -229,7 +230,7 @@ test('saved search: subscribe reports the live-match count + the UI shows it (QA
     await expect(page.getByTestId('search-alert-matched')).toContainText('2');
   } finally {
     await sql`delete from search_alerts where email = ${MATCHER}`;
-    await sql`delete from listings where id in (${ids[0]}, ${ids[1]}, ${ids[2]})`;
+    await sql`delete from listings where id in (${idA}, ${idB}, ${idC})`;
     await sql`delete from operators where user_id in (select id from users where email = ${OP_EMAIL})`;
     await sql`delete from users where email in (${MATCHER}, ${OP_EMAIL})`;
     await sql.end();
