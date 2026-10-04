@@ -329,6 +329,10 @@
       "body": "A buyer countered your {currency} {amount} quote for \"{title}\" on {site} with {currency} {counterAmount} — and it's still waiting on you. Take it or revise before they book someone else.",
       "yourInbox": "Open your countered leads: {url}",
       "cta": "Answer the counter"
+    },
+    "opCounterWithdrawn": {
+      "subject": "The buyer withdrew their {title} counter",
+      "body": "The buyer pulled their counter of {currency} {counterAmount} on your {currency} {amount} quote for \"{title}\" on {site}. The quote stands as-is — the counter is off the table."
     }
   },
   "listing": {
@@ -461,10 +465,12 @@
     "alertOpenListing": "Open listing",
     "repost": "Request again",
     "counter": "Counter",
+    "counterWithdraw": "Withdraw counter",
     "counterYourPrice": "Your price",
     "counterSend": "Send counter",
     "counteredYou": "You countered {amount} — awaiting the operator.",
-    "counteredMsg": "Counter sent — the operator was emailed."
+    "counteredMsg": "Counter sent — the operator was emailed.",
+    "counterWithdrawnMsg": "Counter withdrawn — the operator was told."
   },
   "design": {
     "title": "Design system",

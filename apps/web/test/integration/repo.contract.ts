@@ -632,6 +632,21 @@ export function repoContract(
       expect(met?.counteredAt).toBeUndefined();
       // The cleared round accepts a fresh counter.
       expect(await repo.counterQuote(counterTarget!.id, 24000)).toBe(true);
+
+      // QA-518: withdraw clears the round too — same CAS as countering
+      // (nothing to pull → false, terminal → false), and the quote's
+      // updatedAt still doesn't move.
+      expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(true);
+      const pulled = (await repo.getQuote(counterTarget!.id))!;
+      expect(pulled.counterAmount).toBeUndefined();
+      expect(pulled.counteredAt).toBeUndefined();
+      expect(pulled.updatedAt).toBe(untouched);
+      expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(false);
+      expect(await repo.clearQuoteCounter("nope")).toBe(false);
+      // Withdrawn ≠ spent — a fresh counter round opens.
+      expect(await repo.counterQuote(counterTarget!.id, 22000)).toBe(true);
+      await repo.setQuoteStatus(counterTarget!.id, "accepted", "sent");
+      expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(false);
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {

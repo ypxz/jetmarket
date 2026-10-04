@@ -210,7 +210,7 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     });
   });
 
-  await step('operator quotes it; buyer counters 9,000', async () => {
+  await step('operator quotes it; buyer counters, withdraws, re-counters 9,200', async () => {
     await operator.goto('/app/rfqs');
     // The closed round-1 row shares the listing title — the LIVE row is
     // the one still offering a quote form.
@@ -257,6 +257,30 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await buyer.locator(tidPrefix('counter-amount-')).fill('9000');
     await buyer.locator(tidPrefix('counter-send-')).click();
     expect((await resp).status()).toBe(200);
+
+    // QA-518: the buyer rethinks — pull the 9,000 counter off the
+    // table, then put a fresh number down. Withdrew != spent: a new
+    // counter round opens on the same quote.
+    const withdrawResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/counter') &&
+        r.request().method() === 'DELETE' &&
+        r.status() === 200,
+    );
+    await sent.locator(tidPrefix('counter-withdraw-')).click();
+    await withdrawResp;
+    await expect(sent.locator(tidPrefix('counter-sent-'))).toHaveCount(0);
+    const recounterResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/counter') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await sent.locator(tidPrefix('counter-')).first().click();
+    await buyer.locator(tidPrefix('counter-amount-')).fill('9200');
+    await buyer.locator(tidPrefix('counter-send-')).click();
+    expect((await recounterResp).status()).toBe(200);
+    await expect(sent.locator(tidPrefix('counter-sent-'))).toBeVisible();
   });
 
   // QA-517: while the round-2 counter still waits, the operator goes
@@ -274,7 +298,7 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await expect(stats).toContainText(/Counters waiting\s*1/);
   });
 
-  await step('operator takes the counter — deal closes at 9,000 (QA-515)', async () => {
+  await step('operator takes the counter — deal closes at 9,200 (QA-515)', async () => {
     await operator.goto('/app/rfqs');
     const item = operator
       .locator('li[data-testid^="rfq-"]')
@@ -294,7 +318,7 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
 
     // Deal row on the dashboard carries the countered price — not the ask.
     await operator.goto('/app');
-    await expect(operator.locator('main')).toContainText('9,000');
+    await expect(operator.locator('main')).toContainText('9,200');
     // QA-517: the accepted counter left the waiting bucket — the tile
     // reads 0 again beside the won deal.
     await expect(operator.getByTestId('operator-stats')).toContainText(

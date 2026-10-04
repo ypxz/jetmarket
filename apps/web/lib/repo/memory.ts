@@ -1002,6 +1002,19 @@ class MemoryRepo implements Repo {
     });
     return true;
   }
+  async clearQuoteCounter(id: string) {
+    const q = this.quotes.get(id);
+    if (!q || q.status !== "sent" || !q.counteredAt) return false;
+    // QA-518: the buyer pulls their number off the table — a
+    // re-countered round is a fresh round. (The QA-516 nudge stamp is
+    // pg-only — the worker repo has no memory impl.)
+    this.quotes.set(id, {
+      ...q,
+      counterAmount: undefined,
+      counteredAt: undefined,
+    });
+    return true;
+  }
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"], opts?: { declineReason?: QuoteDeclineReason }) {
     const q = this.quotes.get(id);
     if (!q || q.status !== expected) return false;

@@ -130,6 +130,52 @@ export async function notifyQuoteCountered(
 }
 
 /**
+ * Tell the operator the buyer withdrew their counter (QA-518) — they got
+ * the counter mail and may be mid-reply; a silent clear leaves them
+ * negotiating against a ghost. Same owner-locale path as the counter.
+ */
+export async function notifyCounterWithdrawn(
+  repo: Repo,
+  quote: Quote,
+  rfq: Rfq,
+  counterAmount: number,
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(quote.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (!owner) return;
+    const listing: Listing | undefined = rfq.listingId
+      ? await repo.getListing(rfq.listingId)
+      : undefined;
+    const m = await mailCopy(owner.locale);
+    const title = listing?.title ?? mailT(m, "shared.aListing");
+    const subject = mailT(m, "opCounterWithdrawn.subject", { title });
+    const body = mailT(m, "opCounterWithdrawn.body", {
+      title,
+      site: site.name,
+      currency: quote.currency,
+      amount: quote.amount,
+      counterAmount,
+    });
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.counter_withdrawn_failed", {
+      quoteId: quote.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
  * Tell the buyer an operator withdrew a quote they had sent. Buyers are
  * unauthenticated, so email is the only channel that reaches them.
  */

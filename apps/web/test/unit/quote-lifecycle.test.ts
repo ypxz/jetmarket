@@ -19,7 +19,10 @@ import type { Quote, Repo } from "../../lib/repo/types";
 import { POST as createQuote } from "../../app/api/quotes/route";
 import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
 import { POST as declineQuote } from "../../app/api/quotes/[id]/decline/route";
-import { POST as counterQuote } from "../../app/api/quotes/[id]/counter/route";
+import {
+  POST as counterQuote,
+  DELETE as withdrawCounter,
+} from "../../app/api/quotes/[id]/counter/route";
 import { POST as acceptCounter } from "../../app/api/quotes/[id]/accept-counter/route";
 import { POST as withdrawQuote } from "../../app/api/quotes/[id]/withdraw/route";
 import { POST as markPaid } from "../../app/api/admin/deals/[id]/paid/route";
@@ -31,6 +34,12 @@ const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (body?: unknown) =>
   new Request("http://test.local/api", {
     method: "POST",
+    headers: { "content-type": "application/json" },
+    body: body === undefined ? "{}" : JSON.stringify(body),
+  });
+const del = (body?: unknown) =>
+  new Request("http://test.local/api", {
+    method: "DELETE",
     headers: { "content-type": "application/json" },
     body: body === undefined ? "{}" : JSON.stringify(body),
   });
@@ -259,6 +268,67 @@ describe("POST /api/quotes/[id]/counter (buyer, QA-511)", () => {
       params(quote.id),
     );
     expect(res.status).toBe(409);
+  });
+});
+
+describe("DELETE /api/quotes/[id]/counter (buyer, QA-518)", () => {
+  it("pulls a live counter; guards strangers/replays/terminal", async () => {
+    const repo = await getMemoryRepo();
+    const { quote, buyerEmail, rfq } = await fixture(repo);
+
+    // No counter on the table yet — nothing to pull.
+    const early = await withdrawCounter(
+      del({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(early.status).toBe(409);
+
+    await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 8000 }),
+      params(quote.id),
+    );
+    // A stranger can't pull it.
+    const stranger = await withdrawCounter(
+      del({ buyerEmail: "nope@x.dev", token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(stranger.status).toBe(403);
+
+    const res = await withdrawCounter(
+      del({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(res.status).toBe(200);
+    const cleared = (await res.json()) as Quote;
+    expect(cleared.counterAmount).toBeUndefined();
+    expect(cleared.counteredAt).toBeUndefined();
+    expect(cleared.status).toBe("sent");
+
+    // Replay 409s — the round ended.
+    const again = await withdrawCounter(
+      del({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(again.status).toBe(409);
+
+    // But a withdrawn counter frees a NEW round: the buyer can counter
+    // again (withdrew ≠ spent).
+    const recounter = await counterQuote(
+      post({ buyerEmail, token: rfq.accessToken, amount: 7500 }),
+      params(quote.id),
+    );
+    expect(recounter.status).toBe(200);
+
+    // Terminal rows refuse — a withdraw on an accepted quote is a ghost.
+    await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    const dead = await withdrawCounter(
+      del({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(dead.status).toBe(409);
   });
 });
 

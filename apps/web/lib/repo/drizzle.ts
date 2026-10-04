@@ -1678,6 +1678,30 @@ export class DrizzleRepo implements Repo {
     return rows.length > 0;
   }
 
+  async clearQuoteCounter(id: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    // QA-518: withdraw a live counter. All three counter cols clear —
+    // counter_nudge_mailed_at included so a re-countered round re-arms
+    // the QA-516 nudge. Deliberately no updatedAt bump (symmetric with
+    // counterQuote — the offer itself didn't change).
+    const rows = await this.db
+      .update(quotes)
+      .set({
+        counterAmountMinor: null,
+        counteredAt: null,
+        counterNudgeMailedAt: null,
+      })
+      .where(
+        and(
+          eq(quotes.id, id),
+          eq(quotes.status, "sent"),
+          isNotNull(quotes.counteredAt),
+        ),
+      )
+      .returning({ id: quotes.id });
+    return rows.length > 0;
+  }
+
   async markQuotesBuyerSeen(quoteIds: string[]) {
     // Parity with memory impl: non-uuid ids silently skip.
     const ids = quoteIds.filter(isUuid);

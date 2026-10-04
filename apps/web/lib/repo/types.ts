@@ -806,6 +806,12 @@ export interface Repo {
    *  counter per offer round — reviseQuote clears it for the next).
    *  Amount is in display units, stored minor like the quote itself. */
   counterQuote(id: string, amount: number): Promise<boolean>;
+  /** QA-518: withdraw a live counter — the buyer takes their number off
+   *  the table before the operator answers. Same CAS as counterQuote
+   *  ('sent' + countered); clears the QA-516 nudge stamp too so a
+   *  re-countered round re-arms it. Returns false when there's no live
+   *  counter to pull. */
+  clearQuoteCounter(id: string): Promise<boolean>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */

@@ -329,6 +329,10 @@
       "body": "Ein Käufer hat Ihr Angebot von {currency} {amount} für \"{title}\" auf {site} mit {currency} {counterAmount} kontert — und es wartet noch auf Sie. Nehmen Sie es an oder revidieren Sie, bevor er bei jemand anderem bucht.",
       "yourInbox": "Ihre Gegenangebote öffnen: {url}",
       "cta": "Gegenangebot beantworten"
+    },
+    "opCounterWithdrawn": {
+      "subject": "Der Käufer hat sein {title}-Gegenangebot zurückgezogen",
+      "body": "Der Käufer hat sein Gegenangebot von {currency} {counterAmount} auf Ihr Angebot von {currency} {amount} für \"{title}\" auf {site} zurückgezogen. Ihr Angebot steht weiter — das Gegenangebot ist vom Tisch."
     }
   },
   "listing": {
@@ -461,10 +465,12 @@
     "alertOpenListing": "Inserat öffnen",
     "repost": "Erneut anfragen",
     "counter": "Gegenangebot",
+    "counterWithdraw": "Gegenangebot zurückziehen",
     "counterYourPrice": "Ihr Preis",
     "counterSend": "Gegenangebot senden",
     "counteredYou": "Sie haben {amount} geboten — warten auf den Anbieter.",
-    "counteredMsg": "Gegenangebot gesendet — der Anbieter wurde benachrichtigt."
+    "counteredMsg": "Gegenangebot gesendet — der Anbieter wurde benachrichtigt.",
+    "counterWithdrawnMsg": "Gegenangebot zurückgezogen — der Anbieter wurde informiert."
   },
   "design": {
     "title": "Designsystem",

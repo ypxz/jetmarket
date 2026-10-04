@@ -382,6 +382,33 @@ function QuotesInner() {
     await load();
   }
 
+  // QA-518: pull a live counter off the table — the cleared round lets
+  // the buyer counter again (the op gets a short mail so they stop
+  // answering a number that's gone).
+  const withdrawCounter = (quoteId: string) =>
+    withBusy(() => withdrawCounterImpl(quoteId));
+
+  async function withdrawCounterImpl(quoteId: string) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/quotes/${quoteId}/counter`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ buyerEmail: email, token }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(errText(data, tc("error")));
+      return;
+    }
+    setMsg(t("counterWithdrawnMsg"));
+    await load();
+  }
+
   // Two-step like the decline picker: the button reveals an inline
   // amount field (prefilled just under the ask); a live counter
   // suppresses the button — one counter per offer round.
@@ -810,11 +837,23 @@ function QuotesInner() {
                           {/* QA-511: your counter is on the table — the
                               operator was mailed; a revise clears it. */}
                           {q.status === "sent" && q.counterAmount != null ? (
-                            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid={`counter-sent-${q.id}`}>
-                              {t("counteredYou", {
-                                amount: formatMoney(q.counterAmount, q.currency, locale),
-                              })}
-                            </span>
+                            <>
+                              <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid={`counter-sent-${q.id}`}>
+                                {t("counteredYou", {
+                                  amount: formatMoney(q.counterAmount, q.currency, locale),
+                                })}
+                              </span>{" "}
+                              {/* QA-518: a counter is retractable while it
+                                  still waits — the op's answer window. */}
+                              <button
+                                onClick={() => withdrawCounter(q.id)}
+                                disabled={busy}
+                                data-testid={`counter-withdraw-${q.id}`}
+                                className="text-xs text-muted underline"
+                              >
+                                {t("counterWithdraw")}
+                              </button>
+                            </>
                           ) : null}{" "}
                           <span className="text-sm text-muted">
                             {t("by", { name: q.operator?.name ?? "" })}
