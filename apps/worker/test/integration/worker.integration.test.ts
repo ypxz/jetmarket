@@ -526,6 +526,46 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     expect(jobs.map((j) => j.matchId)).toContain(m!.id);
   });
 
+  it("skips a stranded pending match whose RFQ already closed (QA-503)", async () => {
+    // QA-499's orphan sweep closes RFQs whose delayed matches had already
+    // flipped pending — enqueueing them would only dead-gate warn-skip.
+    const deadRfq = await insertRfq({ name: "Dead", email: "d@x.com" });
+    await db
+      .update(rfqs)
+      .set({ status: "closed" })
+      .where(eq(rfqs.id, deadRfq));
+    const liveRfq = await insertRfq({ name: "Live", email: "l@x.com" });
+    const [op] = await db
+      .select({ id: operators.id })
+      .from(operators)
+      .limit(1);
+    const [deadMatch] = await db
+      .insert(rfqMatches)
+      .values({
+        rfqId: deadRfq,
+        operatorId: op!.id,
+        state: "pending",
+        deliverAt: new Date(),
+      })
+      .returning({ id: rfqMatches.id });
+    const [liveMatch] = await db
+      .insert(rfqMatches)
+      .values({
+        rfqId: liveRfq,
+        operatorId: op!.id,
+        state: "pending",
+        deliverAt: new Date(),
+      })
+      .returning({ id: rfqMatches.id });
+
+    await deliverDueMatches(deps());
+    const jobs = await sql<{ matchId: string }[]>`
+      select payload ->> 'matchId' as "matchId" from jobs
+      where kind = 'email.quote_notification'`;
+    expect(jobs.map((j) => j.matchId)).toContain(liveMatch!.id);
+    expect(jobs.map((j) => j.matchId)).not.toContain(deadMatch!.id);
+  });
+
   it("re-enqueues fan-out for a 'new' RFQ whose job never landed (QA-168)", async () => {
     // Simulate the route's enqueueJob throwing post-write: RFQ persisted
     // at 'new' long past the grace window, no jobs row exists.

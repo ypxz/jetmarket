@@ -442,15 +442,17 @@ export function createWorkerRepo(db: Db): WorkerRepo {
               where j.kind = 'email.quote_notification'
                 and j.payload ->> 'matchId' = ${rfqMatches.id}::text
             )`,
-            ...(vertical
-              ? [
-                  sql`exists (
-                    select 1 from rfqs r
-                    where r.id = ${rfqMatches.rfqId}
-                      and r.vertical = ${vertical}
-                  )`,
-                ]
-              : []),
+            // Same dead-RFQ gate as deliverDueMatches (QA-169, QA-503): a
+            // pending match on a closed RFQ is un-sendable — enqueueing it
+            // only produces a warn-skip at the dead-gate. QA-499's orphan
+            // sweep creates exactly this: pending matches whose RFQ closed
+            // before a job ever landed.
+            sql`exists (
+              select 1 from rfqs r
+              where r.id = ${rfqMatches.rfqId}
+                and r.status in ('new', 'matched', 'quoted')
+                ${vertical ? sql`and r.vertical = ${vertical}` : sql``}
+            )`,
           ),
         )
         .limit(limit);
