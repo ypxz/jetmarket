@@ -175,9 +175,25 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(legRow).toBeVisible();
       await legRow.getByTestId(`dismiss-rfq-${rfq!.id}`).click();
       await expect(legRow).toHaveCount(0, { timeout: 15_000 });
-      // Per-operator state persists across reloads; buyer still sees it.
+      // Per-operator state persists across reloads.
       await operator.reload();
       await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toHaveCount(0);
+      // QA-421: the Dismissed view surfaces the row and Restore undoes it.
+      await operator.goto('/app/rfqs?f=dismissed');
+      const disRow = operator.locator(tid(`rfq-${rfq!.id}`));
+      await expect(disRow).toBeVisible();
+      await disRow.getByTestId(`restore-rfq-${rfq!.id}`).click();
+      await expect(disRow).toHaveCount(0, { timeout: 15_000 });
+      await operator.goto('/app/rfqs');
+      await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toBeVisible();
+      // Dismiss it again — the buyer side is unaffected either way.
+      await operator
+        .locator(tid(`rfq-${rfq!.id}`))
+        .getByTestId(`dismiss-rfq-${rfq!.id}`)
+        .click();
+      await expect(operator.locator(tid(`rfq-${rfq!.id}`))).toHaveCount(0, {
+        timeout: 15_000,
+      });
       const inbox = await buyer.request.get(
         `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
         { headers: { 'x-rfq-token': rfq!.token } },

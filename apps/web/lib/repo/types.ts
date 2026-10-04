@@ -362,6 +362,11 @@ export interface Repo {
      * quote (`sent`/`accepted`). Declined/withdrawn quotes don't hide the
      * RFQ: there's no live quote in play, so it still needs action. */
     needsQuote?: boolean;
+    /** "Dismissed" inbox view (QA-421): only meaningful with `operatorId` —
+     * flips the QA-420 exclusion into a positive match so the operator can
+     * review (and restore) the rows they dismissed. Rows that also left the
+     * inbox entirely (listing deleted, match gone) stay out either way. */
+    dismissedOnly?: boolean;
     /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
     vertical?: string;
     /** Page slice applied after other filters, newest-first. */
@@ -384,6 +389,14 @@ export interface Repo {
    * true.
    */
   dismissRfq(rfqId: string, operatorId: string): Promise<boolean>;
+  /**
+   * QA-421: undo a dismiss — the RFQ re-enters the operator's inbox views.
+   * False when the pair doesn't exist, which also covers RFQs the operator
+   * could never have seen (no pair can exist without a prior dismissRfq,
+   * so there's nothing to probe). Visibility itself is recomputed at read
+   * time — undismissing an RFQ that has since left the inbox is a no-op.
+   */
+  undismissRfq(rfqId: string, operatorId: string): Promise<boolean>;
   /**
    * Stamp `inbox_seen_at = now` on the operator (QA-416) — the inbox badges
    * RFQs created after this stamp. Idempotent by nature (a timestamp write).
@@ -456,6 +469,9 @@ export interface Repo {
     /** Same "needs a quote" exclusion as listRfqs — pagination totals must
      * match the filtered page (QA-402). */
     needsQuote?: boolean;
+    /** Same "dismissed" inclusion as listRfqs (QA-421) — totals must match
+     * the filtered page on both impls. */
+    dismissedOnly?: boolean;
     /** Scope to one vertical — matches listRfqs (QA-293). */
     vertical?: string;
     /** Exclude these iface statuses (e.g. "closed" counts only live RFQs). */

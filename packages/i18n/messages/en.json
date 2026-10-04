@@ -727,6 +727,7 @@
       "withdraw": "Withdraw",
       "withdrawing": "Withdrawing…",
       "dismiss": "Dismiss",
+      "restore": "Restore",
       "notOpen": "This request is {status} — quoting is closed.",
       "noQuotes": "No quotes yet",
       "delayedTeaser": "{count, plural, one {# buyer request lands in your inbox in {hours}h} other {# buyer requests land in your inbox in {hours}h}} — Pro operators quote immediately.",
@@ -734,6 +735,7 @@
       "conciergeBadge": "Concierge",
       "filterAll": "All",
       "filterNeeds": "Needs a quote",
+      "filterDismissed": "Dismissed",
       "newBadge": "New"
     },
     "billing": {

@@ -12,7 +12,7 @@ import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
-import { DismissButton } from "./dismiss-button";
+import { DismissButton, RestoreButton } from "./dismiss-button";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
 const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
@@ -47,9 +47,13 @@ export default async function RfqInboxPage({
   // yet — the daily-driver view; "all" keeps the full delivered inbox.
   const f = Array.isArray(params.f) ? params.f[0] : params.f;
   const needsOnly = f === "needs";
+  // "Dismissed" view (QA-421): the QA-420 exclusion flips to a positive
+  // match so dismissed rows can be reviewed + restored.
+  const dismissedOnly = f === "dismissed";
   const total = await repo.countRfqs({
     operatorId: operator.id,
     needsQuote: needsOnly || undefined,
+    dismissedOnly: dismissedOnly || undefined,
     vertical: verticalSlug(),
   });
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
@@ -58,6 +62,7 @@ export default async function RfqInboxPage({
   const rfqsPage = await repo.listRfqs({
     operatorId: operator.id,
     needsQuote: needsOnly || undefined,
+    dismissedOnly: dismissedOnly || undefined,
     vertical: verticalSlug(),
     limit: SEARCH_PAGE_SIZE,
     offset: (page - 1) * SEARCH_PAGE_SIZE,
@@ -122,14 +127,17 @@ export default async function RfqInboxPage({
           [
             ["all", t("filterAll")],
             ["needs", t("filterNeeds")],
+            ["dismissed", t("filterDismissed")],
           ] as const
         ).map(([key, label]) => (
           <Link
             key={key}
-            href={key === "needs" ? "/app/rfqs?f=needs" : "/app/rfqs"}
+            href={
+              key === "all" ? "/app/rfqs" : `/app/rfqs?f=${key}`
+            }
             data-testid={`filter-${key}`}
             className={`rounded-md px-3 py-1.5 text-sm ${
-              needsOnly === (key === "needs")
+              f === key || (key === "all" && !needsOnly && !dismissedOnly)
                 ? "bg-primary text-primary-foreground font-medium"
                 : "border border-border bg-background text-muted"
             }`}
@@ -202,7 +210,13 @@ export default async function RfqInboxPage({
                     </div>
                   ))}
                 </dl>
-                {quotes.length > 0 ? (
+                {dismissedOnly ? (
+                  <div className="mt-3 flex justify-end">
+                    {/* QA-421 restore — undismiss returns the RFQ to the
+                        normal inbox (DELETE on the dismiss route). */}
+                    <RestoreButton rfqId={r.id} />
+                  </div>
+                ) : quotes.length > 0 ? (
                   <ul className="mt-3 space-y-2">
                     {quotes.map((q) => (
                       <li

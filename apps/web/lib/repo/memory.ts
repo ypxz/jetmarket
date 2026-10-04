@@ -471,6 +471,7 @@ class MemoryRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
+    dismissedOnly?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
@@ -491,12 +492,17 @@ class MemoryRepo implements Repo {
           .map((l) => l.id),
       );
       const opId = filter.operatorId;
-      out = out.filter(
-        (r) =>
-          !this.rfqDismissed.has(`${r.id}:${opId}`) &&
-          ((r.listingId !== null && opListingIds.has(r.listingId)) ||
-            this.matchVisible(r.id, opId)),
-      );
+      out = out.filter((r) => {
+        const visible =
+          (r.listingId !== null && opListingIds.has(r.listingId)) ||
+          this.matchVisible(r.id, opId);
+        // dismissedOnly flips the QA-420 exclusion into a positive match —
+        // the "Dismissed" inbox view (QA-421). Rows that also left the
+        // inbox entirely still hide (visibility gate stays on both arms).
+        return filter.dismissedOnly
+          ? visible && this.rfqDismissed.has(`${r.id}:${opId}`)
+          : visible && !this.rfqDismissed.has(`${r.id}:${opId}`);
+      });
       // "Needs a quote": hide RFQs the operator already has a live quote on
       // (sent/accepted) — declined/withdrawn leave it needing action (QA-402).
       if (filter.needsQuote) {
@@ -543,6 +549,12 @@ class MemoryRepo implements Repo {
     if (!owns && !this.matchVisible(rfqId, operatorId)) return false;
     this.rfqDismissed.add(`${rfqId}:${operatorId}`);
     return true;
+  }
+
+  /** QA-421 undo: the pair's absence is the stranger-proof — Set.delete
+   *  returns false when there was nothing to restore. */
+  async undismissRfq(rfqId: string, operatorId: string): Promise<boolean> {
+    return this.rfqDismissed.delete(`${rfqId}:${operatorId}`);
   }
 
   /** Still undelivered = deliverAt strictly in the future (matchVisible's

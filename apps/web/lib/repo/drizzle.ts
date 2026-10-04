@@ -780,6 +780,7 @@ export class DrizzleRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
+    dismissedOnly?: boolean;
     vertical?: string;
     limit?: number;
     offset?: number;
@@ -805,12 +806,19 @@ export class DrizzleRepo implements Repo {
           and(
             or(eq(listings.operatorId, filter.operatorId), matched),
             // Inbox triage: dismissed RFQs leave this operator's view only
-            // (QA-420) — buyer/admin lists don't join rfq_dismissals at all.
-            sql`not exists (
-              select 1 from rfq_dismissals d
-              where d.rfq_id = ${rfqs.id}
-                and d.operator_id = ${filter.operatorId}
-            )`,
+            // (QA-420); dismissedOnly flips it into the "Dismissed" view
+            // (QA-421) — buyer/admin lists don't join rfq_dismissals at all.
+            filter.dismissedOnly
+              ? sql`exists (
+                  select 1 from rfq_dismissals d
+                  where d.rfq_id = ${rfqs.id}
+                    and d.operator_id = ${filter.operatorId}
+                )`
+              : sql`not exists (
+                  select 1 from rfq_dismissals d
+                  where d.rfq_id = ${rfqs.id}
+                    and d.operator_id = ${filter.operatorId}
+                )`,
             ...(filter.vertical
               ? [eq(rfqs.vertical, filter.vertical)]
               : []),
@@ -857,6 +865,7 @@ export class DrizzleRepo implements Repo {
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
+    dismissedOnly?: boolean;
     vertical?: string;
     statusNot?: RfqStatus[];
     since?: string;
@@ -880,7 +889,24 @@ export class DrizzleRepo implements Repo {
           and m.operator_id = ${filter.operatorId}
           and m.state <> 'delayed'
       )`;
-      const conds = [or(eq(listings.operatorId, filter.operatorId), matched)!];
+      const conds = [
+        or(eq(listings.operatorId, filter.operatorId), matched)!,
+        // QA-421: totals must mirror listRfqs' dismissal rule on BOTH
+        // impls — memory's countRfqs reuses listRfqs so it always
+        // excluded them; missing this clause inflated dismissed rows
+        // into pg pagination totals.
+        filter.dismissedOnly
+          ? sql`exists (
+              select 1 from rfq_dismissals d
+              where d.rfq_id = ${rfqs.id}
+                and d.operator_id = ${filter.operatorId}
+            )`
+          : sql`not exists (
+              select 1 from rfq_dismissals d
+              where d.rfq_id = ${rfqs.id}
+                and d.operator_id = ${filter.operatorId}
+            )`,
+      ];
       if (filter.vertical)
         conds.push(eq(rfqs.vertical, filter.vertical));
       if (statusCond) conds.push(statusCond);
@@ -987,6 +1013,22 @@ export class DrizzleRepo implements Repo {
       .values({ rfqId, operatorId })
       .onConflictDoNothing();
     return true;
+  }
+
+  async undismissRfq(rfqId: string, operatorId: string): Promise<boolean> {
+    if (!isUuid(rfqId) || !isUuid(operatorId)) return false;
+    // QA-421 undo — the pair-scoped DELETE is its own stranger-proof:
+    // nothing exists to probe or restore when the pair never existed.
+    const gone = await this.db
+      .delete(rfqDismissals)
+      .where(
+        and(
+          eq(rfqDismissals.rfqId, rfqId),
+          eq(rfqDismissals.operatorId, operatorId),
+        ),
+      )
+      .returning({ id: rfqDismissals.rfqId });
+    return gone.length > 0;
   }
 
   async markInboxSeen(operatorId: string): Promise<void> {

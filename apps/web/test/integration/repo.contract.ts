@@ -1279,6 +1279,42 @@ export function repoContract(
           await repo.listRfqs({ operatorId: stranger.id, vertical: "jets" })
         ).some((r) => r.id === rfq3.id),
       ).toBe(false);
+
+      // QA-421: "Dismissed" view + undismiss. Dismissed-only flips the
+      // exclusion: owner sees exactly rfq, stranger sees exactly rfq3 —
+      // and the unflagged count/list keep excluding dismissed rows on
+      // BOTH impls (drizzle countRfqs once lacked the dismissal clause —
+      // totals must equal the list length, not count the hidden rows).
+      const dismissedOf = (operatorId: string) =>
+        repo.listRfqs({ operatorId, vertical: "jets", dismissedOnly: true });
+      expect((await dismissedOf(owner.id)).map((r) => r.id)).toEqual([
+        rfq.id,
+      ]);
+      expect((await dismissedOf(stranger.id)).map((r) => r.id)).toEqual([
+        rfq3.id,
+      ]);
+      expect(
+        await repo.countRfqs({
+          operatorId: owner.id,
+          vertical: "jets",
+          dismissedOnly: true,
+        }),
+      ).toBe(1);
+      expect(
+        await repo.countRfqs({ operatorId: owner.id, vertical: "jets" }),
+      ).toBe(
+        (
+          await repo.listRfqs({ operatorId: owner.id, vertical: "jets" })
+        ).length,
+      );
+
+      // Undismiss restores visibility; replay and stranger restores miss.
+      expect(await repo.undismissRfq(rfq.id, owner.id)).toBe(true);
+      expect(await repo.undismissRfq(rfq.id, owner.id)).toBe(false);
+      expect(await repo.undismissRfq("nope", owner.id)).toBe(false);
+      expect(await repo.undismissRfq(rfq3.id, matchedOp.id)).toBe(false);
+      expect((await visible()).some((r) => r.id === rfq.id)).toBe(true);
+      expect((await dismissedOf(owner.id)).length).toBe(0);
     });
 
     it("bumpListingViews increments atomically and starts at 0 (QA-413)", async () => {

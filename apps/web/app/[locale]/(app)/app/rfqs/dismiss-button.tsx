@@ -54,3 +54,54 @@ export function DismissButton({ rfqId }: { rfqId: string }) {
     </span>
   );
 }
+
+/** QA-421 "Dismissed" view counterpart: restore puts the RFQ back into the
+ *  operator's normal inbox (DELETE on the same route). */
+export function RestoreButton({ rfqId }: { rfqId: string }) {
+  const t = useTranslations("app.rfqs");
+  const tc = useTranslations("common");
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function restore() {
+    if (pending) return;
+    setPending(true);
+    try {
+      const e = await sendAction(`/api/operator/rfqs/${rfqId}/dismiss`, {
+        method: "DELETE",
+        fallback: tc("error"),
+      });
+      if (e) {
+        setError(e);
+        return;
+      }
+      setError(null);
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <button
+        onClick={restore}
+        disabled={pending}
+        data-testid={`restore-rfq-${rfqId}`}
+        className="rounded-md border border-border px-2 py-1 text-xs text-muted hover:bg-surface disabled:opacity-50"
+      >
+        {t("restore")}
+      </button>
+      {error ? (
+        <p
+          role="alert"
+          className="text-xs text-danger"
+          data-testid={`restore-error-${rfqId}`}
+        >
+          {error}
+        </p>
+      ) : null}
+    </span>
+  );
+}
