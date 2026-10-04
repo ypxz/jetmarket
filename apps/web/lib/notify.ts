@@ -23,19 +23,31 @@ export async function notifyQuoteDeclined(
     const listing: Listing | undefined = rfq.listingId
       ? await repo.getListing(rfq.listingId)
       : undefined;
-    const title = listing?.title ?? "a listing";
-    const subject =
+    const m = await mailCopy(owner.locale);
+    const title = listing?.title ?? mailT(m, "shared.aListing");
+    const subject = mailT(
+      m,
       reason === "competing-accepted"
-        ? `The buyer accepted another quote for “${title}”`
+        ? "opQuoteDeclined.subjectAccepted"
         : reason === "rfq-closed"
-          ? `The buyer closed their request for “${title}”`
-          : `Your quote for “${title}” was declined`;
-    const body =
+          ? "opQuoteDeclined.subjectClosed"
+          : "opQuoteDeclined.subjectDeclined",
+      { title },
+    );
+    const body = mailT(
+      m,
       reason === "competing-accepted"
-        ? `The buyer accepted a different quote for "${title}" on ${site.name}, so your quote of ${quote.currency} ${quote.amount} was not selected this time.`
+        ? "opQuoteDeclined.bodyAccepted"
         : reason === "rfq-closed"
-          ? `The buyer closed their request for "${title}" on ${site.name}, so your quote of ${quote.currency} ${quote.amount} was not selected this time.`
-          : `The buyer declined your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}.`;
+          ? "opQuoteDeclined.bodyClosed"
+          : "opQuoteDeclined.bodyDeclined",
+      {
+        title,
+        site: site.name,
+        currency: quote.currency,
+        amount: quote.amount,
+      },
+    );
     await emailProvider().send({
       to: owner.email,
       subject,
@@ -153,14 +165,24 @@ export async function notifyDealClosed(
     const operator = await repo.getOperator(quote.operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (owner) {
+      const m = await mailCopy(owner.locale);
       const invoiceNote =
         deal.invoiceStatus === "invoiced" && deal.invoiceRef
-          ? ` A success-fee invoice for ${quote.currency} ${deal.feeAmount} (${deal.invoiceRef}) has been issued to your account.`
+          ? mailT(m, "opDealClosed.invoiceNote", {
+              currency: quote.currency,
+              fee: deal.feeAmount,
+              ref: deal.invoiceRef,
+            })
           : "";
-      const subject = `Your quote for “${title}” was accepted`;
-      const body =
-        `The buyer accepted your quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
-        `Contact them at ${rfq.buyerEmail} to arrange fulfilment.${invoiceNote}`;
+      const subject = mailT(m, "opDealClosed.subject", { title });
+      const body = mailT(m, "opDealClosed.body", {
+        currency: quote.currency,
+        amount: quote.amount,
+        title,
+        site: site.name,
+        buyer: rfq.buyerEmail,
+        invoiceNote,
+      });
       await emailProvider().send({
         to: owner.email,
         subject,
@@ -238,11 +260,20 @@ export async function notifyListingModerated(
     const operator = await repo.getOperator(listing.operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (!owner) return;
-    const subject = `Your listing “${listing.title}” was ${status} by moderation`;
-    const body =
-      status === "paused"
-        ? `Our moderation team paused your listing "${listing.title}" on ${site.name}, so it is hidden from public search. Review its details and contact support if you believe this was a mistake — you can reactivate it from your dashboard.`
-        : `Our moderation team archived your listing "${listing.title}" on ${site.name}, so it is no longer listed. Contact support if you believe this was a mistake.`;
+    const m = await mailCopy(owner.locale);
+    const statusWord = mailT(
+      m,
+      status === "paused" ? "opListingModerated.paused" : "opListingModerated.archived",
+    );
+    const subject = mailT(m, "opListingModerated.subject", {
+      title: listing.title,
+      status: statusWord,
+    });
+    const body = mailT(
+      m,
+      status === "paused" ? "opListingModerated.bodyPaused" : "opListingModerated.bodyArchived",
+      { title: listing.title, site: site.name },
+    );
     await emailProvider().send({
       to: owner.email,
       subject,
@@ -274,12 +305,15 @@ export async function notifyOperatorVerified(
     const operator = await repo.getOperator(operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (!operator || !owner) return;
-    const subject = verified
-      ? `Your operator profile was verified`
-      : `Your operator profile is no longer verified`;
-    const body = verified
-      ? `Our team verified your operator profile "${operator.name}" on ${site.name} — the verified badge now shows on your listings and public profile.`
-      : `Our team removed the verified badge from your operator profile "${operator.name}" on ${site.name}. Contact support if you believe this was a mistake.`;
+    const m = await mailCopy(owner.locale);
+    const subject = mailT(
+      m,
+      verified ? "opVerified.subjectOn" : "opVerified.subjectOff",
+    );
+    const body = mailT(m, verified ? "opVerified.bodyOn" : "opVerified.bodyOff", {
+      name: operator.name,
+      site: site.name,
+    });
     await emailProvider().send({
       to: owner.email,
       subject,
@@ -312,12 +346,17 @@ export async function notifyOperatorSuspended(
     const operator = await repo.getOperator(operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (!operator || !owner) return;
-    const subject = suspended
-      ? `Your ${site.name} account was suspended`
-      : `Your ${site.name} account was reinstated`;
-    const body = suspended
-      ? `Our team suspended your operator account "${operator.name}" on ${site.name}. Your listings are hidden from buyers, you will not receive new requests, and listing/quote actions are disabled. Contact support if you believe this was a mistake.`
-      : `Your operator account "${operator.name}" on ${site.name} was reinstated — your listings are visible again and new requests will reach you normally.`;
+    const m = await mailCopy(owner.locale);
+    const subject = mailT(
+      m,
+      suspended ? "opSuspended.subjectOn" : "opSuspended.subjectOff",
+      { site: site.name },
+    );
+    const body = mailT(
+      m,
+      suspended ? "opSuspended.bodyOn" : "opSuspended.bodyOff",
+      { name: operator.name, site: site.name },
+    );
     await emailProvider().send({
       to: owner.email,
       subject,
@@ -348,10 +387,18 @@ export async function notifyDealInvoiceVoided(
     const operator = await repo.getOperator(deal.operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (!owner) return;
-    const subject = `Success-fee invoice voided — deal ${deal.id.slice(0, 8)}`;
-    const body =
-      `Your success-fee invoice${deal.invoiceRef ? ` (${deal.invoiceRef})` : ""} ` +
-      `of ${deal.currency} ${deal.feeAmount} for the ${deal.currency} ${deal.amount} deal was voided — you owe no fee on it. Contact support if you have questions.`;
+    const m = await mailCopy(owner.locale);
+    const subject = mailT(m, "opInvoiceVoided.subject", {
+      id: deal.id.slice(0, 8),
+    });
+    const body = mailT(m, "opInvoiceVoided.body", {
+      refParen: deal.invoiceRef
+        ? mailT(m, "shared.refParen", { ref: deal.invoiceRef })
+        : "",
+      currency: deal.currency,
+      fee: deal.feeAmount,
+      amount: deal.amount,
+    });
     await emailProvider().send({
       to: owner.email,
       subject,
@@ -395,13 +442,22 @@ export async function notifyDealRated(
       rfq?.listingId !== undefined && rfq.listingId !== null
         ? await repo.getListing(rfq.listingId)
         : undefined;
-    const title = listing?.title ?? "your deal";
+    const m = await mailCopy(owner.locale);
+    const title = listing?.title ?? mailT(m, "shared.yourDeal");
     const standing = summary
-      ? ` Your rating now stands at ★ ${summary.avg.toFixed(1)} across ${summary.count} rated deal${summary.count === 1 ? "" : "s"}.`
+      ? mailT(
+          m,
+          summary.count === 1 ? "opDealRated.standingOne" : "opDealRated.standingMany",
+          { avg: summary.avg.toFixed(1), count: summary.count },
+        )
       : "";
-    const subject = `The buyer rated your deal ★ ${rating}`;
-    const body =
-      `The buyer rated your deal on "${title}" ★ ${rating} out of 5 on ${site.name}.${standing}`;
+    const subject = mailT(m, "opDealRated.subject", { rating });
+    const body = mailT(m, "opDealRated.body", {
+      title,
+      rating,
+      site: site.name,
+      standing,
+    });
     await emailProvider().send({
       to: owner.email,
       subject,

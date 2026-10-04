@@ -46,7 +46,11 @@ class MemoryRepo implements Repo {
     Map<string, { listingId: string | null; deliverAt?: Date }>
   >();
 
-  async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
+  async createUser(
+    email: string,
+    role: UserRole = "buyer",
+    locale?: string,
+  ): Promise<User> {
     const normalized = email.toLowerCase();
     // Find synchronously — awaiting findUserByEmail would yield the
     // microtask queue and let a parallel same-email create duplicate the
@@ -54,12 +58,18 @@ class MemoryRepo implements Repo {
     const existing = [...this.users.values()].find(
       (u) => u.email === normalized,
     );
-    if (existing) return existing;
+    // Adopt-latest locale stays inside the sync window — an await between
+    // check and write would re-open the QA-333 interleave.
+    if (existing) {
+      if (locale && existing.locale !== locale) existing.locale = locale;
+      return existing;
+    }
     const u: User = {
       id: uid("usr"),
       email: normalized,
       role,
       sessionVersion: 1,
+      locale: locale ?? "en",
       createdAt: now(),
     };
     this.users.set(u.id, u);

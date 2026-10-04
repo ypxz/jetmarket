@@ -26,6 +26,8 @@ export const users = pgTable("users", {
     .notNull()
     .default("operator"),
   sessionVersion: integer("session_version").notNull().default(1),
+  // QA-494: sign-in locale — operator/admin-facing mail renders in it.
+  locale: varchar("locale").notNull().default("en"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

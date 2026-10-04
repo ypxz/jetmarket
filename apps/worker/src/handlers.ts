@@ -12,9 +12,44 @@ import {
 import type { Sql } from "postgres";
 import type { MatchingConfig } from "@jetmarket/verticals";
 import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
-import { mailCopy, mailT } from "@jetmarket/i18n";
+import {
+  defaultLocale,
+  getMessages,
+  mailCopy,
+  mailT,
+} from "@jetmarket/i18n";
+import { getVertical, rfqFieldLabels } from "@jetmarket/verticals";
 import { logWarn } from "./log";
 import type { WorkerRepo } from "./repo";
+
+// QA-494: RFQ fan-out mails render in each recipient's users.locale —
+// deps.fieldLabels is the en map built once in index.ts; other locales get
+// the same label set resolved from their catalog's vertical subtree.
+const workerLabelCache = new Map<string, ReadonlyMap<string, string>>();
+async function workerFieldLabels(
+  deps: WorkerDeps,
+  locale: string,
+): Promise<ReadonlyMap<string, string> | undefined> {
+  // The default locale uses deps.fieldLabels directly — index.ts already
+  // resolves the same subtree at boot, and tests inject label maps there.
+  if (!locale || locale === defaultLocale) return deps.fieldLabels;
+  let hit = workerLabelCache.get(locale);
+  if (!hit) {
+    const dict = (await getMessages(locale)) as Record<string, unknown>;
+    const ns = ((dict.vertical ?? {}) as Record<string, unknown>)[
+      deps.vertical
+    ];
+    hit =
+      ns && typeof ns === "object"
+        ? rfqFieldLabels(
+            getVertical(deps.vertical as Parameters<typeof getVertical>[0]),
+            ns as Record<string, unknown>,
+          )
+        : (deps.fieldLabels ?? new Map());
+    workerLabelCache.set(locale, hit);
+  }
+  return hit;
+}
 
 export interface WorkerDeps {
   repo: WorkerRepo;
@@ -324,11 +359,13 @@ export async function notifyExpiredListings(deps: WorkerDeps): Promise<number> {
       props: { listingId: l.listingId },
     });
     try {
-      const subject = `Your listing “${l.title}” just expired`;
-      const body =
-        `"${l.title}" (dated ${l.legDate}) dropped out of ${site.name} browse ` +
-        `when its date passed. To relist it, open your dashboard and edit the ` +
-        `listing — a fresh date puts it back in front of buyers.`;
+      const m = await mailCopy(l.locale);
+      const subject = mailT(m, "listingExpired.subject", { title: l.title });
+      const body = mailT(m, "listingExpired.body", {
+        title: l.title,
+        date: l.legDate,
+        site: site.name,
+      });
       await deps.email.send({
         to: l.operatorEmail,
         subject,
@@ -627,24 +664,24 @@ export async function nudgeUnansweredOperators(
   for (const r of rows) {
     try {
       const inboxUrl = `${origin}/app/rfqs?f=needs`;
-      const subject =
+      const m = await mailCopy(r.locale);
+      const subject = mailT(
+        m,
         r.unansweredCount === 1
-          ? `1 request is waiting for your quote`
-          : `${r.unansweredCount} requests are waiting for your quote`;
-      const body =
-        `Live requests on ${site.name} have been sitting in your inbox ` +
-        `unanswered — buyers compare operators by who responds first. ` +
-        `Quote them, or dismiss the ones you can't serve so they stop ` +
-        `counting against your inbox.`;
+          ? "opUnanswered.subjectOne"
+          : "opUnanswered.subjectMany",
+        { count: r.unansweredCount },
+      );
+      const body = mailT(m, "opUnanswered.body", { site: site.name });
       await deps.email.send({
         to: r.email,
         subject,
-        text: `${body}\n\nYour inbox: ${inboxUrl}`,
+        text: `${body}\n\n${mailT(m, "opUnanswered.yourInbox", { url: inboxUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: inboxUrl, label: "Review requests" },
+          cta: { url: inboxUrl, label: mailT(m, "opUnanswered.cta") },
         }),
       });
       deps.analytics?.track({
@@ -681,20 +718,18 @@ export async function nudgeEmptyBookOperators(
   for (const r of rows) {
     try {
       const listUrl = `${origin}/app/listings/new`;
-      const subject = `Create your first listing on ${site.name}`;
-      const body =
-        `Your operator account is live but your public page is empty — ` +
-        `buyers can't quote what they can't see. Listing takes a few ` +
-        `minutes and puts you in front of every matching request.`;
+      const m = await mailCopy(r.locale);
+      const subject = mailT(m, "opEmptyBook.subject", { site: site.name });
+      const body = mailT(m, "opEmptyBook.body");
       await deps.email.send({
         to: r.email,
         subject,
-        text: `${body}\n\nCreate a listing: ${listUrl}`,
+        text: `${body}\n\n${mailT(m, "opEmptyBook.createListingLine", { url: listUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: listUrl, label: "Create a listing" },
+          cta: { url: listUrl, label: mailT(m, "opEmptyBook.cta") },
         }),
       });
       deps.analytics?.track({
@@ -735,22 +770,26 @@ export async function remindOverdueInvoices(
       const fee = fromMinorUnits(r.feeAmountMinor, r.currency as Currency);
       const amount = `${r.currency} ${fee.toLocaleString("en")}`;
       const ref = r.invoiceRef ?? `deal ${r.dealId.slice(0, 8)}`;
-      const subject = `Success-fee invoice ${ref} outstanding — ${amount}`;
-      const body =
-        `A success-fee invoice for ${amount} (${ref}) on a closed ` +
-        `${site.name} deal is still unpaid. Settle it to keep your ` +
-        `account in good standing — reach billing if the ref doesn't ` +
-        `look right.`;
+      const m = await mailCopy(r.locale);
+      const subject = mailT(m, "invoiceOverdue.subject", {
+        ref,
+        amount,
+      });
+      const body = mailT(m, "invoiceOverdue.body", {
+        amount,
+        ref,
+        site: site.name,
+      });
       const accountUrl = `${origin}/app`;
       await deps.email.send({
         to: r.email,
         subject,
-        text: `${body}\n\nYour deals: ${accountUrl}`,
+        text: `${body}\n\n${mailT(m, "invoiceOverdue.yourDeals", { url: accountUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: accountUrl, label: "View your deals" },
+          cta: { url: accountUrl, label: mailT(m, "invoiceOverdue.cta") },
         }),
       });
       deps.analytics?.track({
@@ -805,6 +844,9 @@ export async function notifyExpirations(
     const emailByOperator = new Map(
       contacts.map((c) => [c.operatorId, c.email] as const),
     );
+    const localeByOperator = new Map(
+      contacts.map((c) => [c.operatorId, c.locale] as const),
+    );
     for (const q of expired.quotes) {
       const to = emailByOperator.get(q.operatorId);
       if (!to) continue;
@@ -813,8 +855,11 @@ export async function notifyExpirations(
         props: { quoteId: q.id, operatorId: q.operatorId },
       });
       try {
-        const subject = `The RFQ for “${q.listingTitle ?? "a listing"}” expired`;
-        const body = `The request you quoted on ${site.name} expired before the buyer accepted, so your quote was not selected.`;
+        const m = await mailCopy(localeByOperator.get(q.operatorId));
+        const subject = mailT(m, "rfqExpiredOp.subject", {
+          title: q.listingTitle ?? mailT(m, "shared.aListing"),
+        });
+        const body = mailT(m, "rfqExpiredOp.body", { site: site.name });
         await deps.email.send({
           to,
           subject,
@@ -874,9 +919,15 @@ export async function quoteNotification(
   }
 
   const f = ctx.rfqFields;
+  // QA-494: the fan-out mail renders in the recipient's users.locale —
+  // envelope, labels, and the generic buyer fallback all resolve per-mail.
+  const m = await mailCopy(ctx.operatorLocale);
+  const fieldLabels = await workerFieldLabels(deps, ctx.operatorLocale);
   // Contact fields are masked until a deal closes (QA-152) — name only.
   const buyerName =
-    typeof f["name"] === "string" && f["name"] ? f["name"] : "A buyer";
+    typeof f["name"] === "string" && f["name"]
+      ? f["name"]
+      : mailT(m, "shared.aBuyer");
   // Details render the vertical's declared fields (labeled, in form order)
   // plus any undeclared extras — was a hardcoded Route/Dates/pax shape that
   // emailed machinery dealers "Route: n/a" (QA-234).
@@ -884,7 +935,7 @@ export async function quoteNotification(
   // email/tel field would leak it here under a hardcoded name/email/phone set.
   const CONTACT_KEYS =
     deps.contactKeys ?? new Set(["name", "email", "phone"]);
-  const declaredOrder = deps.fieldLabels ? [...deps.fieldLabels.keys()] : [];
+  const declaredOrder = fieldLabels ? [...fieldLabels.keys()] : [];
   const detailKeys = [
     ...declaredOrder.filter((k) => !CONTACT_KEYS.has(k)),
     ...Object.keys(f).filter(
@@ -893,35 +944,36 @@ export async function quoteNotification(
   ];
   const detailLines = detailKeys
     .filter((k) => f[k] !== undefined && f[k] !== null && String(f[k]) !== "")
-    .map((k) => `${deps.fieldLabels?.get(k) ?? k}: ${String(f[k])}`);
+    .map((k) => `${fieldLabels?.get(k) ?? k}: ${String(f[k])}`);
   const route = [f["departure"] ?? f["from"], f["arrival"] ?? f["to"]]
     .filter(Boolean)
     .join(" → ");
-  const subject = ["New RFQ", route, ctx.listingTitle]
+  const subject = [mailT(m, "rfqNew.subject"), route, ctx.listingTitle]
     .filter(Boolean)
     .join(" — ");
   // Concierge RFQs are paid expedites — flag them so operators quote first.
-  const priorityLine = ctx.rfqConcierge
-    ? "Priority request — the buyer paid for immediate delivery."
-    : null;
+  const priorityLine = ctx.rfqConcierge ? mailT(m, "rfqNew.priority") : null;
+  const intro = mailT(m, "rfqNew.intro", { site: site.name });
+  const buyerLine = mailT(m, "rfqNew.buyer", { name: buyerName });
+  const cta = mailT(m, "rfqNew.cta");
   await deps.email.send({
     to: ctx.operatorEmail,
     subject,
     text:
-      `You have a new request for quotation on ${site.name}.\n\n` +
+      `${intro}\n\n` +
       `${priorityLine ? `${priorityLine}\n\n` : ""}` +
       `${detailLines.join("\n")}\n` +
-      `Buyer: ${buyerName}\n\n` +
-      `Open your operator inbox to send a quote.`,
+      `${buyerLine}\n\n` +
+      cta,
     html: brandedEmailHtml({
       siteName: site.name,
       title: subject,
       paragraphs: [
-        `You have a new request for quotation on ${site.name}.`,
+        intro,
         ...(priorityLine ? [priorityLine] : []),
         ...detailLines,
-        `Buyer: ${buyerName}`,
-        "Open your operator inbox to send a quote.",
+        buyerLine,
+        cta,
       ],
     }),
   });

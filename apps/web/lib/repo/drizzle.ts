@@ -76,6 +76,7 @@ function toUser(r: typeof users.$inferSelect): User {
     email: r.email,
     role: r.role as UserRole,
     sessionVersion: r.sessionVersion,
+    locale: r.locale,
     createdAt: iso(r.createdAt),
   };
 }
@@ -389,15 +390,30 @@ function listingConds(filter?: ListingFilter) {
 export class DrizzleRepo implements Repo {
   constructor(private db: Db) {}
 
-  async createUser(email: string, role: UserRole = "buyer"): Promise<User> {
+  async createUser(
+    email: string,
+    role: UserRole = "buyer",
+    locale?: string,
+  ): Promise<User> {
     const normalized = email.toLowerCase();
     const existing = await this.findUserByEmail(normalized);
-    if (existing) return existing;
+    // Adopt-latest locale (QA-494): a sign-in from a different page locale
+    // retargets the user's mails; an omitted locale keeps the stored one.
+    if (existing) {
+      if (locale && existing.locale !== locale) {
+        await this.db
+          .update(users)
+          .set({ locale })
+          .where(eq(users.id, existing.id));
+        return { ...existing, locale };
+      }
+      return existing;
+    }
     // onConflictDoNothing keeps concurrent sign-ups on the same email from
     // erroring on the unique constraint; the re-read returns the winner's row.
     await this.db
       .insert(users)
-      .values({ email: normalized, role })
+      .values({ email: normalized, role, locale: locale ?? "en" })
       .onConflictDoNothing({ target: users.email });
     const user = await this.findUserByEmail(normalized);
     if (!user) throw new Error("createUser: insert raced and winner vanished");

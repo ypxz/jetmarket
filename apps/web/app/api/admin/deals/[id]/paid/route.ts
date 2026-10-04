@@ -6,6 +6,7 @@ import { site } from "@jetmarket/config";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 
 // Admin marks a success-fee invoice paid (mock ledger settlement).
 export async function POST(
@@ -46,10 +47,18 @@ export async function POST(
     const operator = await repo.getOperator(deal.operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (owner) {
-      const subject = `Success-fee invoice paid — deal ${id.slice(0, 8)}`;
-      const body =
-        `Your success-fee invoice${deal.invoiceRef ? ` (${deal.invoiceRef})` : ""} ` +
-        `for ${deal.currency} ${deal.feeAmount} on deal amount ${deal.currency} ${deal.amount} was marked paid.`;
+      const m = await mailCopy(owner.locale);
+      const subject = mailT(m, "invoicePaid.subject", {
+        id: id.slice(0, 8),
+      });
+      const body = mailT(m, "invoicePaid.body", {
+        refParen: deal.invoiceRef
+          ? mailT(m, "shared.refParen", { ref: deal.invoiceRef })
+          : "",
+        currency: deal.currency,
+        fee: deal.feeAmount,
+        amount: deal.amount,
+      });
       await emailProvider().send({
         to: owner.email,
         subject,

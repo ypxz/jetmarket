@@ -21,9 +21,13 @@ import {
 import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Repo } from "../../lib/repo/types";
 
-async function fixture(repo: Repo) {
+async function fixture(repo: Repo, opLocale?: string) {
   const tag = Math.random().toString(36).slice(2, 8);
-  const opUser = await repo.createUser(`op-${tag}@test.dev`, "operator");
+  const opUser = await repo.createUser(
+    `op-${tag}@test.dev`,
+    "operator",
+    opLocale,
+  );
   const op = await repo.upsertOperator({
     userId: opUser.id,
     name: `Ops ${tag}`,
@@ -85,6 +89,26 @@ describe("notifyQuoteDeclined", () => {
     expect(subjects.some((s) => s.includes("declined"))).toBe(true);
     expect(subjects.some((s) => s.includes("another quote"))).toBe(true);
     expect(subjects.some((s) => s.includes("closed"))).toBe(true);
+  });
+
+  it("QA-494: renders in the operator's users.locale", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, listing, rfq, quote } = await fixture(repo, "de");
+    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+
+    await notifyQuoteDeclined(repo, quote, rfq, "declined");
+
+    const sent = email
+      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
+      .slice(before)
+      .filter((m) => m.to === opUser.email);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe(
+      `Ihr Angebot für „${listing.title}“ wurde abgelehnt`,
+    );
+    expect(sent[0]!.text).toContain("hat Ihr Angebot");
+    expect(sent[0]!.text).toContain("USD 9000");
+    expect(sent[0]!.text).not.toContain("was declined");
   });
 });
 

@@ -39,7 +39,9 @@ export async function POST(req: Request) {
     .split(",")
     .map((e) => e.trim().toLowerCase());
   const resolvedRole = adminEmails.includes(email.toLowerCase()) ? "admin" : role;
-  const user = await repo.createUser(email, resolvedRole);
+  // QA-494: the sign-in page's locale stamps users.locale (adopt-latest) —
+  // operator/admin-facing mail renders in it from here on.
+  const user = await repo.createUser(email, resolvedRole, locale);
   // ADMIN_EMAILS is the admin source of truth: sync on each sign-in request —
   // a listed returning user is promoted, a removed one loses admin access.
   if (user.role === "admin" || resolvedRole === "admin") {

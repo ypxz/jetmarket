@@ -90,6 +90,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
       return ids.map((operatorId) => ({
         operatorId,
         email: `owner-${operatorId}@ops.example`,
+        locale: "en",
       }));
     },
     deliverDueMatches: async (now) => {
@@ -112,6 +113,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         state: "pending",
         rfqStatus: "new",
         operatorEmail: "ops@alpinejet.example",
+        operatorLocale: "en",
         operatorName: "Alpine Jet",
         rfqFields: { departure: "ZRH", arrival: "NCE", passengers: 6 },
         buyerEmail: "buyer@x.com",
@@ -529,6 +531,42 @@ describe("handleJob dispatch", () => {
     expect(repo.calls["markMatchState"]).toEqual([["m9", "sent"]]);
   });
 
+  it("QA-494: the fan-out mail renders in operatorLocale incl. labels", async () => {
+    const repo = fakeRepo({
+      loadMatchContext: async (id: string) => ({
+        matchId: id,
+        rfqId: "r1",
+        state: "pending",
+        rfqStatus: "new",
+        operatorEmail: "ops@alpinejet.example",
+        operatorLocale: "de",
+        operatorName: "Alpine Jet",
+        rfqFields: {
+          departure: "ZRH",
+          arrival: "NCE",
+          passengers: 4,
+          name: "Käufer X",
+          email: "k@x.com",
+        },
+        buyerEmail: "k@x.com",
+        rfqConcierge: false,
+        listingTitle: "Phenom leg",
+      }),
+    });
+    sent.length = 0;
+    await handleJob(deps(repo), "email.quote_notification", { matchId: "m9" });
+    expect(sent).toHaveLength(1);
+    const mail = sent[0]!;
+    expect(mail.subject).toContain("Neue Anfrage");
+    expect(mail.subject).toContain("ZRH → NCE");
+    // Labels + buyer line resolve from the de catalog (departure → Abflug).
+    expect(mail.text).toContain("Abflug: ZRH");
+    expect(mail.text).toContain("Anfragender: Käufer X");
+    expect(mail.text).not.toContain("Buyer:");
+    expect(mail.text).not.toContain("k@x.com");
+    expect(repo.calls["markMatchState"]).toEqual([["m9", "sent"]]);
+  });
+
   it("renders the machinery RFQ body with field labels, not a jets route (QA-234)", async () => {
     const repo = fakeRepo({
       loadMatchContext: async (id: string) => ({
@@ -537,6 +575,7 @@ describe("handleJob dispatch", () => {
         state: "pending",
         rfqStatus: "new",
         operatorEmail: "ops@alpine.example",
+        operatorLocale: "en",
         operatorName: "Alpine Werkzeug",
         rfqFields: {
           deliveryPostcode: "80331",
@@ -581,6 +620,7 @@ describe("handleJob dispatch", () => {
         state: "pending",
         rfqStatus: "new",
         operatorEmail: "ops@alpine.example",
+        operatorLocale: "en",
         operatorName: "Alpine",
         rfqFields: {
           buyerMail: "secret@buyer.example",
@@ -613,6 +653,7 @@ describe("handleJob dispatch", () => {
         state: "pending",
         rfqStatus: "new",
         operatorEmail: "ops@alpinejet.example",
+        operatorLocale: "en",
         operatorName: "Alpine Jet",
         rfqFields: { departure: "ZRH", arrival: "NCE" },
         buyerEmail: "buyer@x.com",
@@ -640,6 +681,7 @@ describe("handleJob dispatch", () => {
         state: "sent",
         rfqStatus: "new",
         operatorEmail: "ops@alpinejet.example",
+        operatorLocale: "en",
         operatorName: "Alpine Jet",
         rfqFields: {},
         buyerEmail: "buyer@x.com",
@@ -663,6 +705,7 @@ describe("handleJob dispatch", () => {
         state: "pending",
         rfqStatus: "closed",
         operatorEmail: "ops@alpinejet.example",
+        operatorLocale: "en",
         operatorName: "Alpine Jet",
         rfqFields: {},
         buyerEmail: "buyer@x.com",
@@ -802,6 +845,7 @@ describe("notifyExpiredListings", () => {
             title: "ZRH–NCE Phenom leg",
             operatorName: "Alpine Jet",
             operatorEmail: "ops@alpinejet.example",
+            locale: "en",
             legDate: "2026-09-14",
           },
           {
@@ -809,6 +853,7 @@ describe("notifyExpiredListings", () => {
             title: "GVA–LTN G650 leg",
             operatorName: "Lac Air",
             operatorEmail: "desk@lacair.example",
+            locale: "en",
             legDate: "2026-09-13",
           },
         ];
@@ -838,14 +883,16 @@ describe("notifyExpiredListings", () => {
           title: "Leg A",
           operatorName: "A",
           operatorEmail: "bad@x.example",
-          legDate: "2026-09-14",
+          locale: "en",
+            legDate: "2026-09-14",
         },
         {
           listingId: "l2",
           title: "Leg B",
           operatorName: "B",
           operatorEmail: "ok@x.example",
-          legDate: "2026-09-14",
+          locale: "en",
+            legDate: "2026-09-14",
         },
       ],
     });
@@ -1313,8 +1360,8 @@ describe("nudgeUnansweredOperators (QA-425)", () => {
       sweepUnansweredOperators: async (input) => {
         call = input;
         return [
-          { operatorId: "o1", email: "ops@alpine.example", unansweredCount: 3 },
-          { operatorId: "o2", email: "solo@x.example", unansweredCount: 1 },
+          { operatorId: "o1", email: "ops@alpine.example", unansweredCount: 3 , locale: "en" },
+          { operatorId: "o2", email: "solo@x.example", unansweredCount: 1 , locale: "en" },
         ];
       },
     });
@@ -1337,11 +1384,25 @@ describe("nudgeUnansweredOperators (QA-425)", () => {
     expect(sent[0]!.text).toContain("dismiss");
   });
 
+  it("QA-494: nudge renders in the operator's users.locale", async () => {
+    const repo = fakeRepo({
+      sweepUnansweredOperators: async () => [
+        { operatorId: "o1", email: "ops@alpine.example", unansweredCount: 2, locale: "de" },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unansweredNudgeHours = 72;
+    expect(await nudgeUnansweredOperators(d)).toBe(1);
+    expect(sent[0]!.subject).toBe("2 Anfragen warten auf Ihr Angebot");
+    expect(sent[0]!.text).toContain("Posteingang");
+  });
+
   it("defaults to 72h, a failed send doesn't stall, zero claims silent", async () => {
     const repo = fakeRepo({
       sweepUnansweredOperators: async () => [
-        { operatorId: "o1", email: "bad@x.example", unansweredCount: 2 },
-        { operatorId: "o2", email: "ok@x.example", unansweredCount: 4 },
+        { operatorId: "o1", email: "bad@x.example", unansweredCount: 2 , locale: "en" },
+        { operatorId: "o2", email: "ok@x.example", unansweredCount: 4 , locale: "en" },
       ],
     });
     sent.length = 0;
@@ -1384,8 +1445,8 @@ describe("nudgeEmptyBookOperators (QA-477)", () => {
       sweepEmptyBookOperators: async (input) => {
         call = input;
         return [
-          { operatorId: "o1", email: "ops@alpine.example" },
-          { operatorId: "o2", email: "solo@x.example" },
+          { operatorId: "o1", email: "ops@alpine.example" , locale: "en" },
+          { operatorId: "o2", email: "solo@x.example" , locale: "en" },
         ];
       },
     });
@@ -1409,8 +1470,8 @@ describe("nudgeEmptyBookOperators (QA-477)", () => {
   it("defaults to 48h, a failed send doesn't stall, zero claims silent", async () => {
     const repo = fakeRepo({
       sweepEmptyBookOperators: async () => [
-        { operatorId: "o1", email: "bad@x.example" },
-        { operatorId: "o2", email: "ok@x.example" },
+        { operatorId: "o1", email: "bad@x.example" , locale: "en" },
+        { operatorId: "o2", email: "ok@x.example" , locale: "en" },
       ],
     });
     sent.length = 0;
@@ -1464,6 +1525,7 @@ describe("remindOverdueInvoices (QA-429)", () => {
             invoiceRef: "inv_42",
             feeAmountMinor: 30000,
             currency: "USD",
+          locale: "en",
           },
           {
             dealId: "d2bbbbbb-0000-4000-8000-000000000002",
@@ -1472,6 +1534,7 @@ describe("remindOverdueInvoices (QA-429)", () => {
             invoiceRef: null,
             feeAmountMinor: 15050,
             currency: "USD",
+          locale: "en",
           },
         ];
       },
@@ -1506,6 +1569,7 @@ describe("remindOverdueInvoices (QA-429)", () => {
           invoiceRef: "inv_1",
           feeAmountMinor: 100,
           currency: "USD",
+        locale: "en",
         },
         {
           dealId: "d4",
@@ -1514,6 +1578,7 @@ describe("remindOverdueInvoices (QA-429)", () => {
           invoiceRef: "inv_2",
           feeAmountMinor: 200,
           currency: "USD",
+        locale: "en",
         },
       ],
     });

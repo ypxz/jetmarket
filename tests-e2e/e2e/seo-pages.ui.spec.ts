@@ -57,6 +57,12 @@ test('operator directory lists seeded operators and links to profiles', async ({
     .first()
     .getByRole('link', { name: 'View profile' });
   await firstProfile.click();
-  await expect(page).toHaveURL(/\/operators\/[0-9a-f-]{36}$/);
-  await expect(page.getByTestId('operator-name')).toBeVisible();
+  // 30s: a cold dev-compile of /operators/[id] (~10s compile + ~10s render)
+  // can outlast the default URL timeout (QA-494).
+  await expect(page).toHaveURL(/\/operators\/[0-9a-f-]{36}$/, {
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('operator-name')).toBeVisible({
+    timeout: 30_000,
+  });
 });

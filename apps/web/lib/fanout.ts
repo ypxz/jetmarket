@@ -1,7 +1,8 @@
 import { deliverAt, matchOperators } from "@jetmarket/domain";
 import { rfqFieldLabels } from "@jetmarket/verticals";
 import { site } from "@jetmarket/config";
-import { verticalConfig, verticalMessages } from "@/lib/vertical";
+import { verticalConfig, verticalMessagesFor } from "@/lib/vertical";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import type { OperatorCandidate } from "@jetmarket/domain";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
@@ -134,12 +135,27 @@ export async function fanoutRfq(repo: Repo, rfq: Rfq, listing: Listing) {
  *  "Label: old → new" diff of just the changed fields — the amend mail
  *  leads with it so operators spot the delta instead of re-reading
  *  every line. */
-function rfqMailDetails(f: Record<string, unknown>, prev?: Record<string, unknown>) {
-  const vertical = verticalConfig();
+// QA-494: the fan-out mails render in each recipient's users.locale, so the
+// caller resolves field labels + the generic buyer fallback per-recipient.
+const mailLabelCache = new Map<string, Map<string, string>>();
+async function mailFieldLabels(locale: string): Promise<Map<string, string>> {
+  let hit = mailLabelCache.get(locale);
+  if (!hit) {
+    hit = rfqFieldLabels(verticalConfig(), await verticalMessagesFor(locale));
+    mailLabelCache.set(locale, hit);
+  }
+  return hit;
+}
+
+function rfqMailDetails(
+  f: Record<string, unknown>,
+  labels: ReadonlyMap<string, string>,
+  aBuyer: string,
+  prev?: Record<string, unknown>,
+) {
   // Buyer contact stays masked until a deal closes (QA-152) — name only.
   const buyerName =
-    typeof f["name"] === "string" && f["name"].trim() ? f["name"] : "A buyer";
-  const labels = rfqFieldLabels(vertical, verticalMessages());
+    typeof f["name"] === "string" && f["name"].trim() ? f["name"] : aBuyer;
   const CONTACT_KEYS = new Set(["name", "email", "phone"]);
   const declaredOrder = [...labels.keys()];
   const detailKeys = [
@@ -183,36 +199,48 @@ export async function emailRfqMatches(
   opsById?: Map<string, Operator>,
 ) {
   const f = rfq.fields;
-  const { buyerName, detailLines, route } = rfqMailDetails(f);
-  const subject = ["New RFQ", route, listingTitle].filter(Boolean).join(" — ");
-  // Concierge RFQs are paid expedites — flag them so operators quote first
-  // (same line the worker's email.quote_notification adds in pg mode).
-  const priorityLine = rfq.concierge
-    ? "Priority request — the buyer paid for immediate delivery."
-    : null;
+  // QA-494: each operator's mail renders in their users.locale — subject,
+  // field labels, and the masked-buyer fallback all resolve per-recipient.
   for (const operatorId of operatorIds) {
     const op = opsById?.get(operatorId) ?? (await repo.getOperator(operatorId));
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
+    const m = await mailCopy(user.locale);
+    const { buyerName, detailLines, route } = rfqMailDetails(
+      f,
+      await mailFieldLabels(user.locale),
+      mailT(m, "shared.aBuyer"),
+    );
+    const subject = [mailT(m, "rfqNew.subject"), route, listingTitle]
+      .filter(Boolean)
+      .join(" — ");
+    // Concierge RFQs are paid expedites — flag them so operators quote first
+    // (same line the worker's email.quote_notification adds in pg mode).
+    const priorityLine = rfq.concierge
+      ? mailT(m, "rfqNew.priority")
+      : null;
+    const intro = mailT(m, "rfqNew.intro", { site: site.name });
+    const buyerLine = mailT(m, "rfqNew.buyer", { name: buyerName });
+    const cta = mailT(m, "rfqNew.cta");
     try {
       await emailProvider().send({
         to: user.email,
         subject,
         text:
-          `You have a new request for quotation on ${site.name}.\n\n` +
+          `${intro}\n\n` +
           `${priorityLine ? `${priorityLine}\n\n` : ""}` +
           `${detailLines.join("\n")}\n` +
-          `Buyer: ${buyerName}\n\n` +
-          `Open your operator inbox to send a quote.`,
+          `${buyerLine}\n\n` +
+          cta,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [
-            `You have a new request for quotation on ${site.name}.`,
+            intro,
             ...(priorityLine ? [priorityLine] : []),
             ...detailLines,
-            `Buyer: ${buyerName}`,
-            "Open your operator inbox to send a quote.",
+            buyerLine,
+            cta,
           ],
         }),
       });
@@ -240,25 +268,31 @@ export async function emailRfqAmended(
   operatorIds: string[],
   prevFields?: Record<string, unknown>,
 ) {
-  const { buyerName, detailLines, changedLines, route } = rfqMailDetails(
-    rfq.fields,
-    prevFields,
-  );
-  const subject = ["Updated RFQ", route, listingTitle]
-    .filter(Boolean)
-    .join(" — ");
-  // Lead with the delta when the caller supplies the pre-amend fields —
-  // "Departure: ZRH → GVA" answers "what changed?" in one glance. A no-op
-  // edit or missing prev falls back to the full detail lines.
-  const bodyLines = changedLines.length > 0 ? changedLines : detailLines;
-  const intro =
-    changedLines.length > 0
-      ? `The buyer updated their request for quotation on ${site.name} — here's what changed.`
-      : `The buyer updated their request for quotation on ${site.name} — the latest details are below.`;
   for (const operatorId of operatorIds) {
     const op = await repo.getOperator(operatorId);
     const user = op ? await repo.getUser(op.userId) : undefined;
     if (!user) continue;
+    // QA-494: per-recipient locale — labels, delta lines, intro, CTA.
+    const m = await mailCopy(user.locale);
+    const { buyerName, detailLines, changedLines, route } = rfqMailDetails(
+      rfq.fields,
+      await mailFieldLabels(user.locale),
+      mailT(m, "shared.aBuyer"),
+      prevFields,
+    );
+    const subject = [mailT(m, "rfqAmended.subject"), route, listingTitle]
+      .filter(Boolean)
+      .join(" — ");
+    // Lead with the delta when the caller supplies the pre-amend fields —
+    // "Departure: ZRH → GVA" answers "what changed?" in one glance. A no-op
+    // edit or missing prev falls back to the full detail lines.
+    const bodyLines = changedLines.length > 0 ? changedLines : detailLines;
+    const intro =
+      changedLines.length > 0
+        ? mailT(m, "rfqAmended.introChanged", { site: site.name })
+        : mailT(m, "rfqAmended.introLatest", { site: site.name });
+    const buyerLine = mailT(m, "rfqAmended.buyer", { name: buyerName });
+    const cta = mailT(m, "rfqAmended.cta");
     try {
       await emailProvider().send({
         to: user.email,
@@ -266,16 +300,16 @@ export async function emailRfqAmended(
         text:
           `${intro}\n\n` +
           `${bodyLines.join("\n")}\n` +
-          `Buyer: ${buyerName}\n\n` +
-          `Open your operator inbox to review or quote.`,
+          `${buyerLine}\n\n` +
+          cta,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [
             intro,
             ...bodyLines,
-            `Buyer: ${buyerName}`,
-            "Open your operator inbox to review or quote.",
+            buyerLine,
+            cta,
           ],
         }),
       });

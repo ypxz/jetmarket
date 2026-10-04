@@ -209,11 +209,101 @@
       "subject": "Ihre Anfrage für „{title}“ ist abgelaufen",
       "body": "Ihre Anfrage für „{title}“ auf {site} ist abgelaufen, ohne dass ein Angebot angenommen wurde. Sie können jederzeit eine neue Anfrage stellen."
     },
+    "opQuoteDeclined": {
+      "subjectAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c angenommen",
+      "subjectClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c geschlossen",
+      "subjectDeclined": "Ihr Angebot f\u00fcr \u201e{title}\u201c wurde abgelehnt",
+      "bodyAccepted": "Der K\u00e4ufer hat ein anderes Angebot f\u00fcr \u201e{title}\u201c auf {site} angenommen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
+      "bodyClosed": "Der K\u00e4ufer hat seine Anfrage f\u00fcr \u201e{title}\u201c auf {site} geschlossen, daher wurde Ihr Angebot von {currency} {amount} diesmal nicht ausgew\u00e4hlt.",
+      "bodyDeclined": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} abgelehnt."
+    },
+    "opDealClosed": {
+      "subject": "Ihr Angebot f\u00fcr \u201e{title}\u201c wurde angenommen",
+      "body": "Der K\u00e4ufer hat Ihr Angebot von {currency} {amount} f\u00fcr \u201e{title}\u201c auf {site} angenommen. Kontaktieren Sie ihn unter {buyer}, um die Ausf\u00fchrung zu vereinbaren.{invoiceNote}",
+      "invoiceNote": " Eine Erfolgsgeb\u00fchren-Rechnung \u00fcber {currency} {fee} ({ref}) wurde Ihrem Konto ausgestellt."
+    },
+    "opListingModerated": {
+      "subject": "Ihr Inserat \u201e{title}\u201c wurde von der Moderation {status}",
+      "paused": "pausiert",
+      "archived": "archiviert",
+      "bodyPaused": "Unser Moderationsteam hat Ihr Inserat \u201e{title}\u201c auf {site} pausiert, sodass es in der \u00f6ffentlichen Suche ausgeblendet ist. Pr\u00fcfen Sie die Angaben und kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten \u2014 Sie k\u00f6nnen es in Ihrem Dashboard reaktivieren.",
+      "bodyArchived": "Unser Moderationsteam hat Ihr Inserat \u201e{title}\u201c auf {site} archiviert, sodass es nicht mehr gelistet ist. Kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten."
+    },
+    "opVerified": {
+      "subjectOn": "Ihr Anbieterprofil wurde verifiziert",
+      "subjectOff": "Ihr Anbieterprofil ist nicht mehr verifiziert",
+      "bodyOn": "Unser Team hat Ihr Anbieterprofil \u201e{name}\u201c auf {site} verifiziert \u2014 das Verifiziert-Badge erscheint nun auf Ihren Inseraten und Ihrem \u00f6ffentlichen Profil.",
+      "bodyOff": "Unser Team hat das Verifiziert-Badge von Ihrem Anbieterprofil \u201e{name}\u201c auf {site} entfernt. Kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten."
+    },
+    "opSuspended": {
+      "subjectOn": "Ihr {site}-Konto wurde gesperrt",
+      "subjectOff": "Ihr {site}-Konto wurde reaktiviert",
+      "bodyOn": "Unser Team hat Ihr Anbieterkonto \u201e{name}\u201c auf {site} gesperrt. Ihre Inserate sind f\u00fcr K\u00e4ufer ausgeblendet, Sie erhalten keine neuen Anfragen und Inserat-/Angebotsaktionen sind deaktiviert. Kontaktieren Sie den Support, falls Sie dies f\u00fcr einen Fehler halten.",
+      "bodyOff": "Ihr Anbieterkonto \u201e{name}\u201c auf {site} wurde reaktiviert \u2014 Ihre Inserate sind wieder sichtbar und neue Anfragen erreichen Sie wie gewohnt."
+    },
+    "opInvoiceVoided": {
+      "subject": "Erfolgsgeb\u00fchren-Rechnung storniert \u2014 Abschluss {id}",
+      "body": "Ihre Erfolgsgeb\u00fchren-Rechnung{refParen} \u00fcber {currency} {fee} f\u00fcr den Abschluss \u00fcber {currency} {amount} wurde storniert \u2014 Sie schulden keine Geb\u00fchr daf\u00fcr. Kontaktieren Sie den Support bei Fragen."
+    },
+    "opDealRated": {
+      "subject": "Der K\u00e4ufer hat Ihren Abschluss mit \u2605 {rating} bewertet",
+      "body": "Der K\u00e4ufer hat Ihren Abschluss zu \u201e{title}\u201c auf {site} mit \u2605 {rating} von 5 bewertet.{standing}",
+      "standingOne": " Ihre Bewertung steht nun bei \u2605 {avg} \u00fcber {count} bewerteten Abschluss.",
+      "standingMany": " Ihre Bewertung steht nun bei \u2605 {avg} \u00fcber {count} bewertete Abschl\u00fcsse."
+    },
+    "rfqNew": {
+      "subject": "Neue Anfrage",
+      "intro": "Sie haben eine neue Anfrage auf {site}.",
+      "priority": "Priorisierte Anfrage \u2014 der K\u00e4ufer hat f\u00fcr sofortige Zustellung bezahlt.",
+      "buyer": "Anfragender: {name}",
+      "cta": "\u00d6ffnen Sie Ihren Anbieter-Posteingang, um ein Angebot zu senden."
+    },
+    "rfqAmended": {
+      "subject": "Aktualisierte Anfrage",
+      "introChanged": "Der K\u00e4ufer hat seine Anfrage auf {site} aktualisiert \u2014 hier sind die \u00c4nderungen.",
+      "introLatest": "Der K\u00e4ufer hat seine Anfrage auf {site} aktualisiert \u2014 die aktuellen Details folgen.",
+      "buyer": "Anfragender: {name}",
+      "cta": "\u00d6ffnen Sie Ihren Anbieter-Posteingang zum Pr\u00fcfen oder Anbieten."
+    },
+    "invoicePaid": {
+      "subject": "Erfolgsgeb\u00fchren-Rechnung bezahlt \u2014 Abschluss {id}",
+      "body": "Ihre Erfolgsgeb\u00fchren-Rechnung{refParen} \u00fcber {currency} {fee} zum Abschlussbetrag {currency} {amount} wurde als bezahlt markiert."
+    },
+    "listingExpired": {
+      "subject": "Ihr Inserat \u201e{title}\u201c ist gerade abgelaufen",
+      "body": "\u201e{title}\u201c (vom {date}) ist nach Ablauf des Datums aus der {site}-Suche gefallen. Um es erneut zu listen, \u00f6ffnen Sie Ihr Dashboard und bearbeiten das Inserat \u2014 ein neues Datum bringt es wieder vor K\u00e4ufer."
+    },
+    "opUnanswered": {
+      "subjectOne": "1 Anfrage wartet auf Ihr Angebot",
+      "subjectMany": "{count} Anfragen warten auf Ihr Angebot",
+      "body": "Live-Anfragen auf {site} liegen unbeantwortet in Ihrem Posteingang \u2014 K\u00e4ufer vergleichen Anbieter danach, wer zuerst antwortet. Bieten Sie darauf oder verwerfen Sie die Anfragen, die Sie nicht bedienen k\u00f6nnen, damit sie nicht l\u00e4nger in Ihrem Posteingang z\u00e4hlen.",
+      "cta": "Anfragen pr\u00fcfen",
+      "yourInbox": "Ihr Posteingang: {url}"
+    },
+    "opEmptyBook": {
+      "subject": "Erstellen Sie Ihr erstes Inserat auf {site}",
+      "body": "Ihr Anbieterkonto ist aktiv, aber Ihre \u00f6ffentliche Seite ist leer \u2014 K\u00e4ufer k\u00f6nnen nicht auf etwas bieten, das sie nicht sehen. Das Listen dauert nur wenige Minuten und bringt Sie vor jede passende Anfrage.",
+      "cta": "Inserat erstellen",
+      "createListingLine": "Inserat erstellen: {url}"
+    },
+    "invoiceOverdue": {
+      "subject": "Erfolgsgeb\u00fchren-Rechnung {ref} ausstehend \u2014 {amount}",
+      "body": "Eine Erfolgsgeb\u00fchren-Rechnung \u00fcber {amount} ({ref}) f\u00fcr einen abgeschlossenen {site}-Abschluss ist noch unbezahlt. Begleichen Sie sie, um Ihr Konto in gutem Stand zu halten \u2014 wenden Sie sich an die Abrechnung, falls die Referenz nicht stimmt.",
+      "cta": "Ihre Abschl\u00fcsse ansehen",
+      "yourDeals": "Ihre Abschl\u00fcsse: {url}"
+    },
+    "rfqExpiredOp": {
+      "subject": "Die Anfrage f\u00fcr \u201e{title}\u201c ist abgelaufen",
+      "body": "Die Anfrage, auf die Sie auf {site} geboten haben, ist abgelaufen, bevor der K\u00e4ufer angenommen hat \u2014 Ihr Angebot wurde nicht ausgew\u00e4hlt."
+    },
     "shared": {
       "aListing": "ein Inserat",
       "theOperator": "der Anbieter",
       "forTitle": " für „{title}“",
       "onTitle": " zu „{title}“",
+      "aBuyer": "Ein Anfragender",
+      "yourDeal": "Ihr Abschluss",
+      "refParen": " ({ref})",
       "unsubscribe": "Abbestellen"
     }
   },

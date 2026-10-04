@@ -1559,6 +1559,25 @@ export function repoContract(
       expect(keep.alert.locale).toBe("en");
     });
 
+    it("QA-494 locale: users stamp 'en', adopt-latest on re-sign-in", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const email = `u-${tag}@test.dev`;
+      // Omitted → 'en'; the stamp survives a re-read (it's a column).
+      const en = await repo.createUser(email, "operator");
+      expect(en.locale).toBe("en");
+      expect((await repo.getUser(en.id))?.locale).toBe("en");
+      // Re-sign-in with a supplied locale adopts it (returned + persisted).
+      const flip = await repo.createUser(email, "operator", "de");
+      expect(flip.id).toBe(en.id);
+      expect(flip.locale).toBe("de");
+      expect((await repo.findUserByEmail(email))?.locale).toBe("de");
+      // Omitting keeps the stored locale — no reset to 'en'.
+      const keep = await repo.createUser(email, "operator");
+      expect(keep.locale).toBe("de");
+      expect((await repo.getUser(en.id))?.locale).toBe("de");
+    });
+
     it("watch filters + countByWatch scope to active watchers only (QA-408)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

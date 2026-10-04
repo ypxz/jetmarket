@@ -83,6 +83,8 @@ export interface WorkerRepo {
       operatorName: string;
       operatorEmail: string;
       legDate: string;
+      /** QA-494: recipient's sign-in locale for the expiry mail. */
+      locale: string;
     }[]
   >;
   /** QA-422 stale-quote nudge: claim RFQs that sat 'quoted' with every live
@@ -175,7 +177,13 @@ export interface WorkerRepo {
     cooldown: Date;
     limit?: number;
   }): Promise<
-    { operatorId: string; email: string; unansweredCount: number }[]
+    {
+      operatorId: string;
+      email: string;
+      unansweredCount: number;
+      /** QA-494: recipient's sign-in locale for the nudge mail. */
+      locale: string;
+    }[]
   >;
   /** QA-477 empty-book nudge: claim operators whose in-vertical book is
    *  still empty `olderThan` after signup — one statement stamps
@@ -187,7 +195,14 @@ export interface WorkerRepo {
     vertical: string;
     olderThan: Date;
     limit?: number;
-  }): Promise<{ operatorId: string; email: string }[]>;
+  }): Promise<
+    {
+      operatorId: string;
+      email: string;
+      /** QA-494: recipient's sign-in locale for the nudge mail. */
+      locale: string;
+    }[]
+  >;
   /** QA-429 overdue-invoice reminder: claim deals stuck 'invoiced' since
    *  before `olderThan` — one statement stamps invoice_reminded_at under
    *  the row lock, and `cooldown` re-arms only after the stamp ages out so
@@ -206,18 +221,29 @@ export interface WorkerRepo {
       invoiceRef: string | null;
       feeAmountMinor: number;
       currency: string;
+      /** QA-494: recipient's sign-in locale for the reminder mail. */
+      locale: string;
     }[]
   >;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
-  ): Promise<{ operatorId: string; email: string }[]>;
+  ): Promise<
+    {
+      operatorId: string;
+      email: string;
+      /** QA-494: recipient's sign-in locale for the expiry mail. */
+      locale: string;
+    }[]
+  >;
   loadMatchContext(matchId: string): Promise<{
     matchId: string;
     rfqId: string;
     state: string;
     rfqStatus: string;
     operatorEmail: string;
+    /** QA-494: recipient's sign-in locale for the new-RFQ mail. */
+    operatorLocale: string;
     operatorName: string;
     rfqFields: Record<string, unknown>;
     buyerEmail: string;
@@ -456,6 +482,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           rfqId: rfqMatches.rfqId,
           state: rfqMatches.state,
           operatorEmail: users.email,
+          operatorLocale: users.locale,
           operatorName: operators.name,
           rfqFields: rfqs.fields,
           rfqStatus: rfqs.status,
@@ -488,6 +515,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         operatorName: string;
         operatorEmail: string;
         legDate: string;
+        locale: string;
       }>(sql`
         with due as (
           select l.id
@@ -516,6 +544,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           s.title,
           o.name as "operatorName",
           u.email as "operatorEmail",
+          u.locale,
           s."legDate"
         from stamped s
         join operators o on o.id = s."operatorId"
@@ -800,6 +829,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         operatorId: string;
         email: string;
         unansweredCount: number;
+        locale: string;
       }>(sql`
         with due as (
           select o.id
@@ -824,6 +854,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         select
           s.id as "operatorId",
           u.email,
+          u.locale,
           (
             select count(*)::int
             from rfqs r
@@ -869,6 +900,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         invoiceRef: string | null;
         feeAmountMinor: number;
         currency: string;
+        locale: string;
       }>(sql`
         with due as (
           select d.id
@@ -898,6 +930,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           s.id as "dealId",
           o.id as "operatorId",
           u.email,
+          u.locale,
           d.invoice_ref as "invoiceRef",
           d.fee_amount_minor as "feeAmountMinor",
           d.currency
@@ -920,6 +953,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
       const rows = await db.execute<{
         operatorId: string;
         email: string;
+        locale: string;
       }>(sql`
         with due as (
           select o.id
@@ -942,7 +976,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             and o.empty_book_mailed_at is null
           returning o.id, o.user_id
         )
-        select s.id as "operatorId", u.email
+        select s.id as "operatorId", u.email, u.locale
         from stamped s
         join users u on u.id = s.user_id
       `);
@@ -952,7 +986,11 @@ export function createWorkerRepo(db: Db): WorkerRepo {
     async loadOperatorEmails(operatorIds) {
       if (!operatorIds.length) return [];
       return db
-        .select({ operatorId: operators.id, email: users.email })
+        .select({
+          operatorId: operators.id,
+          email: users.email,
+          locale: users.locale,
+        })
         .from(operators)
         .innerJoin(users, eq(operators.userId, users.id))
         .where(inArray(operators.id, operatorIds));

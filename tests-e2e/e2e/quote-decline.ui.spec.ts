@@ -71,7 +71,16 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     const item = operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE });
     await expect(item).toBeVisible();
     await item.locator(tidPrefix('quote-amount-')).fill('11000');
+    // Wait on the POST — a cold dev-compile of the quotes route can eat the
+    // whole 10s expect window (QA-494).
+    const sendResp = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/api/quotes') &&
+        r.request().method() === 'POST' &&
+        r.status() === 201,
+    );
     await item.locator(tidPrefix('quote-send-')).click();
+    await sendResp;
     await expect(item).toContainText(/quote sent|sent/i);
   });
 
@@ -80,7 +89,16 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     await buyer.getByTestId('rfq-view-quotes').click();
     const emailInput = buyer.getByTestId('buyer-email');
     if (!(await emailInput.inputValue())) await emailInput.fill(BUYER_EMAIL);
+    // /api/buyer/quotes can cold-compile past the element timeout — wait on
+    // the response, then the card (QA-494).
+    const loadResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
     await buyer.getByTestId('buyer-load').click();
+    await loadResp;
     const quote = buyer.locator(tidPrefix('quote-')).first();
     await expect(quote).toBeVisible();
     // Wait on the network, not the DOM — a cold dev-compile of the decline

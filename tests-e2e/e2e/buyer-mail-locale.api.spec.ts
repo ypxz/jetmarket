@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, request, test } from '@playwright/test';
+import postgres from 'postgres';
 
 /**
  * QA-493: buyer-facing mail follows the artifact's stamped locale.
@@ -19,6 +20,9 @@ const OUTBOX_DIRS = [
 ];
 
 const run = Date.now().toString(36);
+const testDb =
+  process.env.TEST_DATABASE_URL ??
+  'postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test';
 const BUYER_DE = `e2e-de-buyer-${run}@jetmarket.local`;
 const BUYER_EN = `e2e-en-buyer-${run}@jetmarket.local`;
 const ALERT_DE = `e2e-de-alert-${run}@jetmarket.local`;
@@ -113,4 +117,121 @@ test('buyer mails follow the stamped locale (QA-493)', async () => {
   expect(loginMail).toContain('Anmeldelink');
 
   await ctx.dispose();
+});
+
+test('operator mail follows users.locale stamped at sign-in (QA-494)', async () => {
+  test.setTimeout(90_000);
+  const sql = postgres(testDb, { max: 1 });
+  const ctx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.94.94' },
+  });
+  const OP_DE = `e2e-de-op-${run}@jetmarket.local`;
+  const BUYER = `e2e-opmail-buyer-${run}@jetmarket.local`;
+  try {
+    // Sign-in from the /de page stamps users.locale (adopt-latest).
+    const ml = await ctx.post('/api/auth/magic-link', {
+      data: { email: OP_DE, role: 'operator', locale: 'de' },
+    });
+    expect(ml.ok()).toBeTruthy();
+    const rows = await sql`select locale from users where email = ${OP_DE}`;
+    expect(rows[0]?.locale).toBe('de');
+
+    // A normal (locale-less) sign-in afterwards keeps the stored locale.
+    const res = await ctx.post('/api/auth/magic-link', {
+      data: { email: OP_DE, role: 'operator' },
+    });
+    expect(res.ok()).toBeTruthy();
+    const { devLink } = (await res.json()) as { devLink: string };
+    const cbUrl = new URL(devLink);
+    const cb = await ctx.post('/api/auth/callback', {
+      form: {
+        token: cbUrl.searchParams.get('token')!,
+        next: cbUrl.searchParams.get('next') ?? '/',
+      },
+    });
+    expect(cb.status()).toBeLessThan(400);
+    const kept = await sql`select locale from users where email = ${OP_DE}`;
+    expect(kept[0]?.locale).toBe('de');
+
+    // Operator profile + listing the buyer will amend a request on.
+    expect(
+      (
+        await ctx.post('/api/operators', {
+          data: { name: `E2E De Ops ${run}`, baseAirport: 'LSZH' },
+        })
+      ).status(),
+    ).toBe(201);
+    const lres = await ctx.post('/api/listings', {
+      data: {
+        type: 'charter',
+        title: `E2E De Charter ${run}`,
+        price: 38000,
+        currency: 'USD',
+        photos: [],
+        attributes: {},
+      },
+    });
+    expect(lres.status()).toBe(201);
+    const listingId = ((await lres.json()) as { id: string }).id;
+
+    // Buyer posts + amends → the owner's "Updated RFQ" mail is German.
+    const rfq = await ctx.post('/api/rfqs', {
+      data: {
+        listingId,
+        buyerEmail: BUYER,
+        fields: {
+          departure: 'ZRH',
+          arrival: 'NCE',
+          dateFrom: '2030-02-10',
+          dateTo: '2030-02-12',
+          passengers: 4,
+          name: 'Mail Buyer',
+          email: BUYER,
+        },
+      },
+    });
+    expect(rfq.status()).toBe(201);
+    const rfqId = ((await rfq.json()) as { rfqId: string }).rfqId;
+
+    const buyerCtx = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.94.95' },
+    });
+    const bl = await buyerCtx.post('/api/auth/magic-link', {
+      data: { email: BUYER, role: 'buyer' },
+    });
+    const blink = ((await bl.json()) as { devLink: string }).devLink;
+    const bUrl = new URL(blink);
+    await buyerCtx.post('/api/auth/callback', {
+      form: {
+        token: bUrl.searchParams.get('token')!,
+        next: '/',
+      },
+    });
+    const patch = await buyerCtx.patch(`/api/rfqs/${rfqId}`, {
+      data: {
+        buyerEmail: BUYER,
+        fields: {
+          departure: 'GVA',
+          arrival: 'NCE',
+          dateFrom: '2030-02-10',
+          dateTo: '2030-02-12',
+          passengers: 6,
+          name: 'Mail Buyer',
+          email: BUYER,
+        },
+      },
+    });
+    expect(patch.status()).toBe(200);
+    await buyerCtx.dispose();
+
+    const mail = await waitForMail(OP_DE, 'Aktualisierte Anfrage');
+    expect(mail).toContain('Aktualisierte Anfrage');
+    expect(mail).toContain('hat seine Anfrage');
+    // Field labels resolve from the de catalog (departure → Abflug).
+    expect(mail).toContain('Abflug');
+    expect(mail).not.toContain('Updated RFQ');
+  } finally {
+    await sql.end({ timeout: 5 });
+    await ctx.dispose();
+  }
 });

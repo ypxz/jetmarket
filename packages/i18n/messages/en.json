@@ -209,11 +209,101 @@
       "subject": "Your request for “{title}” has expired",
       "body": "Your request for \"{title}\" on {site} expired without an accepted quote. You can submit a fresh request anytime."
     },
+    "opQuoteDeclined": {
+      "subjectAccepted": "The buyer accepted another quote for \u201c{title}\u201d",
+      "subjectClosed": "The buyer closed their request for \u201c{title}\u201d",
+      "subjectDeclined": "Your quote for \u201c{title}\u201d was declined",
+      "bodyAccepted": "The buyer accepted a different quote for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
+      "bodyClosed": "The buyer closed their request for \u201c{title}\u201d on {site}, so your quote of {currency} {amount} was not selected this time.",
+      "bodyDeclined": "The buyer declined your quote of {currency} {amount} for \u201c{title}\u201d on {site}."
+    },
+    "opDealClosed": {
+      "subject": "Your quote for \u201c{title}\u201d was accepted",
+      "body": "The buyer accepted your quote of {currency} {amount} for \u201c{title}\u201d on {site}. Contact them at {buyer} to arrange fulfilment.{invoiceNote}",
+      "invoiceNote": " A success-fee invoice for {currency} {fee} ({ref}) has been issued to your account."
+    },
+    "opListingModerated": {
+      "subject": "Your listing \u201c{title}\u201d was {status} by moderation",
+      "paused": "paused",
+      "archived": "archived",
+      "bodyPaused": "Our moderation team paused your listing \u201c{title}\u201d on {site}, so it is hidden from public search. Review its details and contact support if you believe this was a mistake \u2014 you can reactivate it from your dashboard.",
+      "bodyArchived": "Our moderation team archived your listing \u201c{title}\u201d on {site}, so it is no longer listed. Contact support if you believe this was a mistake."
+    },
+    "opVerified": {
+      "subjectOn": "Your operator profile was verified",
+      "subjectOff": "Your operator profile is no longer verified",
+      "bodyOn": "Our team verified your operator profile \u201c{name}\u201d on {site} \u2014 the verified badge now shows on your listings and public profile.",
+      "bodyOff": "Our team removed the verified badge from your operator profile \u201c{name}\u201d on {site}. Contact support if you believe this was a mistake."
+    },
+    "opSuspended": {
+      "subjectOn": "Your {site} account was suspended",
+      "subjectOff": "Your {site} account was reinstated",
+      "bodyOn": "Our team suspended your operator account \u201c{name}\u201d on {site}. Your listings are hidden from buyers, you will not receive new requests, and listing/quote actions are disabled. Contact support if you believe this was a mistake.",
+      "bodyOff": "Your operator account \u201c{name}\u201d on {site} was reinstated \u2014 your listings are visible again and new requests will reach you normally."
+    },
+    "opInvoiceVoided": {
+      "subject": "Success-fee invoice voided \u2014 deal {id}",
+      "body": "Your success-fee invoice{refParen} of {currency} {fee} for the {currency} {amount} deal was voided \u2014 you owe no fee on it. Contact support if you have questions."
+    },
+    "opDealRated": {
+      "subject": "The buyer rated your deal \u2605 {rating}",
+      "body": "The buyer rated your deal on \u201c{title}\u201d \u2605 {rating} out of 5 on {site}.{standing}",
+      "standingOne": " Your rating now stands at \u2605 {avg} across {count} rated deal.",
+      "standingMany": " Your rating now stands at \u2605 {avg} across {count} rated deals."
+    },
+    "rfqNew": {
+      "subject": "New RFQ",
+      "intro": "You have a new request for quotation on {site}.",
+      "priority": "Priority request \u2014 the buyer paid for immediate delivery.",
+      "buyer": "Buyer: {name}",
+      "cta": "Open your operator inbox to send a quote."
+    },
+    "rfqAmended": {
+      "subject": "Updated RFQ",
+      "introChanged": "The buyer updated their request for quotation on {site} \u2014 here's what changed.",
+      "introLatest": "The buyer updated their request for quotation on {site} \u2014 the latest details are below.",
+      "buyer": "Buyer: {name}",
+      "cta": "Open your operator inbox to review or quote."
+    },
+    "invoicePaid": {
+      "subject": "Success-fee invoice paid \u2014 deal {id}",
+      "body": "Your success-fee invoice{refParen} for {currency} {fee} on deal amount {currency} {amount} was marked paid."
+    },
+    "listingExpired": {
+      "subject": "Your listing \u201c{title}\u201d just expired",
+      "body": "\u201c{title}\u201d (dated {date}) dropped out of {site} browse when its date passed. To relist it, open your dashboard and edit the listing \u2014 a fresh date puts it back in front of buyers."
+    },
+    "opUnanswered": {
+      "subjectOne": "1 request is waiting for your quote",
+      "subjectMany": "{count} requests are waiting for your quote",
+      "body": "Live requests on {site} have been sitting in your inbox unanswered \u2014 buyers compare operators by who responds first. Quote them, or dismiss the ones you can't serve so they stop counting against your inbox.",
+      "cta": "Review requests",
+      "yourInbox": "Your inbox: {url}"
+    },
+    "opEmptyBook": {
+      "subject": "Create your first listing on {site}",
+      "body": "Your operator account is live but your public page is empty \u2014 buyers can't quote what they can't see. Listing takes a few minutes and puts you in front of every matching request.",
+      "cta": "Create a listing",
+      "createListingLine": "Create a listing: {url}"
+    },
+    "invoiceOverdue": {
+      "subject": "Success-fee invoice {ref} outstanding \u2014 {amount}",
+      "body": "A success-fee invoice for {amount} ({ref}) on a closed {site} deal is still unpaid. Settle it to keep your account in good standing \u2014 reach billing if the ref doesn't look right.",
+      "cta": "View your deals",
+      "yourDeals": "Your deals: {url}"
+    },
+    "rfqExpiredOp": {
+      "subject": "The RFQ for \u201c{title}\u201d expired",
+      "body": "The request you quoted on {site} expired before the buyer accepted, so your quote was not selected."
+    },
     "shared": {
       "aListing": "a listing",
       "theOperator": "the operator",
       "forTitle": " for \"{title}\"",
       "onTitle": " on \"{title}\"",
+      "aBuyer": "A buyer",
+      "yourDeal": "your deal",
+      "refParen": " ({ref})",
       "unsubscribe": "Unsubscribe"
     }
   },

@@ -16,6 +16,8 @@ export interface User {
   role: UserRole;
   /** Session cookies embed this; bumping revokes all sessions server-side. */
   sessionVersion: number;
+  /** QA-494: latest sign-in locale — operator/admin-facing mail locale. */
+  locale: string;
   createdAt: string;
 }
 
@@ -253,7 +255,10 @@ export class PlanCapError extends Error {
 }
 
 export interface Repo {
-  createUser(email: string, role?: UserRole): Promise<User>;
+  /** Find-or-create by email. `locale` adopts-latest on an existing user
+   *  (a sign-in from another page locale retargets their mail) and stamps
+   *  'en' on a fresh row when omitted (QA-494). */
+  createUser(email: string, role?: UserRole, locale?: string): Promise<User>;
   findUserByEmail(email: string): Promise<User | undefined>;
   getUser(id: string): Promise<User | undefined>;
   /** Batch-lookup users by id — join-style admin pages. */
