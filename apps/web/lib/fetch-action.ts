@@ -1,8 +1,10 @@
 "use client";
 
+import { errText } from "./error-catalog";
+
 /**
  * Fire a mutation request and normalize failure to a displayable message —
- * null on success (the caller refreshes), the server's `error` string (the
+ * null on success (the caller refreshes), the localized server reason (the
  * useful reason, e.g. the plan-cap upsell) or `fallback` otherwise.
  * Before this helper existed, action buttons swallowed non-2xx silently (QA-211).
  */
@@ -26,8 +28,9 @@ export async function sendAction(
     if (res.ok) return null;
     const data = (await res.json().catch(() => null)) as {
       error?: string;
+      code?: string;
     } | null;
-    return data?.error ?? opts.fallback;
+    return errText(data, opts.fallback);
   } catch {
     return opts.fallback;
   }

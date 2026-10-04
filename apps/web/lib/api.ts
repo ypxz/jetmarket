@@ -5,9 +5,23 @@ export function ok(data: unknown, init?: number) {
   return NextResponse.json(data, { status: init ?? 200 });
 }
 
+// Stable machine key for the error: the slugified English message. Client
+// surfaces map it through the `errors.*` i18n catalog (see
+// lib/error-catalog.tsx) — message text stays the English fallback.
+function errorCode(message: string): string {
+  return message
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 export function err(message: string, status = 400, extra?: unknown) {
   return NextResponse.json(
-    { error: message, ...(extra ? { details: extra } : {}) },
+    {
+      error: message,
+      code: errorCode(message),
+      ...(extra ? { details: extra } : {}),
+    },
     { status },
   );
 }

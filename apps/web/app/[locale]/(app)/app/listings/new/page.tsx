@@ -1,6 +1,7 @@
 "use client";
 
 import { readJson } from "@/lib/fetch-json";
+import { errText } from "@/lib/error-catalog";
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -101,8 +102,8 @@ export default function NewListingPage() {
         const body = new FormData();
         body.append("file", file);
         const up = await fetch("/api/uploads", { method: "POST", body });
-        const upData = await readJson<{ key?: string; error?: string }>(up);
-        if (!up.ok || !upData.key) throw new Error(upData.error ?? t("failed"));
+        const upData = await readJson<{ key?: string; error?: string; code?: string }>(up);
+        if (!up.ok || !upData.key) throw new Error(errText(upData, t("failed")));
         photos.push(upData.key);
       }
       const res = await fetch("/api/listings", {
@@ -117,10 +118,10 @@ export default function NewListingPage() {
           photos,
         }),
       });
-      const data = await readJson<{ error?: string }>(res);
+      const data = await readJson<{ error?: string; code?: string }>(res);
       if (!res.ok) {
         setPending(false);
-        setError(data.error ?? t("failed"));
+        setError(errText(data, t("failed")));
         if (res.status === 402) setLimitHit(true);
         return;
       }

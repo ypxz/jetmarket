@@ -4,6 +4,7 @@ import { ConciergeUpsell } from "@/components/concierge-upsell";
 import { SavedSearchesList } from "@/components/saved-searches-list";
 import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { readJsonOr } from "@/lib/fetch-json";
+import { errText } from "@/lib/error-catalog";
 import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { useEffect } from "react";
@@ -138,8 +139,8 @@ function QuotesInner() {
       return;
     }
     if (!res.ok) {
-      const d = await readJsonOr<{ error?: string }>(res, {});
-      setMsg(d.error ?? tc("error"));
+      const d = await readJsonOr<{ error?: string; code?: string }>(res, {});
+      setMsg(errText(d, tc("error")));
       return;
     }
     const rows = await readJsonOr<Rfq[]>(res, []);
@@ -171,8 +172,8 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const d = await readJsonOr<{ error?: string }>(res, {});
-    setMsg(res.ok ? t("resendSent") : (d.error ?? tc("error")));
+    const d = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    setMsg(res.ok ? t("resendSent") : (errText(d, tc("error"))));
   }
 
   // Auto-load when arriving with ?email= (magic-link/thank-you redirect),
@@ -281,8 +282,8 @@ function QuotesInner() {
       return;
     }
     if (!res.ok) {
-      const d = await readJsonOr<{ error?: string }>(res, {});
-      setMsg(d.error ?? tc("error"));
+      const d = await readJsonOr<{ error?: string; code?: string }>(res, {});
+      setMsg(errText(d, tc("error")));
       return;
     }
     await load();
@@ -303,9 +304,9 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJsonOr<{ error?: string; deal?: { id: string } }>(res, {});
+    const data = await readJsonOr<{ error?: string; code?: string; deal?: { id: string } }>(res, {});
     if (!res.ok || !data.deal) {
-      setMsg(data.error ?? tc("error"));
+      setMsg(errText(data, tc("error")));
       return;
     }
     setMsg(t("accepted", { id: data.deal.id }));
@@ -327,9 +328,9 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJsonOr<{ error?: string }>(res, {});
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
     if (!res.ok) {
-      setMsg(data.error ?? tc("error"));
+      setMsg(errText(data, tc("error")));
       return;
     }
     setMsg(t("declinedMsg"));
@@ -351,9 +352,9 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJsonOr<{ error?: string }>(res, {});
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
     if (!res.ok) {
-      setMsg(data.error ?? tc("error"));
+      setMsg(errText(data, tc("error")));
       return;
     }
     setMsg(t("closedMsg"));
@@ -377,9 +378,9 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJsonOr<{ error?: string }>(res, {});
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
     if (!res.ok) {
-      setMsg(data.error ?? tc("error"));
+      setMsg(errText(data, tc("error")));
       return;
     }
     setMsg(t("extendedMsg"));
@@ -404,9 +405,9 @@ function QuotesInner() {
       setMsg(tc("error"));
       return;
     }
-    const data = await readJsonOr<{ error?: string }>(res, {});
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
     if (!res.ok) {
-      setMsg(data.error ?? tc("error"));
+      setMsg(errText(data, tc("error")));
       return;
     }
     setEditingId(null);

@@ -4,6 +4,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { sendAction } from "@/lib/fetch-action";
+import { errText } from "@/lib/error-catalog";
 import type { Listing } from "@/lib/repo/types";
 
 export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "status"> }) {
@@ -71,8 +72,9 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as {
           error?: string;
+          code?: string;
         } | null;
-        setError(data?.error ?? tc("error"));
+        setError(errText(data, tc("error")));
         return;
       }
       setError(null);

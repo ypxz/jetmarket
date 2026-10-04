@@ -3,6 +3,7 @@
 import { useLocale } from "next-intl";
 
 import { Button, Input } from "@jetmarket/ui";
+import { errText } from "@/lib/error-catalog";
 import { useEffect, useState } from "react";
 
 /**
@@ -62,10 +63,11 @@ export function SearchAlertForm({
       });
       const body = (await res.json().catch(() => null)) as {
         error?: string;
+        code?: string;
         matchedNow?: number;
       } | null;
       if (!res.ok) {
-        setError(body?.error ?? errorLabel);
+        setError(errText(body, errorLabel));
         return;
       }
       setMatched(typeof body?.matchedNow === "number" ? body.matchedNow : null);

@@ -4,6 +4,7 @@ import { getMessages, getTranslations } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
+import { ErrorCatalog } from "@/lib/error-catalog";
 import { siteUrl } from "@/lib/seo";
 import { verticalConfig } from "@/lib/vertical";
 import "../globals.css";
@@ -45,6 +46,15 @@ export default async function LocaleLayout({
       </head>
       <body>
         <NextIntlClientProvider messages={messages}>
+          {/* API error-code → localized string registry (QA-495). */}
+          <ErrorCatalog
+            errors={
+              ((messages as Record<string, unknown>).errors ?? {}) as Record<
+                string,
+                string
+              >
+            }
+          />
           <SiteHeader />
           {children}
         </NextIntlClientProvider>

@@ -2,6 +2,7 @@
 
 import { Button, Field, Input, Select } from "@jetmarket/ui";
 import { readJson } from "@/lib/fetch-json";
+import { errText } from "@/lib/error-catalog";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -100,8 +101,11 @@ export function EditListingForm({
     });
     setPending(false);
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(body?.error ?? `${res.status}`);
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+        code?: string;
+      } | null;
+      setError(errText(body, `${res.status}`));
       return;
     }
     router.push("/app");

@@ -4,6 +4,7 @@ import { useLocale } from "next-intl";
 
 import { Button, Field, Input, Select, Textarea } from "@jetmarket/ui";
 import { useRouter } from "@/i18n/navigation";
+import { errText } from "@/lib/error-catalog";
 import { useEffect, useState } from "react";
 
 export interface RfqFieldView {
@@ -141,10 +142,13 @@ export function RfqForm({
       rfqId?: string;
       accessToken?: string;
       error?: string;
+      code?: string;
     };
     if (!res.ok) {
       setBusy(false);
-      setError(res.status === 429 ? rateLimitedLabel : (data.error ?? errorLabel));
+      setError(
+        res.status === 429 ? rateLimitedLabel : errText(data, errorLabel),
+      );
       return;
     }
     // Bearer token rides the URL fragment — never reaches server access logs,
