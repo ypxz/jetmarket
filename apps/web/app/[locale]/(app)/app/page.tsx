@@ -14,11 +14,24 @@ import { invoiceStateVariant } from "@/lib/state-variant";
 import { PayFee } from "./deals/pay-fee";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { isExpiredListing } from "@/lib/search";
+import { QUOTE_DECLINE_REASONS } from "@/lib/repo/types";
+
+// QA-509 display order: enum order for known reasons, "none" (and any
+// unexpected key) last.
+const reasonRank = (key: string) => {
+  const i = QUOTE_DECLINE_REASONS.indexOf(
+    key as (typeof QUOTE_DECLINE_REASONS)[number],
+  );
+  return i === -1 ? QUOTE_DECLINE_REASONS.length : i;
+};
 
 export default async function OperatorDashboard() {
   const locale = await getLocale();
   const t = await getTranslations("app.dashboard");
   const tc = await getTranslations("common");
+  // QA-509: the breakdown reuses the RFQ-inbox's reason labels — one
+  // translation per reason, not a second copy under the dashboard ns.
+  const tr = await getTranslations("app.rfqs");
   const vertical = getVertical();
   const vt = await getTranslations(vertical.copy.namespace);
   const listingTypeNames = vertical.listingTypes
@@ -106,6 +119,7 @@ export default async function OperatorDashboard() {
     won30d,
     avgResponseH,
     ratingSelf,
+    declineReasons,
   ] = isPro
     ? await Promise.all([
         repo.countRfqs({ operatorId: operator.id, vertical: getVertical().slug }),
@@ -137,8 +151,11 @@ export default async function OperatorDashboard() {
         repo
           .ratingSummaryPerOperator([operator.id])
           .then((m) => m[operator.id]),
+        // QA-509: QA-508's reason data aggregated — "why am I losing"
+        // beside the bare win/loss rates.
+        repo.countQuotesByDeclineReason(operator.id),
       ])
-    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined];
+    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined, {}];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
@@ -281,6 +298,28 @@ export default async function OperatorDashboard() {
                 won: won30d,
               })}
             </p>
+            {Object.keys(declineReasons).length > 0 ? (
+              <p
+                className="mt-1 text-sm text-muted"
+                data-testid="stats-decline-breakdown"
+              >
+                {t("declineBreakdown", {
+                  reasons: Object.entries(declineReasons)
+                    // Count desc, then the enum order — deterministic
+                    // regardless of scan/group order; "none" trails.
+                    .sort(
+                      (a, b) =>
+                        b[1] - a[1] ||
+                        reasonRank(a[0]) - reasonRank(b[0]),
+                    )
+                    .map(
+                      ([reason, n]) =>
+                        `${reason === "none" ? t("declineNoReason") : tr(`declineReason.${reason}`)} ×${n}`,
+                    )
+                    .join(" · "),
+                })}
+              </p>
+            ) : null}
           </>
         ) : (
           <div

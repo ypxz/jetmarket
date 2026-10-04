@@ -130,4 +130,18 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     await expect(chip).toBeVisible();
     await expect(chip).toContainText('too expensive');
   });
+
+  await step('Pro funnel aggregates the reason (QA-509)', async () => {
+    // Free plan gates the funnel — upgrade through the mock checkout,
+    // then the dashboard's breakdown carries the buyer's price signal.
+    await operator.goto('/app/billing');
+    await operator.getByTestId('checkout-pro').click();
+    await expect(operator.getByTestId('checkout-success')).toBeVisible({
+      timeout: 15_000,
+    });
+    await operator.goto('/app');
+    const breakdown = operator.getByTestId('stats-decline-breakdown');
+    await expect(breakdown).toBeVisible();
+    await expect(breakdown).toContainText('too expensive ×1');
+  });
 });

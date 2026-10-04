@@ -958,6 +958,15 @@ class MemoryRepo implements Repo {
     if (filter?.buyerSeen) out = out.filter((q) => !!q.buyerSeenAt);
     return out.length;
   }
+  async countQuotesByDeclineReason(operatorId: string) {
+    const out: Record<string, number> = {};
+    for (const q of this.quotes.values()) {
+      if (q.operatorId !== operatorId || q.status !== "declined") continue;
+      const key = q.declineReason ?? "none";
+      out[key] = (out[key] ?? 0) + 1;
+    }
+    return out;
+  }
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"], opts?: { declineReason?: QuoteDeclineReason }) {
     const q = this.quotes.get(id);
     if (!q || q.status !== expected) return false;

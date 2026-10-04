@@ -1012,6 +1012,8 @@
       "statWon": "Gewonnene Angebote",
       "statWinRate": "Gewinnquote",
       "statSeenRate": "Gesehen-Rate",
+        "declineBreakdown": "Verloren wegen: {reasons}",
+        "declineNoReason": "ohne Angabe",
       "statReply": "Übliche Antwortzeit",
       "statRating": "Ø Käuferbewertung",
       "statsRecent": "Letzte 30 Tage — {rfqs} Anfragen · {quotes} Angebote · {won} gewonnen",

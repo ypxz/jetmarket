@@ -1012,6 +1012,8 @@
       "statWon": "Quotes won",
       "statWinRate": "Win rate",
       "statSeenRate": "Seen rate",
+        "declineBreakdown": "Lost to: {reasons}",
+        "declineNoReason": "no reason given",
       "statReply": "Typical reply",
       "statRating": "Avg buyer rating",
       "statsRecent": "Last 30 days — {rfqs} RFQs · {quotes} quotes · {won} won",

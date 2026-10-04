@@ -564,6 +564,44 @@ export function repoContract(
       );
       await repo.setQuoteStatus(quote.id, "accepted", "sent");
       expect((await repo.getQuote(quote.id))?.declineReason).toBeUndefined();
+
+      // QA-509: the funnel's "lost to" leg — declined quotes bucket by
+      // reason, reasonless ones under "none", other statuses/ops excluded.
+      const otherRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `seen2-${tag}@test.dev`,
+        fields: { ref: "seen2" },
+        dedupeKey: `seen2-${tag}`,
+      });
+      const noReason = await repo.createQuote({
+        rfqId: otherRfq.id,
+        operatorId: op.id,
+        amount: 32000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.setQuoteStatus(noReason!.id, "declined", "sent");
+      // Re-quote after decline (QA-18's partial-unique window) — the
+      // second live quote mints once the first is terminal.
+      const priced = await repo.createQuote({
+        rfqId: otherRfq.id,
+        operatorId: op.id,
+        amount: 33000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.setQuoteStatus(priced!.id, "declined", "sent", {
+        declineReason: "price",
+      });
+      expect(await repo.countQuotesByDeclineReason(op.id)).toEqual({
+        none: 1,
+        price: 1,
+      });
+      expect(await repo.countQuotesByDeclineReason(other.id)).toEqual({
+        timing: 1,
+      });
+      expect(await repo.countQuotesByDeclineReason("nope")).toEqual({});
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {

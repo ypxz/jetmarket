@@ -1544,6 +1544,21 @@ export class DrizzleRepo implements Repo {
       .where(conds.length ? and(...conds) : undefined);
     return r?.n ?? 0;
   }
+  async countQuotesByDeclineReason(
+    operatorId: string,
+  ): Promise<Record<string, number>> {
+    if (!isUuid(operatorId)) return {};
+    const rows = await this.db.execute<{ reason: string | null; n: number }>(sql`
+      select decline_reason as reason, count(*)::int as n
+      from quotes
+      where operator_id = ${operatorId}
+        and status = 'declined'
+      group by 1
+    `);
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.reason ?? "none"] = r.n;
+    return out;
+  }
   async setQuoteStatus(
     id: string,
     status: QuoteStatus,

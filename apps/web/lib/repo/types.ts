@@ -776,6 +776,13 @@ export interface Repo {
     /** QA-506/507: only count quotes with a buyer read receipt set. */
     buyerSeen?: boolean;
   }): Promise<number>;
+  /** QA-509: the "why am I losing" leg of the funnel — declined-quote
+   *  count grouped by the buyer's QA-508 reason key. Rows declined with
+   *  no reason bucket under "none"; quotes in other statuses never
+   *  count. One grouped read, no N+1. */
+  countQuotesByDeclineReason(
+    operatorId: string,
+  ): Promise<Record<string, number>>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */
