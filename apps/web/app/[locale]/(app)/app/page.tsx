@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { invoiceStateVariant } from "@/lib/state-variant";
 import { PayFee } from "./deals/pay-fee";
+import { RateBuyer } from "./deals/rate-buyer";
 import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { isExpiredListing } from "@/lib/search";
 import { QUOTE_DECLINE_REASONS } from "@/lib/repo/types";
@@ -542,6 +543,14 @@ export default async function OperatorDashboard() {
                         {` · ${t("ratedDeal", { rating: d.buyerRating })}`}
                       </span>
                     ) : null}
+                    {/* QA-528: the operator's rating OF the buyer — the
+                        other half of the trust loop, visible as an
+                        aggregate on the buyer's next RFQ. */}
+                    {d.operatorRating !== undefined ? (
+                      <span data-testid={`deal-oprating-${d.id}`}>
+                        {` · ${t("ratedBuyer", { rating: d.operatorRating })}`}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <span className="flex items-center gap-2">
@@ -552,6 +561,9 @@ export default async function OperatorDashboard() {
                       captured at issue time; mock flips it instantly. */}
                   {d.invoiceStatus === "invoiced" && d.invoiceUrl ? (
                     <PayFee dealId={d.id} />
+                  ) : null}
+                  {d.operatorRating === undefined ? (
+                    <RateBuyer dealId={d.id} />
                   ) : null}
                 </span>
               </li>

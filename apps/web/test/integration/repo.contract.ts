@@ -3366,6 +3366,23 @@ export function repoContract(
       // restore the ★5 fixture the QA-453/454 pins below rely on
       expect(await repo.clearDealRating(deal.id)).toBe(true);
       expect(await repo.rateDeal(deal.id, 5)).toBe(true);
+      // QA-528: operator→buyer rating — once-ever CAS mirrors rateDeal on
+      // the sibling column; avgBuyerScores aggregates by the RFQ's
+      // buyerEmail (the inbox's join key), never unmasking it client-side.
+      expect(await repo.rateDealByOperator(deal.id, 4)).toBe(true);
+      expect(await repo.rateDealByOperator(deal.id, 5)).toBe(false);
+      expect(await repo.rateDealByOperator(deal.id, 0)).toBe(false);
+      expect((await repo.getDeal(deal.id))?.operatorRating).toBe(4);
+      const scores = await repo.avgBuyerScores([`b-${tag}@test.dev`]);
+      expect(scores[`b-${tag}@test.dev`]).toEqual({ avg: 4, count: 1 });
+      // Case-folded lookups + unknown/empty emails resolve to {}.
+      expect(await repo.avgBuyerScores([`B-${tag}@TEST.DEV`])).toEqual({
+        [`b-${tag}@test.dev`]: { avg: 4, count: 1 },
+      });
+      expect(
+        await repo.avgBuyerScores([`nobody-${tag}@test.dev`]),
+      ).toEqual({});
+      expect(await repo.avgBuyerScores([])).toEqual({});
       // QA-453: sort="rating" — rated-first by avg desc, unrated last.
       const lowOp = await repo.upsertOperator({
         userId: (await repo.createUser(`low-${tag}@test.dev`, "operator")).id,

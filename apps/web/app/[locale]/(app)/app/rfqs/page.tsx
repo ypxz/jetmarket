@@ -113,7 +113,7 @@ export default async function RfqInboxPage({
   const rfqIds = rfqsPage.map((r) => r.id);
   // pendingRfqs powers the free-plan delayed-RFQ teaser (QA-225) — delayed
   // matches are invisible until due, so the count becomes the upsell.
-  const [listingRows, quoteRows, pendingRfqs, counteredCount, noteRows] =
+  const [listingRows, quoteRows, pendingRfqs, counteredCount, noteRows, buyerScores] =
     await Promise.all([
       repo.listListings({
         ids: [
@@ -138,6 +138,10 @@ export default async function RfqInboxPage({
       }),
       // QA-524: the operator's private triage notes — one batch read.
       repo.listRfqNotes(operator.id, rfqIds),
+      // QA-528: "rated buyer" — aggregate of operator-given deal ratings
+      // keyed by buyer email. Server-side join only: the address never
+      // reaches the client (operatorRfqView strips it below).
+      repo.avgBuyerScores(rfqsPage.map((r) => r.buyerEmail)),
     ]);
   // QA-416 "New" badge: rows created after the last inbox visit (never
   // visited → everything is new). One stamp covers owned + matched
@@ -178,6 +182,7 @@ export default async function RfqInboxPage({
       rfq: operatorRfqView(r, listing?.type, vertical),
       listing,
       quotes: quotesByRfq.get(r.id) ?? [],
+      buyerScore: buyerScores[r.buyerEmail.toLowerCase()],
       // QA-482 "Updated" badge — the request changed since the operator's
       // last inbox visit (never visited → amended since creation). The
       // amend path bumps updatedAt on every content write.
@@ -317,7 +322,7 @@ export default async function RfqInboxPage({
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
-          {rfqRows.map(({ rfq: r, listing, quotes, updated }) => {
+          {rfqRows.map(({ rfq: r, listing, quotes, updated, buyerScore }) => {
             return (
               <li
                 key={r.id}
@@ -351,6 +356,16 @@ export default async function RfqInboxPage({
                     {r.concierge ? (
                       <Badge variant="success" data-testid={`rfq-concierge-${r.id}`}>
                         {t("conciergeBadge")}
+                      </Badge>
+                    ) : null}
+                    {/* QA-528: this requester closed rated deals before —
+                        triage signal for who to quote first. */}
+                    {buyerScore ? (
+                      <Badge variant="outline" data-testid={`rfq-buyerscore-${r.id}`}>
+                        {t("buyerRated", {
+                          avg: buyerScore.avg.toFixed(1),
+                          count: buyerScore.count,
+                        })}
                       </Badge>
                     ) : null}
                     <Badge

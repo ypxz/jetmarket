@@ -291,6 +291,8 @@ function toDeal(
     invoiceUrl: d.invoiceUrl ?? undefined,
     buyerRating: d.buyerRating ?? undefined,
     buyerRatedAt: d.buyerRatedAt ? iso(d.buyerRatedAt) : undefined,
+    operatorRating: d.operatorRating ?? undefined,
+    operatorRatedAt: d.operatorRatedAt ? iso(d.operatorRatedAt) : undefined,
     closedAt: iso(d.closedAt),
     ...(r
       ? { rfqId: r.id, buyerEmail: r.buyerEmail, listingTitle: l?.title }
@@ -2115,6 +2117,52 @@ export class DrizzleRepo implements Repo {
       )
       .returning({ id: deals.id });
     return rows.length > 0;
+  }
+  async rateDealByOperator(id: string, rating: number): Promise<boolean> {
+    // QA-528: mirror of rateDeal — once-ever + in-range in one statement.
+    const rows = await this.db
+      .update(deals)
+      .set({ operatorRating: rating, operatorRatedAt: new Date() })
+      .where(
+        and(
+          eq(deals.id, id),
+          sql`${deals.operatorRating} is null`,
+          sql`${rating} between 1 and 5`,
+        ),
+      )
+      .returning({ id: deals.id });
+    return rows.length > 0;
+  }
+  async avgBuyerScores(
+    emails: string[],
+  ): Promise<Record<string, { avg: number; count: number }>> {
+    const want = [...new Set(emails.map((e) => e.trim().toLowerCase()))].filter(
+      (e) => e.length > 0,
+    );
+    if (!want.length) return {};
+    const emailKey = sql`lower(${rfqs.buyerEmail})`;
+    const rows = await this.db
+      .select({
+        email: emailKey,
+        avg: sql<number>`avg(${deals.operatorRating})::float8`,
+        count: sql<number>`count(${deals.operatorRating})::int`,
+      })
+      .from(deals)
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+      .where(
+        and(
+          inArray(emailKey, want),
+          sql`${deals.operatorRating} is not null`,
+        ),
+      )
+      .groupBy(emailKey);
+    return Object.fromEntries(
+      rows.map((r) => [
+        (r.email as string).toLowerCase(),
+        { avg: r.avg, count: r.count },
+      ]),
+    );
   }
   async clearDealRating(id: string): Promise<boolean> {
     // QA-458: admin recourse — NULL the pair under the same one-statement

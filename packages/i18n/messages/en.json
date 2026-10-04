@@ -1081,7 +1081,11 @@
       "awayBanner": "You are paused — new requests will not reach your inbox. Existing matches and quotes are unaffected.",
       "suspendedBanner": "Your account is suspended — listings are hidden, requests paused, and edits disabled. Contact support if you believe this was a mistake.",
       "offerCountered": "Countered {amount}",
-      "statCounterWinRate": "Counter win rate"
+      "statCounterWinRate": "Counter win rate",
+      "rateBuyer": "Rate buyer",
+      "rating": "Rating…",
+      "rateBuyerAria": "Rate the buyer 1-5",
+      "ratedBuyer": "you rated ★ {rating}"
     },
     "onboarding": {
       "title": "Operator profile",
@@ -1202,7 +1206,8 @@
       "notePlaceholder": "Private note — only you see it",
       "templatePh": "Template…",
       "templateNamePh": "Template name",
-      "saveTemplate": "Save template"
+      "saveTemplate": "Save template",
+      "buyerRated": "Rated buyer {avg}★ · {count}"
     },
     "billing": {
       "title": "Plan & billing",

@@ -1326,6 +1326,42 @@ class MemoryRepo implements Repo {
     });
     return true;
   }
+  async rateDealByOperator(id: string, rating: number): Promise<boolean> {
+    const deal = this.deals.get(id);
+    // Sync check-write — once-ever + in-range in one pass (QA-333).
+    if (!deal || deal.operatorRating !== undefined || rating < 1 || rating > 5) {
+      return false;
+    }
+    this.deals.set(id, {
+      ...deal,
+      operatorRating: rating,
+      operatorRatedAt: new Date().toISOString(),
+    });
+    return true;
+  }
+  async avgBuyerScores(
+    emails: string[],
+  ): Promise<Record<string, { avg: number; count: number }>> {
+    const want = new Set(emails.map((e) => e.toLowerCase()));
+    const acc = new Map<string, { sum: number; count: number }>();
+    for (const d of this.deals.values()) {
+      if (d.operatorRating === undefined) continue;
+      const q = this.quotes.get(d.quoteId);
+      const rfq = q ? this.rfqs.get(q.rfqId) : undefined;
+      const email = rfq?.buyerEmail.toLowerCase();
+      if (!email || !want.has(email)) continue;
+      const a = acc.get(email) ?? { sum: 0, count: 0 };
+      a.sum += d.operatorRating;
+      a.count += 1;
+      acc.set(email, a);
+    }
+    return Object.fromEntries(
+      [...acc].map(([email, a]) => [
+        email,
+        { avg: a.sum / a.count, count: a.count },
+      ]),
+    );
+  }
   async clearDealRating(id: string): Promise<boolean> {
     const deal = this.deals.get(id);
     // QA-458: sync check-write mirrors the pg gate — nothing to clear on

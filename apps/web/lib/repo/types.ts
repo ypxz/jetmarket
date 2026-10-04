@@ -285,6 +285,10 @@ export interface Deal {
   /** QA-451: the buyer's 1-5 rating — written once via rateDeal CAS. */
   buyerRating?: number;
   buyerRatedAt?: string;
+  /** QA-528: the operator's once-ever 1-5 rating OF the buyer — written
+   *  via rateDealByOperator CAS; feeds the "rated buyer" inbox aggregate. */
+  operatorRating?: number;
+  operatorRatedAt?: string;
   closedAt: string;
   /** Resolved off the parent quote→rfq→listing when the read joins them
    *  (listDeals): a closed deal unlocks the buyer's contact + which listing
@@ -995,6 +999,16 @@ export interface Repo {
    *  returns false; ratings don't revise). Out-of-range ratings return
    *  false too — the invariant lives in the repo, not the route. */
   rateDeal(id: string, rating: number): Promise<boolean>;
+  /** QA-528: the operator's once-ever rating OF the buyer (1-5). Same
+   *  once-ever CAS as rateDeal — a second call loses silently. */
+  rateDealByOperator(id: string, rating: number): Promise<boolean>;
+  /** QA-528: per-buyer-email aggregate of operator-given ratings across
+   *  all deals — the inbox joins this once per page to mark "rated
+   *  buyer" without ever unmasking the address itself. Keyed by the
+   *  lowercased emails passed in; absent when the buyer was never rated. */
+  avgBuyerScores(
+    emails: string[],
+  ): Promise<Record<string, { avg: number; count: number }>>;
 
   /** QA-458: admin recourse — clear an abusive rating so the buyer can
    *  re-rate (CAS passes on rating IS NULL). False when nothing was
