@@ -22,6 +22,11 @@ const databaseUrl =
 const testDatabaseUrl =
   process.env.TEST_DATABASE_URL ??
   databaseUrl.replace(/\/[^/?]+(\?.*)?$/, '/jetmarket_test');
+// Specs open raw SQL fixtures via `postgres(process.env.TEST_DATABASE_URL!)` —
+// the fallback above covers the server but leaves process.env unset, so specs
+// silently fall back to the OS user (test:all hit this, QA-435). Export the
+// resolved URL so explicit overrides win and bare `pnpm test:e2e` still works.
+process.env.TEST_DATABASE_URL = testDatabaseUrl;
 
 function hasSpecs(dir: string) {
   const abs = path.join(__dirname, dir);
