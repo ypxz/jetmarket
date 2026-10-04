@@ -62,7 +62,13 @@ export default async function AdminPage({
         ids: [...new Set(modListings.map((l) => l.operatorId))],
       }),
       repo.listListings({
-        ids: [...new Set(modRfqs.map((r) => r.listingId))],
+        ids: [
+          ...new Set(
+            modRfqs
+              .map((r) => r.listingId)
+              .filter((x): x is string => x !== null),
+          ),
+        ],
       }),
     ]);
   // One grouped query + one Map build — was 100 sequential counts (QA-100).
@@ -265,7 +271,7 @@ export default async function AdminPage({
               <tr key={r.id} data-testid={`admin-rfq-${r.id}`}>
                 <td className="py-2 pr-4 font-medium">{r.buyerEmail}</td>
                 <td className="py-2 pr-4">
-                  {rfqListingTitles.get(r.listingId) ?? "—"}
+                  {(r.listingId ? rfqListingTitles.get(r.listingId) : undefined) ?? "—"}
                 </td>
                 <td className="py-2 pr-4" data-testid={`admin-rfq-status-${r.id}`}>
                   {r.status}

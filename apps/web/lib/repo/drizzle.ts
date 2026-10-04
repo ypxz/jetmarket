@@ -102,7 +102,7 @@ function toRfq(r: typeof rfqs.$inferSelect): Rfq {
   return {
     id: r.id,
     vertical: r.vertical,
-    listingId: r.listingId ?? "",
+    listingId: r.listingId,
     buyerEmail: r.buyerEmail,
     accessToken: r.accessToken,
     fields: r.fields,
@@ -599,6 +599,23 @@ export class DrizzleRepo implements Repo {
     if (patch.attributes !== undefined) set.attributes = patch.attributes;
     if (patch.photos !== undefined) set.photos = patch.photos;
     await this.db.update(listings).set(set).where(eq(listings.id, id));
+  }
+  async deleteListing(
+    id: string,
+    scope: { operatorId: string; vertical: string },
+  ): Promise<boolean> {
+    const rows = await this.db
+      .delete(listings)
+      .where(
+        and(
+          eq(listings.id, id),
+          eq(listings.operatorId, scope.operatorId),
+          eq(listings.vertical, scope.vertical),
+          inArray(listings.status, ["draft", "archived"]),
+        ),
+      )
+      .returning({ id: listings.id });
+    return rows.length > 0;
   }
   async listListingCountsByOperator(
     operatorIds: string[],

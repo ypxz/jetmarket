@@ -46,7 +46,15 @@ export async function GET(req: Request) {
   // every quote on their own RFQs.
   const rfqIds = rfqs.map((r) => r.id);
   const [listingRows, quoteRows, deliveredCounts] = await Promise.all([
-    repo.listListings({ ids: [...new Set(rfqs.map((r) => r.listingId))] }),
+    repo.listListings({
+      ids: [
+        ...new Set(
+          rfqs
+            .map((r) => r.listingId)
+            .filter((x): x is string => x !== null),
+        ),
+      ],
+    }),
     repo.listQuotes({ rfqIds }),
     // "In N operator inboxes" — the buyer's proof their request went out,
     // and the concierge purchase's receipt on the page (QA-401).
@@ -93,9 +101,11 @@ export async function GET(req: Request) {
       // but there's no reason to echo it back
       ...{ ...rfq, accessToken: undefined },
       deliveredTo: deliveredCounts[rfq.id] ?? 0,
-      requestFields: requestFieldsOf(rfq.listingId, rfq.fields),
+      requestFields: requestFieldsOf(rfq.listingId ?? "", rfq.fields),
       listing: (() => {
-        const l = listingById.get(rfq.listingId) ?? null;
+        const l = rfq.listingId
+          ? (listingById.get(rfq.listingId) ?? null)
+          : null;
         // Browseable = still publicly renderable; expired/withdrawn listings
         // 404 on /listing/[id] and must not be linked from the inbox (QA-244).
         return l

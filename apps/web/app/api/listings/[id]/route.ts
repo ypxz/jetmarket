@@ -180,3 +180,59 @@ export async function PATCH(
   }
   return ok(await repo.getListing(id));
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const user = await requireUser("operator");
+  if (!user) return err("unauthorized", 401);
+  if (!rateLimit(`listing-delete:${clientIp(req)}`, 60, 60 * 60 * 1000)) {
+    return err("rate limit exceeded — try again later", 429);
+  }
+  const repo = await getRepo();
+  const listing = await repo.getListing(id);
+  const operator = await repo.getOperatorByUserId(user.id);
+  if (!listing || !operator || listing.operatorId !== operator.id) {
+    return err("not found", 404);
+  }
+  // Same 404-not-403 rule as PATCH: foreign-vertical rows are invisible.
+  if (listing.vertical !== verticalSlug()) return err("not found", 404);
+  // Terminal-ish rows only: a live listing carries buyer demand (RFQs,
+  // watches, search hits) — archive it first so dependents get their
+  // notifications before the row disappears (QA-419).
+  if (listing.status !== "draft" && listing.status !== "archived") {
+    return err("archive the listing before deleting it", 409);
+  }
+  // Watchers get the same "removed" mail archive sends — the watch could
+  // never fire again anyway.
+  await endListingWatches(repo, listing, appOrigin(req));
+  const deleted = await repo.deleteListing(id, {
+    operatorId: operator.id,
+    vertical: verticalSlug(),
+  });
+  if (!deleted) return err("listing could not be deleted", 409);
+  // Orphan sweep: keys no sibling still references are dead storage (same
+  // rule as the PATCH photos sweep — best-effort, never fails the delete).
+  if (listing.photos.length) {
+    try {
+      const siblings = await repo.listListings({ operatorId: operator.id });
+      const referenced = new Set(siblings.flatMap((l) => l.photos));
+      const storage = storageProvider();
+      for (const key of listing.photos) {
+        if (referenced.has(key)) continue;
+        try {
+          await storage.delete(key);
+        } catch {
+          logWarn("storage.orphan_delete_failed", { key });
+        }
+      }
+    } catch (e) {
+      logWarn("storage.orphan_sweep_failed", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return ok({ ok: true });
+}

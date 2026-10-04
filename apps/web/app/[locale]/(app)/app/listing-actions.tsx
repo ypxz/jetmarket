@@ -11,7 +11,33 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const tc = useTranslations("common");
+
+  async function remove() {
+    if (pending) return;
+    // First click arms the confirm; second click actually deletes.
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setPending(true);
+    try {
+      const e = await sendAction(`/api/listings/${listing.id}`, {
+        method: "DELETE",
+        fallback: tc("error"),
+      });
+      if (e) {
+        setError(e);
+        setConfirming(false);
+        return;
+      }
+      setError(null);
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function patch(status: "active" | "paused" | "archived") {
     if (pending) return;
@@ -110,6 +136,18 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
           onClick={() => patch("archived")}
         >
           {t("archive")}
+        </button>
+      ) : null}
+      {/* Terminal rows only (draft/archived) — two-click confirm, the row
+          is gone for good (QA-419). */}
+      {listing.status === "draft" || listing.status === "archived" ? (
+        <button
+          className={btn}
+          disabled={pending}
+          data-testid={`delete-listing-${listing.id}`}
+          onClick={remove}
+        >
+          {confirming ? t("deleteConfirm") : t("delete")}
         </button>
       ) : null}
       {error ? (

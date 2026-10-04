@@ -341,6 +341,39 @@ class MemoryRepo implements Repo {
     const l = this.listings.get(id);
     if (l) this.listings.set(id, { ...l, ...patch });
   }
+  async deleteListing(
+    id: string,
+    scope: { operatorId: string; vertical: string },
+  ): Promise<boolean> {
+    // Sync check-then-write — no yield before the delete (QA-333).
+    const l = this.listings.get(id);
+    if (
+      !l ||
+      l.operatorId !== scope.operatorId ||
+      l.vertical !== scope.vertical ||
+      (l.status !== "draft" && l.status !== "archived")
+    ) {
+      return false;
+    }
+    this.listings.delete(id);
+    // FK `set null` parity with pg: RFQs and their match deliveries lose
+    // the listing link, never the row.
+    for (const [rid, r] of this.rfqs) {
+      if (r.listingId === id) this.rfqs.set(rid, { ...r, listingId: null });
+    }
+    for (const [rid, m] of this.rfqMatches) {
+      const next = new Map(m);
+      let dirty = false;
+      for (const [opId, v] of next) {
+        if (v.listingId === id) {
+          next.set(opId, { ...v, listingId: null });
+          dirty = true;
+        }
+      }
+      if (dirty) this.rfqMatches.set(rid, next);
+    }
+    return true;
+  }
   async countOperatorListings(operatorId: string, vertical?: string) {
     return [...this.listings.values()].filter(
       (l) =>
@@ -459,7 +492,9 @@ class MemoryRepo implements Repo {
       );
       const opId = filter.operatorId;
       out = out.filter(
-        (r) => opListingIds.has(r.listingId) || this.matchVisible(r.id, opId),
+        (r) =>
+          (r.listingId !== null && opListingIds.has(r.listingId)) ||
+          this.matchVisible(r.id, opId),
       );
       // "Needs a quote": hide RFQs the operator already has a live quote on
       // (sent/accepted) — declined/withdrawn leave it needing action (QA-402).

@@ -69,7 +69,15 @@ export default async function RfqInboxPage({
   // pendingRfqs powers the free-plan delayed-RFQ teaser (QA-225) — delayed
   // matches are invisible until due, so the count becomes the upsell.
   const [listingRows, quoteRows, pendingRfqs] = await Promise.all([
-    repo.listListings({ ids: [...new Set(rfqsPage.map((r) => r.listingId))] }),
+    repo.listListings({
+      ids: [
+        ...new Set(
+          rfqsPage
+            .map((r) => r.listingId)
+            .filter((x): x is string => x !== null),
+        ),
+      ],
+    }),
     repo.listQuotes({ rfqIds, operatorId: operator.id }),
     operator.plan === "free"
       ? repo.countPendingRfqs(operator.id, verticalSlug())
@@ -95,7 +103,9 @@ export default async function RfqInboxPage({
           ?.rfqDelayHours ?? 24)
       : 24;
   const rfqRows = rfqsPage.map((r) => {
-    const listing = listingById.get(r.listingId) ?? null;
+    const listing = r.listingId
+      ? (listingById.get(r.listingId) ?? null)
+      : null;
     return {
       rfq: operatorRfqView(r, listing?.type, vertical),
       listing,

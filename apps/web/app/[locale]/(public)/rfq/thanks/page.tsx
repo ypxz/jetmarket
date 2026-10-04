@@ -26,7 +26,7 @@ export default async function RfqThanksPage({
   const repo = await getRepo();
   const rfq = id ? await repo.getRfq(id).catch(() => null) : null;
   const listing =
-    rfq && rfq.vertical === verticalSlug()
+    rfq && rfq.vertical === verticalSlug() && rfq.listingId
       ? await repo.getListing(rfq.listingId).catch(() => null)
       : null;
   const watchable =

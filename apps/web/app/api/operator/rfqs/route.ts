@@ -35,7 +35,15 @@ export async function GET(req: Request) {
   // Batched: one listing + one own-quotes lookup for the whole page — was
   // 2 queries per RFQ row (QA-103).
   const [listingRows, quoteRows] = await Promise.all([
-    repo.listListings({ ids: [...new Set(rfqs.map((r) => r.listingId))] }),
+    repo.listListings({
+      ids: [
+        ...new Set(
+          rfqs
+            .map((r) => r.listingId)
+            .filter((x): x is string => x !== null),
+        ),
+      ],
+    }),
     repo.listQuotes({ rfqIds: rfqs.map((r) => r.id), operatorId: operator.id }),
   ]);
   const listingById = new Map(listingRows.map((l) => [l.id, l] as const));
@@ -51,7 +59,9 @@ export async function GET(req: Request) {
   const vertical = verticalConfig();
   return noStore(ok(
     rfqs.map((rfq) => {
-      const listing = listingById.get(rfq.listingId) ?? null;
+      const listing = rfq.listingId
+        ? (listingById.get(rfq.listingId) ?? null)
+        : null;
       return {
         ...operatorRfqView(rfq, listing?.type, vertical),
         listing,

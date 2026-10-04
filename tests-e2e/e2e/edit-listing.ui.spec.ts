@@ -134,4 +134,30 @@ test('listing edit UI: dashboard → edit → save → dashboard reflects change
     await expect(copyRow).toBeVisible();
     await expect(copyRow).toContainText('draft');
   });
+
+  await step('delete removes the draft copy; live listings refuse (QA-419)', async () => {
+    // The draft copy carries a Delete action — two clicks (arm, confirm).
+    const copyRow = operator
+      .locator('li')
+      .filter({ hasText: '(copy)' })
+      .first();
+    const delBtn = copyRow.getByTestId(/^delete-listing-/);
+    await expect(delBtn).toBeVisible();
+    await delBtn.click();
+    await expect(delBtn).toContainText('Delete forever');
+    await delBtn.click();
+    await expect(copyRow).toHaveCount(0, { timeout: 15_000 });
+    // The still-active edited listing offers no delete; a direct DELETE is
+    // refused so live demand can't be pulled out from under buyers.
+    const editedRow = operator
+      .locator('li')
+      .filter({ hasText: EDITED_TITLE })
+      .filter({ hasNotText: '(copy)' })
+      .first();
+    await expect(editedRow.getByTestId(/^delete-listing-/)).toHaveCount(0);
+    const res = await operator.request.delete(
+      `/api/listings/${listingId}`,
+    );
+    expect(res.status()).toBe(409);
+  });
 });

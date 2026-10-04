@@ -47,13 +47,19 @@ export async function POST(req: Request) {
   const listings = new Map(
     (
       await repo.listListings({
-        ids: [...new Set(rfqs.map((r) => r.listingId).filter(Boolean))],
+        ids: [
+          ...new Set(
+            rfqs
+              .map((r) => r.listingId)
+              .filter((x): x is string => x !== null),
+          ),
+        ],
       })
     ).map((l) => [l.id, l.title] as const),
   );
   const lines = rfqs.map(
     (r) =>
-      `- ${listings.get(r.listingId) ?? `Request ${r.id}`}: ${appUrl}/quotes?email=${encodeURIComponent(
+      `- ${(r.listingId ? listings.get(r.listingId) : undefined) ?? `Request ${r.id}`}: ${appUrl}/quotes?email=${encodeURIComponent(
         email,
       )}#t=${encodeURIComponent(r.accessToken)}`,
   );

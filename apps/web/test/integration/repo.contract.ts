@@ -1067,6 +1067,83 @@ export function repoContract(
       });
     });
 
+    it("deleteListing removes draft/archived only, FK set-nulls dependents (QA-419)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`del-${tag}@test.dev`, "operator");
+      const owner = await repo.upsertOperator({
+        userId: u.id,
+        name: "Del Owner",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const u2 = await repo.createUser(`del2-${tag}@test.dev`, "operator");
+      const stranger = await repo.upsertOperator({
+        userId: u2.id,
+        name: "Del Stranger",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const mk = (title: string, status?: "draft" | "active" | "archived") =>
+        repo.createListing({
+          operatorId: owner.id,
+          vertical: "jets",
+          type: "charter",
+          title: `${title} ${tag}`,
+          price: 8000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+          ...(status ? { status } : {}),
+        });
+      const scope = { operatorId: owner.id, vertical: "jets" };
+
+      // A draft with an RFQ against it: row goes, RFQ survives orphaned.
+      const draft = await mk("Del Draft", "draft");
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: draft.id,
+        buyerEmail: `del-${tag}@test.dev`,
+        fields: { dateTo: isoIn(5) },
+      });
+      expect(await repo.deleteListing(draft.id, scope)).toBe(true);
+      expect(await repo.getListing(draft.id)).toBeUndefined();
+      expect((await repo.getRfq(rfq.id))!.listingId).toBeNull();
+
+      // Archived is also terminal enough to delete.
+      const arch = await mk("Del Arch", "archived");
+      expect(await repo.deleteListing(arch.id, scope)).toBe(true);
+
+      // Live rows refuse — the delete is a no-op, not a status change.
+      const live = await mk("Del Live", "active");
+      expect(await repo.deleteListing(live.id, scope)).toBe(false);
+      expect((await repo.getListing(live.id))!.status).toBe("active");
+      const paused = await mk("Del Paused", "active");
+      await repo.updateListingStatus(paused.id, "paused");
+      expect(await repo.deleteListing(paused.id, scope)).toBe(false);
+
+      // Scope is enforced inside the write: stranger or wrong-vertical
+      // scopes can never reach the row.
+      const mine = await mk("Del Mine", "draft");
+      expect(
+        await repo.deleteListing(mine.id, {
+          operatorId: stranger.id,
+          vertical: "jets",
+        }),
+      ).toBe(false);
+      expect(
+        await repo.deleteListing(mine.id, {
+          operatorId: owner.id,
+          vertical: "machinery",
+        }),
+      ).toBe(false);
+      expect(await repo.getListing(mine.id)).toBeDefined();
+    });
+
     it("bumpListingViews increments atomically and starts at 0 (QA-413)", async () => {
       const repo = await factory();
       const user = await repo.createUser(

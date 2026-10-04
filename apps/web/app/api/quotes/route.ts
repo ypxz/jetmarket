@@ -40,7 +40,9 @@ export async function POST(req: Request) {
   // machinery match could otherwise quote through the wrong deploy
   // (QA-298).
   if (!rfq || rfq.vertical !== verticalSlug()) return err("rfq not found", 404);
-  const listing = await repo.getListing(rfq.listingId);
+  const listing = rfq.listingId
+    ? await repo.getListing(rfq.listingId)
+    : undefined;
   // Bearer paths: own the RFQ's listing, or hold a delivered fan-out match.
   // A matched RFQ still references the originating listing for context —
   // if it was deleted there is nothing to quote against.

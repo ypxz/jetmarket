@@ -657,6 +657,8 @@
       "pause": "Pause",
       "publish": "Publish",
       "archive": "Archive",
+      "delete": "Delete",
+      "deleteConfirm": "Delete forever?",
       "noListings": "No listings yet. Create your first {types}.",
       "rfqInbox": "RFQ inbox ({count} open)",
       "openInbox": "Open inbox →",

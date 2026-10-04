@@ -79,7 +79,9 @@ export type RfqStatus =
 export interface Rfq {
   id: string;
   vertical: string;
-  listingId: string;
+  /** FK `set null` — survives a listing delete as null; renders via the
+   *  listingFallback copy (QA-419). */
+  listingId: string | null;
   buyerEmail: string;
   /** Bearer token in the buyer's email link — gates quote view/accept/decline. */
   accessToken: string;
@@ -273,6 +275,17 @@ export interface Repo {
     id: string,
     patch: Partial<Pick<Listing, "title" | "price" | "attributes" | "photos">>,
   ): Promise<void>;
+  /** Permanent delete for terminal-ish rows only (draft/archived) — live
+   *  listings carry buyer demand and must go through archive first. Scoped
+   *  by operator+vertical in the write itself (a foreign id can never be
+   *  reached); returns false when nothing matched, the same atomic-CAS
+   *  shape as every other state transition. FK `set null` orphans RFQs
+   *  and matches to `listingId: null` — the listingFallback copy renders
+   *  them (QA-419). */
+  deleteListing(
+    id: string,
+    scope: { operatorId: string; vertical: string },
+  ): Promise<boolean>;
   /** Non-archived count used for the plan cap + dashboard header. `vertical`
    *  scopes it on multi-vertical shared DBs — the per-plan cap is
    *  per-deploy, so foreign-vertical rows must not consume it (QA-302). */

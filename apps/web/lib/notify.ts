@@ -19,7 +19,9 @@ export async function notifyQuoteDeclined(
     const operator = await repo.getOperator(quote.operatorId);
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
     if (!owner) return;
-    const listing: Listing | undefined = await repo.getListing(rfq.listingId);
+    const listing: Listing | undefined = rfq.listingId
+      ? await repo.getListing(rfq.listingId)
+      : undefined;
     const title = listing?.title ?? "a listing";
     const subject =
       reason === "competing-accepted"
@@ -61,7 +63,9 @@ export async function notifyBuyerQuoteWithdrawn(
   rfq: Rfq,
 ): Promise<void> {
   try {
-    const listing = await repo.getListing(rfq.listingId);
+    const listing = rfq.listingId
+      ? await repo.getListing(rfq.listingId)
+      : undefined;
     const title = listing?.title ?? "a listing";
     const subject = `A quote for “${title}” was withdrawn`;
     const body = `The operator withdrew their quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. Other quotes on your request are unaffected.`;
@@ -95,7 +99,9 @@ export async function notifyDealClosed(
   rfq: Rfq,
   deal: Deal,
 ): Promise<void> {
-  const listing = await repo.getListing(rfq.listingId);
+  const listing = rfq.listingId
+    ? await repo.getListing(rfq.listingId)
+    : undefined;
   const title = listing?.title ?? "a listing";
   try {
     const operator = await repo.getOperator(quote.operatorId);
