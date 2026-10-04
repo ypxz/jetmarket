@@ -129,6 +129,9 @@ function QuotesInner() {
   // QA-508: which quote's decline-reason picker is open — declining is a
   // two-step so the buyer can say why (optional, structured).
   const [decliningId, setDecliningId] = useState<string | null>(null);
+  // QA-534: which RFQ's bulk-decline picker is open — same two-step shape
+  // as the per-quote picker, applied to every sent quote on the request.
+  const [decliningAllId, setDecliningAllId] = useState<string | null>(null);
   // QA-511: which quote's counter-offer input is open + the draft amount.
   const [counteringId, setCounteringId] = useState<string | null>(null);
   const [counterDraft, setCounterDraft] = useState("");
@@ -387,6 +390,37 @@ function QuotesInner() {
     }
     setMsg(t("declinedMsg"));
     setDecliningId(null);
+    await load();
+  }
+
+  // QA-534: "none of these — keep looking": bulk-declines the request's
+  // sent quotes WITHOUT closing it (close is the terminal answer).
+    const declineAll = (rfqId: string, reason?: string) =>
+    withBusy(() => declineAllImpl(rfqId, reason));
+
+  async function declineAllImpl(rfqId: string, reason?: string) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/rfqs/${rfqId}/decline-quotes`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          buyerEmail: email,
+          token,
+          ...(reason ? { reason } : {}),
+        }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    if (!res.ok) {
+      setMsg(errText(data, tc("error")));
+      return;
+    }
+    setMsg(t("declinedAllMsg"));
+    setDecliningAllId(null);
     await load();
   }
 
@@ -931,6 +965,54 @@ function QuotesInner() {
                       >
                         {r.pausedAt ? t("resume") : t("pause")}
                       </button>
+                    ) : null}
+                    {["open", "matched", "quoted"].includes(r.status) &&
+                    r.quotes.filter((o) => o.status === "sent").length >= 2 ? (
+                      decliningAllId === r.id ? (
+                        <span
+                          className="flex flex-wrap items-center gap-1"
+                          data-testid={`decline-all-picker-${r.id}`}
+                        >
+                          <span className="text-xs text-muted">
+                            {t("declineReasonsTitle")}
+                          </span>
+                          {QUOTE_DECLINE_REASONS.map((reason) => (
+                            <button
+                              key={reason}
+                              onClick={() => declineAll(r.id, reason)}
+                              disabled={busy}
+                              data-testid={`decline-all-reason-${reason}-${r.id}`}
+                              className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                            >
+                              {t(`declineReason.${reason}`)}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => declineAll(r.id)}
+                            disabled={busy}
+                            data-testid={`decline-all-no-reason-${r.id}`}
+                            className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                          >
+                            {t("declineNoReason")}
+                          </button>
+                          <button
+                            onClick={() => setDecliningAllId(null)}
+                            data-testid={`decline-all-cancel-${r.id}`}
+                            className="text-xs text-muted underline"
+                          >
+                            {t("cancelEdit")}
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setDecliningAllId(r.id)}
+                          disabled={busy}
+                          data-testid={`decline-all-${r.id}`}
+                          className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
+                        >
+                          {t("declineAll")}
+                        </button>
+                      )
                     ) : null}
                     {["open", "matched", "quoted"].includes(r.status) ? (
                       <button

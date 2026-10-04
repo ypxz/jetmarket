@@ -895,3 +895,72 @@ describe("POST /api/rfqs/[id]/pause (buyer, QA-533)", () => {
     expect(dead.status).toBe(409);
   });
 });
+
+describe("POST /api/rfqs/[id]/decline-quotes (buyer, QA-534)", () => {
+  it("bulk-declines every sent quote, keeps the RFQ open; guards strangers/replay", async () => {
+    const repo = await getMemoryRepo();
+    const { otherOp, rfq, buyerEmail } = await fixture(repo);
+    const { POST: declineAll } = await import(
+      "../../app/api/rfqs/[id]/decline-quotes/route"
+    );
+    // fixture() already put op's sent quote on rfq — add a second operator's.
+    const q2 = await repo.createQuote({
+      rfqId: rfq.id,
+      operatorId: otherOp.id,
+      amount: 9500,
+      currency: "USD",
+      message: "",
+    });
+
+    // Stranger → 404.
+    const stranger = await declineAll(
+      post({ buyerEmail: "stranger@test.dev", token: "nope" }),
+      params(rfq.id),
+    );
+    expect(stranger.status).toBe(404);
+
+    // Bearer + shared reason → every sent quote dies with it, request lives.
+    const res = await declineAll(
+      post({ buyerEmail, token: rfq.accessToken, reason: "price" }),
+      params(rfq.id),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { declined: number };
+    expect(body.declined).toBe(2);
+    const after = await repo.listQuotes({ rfqId: rfq.id });
+    expect(after.filter((q) => q.status === "sent")).toHaveLength(0);
+    expect(
+      after.every((q) => q.status === "declined" && q.declineReason === "price"),
+    ).toBe(true);
+    // The request stays live — that's the whole point vs close.
+    expect((await repo.getRfq(rfq.id))?.status).toBe("quoted");
+    void q2;
+
+    // Replay → nothing live left → 409.
+    const replay = await declineAll(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(rfq.id),
+    );
+    expect(replay.status).toBe(409);
+  });
+
+  it("a quote accepted mid-sweep wins its CAS — decline only takes 'sent'", async () => {
+    const repo = await getMemoryRepo();
+    const { quote, rfq, buyerEmail } = await fixture(repo);
+    const { POST: declineAll } = await import(
+      "../../app/api/rfqs/[id]/decline-quotes/route"
+    );
+    // Winner takes the deal first — the sweep then can't touch it.
+    const acc = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(acc.status).toBe(200);
+    const res = await declineAll(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(rfq.id),
+    );
+    expect(res.status).toBe(409); // no 'sent' quotes remain
+    expect((await repo.getQuote(quote.id))?.status).toBe("accepted");
+  });
+});

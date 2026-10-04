@@ -511,7 +511,9 @@
     "pausedChip": "Pausiert",
     "pausedHint": "Keine neuen Angebote in der Pause",
     "pausedMsg": "Anfrage pausiert — es kommen keine neuen Angebote an.",
-    "resumedMsg": "Anfrage fortgesetzt — nimmt wieder Angebote an."
+    "resumedMsg": "Anfrage fortgesetzt — nimmt wieder Angebote an.",
+    "declineAll": "Alle ablehnen",
+    "declinedAllMsg": "Alle offenen Angebote abgelehnt — die Anfrage bleibt für neue offen."
   },
   "design": {
     "title": "Designsystem",
