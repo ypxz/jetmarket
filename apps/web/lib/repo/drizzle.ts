@@ -1392,6 +1392,28 @@ export class DrizzleRepo implements Repo {
     return out;
   }
 
+  async countRfqsPerListing(
+    operatorId: string,
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    if (!isUuid(operatorId)) return {};
+    const rows = await this.db.execute<{ listingId: string; n: number }>(sql`
+      select r.listing_id as "listingId", count(*)::int as n
+      from rfqs r
+      join listings l on l.id = r.listing_id
+      where l.operator_id = ${operatorId}
+        and r.vertical = ${vertical}
+        and r.status <> 'spam'
+      group by r.listing_id
+    `);
+    const out: Record<string, number> = {};
+    for (const r of rows) {
+      if (typeof r.listingId === "string" && r.listingId)
+        out[r.listingId] = r.n;
+    }
+    return out;
+  }
+
   async appendSearchAlertPending(alertId: string, listingId: string) {
     if (!isUuid(alertId) || !isUuid(listingId)) return;
     // Distinct append: only add when the id isn't already queued.

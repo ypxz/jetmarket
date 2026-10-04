@@ -414,6 +414,14 @@ export interface Repo {
    *  operator dashboard's "N watching" signal and the public listing
    *  page's social proof read. One grouped query, no N+1. */
   countSearchAlertsByWatch(vertical: string): Promise<Record<string, number>>;
+  /** Per-listing RFQ demand: non-spam RFQ count keyed by listing id, for
+   *  the operator's own listings — the dashboard's "N requests" chip
+   *  (QA-417). One grouped query; spam rows excluded since they're not
+   *  demand the operator should see or price against. */
+  countRfqsPerListing(
+    operatorId: string,
+    vertical: string,
+  ): Promise<Record<string, number>>;
   /** Queue a matched listing during the mail cooldown — distinct append. */
   appendSearchAlertPending(alertId: string, listingId: string): Promise<void>;
   /** Stamp lastAlertedAt=now and flush the pending queue (post-send). */

@@ -870,6 +870,20 @@ class MemoryRepo implements Repo {
     return out;
   }
 
+  async countRfqsPerListing(
+    operatorId: string,
+    vertical: string,
+  ): Promise<Record<string, number>> {
+    const out: Record<string, number> = {};
+    for (const r of this.rfqs.values()) {
+      if (r.vertical !== vertical || r.status === "spam" || !r.listingId)
+        continue;
+      if (this.listings.get(r.listingId)?.operatorId !== operatorId) continue;
+      out[r.listingId] = (out[r.listingId] ?? 0) + 1;
+    }
+    return out;
+  }
+
   async appendSearchAlertPending(alertId: string, listingId: string) {
     const row = this.searchAlertRows.get(alertId);
     if (row && !row.pendingIds.includes(listingId))

@@ -675,7 +675,8 @@
       "statsProGateCta": "Upgrade now",
       "expiredHidden": "expired — hidden from buyers (edit to relist)",
       "watchers": "{count, plural, one {# watching} other {# watching}}",
-      "views": "{count, plural, one {# view} other {# views}}"
+      "views": "{count, plural, one {# view} other {# views}}",
+      "requests": "{count, plural, one {# request} other {# requests}}"
     },
     "onboarding": {
       "title": "Operator profile",

@@ -41,8 +41,16 @@ export default async function OperatorDashboard() {
 
   // Cap the dashboard render — the header count uses the true total; beyond
   // 100 listings this page needs a pager, not a longer card wall.
-  const [listings, listingCount, deals, dealCount, openRfqs, sub, watchCounts] =
-    await Promise.all([
+  const [
+    listings,
+    listingCount,
+    deals,
+    dealCount,
+    openRfqs,
+    sub,
+    watchCounts,
+    rfqCounts,
+  ] = await Promise.all([
       repo.listListings({
         operatorId: operator.id,
         vertical: getVertical().slug,
@@ -64,6 +72,9 @@ export default async function OperatorDashboard() {
       repo.getSubscription(operator.id),
       // Watchlist demand signal (QA-408): one grouped query, chip per row.
       repo.countSearchAlertsByWatch(getVertical().slug),
+      // Per-listing RFQ demand (QA-417): same grouped-count shape — "N
+      // requests" tells the operator where actual demand already landed.
+      repo.countRfqsPerListing(operator.id, getVertical().slug),
     ]);
   // Funnel stats (QA-151): the Pro "analytics" bullet was vaporware — these
   // counts come from real rows, no external vendor needed. Pro-only now —
@@ -238,6 +249,15 @@ export default async function OperatorDashboard() {
                     {l.views > 0 ? (
                       <Badge variant="outline" className="ml-2">
                         {t("views", { count: l.views })}
+                      </Badge>
+                    ) : null}
+                    {rfqCounts[l.id] ? (
+                      <Badge
+                        variant="outline"
+                        className="ml-2"
+                        data-testid={`rfq-count-${l.id}`}
+                      >
+                        {t("requests", { count: rfqCounts[l.id] ?? 0 })}
                       </Badge>
                     ) : null}
                   </div>

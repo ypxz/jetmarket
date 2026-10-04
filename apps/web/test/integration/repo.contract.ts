@@ -985,6 +985,88 @@ export function repoContract(
       ).toEqual({});
     });
 
+    it("countRfqsPerListing groups non-spam RFQs by owned listing (QA-417)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mk = async (n: string) => {
+        const u = await repo.createUser(`${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: false,
+          plan: "free",
+        });
+      };
+      const [owner, other] = await Promise.all([mk("rfqc-own"), mk("rfqc-oth")]);
+      const a = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Count Jet A ${tag}`,
+        price: 8000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const b = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Count Jet B ${tag}`,
+        price: 8000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const foreign = await repo.createListing({
+        operatorId: other.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Count Jet F ${tag}`,
+        price: 8000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      // 2 on A, 1 spam on A (excluded), 0 on B, 1 on the foreign listing.
+      for (const [i, lid] of [a.id, a.id, b.id, foreign.id].entries()) {
+        await repo.createRfq({
+          vertical: "jets",
+          listingId: lid,
+          buyerEmail: `c${i}-${tag}@test.dev`,
+          fields: { dateTo: isoIn(5) },
+        });
+      }
+      const counts = await repo.countRfqsPerListing(owner.id, "jets");
+      expect(counts[a.id]).toBe(2);
+      expect(counts[b.id]).toBe(1);
+      expect(counts[foreign.id]).toBeUndefined();
+      // Spam rows are moderation, not demand — drop them from the count.
+      const spamRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: a.id,
+        buyerEmail: `spam-${tag}@test.dev`,
+        fields: { dateTo: isoIn(5) },
+      });
+      await repo.setRfqStatus(spamRfq.id, "spam", [
+        "open",
+        "matched",
+        "quoted",
+        "closed",
+        "expired",
+      ]);
+      expect(
+        (await repo.countRfqsPerListing(owner.id, "jets"))[a.id],
+      ).toBe(2);
+      // Cross-vertical + stranger scoping.
+      expect(await repo.countRfqsPerListing(owner.id, "machinery")).toEqual({});
+      expect(await repo.countRfqsPerListing(other.id, "jets")).toEqual({
+        [foreign.id]: 1,
+      });
+    });
+
     it("bumpListingViews increments atomically and starts at 0 (QA-413)", async () => {
       const repo = await factory();
       const user = await repo.createUser(

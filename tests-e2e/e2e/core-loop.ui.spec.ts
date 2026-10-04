@@ -115,6 +115,17 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(buyer.getByTestId('rfq-reference')).toBeVisible();
   });
 
+  await step('operator dashboard shows per-listing RFQ demand', async () => {
+    // QA-417: the listing that drew the RFQ chips "1 request" — demand
+    // signal beside views/watchers, spam excluded server-side.
+    await operator.goto('/app');
+    const row = operator.locator('li').filter({ hasText: LISTING_TITLE });
+    await expect(row.locator(tidPrefix('rfq-count-'))).toContainText('1 request');
+    // The untouched second listing carries no chip.
+    const quiet = operator.locator('li').filter({ hasText: 'E2E UI Empty Leg' });
+    await expect(quiet.locator(tidPrefix('rfq-count-'))).toHaveCount(0);
+  });
+
   await step('operator quotes the RFQ from the inbox', async () => {
     // QA-416: the just-arrived RFQ badges "New"; the mount effect stamps
     // inbox_seen_at so a reload shows none. Capturing the POST makes the
