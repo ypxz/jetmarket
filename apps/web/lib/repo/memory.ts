@@ -18,6 +18,7 @@ import type {
   QuoteDeclineReason,
   Repo,
   Rfq,
+  RfqNote,
   RfqReport,
   SearchAlert,
   Subscription,
@@ -51,6 +52,8 @@ class MemoryRepo implements Repo {
     string,
     Map<string, { listingId: string | null; deliverAt?: Date }>
   >();
+  /** QA-524: operatorId -> rfqId -> private triage note. */
+  rfqNotes = new Map<string, Map<string, RfqNote>>();
 
   async createUser(
     email: string,
@@ -1070,6 +1073,33 @@ class MemoryRepo implements Repo {
     }
     // Newest first — contract + drizzle parity.
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  // QA-524: empty/whitespace clears — a note you can't empty is a note
+  // you can't delete. Writes stay synchronous check-to-write (QA-333).
+  async setRfqNote(operatorId: string, rfqId: string, note: string | null) {
+    const trimmed = note?.trim() ?? "";
+    let mine = this.rfqNotes.get(operatorId);
+    if (!trimmed) {
+      mine?.delete(rfqId);
+      return null;
+    }
+    if (!mine) {
+      mine = new Map();
+      this.rfqNotes.set(operatorId, mine);
+    }
+    const row: RfqNote = { rfqId, note: trimmed, updatedAt: now() };
+    mine.set(rfqId, row);
+    return row;
+  }
+  async listRfqNotes(operatorId: string, rfqIds: string[]) {
+    const mine = this.rfqNotes.get(operatorId);
+    if (!mine) return [];
+    const out: RfqNote[] = [];
+    for (const id of rfqIds) {
+      const row = mine.get(id);
+      if (row) out.push(row);
+    }
+    return out;
   }
   async clearQuoteCounter(id: string, outcome: "withdrawn" | "declined" = "withdrawn") {
     const q = this.quotes.get(id);

@@ -33,6 +33,7 @@ import type {
   QuoteStatus,
   Repo,
   Rfq,
+  RfqNote,
   RfqReport,
   RfqStatus,
   SearchAlert,
@@ -51,6 +52,7 @@ const {
   rfqDismissals,
   quotes,
   quoteCounterRounds,
+  operatorRfqNotes,
   deals,
   subscriptions,
   jobs,
@@ -167,6 +169,11 @@ function toCounterRound(
     createdAt: iso(r.createdAt),
     ...(r.resolvedAt ? { resolvedAt: iso(r.resolvedAt) } : {}),
   };
+}
+function toRfqNote(
+  r: typeof operatorRfqNotes.$inferSelect,
+): RfqNote {
+  return { rfqId: r.rfqId, note: r.note, updatedAt: iso(r.updatedAt) };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
   return {
@@ -1794,6 +1801,52 @@ export class DrizzleRepo implements Repo {
       .where(inArray(quoteCounterRounds.quoteId, ids))
       .orderBy(desc(quoteCounterRounds.createdAt));
     return rows.map(toCounterRound);
+  }
+  // QA-524: private operator triage note — composite-PK upsert; an
+  // empty note deletes the row.
+  async setRfqNote(
+    operatorId: string,
+    rfqId: string,
+    note: string | null,
+  ): Promise<RfqNote | null> {
+    const trimmed = note?.trim() ?? "";
+    if (!trimmed) {
+      await this.db
+        .delete(operatorRfqNotes)
+        .where(
+          and(
+            eq(operatorRfqNotes.operatorId, operatorId),
+            eq(operatorRfqNotes.rfqId, rfqId),
+          ),
+        );
+      return null;
+    }
+    const [row] = await this.db
+      .insert(operatorRfqNotes)
+      .values({ operatorId, rfqId, note: trimmed })
+      .onConflictDoUpdate({
+        target: [operatorRfqNotes.operatorId, operatorRfqNotes.rfqId],
+        set: { note: trimmed, updatedAt: new Date() },
+      })
+      .returning();
+    return toRfqNote(row!);
+  }
+  async listRfqNotes(
+    operatorId: string,
+    rfqIds: string[],
+  ): Promise<RfqNote[]> {
+    const ids = rfqIds.filter(isUuid);
+    if (!ids.length) return [];
+    const rows = await this.db
+      .select()
+      .from(operatorRfqNotes)
+      .where(
+        and(
+          eq(operatorRfqNotes.operatorId, operatorId),
+          inArray(operatorRfqNotes.rfqId, ids),
+        ),
+      );
+    return rows.map(toRfqNote);
   }
 
   async clearQuoteCounter(

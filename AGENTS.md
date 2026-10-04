@@ -50,6 +50,13 @@ checkout. Specs pin `workers: 1` in
 `playwright.config.ts` and isolate rate-limit buckets with a per-file
 `fly-client-ip` header.
 
+`next dev` drops the body of the FIRST request to a route it has to
+compile on demand — a body-POST to a brand-new API route lands with
+headers intact but an empty stream, so `parseBody` returns
+'invalid JSON body' (QA-524). In specs, warm a new route with any
+request (e.g. `page.request.get(<route>)`) before the first POST that
+must carry a body, or the click's fetch silently 400s.
+
 ## Repo layer contract
 
 Every `Repo` method must be implemented identically in

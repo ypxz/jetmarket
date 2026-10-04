@@ -244,6 +244,15 @@ export interface CounterRound {
   resolvedAt?: string;
 }
 
+/** QA-524: private per-operator note on a visible RFQ — inbox triage
+ *  memory that never leaves the operator's own surfaces (no buyer/admin
+ *  path reads it). One note per (operator, rfq); clearing deletes the row. */
+export interface RfqNote {
+  rfqId: string;
+  note: string;
+  updatedAt: string;
+}
+
 export interface Deal {
   id: string;
   quoteId: string;
@@ -856,6 +865,18 @@ export interface Repo {
   /** QA-522: counter-round history for a batch of quotes — the buyer
    *  inbox joins this once per page; newest round first. */
   listCounterRounds(quoteIds: string[]): Promise<CounterRound[]>;
+  /** QA-524: private operator note on a visible RFQ. Visibility is the
+   *  route's job (same listRfqs({operatorId, ids}) predicate the inbox
+   *  uses) — the repo persists what the caller proved. An empty or
+   *  whitespace `note` deletes the row and returns null; otherwise the
+   *  note upserts and bumps updatedAt. */
+  setRfqNote(
+    operatorId: string,
+    rfqId: string,
+    note: string | null,
+  ): Promise<RfqNote | null>;
+  /** QA-524: batch read of the operator's notes for the inbox page. */
+  listRfqNotes(operatorId: string, rfqIds: string[]): Promise<RfqNote[]>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */

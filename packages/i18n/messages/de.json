@@ -1188,7 +1188,13 @@
         "declined": "von Ihnen abgelehnt — Ihr Preis bleibt",
         "accepted": "von Ihnen angenommen — Deal geschlossen",
         "expired": "mit der Anfrage geschlossen"
-      }
+      },
+      "noteAdd": "Notiz hinzufügen",
+      "noteEdit": "Notiz bearbeiten",
+      "noteSave": "Speichern",
+      "noteCancel": "Abbrechen",
+      "noteWorking": "Speichert…",
+      "notePlaceholder": "Private Notiz — nur für Sie sichtbar"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

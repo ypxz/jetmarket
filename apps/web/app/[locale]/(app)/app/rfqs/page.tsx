@@ -18,6 +18,7 @@ import { AcceptCounter } from "./accept-counter";
 import { DeclineCounter } from "./decline-counter";
 import { DismissAllButton, DismissButton, RestoreAllButton, RestoreButton } from "./dismiss-button";
 import { ReportRfq } from "./report-rfq";
+import { RfqNote } from "./rfq-note";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
 const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
@@ -112,7 +113,7 @@ export default async function RfqInboxPage({
   const rfqIds = rfqsPage.map((r) => r.id);
   // pendingRfqs powers the free-plan delayed-RFQ teaser (QA-225) — delayed
   // matches are invisible until due, so the count becomes the upsell.
-  const [listingRows, quoteRows, pendingRfqs, counteredCount] =
+  const [listingRows, quoteRows, pendingRfqs, counteredCount, noteRows] =
     await Promise.all([
       repo.listListings({
         ids: [
@@ -135,11 +136,14 @@ export default async function RfqInboxPage({
         counteredOnly: true,
         vertical: verticalSlug(),
       }),
+      // QA-524: the operator's private triage notes — one batch read.
+      repo.listRfqNotes(operator.id, rfqIds),
     ]);
   // QA-416 "New" badge: rows created after the last inbox visit (never
   // visited → everything is new). One stamp covers owned + matched
   // deliveries — owned RFQs have no match row by design (self-match is
   // excluded from fan-out).
+  const noteByRfq = new Map(noteRows.map((n) => [n.rfqId, n.note] as const));
   // QA-523: the resolved counter trail — one batch read for every quote
   // on the page. The live round stays the `quote-counter-` badge; only
   // resolved rounds render under the card (same rule as the buyer side).
@@ -384,6 +388,12 @@ export default async function RfqInboxPage({
                     </div>
                   ))}
                 </dl>
+                {/* QA-524: private triage note — the inbox's memory
+                    between visits; nobody else ever sees it. */}
+                <RfqNote
+                  rfqId={r.id}
+                  note={noteByRfq.get(r.id) ?? null}
+                />
                 {dismissedOnly ? (
                   <div className="mt-3 flex justify-end">
                     {/* QA-421 restore — undismiss returns the RFQ to the

@@ -4708,5 +4708,74 @@ export function repoContract(
         (await repo.listRfqReports({ vertical: "jets", limit: 1 })).length,
       ).toBe(1);
     });
+
+    it("rfq notes: per-operator upsert, batch list, empty clears (QA-524)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u1 = await repo.createUser(`note-op1-${tag}@test.dev`, "operator");
+      const u2 = await repo.createUser(`note-op2-${tag}@test.dev`, "operator");
+      const op1 = await repo.upsertOperator({
+        userId: u1.id,
+        name: "Note Ops One",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const op2 = await repo.upsertOperator({
+        userId: u2.id,
+        name: "Note Ops Two",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const rfqA = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `note-a-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `note-a-${tag}`,
+      });
+      const rfqB = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `note-b-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `note-b-${tag}`,
+      });
+
+      // Empty before any write; junk ids filtered.
+      expect(await repo.listRfqNotes(op1.id, [rfqA.id])).toEqual([]);
+      const n1 = await repo.setRfqNote(op1.id, rfqA.id, "  called this buyer  ");
+      expect(n1!.note).toBe("called this buyer");
+      expect(n1!.rfqId).toBe(rfqA.id);
+      expect(n1!.updatedAt).toBeTruthy();
+      await repo.setRfqNote(op1.id, rfqB.id, "suspicious");
+      // Batch read: both notes, scoped to THIS operator — op2 sees nothing.
+      const mine = await repo.listRfqNotes(op1.id, [
+        rfqA.id,
+        rfqB.id,
+        "not-a-uuid",
+      ]);
+      expect(mine.map((x) => x.rfqId).sort()).toEqual(
+        [rfqA.id, rfqB.id].sort(),
+      );
+      expect(await repo.listRfqNotes(op2.id, [rfqA.id])).toEqual([]);
+      expect(await repo.listRfqNotes(op1.id, [])).toEqual([]);
+      // Same rfq, different operator — a separate note, not a shared row.
+      await repo.setRfqNote(op2.id, rfqA.id, "their own note");
+      const both = await repo.listRfqNotes(op1.id, [rfqA.id]);
+      expect(both).toHaveLength(1);
+      expect(both[0]!.note).toBe("called this buyer");
+      // Overwrite replaces the text + bumps updatedAt.
+      const again = await repo.setRfqNote(op1.id, rfqA.id, "price shopper");
+      expect(again!.note).toBe("price shopper");
+      expect(again!.updatedAt >= n1!.updatedAt).toBe(true);
+      // Empty + whitespace clear the row.
+      expect(await repo.setRfqNote(op1.id, rfqA.id, "")).toBeNull();
+      expect(await repo.setRfqNote(op1.id, rfqB.id, "   ")).toBeNull();
+      expect(await repo.listRfqNotes(op1.id, [rfqA.id, rfqB.id])).toEqual([]);
+    });
   });
 }

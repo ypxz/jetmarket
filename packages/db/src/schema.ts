@@ -518,6 +518,28 @@ export const rfqReports = pgTable(
   ],
 );
 
+// QA-524: private per-operator note on a visible RFQ. Composite PK on
+// (operator, rfq) — one note per pair; clearing the note deletes the row.
+export const operatorRfqNotes = pgTable(
+  "operator_rfq_notes",
+  {
+    operatorId: uuid("operator_id")
+      .notNull()
+      .references(() => operators.id, { onDelete: "cascade" }),
+    rfqId: uuid("rfq_id")
+      .notNull()
+      .references(() => rfqs.id, { onDelete: "cascade" }),
+    note: text("note").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.operatorId, t.rfqId] })],
+);
+
 export const adminEvents = pgTable(
   "admin_events",
   {

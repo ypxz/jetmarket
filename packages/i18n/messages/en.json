@@ -1188,7 +1188,13 @@
         "declined": "you declined — your ask stands",
         "accepted": "you accepted — deal closed",
         "expired": "closed with the request"
-      }
+      },
+      "noteAdd": "Add note",
+      "noteEdit": "Edit note",
+      "noteSave": "Save",
+      "noteCancel": "Cancel",
+      "noteWorking": "Saving…",
+      "notePlaceholder": "Private note — only you see it"
     },
     "billing": {
       "title": "Plan & billing",
