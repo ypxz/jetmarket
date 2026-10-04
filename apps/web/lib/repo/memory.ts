@@ -1067,6 +1067,23 @@ class MemoryRepo implements Repo {
     return true;
   }
 
+  async resolveListingReportsByReporter(reporterId: string): Promise<number> {
+    // QA-465: sync sweep, same write shape as ForListing — a blocked
+    // buyer's flags were the weapon; they leave the queue with the block.
+    let n = 0;
+    for (const [id, r] of this.listingReports) {
+      if (r.reporterId === reporterId && r.status === "open") {
+        this.listingReports.set(id, {
+          ...r,
+          status: "dismissed",
+          resolvedAt: now(),
+        });
+        n += 1;
+      }
+    }
+    return n;
+  }
+
   async resolveListingReportsForListing(listingId: string): Promise<number> {
     let n = 0;
     const at = new Date().toISOString();

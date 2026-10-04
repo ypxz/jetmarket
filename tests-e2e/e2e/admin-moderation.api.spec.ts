@@ -302,16 +302,27 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
     });
   expect((await mkRfq()).status()).toBe(201);
 
+  // QA-465: the same address as a signed-in buyer files a listing flag —
+  // it must leave the queue when the block lands.
+  const buyer = await login(BUYER, 'buyer');
+  const flag = await buyer.post(`/api/listings/${listingId}/report`, {
+    data: { reason: 'other' },
+  });
+  expect(flag.status()).toBe(201);
+
   const admin = await login(ADMIN_EMAIL);
   const block = await admin.post('/api/admin/buyers/block', {
     data: { email: BUYER.toUpperCase() }, // case-fold: caps can't slip past
   });
   expect(block.status()).toBe(200);
-  // QA-464: the block flips the demand already delivered — the one live
-  // RFQ this buyer filed above comes back counted in the sweep.
-  expect(
-    ((await block.json()) as { rfqsSpammed: number }).rfqsSpammed,
-  ).toBe(1);
+  // QA-464+465: the block flips the demand already delivered — the one
+  // live RFQ and the one open flag this buyer left come back counted.
+  const blocked = (await block.json()) as {
+    rfqsSpammed: number;
+    reportsCleared: number;
+  };
+  expect(blocked.rfqsSpammed).toBe(1);
+  expect(blocked.reportsCleared).toBe(1);
 
   // Blocked: new RFQs 403 (not 404 — the listing exists, the buyer is the
   // problem). The per-RFQ spam mark still works on their history.

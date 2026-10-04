@@ -3645,6 +3645,43 @@ export function repoContract(
 
       // The sweep is idempotent — a second pass has nothing left to flip.
       expect(await repo.spamBuyerRfqs(email, "jets")).toBe(0);
+
+      // QA-465: the same address as a signed-in user — their open flags
+      // clear too; already-dismissed rows and another reporter's stay.
+      const spammer = await repo.createUser(email, "buyer");
+      const flagged1 = await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: spammer.id,
+        reason: "scam",
+      });
+      // Resolve flagged1 first so the spammer has one pre-dismissed row —
+      // the open-only dedupe then lets them file a second flag on the
+      // same listing.
+      expect(await repo.resolveListingReport(flagged1!.id)).toBe(true);
+      const flagged2 = await repo.createListingReport({
+        listingId: foreign.id,
+        reporterId: spammer.id,
+        reason: "other",
+      });
+      const flagged3 = await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: spammer.id,
+        reason: "misleading",
+      });
+      const other = await repo.createUser(`rep-oth-${tag}@test.dev`, "buyer");
+      const otherFlag = await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: other.id,
+        reason: "scam",
+      });
+
+      expect(await repo.resolveListingReportsByReporter(spammer.id)).toBe(2);
+      const openNow = await repo.listListingReports({ status: "open" });
+      expect(openNow.map((r) => r.id)).toContain(otherFlag!.id);
+      expect(openNow.map((r) => r.id)).not.toContain(flagged2!.id);
+      expect(openNow.map((r) => r.id)).not.toContain(flagged3!.id);
+      // Resolved rows keep the dismissed stamp; second sweep is a no-op.
+      expect(await repo.resolveListingReportsByReporter(spammer.id)).toBe(0);
     });
   });
 }

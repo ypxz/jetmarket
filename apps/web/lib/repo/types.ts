@@ -779,6 +779,10 @@ export interface Repo {
    *  target makes its flags moot (the moderation queue cleared itself).
    *  Returns the number of open reports closed. */
   resolveListingReportsForListing(listingId: string): Promise<number>;
+  /** QA-465: bulk-dismiss every open report one user filed — the buyer
+   *  block route runs it so a flagged spammer's accusations stop
+   *  cluttering the queue at the same moment their demand is purged. */
+  resolveListingReportsByReporter(reporterId: string): Promise<number>;
 
   /** QA-463: account-level buyer block. RFQs file by buyerEmail — a serial
    *  abuser needs the ADDRESS stopped, not another per-row spam mark.

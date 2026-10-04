@@ -40,10 +40,18 @@ export async function POST(req: Request) {
   // already delivered — every live RFQ from the address flips to spam
   // (stops matching + notifying, per QA-181).
   const spammed = await repo.spamBuyerRfqs(email, verticalSlug());
+  // QA-465: if the blocked address is also a signed-in user, their open
+  // listing flags leave the queue too — weaponized reports shouldn't keep
+  // demanding admin attention after the account is dead.
+  const reporter = await repo.findUserByEmail(email);
+  const reportsCleared = reporter
+    ? await repo.resolveListingReportsByReporter(reporter.id)
+    : 0;
   logInfo("admin.buyer_blocked", {
     adminId: user.id,
     email,
     rfqsSpammed: spammed,
+    reportsCleared,
   });
-  return ok({ ...row, rfqsSpammed: spammed });
+  return ok({ ...row, rfqsSpammed: spammed, reportsCleared });
 }

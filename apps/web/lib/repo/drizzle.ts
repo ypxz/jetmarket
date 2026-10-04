@@ -1653,6 +1653,23 @@ export class DrizzleRepo implements Repo {
     return rows.length;
   }
 
+  async resolveListingReportsByReporter(reporterId: string): Promise<number> {
+    // QA-465: one statement clears every open flag the blocked buyer
+    // filed — their accusations leave the queue with the block.
+    if (!isUuid(reporterId)) return 0;
+    const rows = await this.db
+      .update(listingReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(
+          eq(listingReports.reporterId, reporterId),
+          eq(listingReports.status, "open"),
+        ),
+      )
+      .returning({ id: listingReports.id });
+    return rows.length;
+  }
+
   async blockBuyerEmail(
     email: string,
     opts?: { reason?: string; by?: string },
