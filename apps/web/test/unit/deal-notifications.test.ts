@@ -301,6 +301,15 @@ describe("one-off inventory sells out on deal close (QA-498)", () => {
     expect(
       box.some((m) => m.to === opUser.email && /no longer listed/.test(m.subject)),
     ).toBe(true);
+    // QA-500: the orphaned BUYER is told why their request closed — they
+    // never closed it — with a same-type browse CTA.
+    const buyerMail = box.find(
+      (m) =>
+        m.to === `b2-${tag}@test.dev` &&
+        /closed — the listing is no longer available/.test(m.subject),
+    );
+    expect(buyerMail).toBeTruthy();
+    expect(buyerMail!.html).toContain("/search?type=empty_leg");
   });
 
   it("PATCH archive sweeps the listing's live RFQs too (QA-499)", async () => {

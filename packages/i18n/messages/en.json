@@ -103,6 +103,12 @@
       "cta": "Track your quotes",
       "track": "Track their quotes here: {url}"
     },
+    "rfqListingEnded": {
+      "subject": "Your request for \u201c{title}\u201d closed \u2014 the listing is no longer available",
+      "intro": "The listing you asked about on {site} is no longer available, so your request for \u201c{title}\u201d was closed.",
+      "browse": "Browse similar listings: {url}",
+      "cta": "Browse similar listings"
+    },
     "quoteReceived": {
       "subject": "Quote for “{title}” — {currency} {amount}",
       "intro": "Operator {name} quoted {currency} {amount}.",

@@ -1,7 +1,7 @@
 import { repoBackend } from "./repo";
 import type { Listing, Repo } from "./repo/types";
 import { verticalSlug } from "./vertical";
-import { notifyQuoteDeclined } from "./notify";
+import { notifyBuyerRfqEnded, notifyQuoteDeclined } from "./notify";
 
 /**
  * Lazy RFQ expiry sweep. The worker ticks every 5s in postgres mode, but
@@ -27,15 +27,18 @@ export async function sweepStaleRfqs(repo: Repo): Promise<void> {
  * on those requests can never mint a deal, so letting them run only means
  * operators quote into a dead request and buyers wait for a reply that
  * can't pay off. Close the orphans in one bulk flip, decline their sent
- * quotes, and mail each operator with the `listing-sold` reason — the
+ * quotes, and mail each operator with the `listing-ended` reason — the
  * notification path is failure-safe (never fails the caller's mutation).
  *
  * Called on every transition INTO a terminal listing status; a pause is
- * not terminal and deliberately doesn't sweep.
+ * not terminal and deliberately doesn't sweep. `origin` feeds the buyer
+ * mail's browse-similar CTA (QA-500 — the buyer didn't close the request,
+ * so they get told why it died).
  */
 export async function closeListingRfqs(
   repo: Repo,
   listing: Listing,
+  origin: string,
 ): Promise<void> {
   const orphans = await repo.closeLiveRfqsForListing(listing.id);
   for (const rfq of orphans) {
@@ -47,5 +50,6 @@ export async function closeListingRfqs(
         await notifyQuoteDeclined(repo, quote, rfq, "listing-ended");
       }
     }
+    await notifyBuyerRfqEnded(rfq, listing, origin);
   }
 }

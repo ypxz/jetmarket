@@ -2,6 +2,7 @@ import { site } from "@jetmarket/config";
 import { localePath, mailCopy, mailT } from "@jetmarket/i18n";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
+import { searchAlertSearchUrl } from "@/lib/search-alerts";
 import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
 
 /**
@@ -477,6 +478,50 @@ export async function notifyDealRated(
     logWarn("email.deal_rated_failed", {
       dealId: deal.id,
       error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
+ * QA-500: tell the BUYER their request died with its listing — the orphan
+ * sweep (QA-499) closes sibling RFQs on a sold/archived listing the buyer
+ * never closed, so silently rendering 'closed' reads like a bug. One mail
+ * with a same-type browse CTA in the RFQ's stamped locale. Non-fatal.
+ */
+export async function notifyBuyerRfqEnded(
+  rfq: Rfq,
+  listing: Listing,
+  origin: string,
+): Promise<void> {
+  try {
+    const m = await mailCopy(rfq.locale);
+    const subject = mailT(m, "rfqListingEnded.subject", {
+      title: listing.title,
+    });
+    const intro = mailT(m, "rfqListingEnded.intro", {
+      site: site.name,
+      title: listing.title,
+    });
+    const url = searchAlertSearchUrl(
+      origin,
+      { type: listing.type },
+      rfq.locale,
+    );
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject,
+      text: `${intro}\n\n${mailT(m, "rfqListingEnded.browse", { url })}`,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [intro],
+        cta: { url, label: mailT(m, "rfqListingEnded.cta") },
+      }),
+    });
+  } catch (e) {
+    logWarn("email.rfq_listing_ended_failed", {
+      rfqId: rfq.id,
+      err: e instanceof Error ? e.message : String(e),
     });
   }
 }

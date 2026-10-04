@@ -50,7 +50,7 @@ export async function POST(
   if (data!.status === "archived") {
     try {
       await endListingWatches(repo, listing, appOrigin(req));
-      await closeListingRfqs(repo, listing);
+      await closeListingRfqs(repo, listing, appOrigin(req));
     } catch (e) {
       logWarn("admin.listing_teardown_failed", {
         listingId: id,

@@ -103,6 +103,12 @@
       "cta": "Angebote verfolgen",
       "track": "Verfolgen Sie deren Angebote hier: {url}"
     },
+    "rfqListingEnded": {
+      "subject": "Ihre Anfrage zu \u201e{title}\u201c wurde geschlossen \u2014 das Inserat ist nicht mehr verf\u00fcgbar",
+      "intro": "Das Inserat, zu dem Sie auf {site} angefragt haben, ist nicht mehr verf\u00fcgbar. Ihre Anfrage zu \u201e{title}\u201c wurde geschlossen.",
+      "browse": "\u00c4hnliche Inserate ansehen: {url}",
+      "cta": "\u00c4hnliche Inserate ansehen"
+    },
     "quoteReceived": {
       "subject": "Angebot für „{title}“ — {currency} {amount}",
       "intro": "Der Anbieter {name} bietet {currency} {amount}.",

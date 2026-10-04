@@ -176,7 +176,7 @@ export async function PATCH(
     // QA-499: the same transition orphans every live RFQ on the listing —
     // close them and decline their sent quotes (listing-ended mail).
     try {
-      await closeListingRfqs(repo, listing);
+      await closeListingRfqs(repo, listing, appOrigin(req));
     } catch (e) {
       logWarn("listing.orphan_rfqs_close_failed", {
         listingId: listing.id,

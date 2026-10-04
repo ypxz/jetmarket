@@ -214,7 +214,7 @@ export async function POST(
       await endListingWatches(repo, listing, appOrigin(req));
       // QA-499: sibling RFQs on the consumed listing are orphaned — their
       // quotes can never close now. Sweep + decline them (listing-ended).
-      await closeListingRfqs(repo, listing);
+      await closeListingRfqs(repo, listing, appOrigin(req));
     } catch (e) {
       // Non-fatal like notify: the deal is already minted — a missed flip
       // leaves the listing browsable but unsellable (the guard above still
