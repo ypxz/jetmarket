@@ -311,3 +311,53 @@ export async function notifyDealInvoiceVoided(
     });
   }
 }
+
+/**
+ * Tell the operator the buyer rated their deal (QA-457) — the rate action
+ *  rewrites their public ★ record, so the notify rule says they hear about
+ *  it. Carries the fresh standing (avg over all rated deals) so a 4★ mail
+ *  lands differently than a 1★ one. Non-fatal: mail failure can't 500 the
+ *  buyer's rating.
+ */
+export async function notifyDealRated(
+  repo: Repo,
+  deal: Deal,
+  rating: number,
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(deal.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (!owner) return;
+    const summary = await repo
+      .ratingSummaryPerOperator([deal.operatorId])
+      .then((m) => m[deal.operatorId]);
+    const quote = await repo.getQuote(deal.quoteId);
+    const rfq = quote ? await repo.getRfq(quote.rfqId) : undefined;
+    const listing =
+      rfq?.listingId !== undefined && rfq.listingId !== null
+        ? await repo.getListing(rfq.listingId)
+        : undefined;
+    const title = listing?.title ?? "your deal";
+    const standing = summary
+      ? ` Your rating now stands at ★ ${summary.avg.toFixed(1)} across ${summary.count} rated deal${summary.count === 1 ? "" : "s"}.`
+      : "";
+    const subject = `The buyer rated your deal ★ ${rating}`;
+    const body =
+      `The buyer rated your deal on "${title}" ★ ${rating} out of 5 on ${site.name}.${standing}`;
+    await emailProvider().send({
+      to: owner.email,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.deal_rated_failed", {
+      dealId: deal.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}

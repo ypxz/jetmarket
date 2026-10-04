@@ -2,6 +2,7 @@ import { analyticsProvider } from "@jetmarket/providers";
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
+import { notifyDealRated } from "@/lib/notify";
 import { verticalSlug } from "@/lib/vertical";
 
 const Body = z.object({
@@ -43,6 +44,10 @@ export async function POST(
 
   const rated = await repo.rateDeal(id, data!.rating);
   if (!rated) return err("already rated", 409);
+  // The rating just rewrote the operator's public ★ record — the notify
+  // rule says they hear about it (non-fatal inside the helper). deal is
+  // non-null here — the auth trio only passes when deal→quote→rfq resolved.
+  await notifyDealRated(repo, deal!, data!.rating);
   analyticsProvider().track({
     name: "deal_rated",
     props: { dealId: id, rating: data!.rating },

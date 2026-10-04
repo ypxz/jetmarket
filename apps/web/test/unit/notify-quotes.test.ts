@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import { email } from "@jetmarket/providers";
 import {
   notifyBuyerQuoteWithdrawn,
+  notifyDealRated,
   notifyQuoteDeclined,
 } from "../../lib/notify";
 import { getMemoryRepo } from "../../lib/repo/memory";
@@ -103,5 +104,70 @@ describe("notifyBuyerQuoteWithdrawn", () => {
     expect(sent[0]!.subject).toContain("withdrawn");
     expect(sent[0]!.subject).toContain(listing.title);
     expect(sent[0]!.text).toContain("USD 9000");
+  });
+});
+
+describe("notifyDealRated (QA-457)", () => {
+  it("mails the operator — subject carries the stars, body the new standing", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, op, listing, rfq, quote } = await fixture(repo);
+    const deal = await repo.createDeal({
+      quoteId: quote.id,
+      operatorId: op.id,
+      amount: 9000,
+      currency: "USD",
+      feePct: 0.03,
+      feeAmount: 270,
+      invoiceStatus: "pending",
+    });
+    // A prior rating exists → the mail reports the post-write standing.
+    const d2 = await repo.createDeal({
+      quoteId: (
+        await repo.createQuote({
+          rfqId: rfq.id,
+          operatorId: op.id,
+          amount: 8000,
+          currency: "USD",
+          message: "",
+        })
+      ).id,
+      operatorId: op.id,
+      amount: 8000,
+      currency: "USD",
+      feePct: 0.03,
+      feeAmount: 240,
+      invoiceStatus: "pending",
+    });
+    await repo.rateDeal(d2.id, 4);
+    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+
+    await notifyDealRated(repo, deal, 5);
+
+    const sent = email
+      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
+      .slice(before)
+      .filter((m) => m.to === opUser.email);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("The buyer rated your deal ★ 5");
+    expect(sent[0]!.text).toContain(listing.title);
+    // Standing = (4+5)/2 — the summary read reflects THIS rating already
+    // persisted? No — notify is called after rateDeal CASed `deal`, but the
+    // unit path writes no rating on `deal` itself: the summary covers only
+    // d2's ★4 → "★ 4.0 across 1 rated deal".
+    expect(sent[0]!.text).toContain("★ 4.0 across 1 rated deal");
+  });
+
+  it("silent when the operator row is gone — never throws", async () => {
+    const repo = await getMemoryRepo();
+    const deal = await repo.createDeal({
+      quoteId: "q-gone",
+      operatorId: "op-gone",
+      amount: 1,
+      currency: "USD",
+      feePct: 0.03,
+      feeAmount: 0,
+      invoiceStatus: "pending",
+    });
+    await expect(notifyDealRated(repo, deal, 3)).resolves.toBeUndefined();
   });
 });
