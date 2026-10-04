@@ -43,6 +43,17 @@ interface Quote {
    *  revise clears it). */
   counterAmount?: number;
   counteredAt?: string;
+  /** QA-522: resolved counter rounds — the negotiation trail (the live
+   *  round rides `counterAmount` + the chip, not this list). */
+  counterRounds?: {
+    id: string;
+    amount: number;
+    currency: string;
+    note?: string;
+    outcome: "answered" | "withdrawn" | "declined" | "accepted" | "expired";
+    createdAt: string;
+    resolvedAt?: string;
+  }[];
 }
 interface Rfq {
   id: string;
@@ -945,6 +956,40 @@ function QuotesInner() {
                                 {q.operator.contactEmail}
                               </a>
                             </p>
+                          ) : null}
+                          {/* QA-522: negotiation trail — what became of
+                              each counter (the live one chips above).
+                              Newest first, API-ordered. */}
+                          {(q.counterRounds?.length ?? 0) > 0 ? (
+                            <div
+                              className="mt-1"
+                              data-testid={`counterrounds-${q.id}`}
+                            >
+                              <span className="text-xs font-medium text-muted">
+                                {t("counterHistory")}
+                              </span>
+                              <ul className="mt-0.5 space-y-0.5">
+                                {q.counterRounds!.map((r) => (
+                                  <li
+                                    key={r.id}
+                                    className="text-xs text-muted"
+                                    data-testid={`counterround-${r.id}`}
+                                  >
+                                    {t("counterRoundLine", {
+                                      amount: formatMoney(
+                                        r.amount,
+                                        r.currency,
+                                        locale,
+                                      ),
+                                      outcome: t(
+                                        `counterOutcome.${r.outcome}`,
+                                      ),
+                                    })}
+                                    {r.note ? ` — “${r.note}”` : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : null}
                         </div>
                         {q.status === "sent" &&

@@ -16,6 +16,8 @@ import {
 import type {
   AdminEvent,
   BlockedEmail,
+  CounterRound,
+  CounterRoundOutcome,
   Deal,
   JobInfo,
   Listing,
@@ -48,6 +50,7 @@ const {
   rfqMatches,
   rfqDismissals,
   quotes,
+  quoteCounterRounds,
   deals,
   subscriptions,
   jobs,
@@ -148,6 +151,21 @@ function toQuote(r: typeof quotes.$inferSelect): Quote {
       : {}),
     ...(r.counteredAt ? { counteredAt: iso(r.counteredAt) } : {}),
     ...(r.counterMessage ? { counterMessage: r.counterMessage } : {}),
+  };
+}
+function toCounterRound(
+  r: typeof quoteCounterRounds.$inferSelect,
+): CounterRound {
+  return {
+    id: r.id,
+    quoteId: r.quoteId,
+    rfqId: r.rfqId,
+    amount: fromMinorUnits(r.amountMinor, r.currency),
+    currency: r.currency,
+    ...(r.note ? { note: r.note } : {}),
+    outcome: r.outcome as CounterRoundOutcome,
+    createdAt: iso(r.createdAt),
+    ...(r.resolvedAt ? { resolvedAt: iso(r.resolvedAt) } : {}),
   };
 }
 function toSubscription(r: typeof subscriptions.$inferSelect): Subscription {
@@ -1629,43 +1647,73 @@ export class DrizzleRepo implements Repo {
       })
       .where(and(eq(quotes.id, id), eq(quotes.status, expected)))
       .returning({ id: quotes.id });
+    // QA-522: leaving 'sent' ends any live counter round — accepted
+    // mints the deal; everything else lapses as 'expired'.
+    if (rows.length > 0 && expected === "sent" && status !== "sent") {
+      await this.resolveCounterRounds(
+        id,
+        status === "accepted" ? "accepted" : "expired",
+      );
+    }
     return rows.length > 0;
   }
 
   // QA-439: one UPDATE — owner + still-'sent' + live-parent-RFQ gates all in
   // the WHERE clause, so an accept/close racing the write can't lose.
+  // QA-522: CAS + counter-round resolve commit in one tx — outside it a
+  // fresh counter could land between them and be resolved as 'answered'.
   async reviseQuote(
     id: string,
     operatorId: string,
     patch: { amount: number; currency: string; message: string },
+    opts?: { counterOutcome?: "answered" | "accepted" },
   ): Promise<Quote | null> {
-    const rows = await this.db
-      .update(quotes)
-      .set({
-        amountMinor: toMinorUnits(patch.amount, patch.currency),
-        currency: patch.currency,
-        message: patch.message,
-        updatedAt: new Date(),
-        // QA-506: revised content is unseen — the buyer saw the old terms.
-        buyerSeenAt: null,
-        // QA-511: a revise answers the buyer's counter — next round.
-        counterAmountMinor: null,
-        counteredAt: null,
-        // QA-516: the answered counter's nudge stamp retires with it —
-        // a re-countered round re-arms the worker's reminder.
-        counterNudgeMailedAt: null,
-        // QA-521: the counter's note retires with the round too.
-        counterMessage: null,
-      })
-      .where(
-        and(
-          eq(quotes.id, id),
-          eq(quotes.operatorId, operatorId),
-          eq(quotes.status, "sent"),
-          sql`exists (select 1 from ${rfqs} r where r.id = ${quotes.rfqId} and r.status in ('new', 'matched', 'quoted'))`,
-        ),
-      )
-      .returning();
+    const rows = await this.db.transaction(async (tx) => {
+      const won = await tx
+        .update(quotes)
+        .set({
+          amountMinor: toMinorUnits(patch.amount, patch.currency),
+          currency: patch.currency,
+          message: patch.message,
+          updatedAt: new Date(),
+          // QA-506: revised content is unseen — the buyer saw the old terms.
+          buyerSeenAt: null,
+          // QA-511: a revise answers the buyer's counter — next round.
+          counterAmountMinor: null,
+          counteredAt: null,
+          // QA-516: the answered counter's nudge stamp retires with it —
+          // a re-countered round re-arms the worker's reminder.
+          counterNudgeMailedAt: null,
+          // QA-521: the counter's note retires with the round too.
+          counterMessage: null,
+        })
+        .where(
+          and(
+            eq(quotes.id, id),
+            eq(quotes.operatorId, operatorId),
+            eq(quotes.status, "sent"),
+            sql`exists (select 1 from ${rfqs} r where r.id = ${quotes.rfqId} and r.status in ('new', 'matched', 'quoted'))`,
+          ),
+        )
+        .returning();
+      // The counter was answered by new terms — or outright taken
+      // when the revise IS the accept-counter close.
+      if (won[0]) {
+        await tx
+          .update(quoteCounterRounds)
+          .set({
+            outcome: opts?.counterOutcome ?? "answered",
+            resolvedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(quoteCounterRounds.quoteId, id),
+              eq(quoteCounterRounds.outcome, "open"),
+            ),
+          );
+      }
+      return won;
+    });
     return rows[0] ? toQuote(rows[0]) : null;
   }
 
@@ -1677,54 +1725,119 @@ export class DrizzleRepo implements Repo {
     if (!isUuid(id)) return false;
     // The counter is denominated in the quote's own currency.
     const [q] = await this.db
-      .select({ currency: quotes.currency })
+      .select({ currency: quotes.currency, rfqId: quotes.rfqId })
       .from(quotes)
       .where(eq(quotes.id, id));
     if (!q) return false;
     // No updatedAt bump — a counter isn't an offer revision (the
-    // "updated" badge + stale-offer check ride that stamp).
-    const rows = await this.db
-      .update(quotes)
-      .set({
-        counterAmountMinor: toMinorUnits(amount, q.currency),
-        counteredAt: new Date(),
-        // QA-521: the buyer's one-line context rides the counter;
-        // undefined → no note stored.
-        counterMessage: note ?? null,
-      })
-      .where(
-        and(
-          eq(quotes.id, id),
-          eq(quotes.status, "sent"),
-          isNull(quotes.counteredAt),
-        ),
-      )
-      .returning({ id: quotes.id });
+    // "updated" badge + stale-offer check ride that stamp). QA-522: CAS
+    // + audit insert commit atomically — outside one tx a racing
+    // revise/clear could resolve (find nothing) before the insert lands
+    // and orphan an 'open' round.
+    const rows = await this.db.transaction(async (tx) => {
+      const won = await tx
+        .update(quotes)
+        .set({
+          counterAmountMinor: toMinorUnits(amount, q.currency),
+          counteredAt: new Date(),
+          // QA-521: the buyer's one-line context rides the counter;
+          // undefined → no note stored.
+          counterMessage: note ?? null,
+        })
+        .where(
+          and(
+            eq(quotes.id, id),
+            eq(quotes.status, "sent"),
+            isNull(quotes.counteredAt),
+          ),
+        )
+        .returning({ id: quotes.id });
+      // Denormalized currency on the round: a later revise may flip the
+      // quote's; the counter kept what it held.
+      if (won.length > 0) {
+        await tx.insert(quoteCounterRounds).values({
+          quoteId: id,
+          rfqId: q.rfqId,
+          amountMinor: toMinorUnits(amount, q.currency),
+          currency: q.currency,
+          note: note ?? null,
+        });
+      }
+      return won;
+    });
     return rows.length > 0;
   }
 
-  async clearQuoteCounter(id: string): Promise<boolean> {
+  // QA-522: one resolver every clear path funnels through — flips the
+  // live round's outcome; no-op when the quote has no open round.
+  private async resolveCounterRounds(
+    id: string,
+    outcome: Exclude<CounterRoundOutcome, "open">,
+  ): Promise<void> {
+    await this.db
+      .update(quoteCounterRounds)
+      .set({ outcome, resolvedAt: new Date() })
+      .where(
+        and(
+          eq(quoteCounterRounds.quoteId, id),
+          eq(quoteCounterRounds.outcome, "open"),
+        ),
+      );
+  }
+
+  async listCounterRounds(quoteIds: string[]): Promise<CounterRound[]> {
+    const ids = quoteIds.filter(isUuid);
+    if (!ids.length) return [];
+    const rows = await this.db
+      .select()
+      .from(quoteCounterRounds)
+      .where(inArray(quoteCounterRounds.quoteId, ids))
+      .orderBy(desc(quoteCounterRounds.createdAt));
+    return rows.map(toCounterRound);
+  }
+
+  async clearQuoteCounter(
+    id: string,
+    outcome: "withdrawn" | "declined" = "withdrawn",
+  ): Promise<boolean> {
     if (!isUuid(id)) return false;
     // QA-518: withdraw a live counter. All three counter cols clear —
     // counter_nudge_mailed_at included so a re-countered round re-arms
     // the QA-516 nudge. Deliberately no updatedAt bump (symmetric with
     // counterQuote — the offer itself didn't change).
-    const rows = await this.db
-      .update(quotes)
-      .set({
-        counterAmountMinor: null,
-        counteredAt: null,
-        counterNudgeMailedAt: null,
-        counterMessage: null,
-      })
-      .where(
-        and(
-          eq(quotes.id, id),
-          eq(quotes.status, "sent"),
-          isNotNull(quotes.counteredAt),
-        ),
-      )
-      .returning({ id: quotes.id });
+    // QA-522: CAS + round resolve in one tx — outside it a fresh
+    // counter could land between them and get resolved with the old.
+    const rows = await this.db.transaction(async (tx) => {
+      const won = await tx
+        .update(quotes)
+        .set({
+          counterAmountMinor: null,
+          counteredAt: null,
+          counterNudgeMailedAt: null,
+          counterMessage: null,
+        })
+        .where(
+          and(
+            eq(quotes.id, id),
+            eq(quotes.status, "sent"),
+            isNotNull(quotes.counteredAt),
+          ),
+        )
+        .returning({ id: quotes.id });
+      // The round closed — the audit row records how.
+      if (won.length > 0) {
+        await tx
+          .update(quoteCounterRounds)
+          .set({ outcome, resolvedAt: new Date() })
+          .where(
+            and(
+              eq(quoteCounterRounds.quoteId, id),
+              eq(quoteCounterRounds.outcome, "open"),
+            ),
+          );
+      }
+      return won;
+    });
     return rows.length > 0;
   }
 

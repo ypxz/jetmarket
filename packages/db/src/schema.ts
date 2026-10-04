@@ -264,6 +264,37 @@ export const quotes = pgTable(
   ],
 );
 
+// QA-522: counter-round history — every buyer counter round appended at
+// counter time; the lifecycle exit resolves `outcome` ('open' →
+// answered/withdrawn/declined/accepted/expired) + `resolvedAt`.
+export const quoteCounterRounds = pgTable(
+  "quote_counter_rounds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    rfqId: uuid("rfq_id")
+      .notNull()
+      .references(() => rfqs.id, { onDelete: "cascade" }),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    // Denormalized from the quote at counter time — a revise may change
+    // the quote's currency; the counter was denominated in what it held.
+    currency: text("currency").notNull(),
+    note: text("note"),
+    outcome: text("outcome", {
+      enum: ["open", "answered", "withdrawn", "declined", "accepted", "expired"],
+    })
+      .notNull()
+      .default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [index("quote_counter_rounds_quote_id_idx").on(t.quoteId)],
+);
+
 export const deals = pgTable("deals", {
   id: uuid("id").primaryKey().defaultRandom(),
   quoteId: uuid("quote_id")

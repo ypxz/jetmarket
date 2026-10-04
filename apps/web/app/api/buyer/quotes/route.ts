@@ -90,11 +90,20 @@ export async function GET(req: Request) {
   );
   // QA-451: deal id + rating attach to ACCEPTED quotes — the buyer rates
   // the deal in place; ratingSummary feeds the operator trust line.
-  const [dealByQuote, ratingSummary] = await Promise.all([
+  const [dealByQuote, ratingSummary, counterRounds] = await Promise.all([
     repo.listDeals({ quoteIds: quoteRows.map((q) => q.id) }),
     repo.ratingSummaryPerOperator(opIds),
+    // QA-522: negotiation trail — what became of each counter the buyer
+    // proposed (withdrawn/declined/answered/accepted), one batch join.
+    repo.listCounterRounds(quoteRows.map((q) => q.id)),
   ]);
   const dealByQuoteId = new Map(dealByQuote.map((d) => [d.quoteId, d]));
+  const roundsByQuote = new Map<string, typeof counterRounds>();
+  for (const r of counterRounds) {
+    const arr = roundsByQuote.get(r.quoteId) ?? [];
+    arr.push(r);
+    roundsByQuote.set(r.quoteId, arr);
+  }
   // QA-506 read receipts: this GET is the buyer's view event — stamp the
   // quotes it returns so ops see a "seen" chip on their sent quote.
   // Non-fatal: a missed stamp degrades a signal, never the inbox itself.
@@ -189,6 +198,11 @@ export async function GET(req: Request) {
         )
         .map((q) => ({
           ...q,
+          // QA-522: only resolved rounds render — the live one already
+          // shows as the "you countered" chip.
+          counterRounds: (roundsByQuote.get(q.id) ?? []).filter(
+            (r) => r.outcome !== "open",
+          ),
           deal:
             q.status === "accepted"
               ? {

@@ -69,6 +69,14 @@ export async function expireStaleRfqsDetailed(
       WHERE status = 'sent'
         AND rfq_id IN (SELECT id FROM expired_rfqs)
       RETURNING id, rfq_id, operator_id, amount_minor, currency
+    ),
+    -- QA-522: the request died under any live counter — 'expired'.
+    resolved_rounds AS (
+      UPDATE quote_counter_rounds
+      SET outcome = 'expired', resolved_at = now()
+      WHERE outcome = 'open'
+        AND quote_id IN (SELECT id FROM declined_quotes)
+      RETURNING quote_id
     )
     SELECT
       (SELECT coalesce(json_agg(row_to_json(t)), '[]') FROM (

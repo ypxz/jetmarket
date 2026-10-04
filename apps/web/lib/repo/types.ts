@@ -218,6 +218,32 @@ export interface Quote {
   counterMessage?: string;
 }
 
+/** QA-522: counter-round history — the audit row a counter leaves behind.
+ *  'open' while the round is live; the exit that ends it stamps the outcome:
+ *  revise → 'answered', withdraw → 'withdrawn', op decline → 'declined',
+ *  deal close → 'accepted', rfq/quote death → 'expired'. */
+export type CounterRoundOutcome =
+  | "open"
+  | "answered"
+  | "withdrawn"
+  | "declined"
+  | "accepted"
+  | "expired";
+
+export interface CounterRound {
+  id: string;
+  quoteId: string;
+  rfqId: string;
+  /** Counter amount in display units + the currency it was proposed in
+   *  (a revise may flip the quote's currency — the round's doesn't move). */
+  amount: number;
+  currency: string;
+  note?: string;
+  outcome: CounterRoundOutcome;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export interface Deal {
   id: string;
   quoteId: string;
@@ -820,8 +846,16 @@ export interface Repo {
    *  the table before the operator answers. Same CAS as counterQuote
    *  ('sent' + countered); clears the QA-516 nudge stamp too so a
    *  re-countered round re-arms it. Returns false when there's no live
-   *  counter to pull. */
-  clearQuoteCounter(id: string): Promise<boolean>;
+   *  counter to pull.
+   *  QA-522: `outcome` resolves the counter-round audit row it closes —
+   *  'withdrawn' for the buyer pull, 'declined' for the operator's no. */
+  clearQuoteCounter(
+    id: string,
+    outcome?: "withdrawn" | "declined",
+  ): Promise<boolean>;
+  /** QA-522: counter-round history for a batch of quotes — the buyer
+   *  inbox joins this once per page; newest round first. */
+  listCounterRounds(quoteIds: string[]): Promise<CounterRound[]>;
   /** Atomically transition a quote `expected → status`; returns false (no
    * write) when the current status is not `expected`. Required so concurrent
    * accept/decline/withdraw can't double-mutate (QA-99). */
@@ -838,11 +872,15 @@ export interface Repo {
    *  owner, only while the parent RFQ is live (revising into a dead request
    *  is noise). `createdAt` is untouched so response-time stats can't be
    *  backdated by edits; the buyer sees new terms on next load + an email.
-   *  Returns the updated quote, or null when any gate fails. */
+   *  Returns the updated quote, or null when any gate fails.
+   *  QA-522: `counterOutcome` overrides the round the revise resolves —
+   *  accept-counter's revise IS the close, so its round ends 'accepted';
+   *  every other revise answers with new terms ('answered'). */
   reviseQuote(
     quoteId: string,
     operatorId: string,
     patch: { amount: number; currency: string; message: string },
+    opts?: { counterOutcome?: "answered" | "accepted" },
   ): Promise<Quote | null>;
 
   /** Buyer read receipt (QA-506): stamps buyer_seen_at on the given quotes

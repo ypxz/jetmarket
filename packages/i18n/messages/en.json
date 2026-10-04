@@ -476,7 +476,17 @@
     "counterSend": "Send counter",
     "counteredYou": "You countered {amount} — awaiting the operator.",
     "counteredMsg": "Counter sent — the operator was emailed.",
-    "counterWithdrawnMsg": "Counter withdrawn — the operator was told."
+    "counterWithdrawnMsg": "Counter withdrawn — the operator was told.",
+    "counterHistory": "Your counters",
+    "counterRoundLine": "Countered {amount} — {outcome}",
+    "counterOutcome": {
+      "open": "awaiting the operator",
+      "answered": "answered by a revised offer",
+      "withdrawn": "withdrawn by you",
+      "declined": "declined — the ask still stands",
+      "accepted": "accepted — deal closed",
+      "expired": "closed with the request"
+    }
   },
   "design": {
     "title": "Design system",

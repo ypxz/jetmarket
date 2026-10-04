@@ -476,7 +476,17 @@
     "counterSend": "Gegenangebot senden",
     "counteredYou": "Sie haben {amount} geboten — warten auf den Anbieter.",
     "counteredMsg": "Gegenangebot gesendet — der Anbieter wurde benachrichtigt.",
-    "counterWithdrawnMsg": "Gegenangebot zurückgezogen — der Anbieter wurde informiert."
+    "counterWithdrawnMsg": "Gegenangebot zurückgezogen — der Anbieter wurde informiert.",
+    "counterHistory": "Ihre Gegenangebote",
+    "counterRoundLine": "{amount} geboten — {outcome}",
+    "counterOutcome": {
+      "open": "wartet auf den Betreiber",
+      "answered": "durch ein neues Angebot beantwortet",
+      "withdrawn": "von Ihnen zurückgezogen",
+      "declined": "abgelehnt — der Preis bleibt bestehen",
+      "accepted": "angenommen — Deal geschlossen",
+      "expired": "mit der Anfrage geschlossen"
+    }
   },
   "design": {
     "title": "Designsystem",

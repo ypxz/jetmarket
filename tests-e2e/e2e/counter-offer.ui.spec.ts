@@ -337,6 +337,16 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     });
     await expect(sent).toBeVisible();
     await expect(sent.locator(tidPrefix('counter-sent-'))).toHaveCount(0);
+    // QA-522: the declined 9,200 round — with its note — sits in the
+    // negotiation trail on the card (chip cleared, history persists).
+    await expect(
+      sent.locator(tidPrefix('counterrounds-')),
+    ).toContainText('declined');
+    // Two resolved rounds by now (9,000 withdrawn + 9,200 declined,
+    // newest first) — scope the note assert to the first.
+    await expect(
+      sent.locator(tidPrefix('counterround-')).first(),
+    ).toContainText('covers repositioning');
     const recounterResp = buyer.waitForResponse(
       (r) =>
         r.url().includes('/counter') &&
@@ -391,5 +401,23 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     await expect(operator.getByTestId('operator-stats')).toContainText(
       /Counters waiting\s*0/,
     );
+
+    // QA-522: the buyer's card closes the trail — the declined 9,200
+    // under the accepted 9,100 (newest first), the open round hidden.
+    const finalLoad = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
+    await buyer.getByTestId('buyer-load').click();
+    await finalLoad;
+    const history = buyer.locator(tidPrefix('counterrounds-'));
+    await expect(history).toBeVisible();
+    const rounds = history.locator(tidPrefix('counterround-'));
+    await expect(rounds).toHaveCount(3);
+    await expect(rounds.first()).toContainText('accepted');
+    await expect(rounds.nth(1)).toContainText('declined');
+    await expect(rounds.last()).toContainText('withdrawn');
   });
 });

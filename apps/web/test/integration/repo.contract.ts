@@ -630,6 +630,15 @@ export function repoContract(
       });
       expect(met?.counterAmount).toBeUndefined();
       expect(met?.counteredAt).toBeUndefined();
+      // QA-522: the revise resolved the first round 'answered' — the
+      // audit row survived the clear.
+      let rounds = await repo.listCounterRounds([counterTarget!.id]);
+      expect(rounds).toHaveLength(1);
+      expect(rounds[0]!.amount).toBe(25000);
+      expect(rounds[0]!.currency).toBe("USD");
+      expect(rounds[0]!.outcome).toBe("answered");
+      expect(rounds[0]!.resolvedAt).toBeDefined();
+      expect(rounds[0]!.note).toBeUndefined();
       // The cleared round accepts a fresh counter — QA-521: this one
       // carries the buyer's one-line note.
       expect(
@@ -652,6 +661,15 @@ export function repoContract(
       expect(pulled.counteredAt).toBeUndefined();
       // QA-521: the note clears with the round too.
       expect(pulled.counterMessage).toBeUndefined();
+      // QA-522: the withdraw resolved its round 'withdrawn' — and the
+      // note rode into history with it.
+      rounds = await repo.listCounterRounds([counterTarget!.id]);
+      expect(rounds.map((r) => r.outcome)).toEqual([
+        "withdrawn",
+        "answered",
+      ]);
+      expect(rounds[0]!.amount).toBe(24000);
+      expect(rounds[0]!.note).toBe("includes repositioning");
       // The withdraw doesn't bump updatedAt either — it still carries
       // the revise's stamp, nothing newer (a pull isn't a revision).
       expect(pulled.updatedAt).toBe(met!.updatedAt);
@@ -665,6 +683,19 @@ export function repoContract(
       ).toBeUndefined();
       await repo.setQuoteStatus(counterTarget!.id, "accepted", "sent");
       expect(await repo.clearQuoteCounter(counterTarget!.id)).toBe(false);
+      // QA-522: the accept resolved the last round 'accepted' — the full
+      // negotiation trail sits newest-first on the quote.
+      rounds = await repo.listCounterRounds([counterTarget!.id]);
+      expect(rounds.map((r) => r.outcome)).toEqual([
+        "accepted",
+        "withdrawn",
+        "answered",
+      ]);
+      expect(rounds.map((r) => r.amount)).toEqual([22000, 24000, 25000]);
+      expect(rounds.every((r) => r.rfqId === rfq.id)).toBe(true);
+      expect(
+        await repo.listCounterRounds([counterTarget!.id, "nope", quote.id]),
+      ).toEqual(rounds);
     });
 
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {

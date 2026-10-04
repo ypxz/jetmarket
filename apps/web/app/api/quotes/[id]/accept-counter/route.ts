@@ -71,7 +71,9 @@ export async function POST(
     amount: quote.counterAmount,
     currency: quote.currency,
     message: "",
-  });
+  // QA-522: taking their number IS the close — the round ends 'accepted'
+  // on the audit trail, not merely 'answered'.
+  }, { counterOutcome: "accepted" });
   if (!met) return err("quote already transitioned", 409);
   const closed = await closeDealForQuote({
     repo,

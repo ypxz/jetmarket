@@ -4,6 +4,8 @@ import { PlanCapError } from "./types";
 import type {
   AdminEvent,
   BlockedEmail,
+  CounterRound,
+  CounterRoundOutcome,
   Deal,
   JobInfo,
   Listing,
@@ -39,6 +41,9 @@ class MemoryRepo implements Repo {
   listings = new Map<string, Listing>();
   rfqs = new Map<string, Rfq>();
   quotes = new Map<string, Quote>();
+  // QA-522: counter-round audit rows keyed by quote — appended on counter,
+  // resolved on the round's exit.
+  counterRounds = new Map<string, CounterRound[]>();
   deals = new Map<string, Deal>();
   subscriptions = new Map<string, Subscription>();
   /** rfqId -> operatorId -> match row (memory-mode fan-out, QA-89). */
@@ -1016,18 +1021,57 @@ class MemoryRepo implements Repo {
   async counterQuote(id: string, amount: number, note?: string) {
     const q = this.quotes.get(id);
     if (!q || q.status !== "sent" || q.counteredAt) return false;
+    const stamp = now();
     // Deliberately no updatedAt bump — a counter isn't a revision of the
     // offer (the "updated" badge + stale-offer check ride that stamp).
     this.quotes.set(id, {
       ...q,
       counterAmount: amount,
-      counteredAt: now(),
+      counteredAt: stamp,
       // QA-521: empty note stores nothing — the field stays absent.
       ...(note ? { counterMessage: note } : {}),
     });
+    // QA-522: append the audit row — QA-333: synchronous with the CAS
+    // above so a parallel caller can't split them.
+    const rounds = this.counterRounds.get(id) ?? [];
+    rounds.unshift({
+      id: `round-${rounds.length}-${stamp}`,
+      quoteId: id,
+      rfqId: q.rfqId,
+      amount,
+      // Denormalized like pg: a revise may flip the quote's currency;
+      // the counter was denominated in what it carried then.
+      currency: q.currency,
+      ...(note ? { note } : {}),
+      outcome: "open",
+      createdAt: stamp,
+    });
+    this.counterRounds.set(id, rounds);
     return true;
   }
-  async clearQuoteCounter(id: string) {
+  // QA-522: one resolver every clear path funnels through — flips the
+  // live round's outcome; no-op when the quote has no open round.
+  private resolveCounterRounds(id: string, outcome: CounterRoundOutcome) {
+    const rounds = this.counterRounds.get(id);
+    if (!rounds) return;
+    const stamp = now();
+    this.counterRounds.set(
+      id,
+      rounds.map((r) =>
+        r.outcome === "open" ? { ...r, outcome, resolvedAt: stamp } : r,
+      ),
+    );
+  }
+  async listCounterRounds(quoteIds: string[]) {
+    const out: CounterRound[] = [];
+    for (const id of quoteIds) {
+      const rounds = this.counterRounds.get(id);
+      if (rounds) out.push(...rounds);
+    }
+    // Newest first — contract + drizzle parity.
+    return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  async clearQuoteCounter(id: string, outcome: "withdrawn" | "declined" = "withdrawn") {
     const q = this.quotes.get(id);
     if (!q || q.status !== "sent" || !q.counteredAt) return false;
     // QA-518: the buyer pulls their number off the table — a
@@ -1039,6 +1083,8 @@ class MemoryRepo implements Repo {
       counteredAt: undefined,
       counterMessage: undefined,
     });
+    // QA-522: the round closed — the audit row records how.
+    this.resolveCounterRounds(id, outcome);
     return true;
   }
   async setQuoteStatus(id: string, status: Quote["status"], expected: Quote["status"], opts?: { declineReason?: QuoteDeclineReason }) {
@@ -1051,6 +1097,14 @@ class MemoryRepo implements Repo {
       updatedAt: now(),
       ...(opts?.declineReason ? { declineReason: opts.declineReason } : {}),
     });
+    // QA-522: leaving 'sent' ends any live counter round — accepted
+    // mints the deal; everything else lapses as 'expired'.
+    if (expected === "sent" && status !== "sent") {
+      this.resolveCounterRounds(
+        id,
+        status === "accepted" ? "accepted" : "expired",
+      );
+    }
     return true;
   }
 
@@ -1061,6 +1115,7 @@ class MemoryRepo implements Repo {
     id: string,
     operatorId: string,
     patch: { amount: number; currency: string; message: string },
+    opts?: { counterOutcome?: "answered" | "accepted" },
   ) {
     const q = this.quotes.get(id);
     if (!q || q.operatorId !== operatorId || q.status !== "sent") return null;
@@ -1081,6 +1136,9 @@ class MemoryRepo implements Repo {
       counterMessage: undefined,
     };
     this.quotes.set(id, next);
+    // QA-522: the counter was answered by new terms — or outright taken
+    // when the revise IS the accept-counter close.
+    this.resolveCounterRounds(id, opts?.counterOutcome ?? "answered");
     return next;
   }
 
@@ -1113,6 +1171,8 @@ class MemoryRepo implements Repo {
       for (const q of this.quotes.values()) {
         if (q.rfqId === r.id && q.status === "sent") {
           this.quotes.set(q.id, { ...q, status: "declined" });
+          // QA-522: the request died under the counter — 'expired'.
+          this.resolveCounterRounds(q.id, "expired");
           quotes++;
         }
       }

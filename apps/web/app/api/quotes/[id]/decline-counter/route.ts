@@ -42,7 +42,7 @@ export async function POST(
   // Must be a live counter to decline — the 'sent' + countered CAS is
   // also what the repo method checks; grab the number for the mail first.
   const declined = quote.counterAmount;
-  if (declined === undefined || !(await repo.clearQuoteCounter(id))) {
+  if (declined === undefined || !(await repo.clearQuoteCounter(id, "declined"))) {
     return err("no counter on the table", 409);
   }
   analyticsProvider().track({

@@ -456,6 +456,11 @@ describe("POST /api/quotes/[id]/decline-counter (operator, QA-519)", () => {
     expect(after.amount).toBe(9000);
     expect(after.counterAmount).toBeUndefined();
     expect(after.counteredAt).toBeUndefined();
+    // QA-522: the round persists in history as 'declined'.
+    const rounds = await repo.listCounterRounds([quote.id]);
+    expect(rounds.map((r) => r.outcome)).toEqual(["declined"]);
+    expect(rounds[0]!.amount).toBe(8000);
+    expect(rounds[0]!.resolvedAt).toBeDefined();
 
     // Replay 409s — the counter's gone — but a fresh round re-opens.
     const again = await declineCounter(post(), params(quote.id));
