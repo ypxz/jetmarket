@@ -766,6 +766,28 @@ class MemoryRepo implements Repo {
     return true;
   }
 
+  // QA-439: same CAS gates as drizzle — check+write stays synchronous
+  // (QA-333); createdAt is preserved so response-time stats can't be
+  // backdated by edits.
+  async reviseQuote(
+    id: string,
+    operatorId: string,
+    patch: { amount: number; currency: string; message: string },
+  ) {
+    const q = this.quotes.get(id);
+    if (!q || q.operatorId !== operatorId || q.status !== "sent") return null;
+    const rfq = this.rfqs.get(q.rfqId);
+    if (!rfq || !LIVE_RFQ_STATUSES.has(rfq.status)) return null;
+    const next: Quote = {
+      ...q,
+      amount: patch.amount,
+      currency: patch.currency,
+      message: patch.message,
+    };
+    this.quotes.set(id, next);
+    return next;
+  }
+
   async expireRfqs(cutoff: string, vertical?: string) {
     const day = cutoff.slice(0, 10);
     const stale = new Date(cutoff);

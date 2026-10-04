@@ -1286,6 +1286,33 @@ export class DrizzleRepo implements Repo {
     return rows.length > 0;
   }
 
+  // QA-439: one UPDATE — owner + still-'sent' + live-parent-RFQ gates all in
+  // the WHERE clause, so an accept/close racing the write can't lose.
+  async reviseQuote(
+    id: string,
+    operatorId: string,
+    patch: { amount: number; currency: string; message: string },
+  ): Promise<Quote | null> {
+    const rows = await this.db
+      .update(quotes)
+      .set({
+        amountMinor: toMinorUnits(patch.amount, patch.currency),
+        currency: patch.currency,
+        message: patch.message,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(quotes.id, id),
+          eq(quotes.operatorId, operatorId),
+          eq(quotes.status, "sent"),
+          sql`exists (select 1 from ${rfqs} r where r.id = ${quotes.rfqId} and r.status in ('new', 'matched', 'quoted'))`,
+        ),
+      )
+      .returning();
+    return rows[0] ? toQuote(rows[0]) : null;
+  }
+
   async listJobs(filter?: {
     status?: JobInfo["status"];
     vertical?: string;

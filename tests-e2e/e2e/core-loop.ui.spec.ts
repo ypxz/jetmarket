@@ -26,9 +26,12 @@ const LISTING_TITLE = `E2E UI Charter ${run}`;
 // Unique per run — the shared dev repo accumulates deals across runs, so a
 // fixed amount would collide with leftover ledger rows.
 const QUOTE_AMOUNT = String(40000 + (run % 50000));
-const QUOTE_AMOUNT_FMT = Number(QUOTE_AMOUNT).toLocaleString('en-US');
+// QA-439: the operator sharpens their price before the buyer decides —
+// every downstream amount/fee assertion runs on the revised figure.
+const REVISED_AMOUNT = String(Number(QUOTE_AMOUNT) - 377);
+const REVISED_AMOUNT_FMT = Number(REVISED_AMOUNT).toLocaleString('en-US');
 // 3% success fee on charters; the ledger renders whole dollars (formatMoney).
-const EXPECTED_FEE = Math.round(Number(QUOTE_AMOUNT) * 0.03).toLocaleString('en-US');
+const EXPECTED_FEE = Math.round(Number(REVISED_AMOUNT) * 0.03).toLocaleString('en-US');
 
 test('core loop UI: signup → listings → search → RFQ → quote → accept → admin → upgrade', async ({
   browser,
@@ -178,6 +181,37 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(item).toBeVisible();
   });
 
+  await step('operator revises the sent quote — buyer sees the new terms (QA-439)', async () => {
+    // Fat-finger guard: the offer sharpens in place instead of a
+    // withdraw+lose detour; the CAS keeps 'sent' under a racing accept.
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    const qrow = item.locator('[data-testid^="op-quote-"]');
+    await qrow.locator('[data-testid^="revise-"]').click();
+    await item.locator('[data-testid^="revise-amount-"]').fill(REVISED_AMOUNT);
+    await item.locator('[data-testid^="revise-message-"]').fill('sharpened');
+    await item.locator('[data-testid^="revise-save-"]').click();
+    await expect(qrow).toContainText(REVISED_AMOUNT_FMT, { timeout: 15_000 });
+    // The buyer side reflects the revision immediately (page + email).
+    const sql = postgres(process.env.TEST_DATABASE_URL!);
+    try {
+      const [tok] = await sql`
+        select access_token as "token" from rfqs
+        where buyer_email = ${BUYER_EMAIL} limit 1`;
+      const res = await buyer.request.get(
+        `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}`,
+        { headers: { 'x-rfq-token': tok!.token } },
+      );
+      const rfqs = (await res.json()) as { quotes: { amount: number }[] }[];
+      const amounts = rfqs.flatMap((r) => r.quotes.map((q) => q.amount));
+      expect(amounts).toContain(Number(REVISED_AMOUNT));
+    } finally {
+      await sql.end();
+    }
+  });
+
   await step('operator dismisses a second RFQ — inbox-only, buyer unaffected (QA-420)', async () => {
     // Own fixture: a second, unquoted RFQ on the operator's empty-leg listing.
     // Inserted directly (UI RFQ flow already covered above) with its own
@@ -256,7 +290,7 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     await expect(section).toContainText('Open offers (1)');
     const row = section.locator(tidPrefix('open-offer-'));
     await expect(row).toHaveCount(1);
-    await expect(row).toContainText(QUOTE_AMOUNT_FMT);
+    await expect(row).toContainText(REVISED_AMOUNT_FMT);
     await expect(row).toContainText(LISTING_TITLE);
     // The CTA lands back on the RFQ inbox where the live offer sits.
     await row.getByRole('link').click();
@@ -272,7 +306,7 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     // amount renders grouped, e.g. "USD 41,000"
     const quote = buyer
       .locator(tidPrefix('quote-'))
-      .filter({ hasText: QUOTE_AMOUNT_FMT });
+      .filter({ hasText: REVISED_AMOUNT_FMT });
     await expect(quote).toBeVisible();
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);

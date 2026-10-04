@@ -87,6 +87,38 @@ export async function notifyBuyerQuoteWithdrawn(
   }
 }
 
+/** Operator revised their still-open quote (QA-439): the buyer hears the
+ *  new terms — a silent edit would blindside the accept decision. */
+export async function notifyBuyerQuoteRevised(
+  repo: Repo,
+  quote: Quote,
+  rfq: Rfq,
+): Promise<void> {
+  try {
+    const listing = rfq.listingId
+      ? await repo.getListing(rfq.listingId)
+      : undefined;
+    const title = listing?.title ?? "a listing";
+    const subject = `A quote for “${title}” was revised`;
+    const body = `The operator revised their quote for "${title}" on ${site.name} — the new offer is ${quote.currency} ${quote.amount}. Open your quotes link to accept or decline it.`;
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.quote_revised_failed", {
+      quoteId: quote.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 /**
  * Deal closed: the winning operator learns the sale landed (and the
  * success-fee invoice ref when already issued); the buyer gets an

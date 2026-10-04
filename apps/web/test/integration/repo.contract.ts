@@ -358,6 +358,114 @@ export function repoContract(
       expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
     });
 
+    it("reviseQuote rewrites a live sent quote; owner/status/rfq-liveness all gate (QA-439)", async () => {
+      const repo = await factory();
+      const tag = `rev-${Date.now()}`;
+      const user = await repo.createUser(`op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: "Rev Air",
+        baseAirport: "ZRH",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
+      const other = await repo.upsertOperator({
+        userId: (await repo.createUser(`op2-${tag}@test.dev`, "operator")).id,
+        name: "Rival Air",
+        baseAirport: "GVA",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Rev Jet ${tag}`,
+        price: 100,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `rev-${tag}@test.dev`,
+        fields: { ref: "rev" },
+        dedupeKey: `rev-${tag}`,
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 50000,
+        currency: "USD",
+        message: "first pass",
+      });
+
+      // Not the owner → null, and the row is untouched.
+      expect(
+        await repo.reviseQuote(quote.id, other.id, {
+          amount: 1,
+          currency: "USD",
+          message: "hijack",
+        }),
+      ).toBeNull();
+      expect((await repo.getQuote(quote.id))?.amount).toBe(50000);
+
+      // Happy path: new terms land, status stays 'sent', createdAt is
+      // preserved (response-time stats must not be backdated by edits).
+      const revised = await repo.reviseQuote(quote.id, op.id, {
+        amount: 45000,
+        currency: "USD",
+        message: "sharpened",
+      });
+      expect(revised?.amount).toBe(45000);
+      expect(revised?.message).toBe("sharpened");
+      expect(revised?.createdAt).toBe(quote.createdAt);
+      expect((await repo.getQuote(quote.id))?.status).toBe("sent");
+
+      // Terminal status gate: a declined offer can't be revived by an edit.
+      expect(await repo.setQuoteStatus(quote.id, "declined", "sent")).toBe(
+        true,
+      );
+      expect(
+        await repo.reviseQuote(quote.id, op.id, {
+          amount: 1,
+          currency: "USD",
+          message: "zombie",
+        }),
+      ).toBeNull();
+
+      // Live-RFQ gate: a still-'sent' quote whose request closed mid-flight
+      // (accept won elsewhere) can't be revised into a dead request.
+      const rfq2 = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `rev2-${tag}@test.dev`,
+        fields: { ref: "rev2" },
+        dedupeKey: `rev2-${tag}`,
+      });
+      const quote2 = await repo.createQuote({
+        rfqId: rfq2.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "",
+      });
+      expect(
+        await repo.setRfqStatus(rfq2.id, "closed", ["quoted"]),
+      ).toBe(true);
+      expect(
+        await repo.reviseQuote(quote2.id, op.id, {
+          amount: 1,
+          currency: "USD",
+          message: "too late",
+        }),
+      ).toBeNull();
+      expect((await repo.getQuote(quote2.id))?.status).toBe("sent");
+    });
+
     it("setRfqStatus CAS admits exactly one winner under parallel contention", async () => {
       const repo = await factory();
       const tag = `cas-${Date.now()}`;

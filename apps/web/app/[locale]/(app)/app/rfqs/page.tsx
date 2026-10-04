@@ -13,6 +13,7 @@ import { ListingFilter } from "./listing-filter";
 import { MarkRfqsSeen } from "./mark-seen";
 import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
+import { ReviseQuote } from "./revise-quote";
 import { DismissAllButton, DismissButton, RestoreButton } from "./dismiss-button";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
@@ -295,7 +296,15 @@ export default async function RfqInboxPage({
                             {tc(`quoteState.${q.status}`)}
                           </Badge>
                           {q.status === "sent" && LIVE_RFQ_STATES.has(r.status) ? (
-                            <WithdrawButton quoteId={q.id} />
+                            <>
+                              <ReviseQuote
+                                quoteId={q.id}
+                                amount={q.amount}
+                                currency={q.currency}
+                                message={q.message}
+                              />
+                              <WithdrawButton quoteId={q.id} />
+                            </>
                           ) : null}
                         </span>
                       </li>

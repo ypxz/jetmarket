@@ -599,6 +599,17 @@ export interface Repo {
     status: QuoteStatus,
     expected: QuoteStatus,
   ): Promise<boolean>;
+  /** Quote revision while the offer is still live (QA-439): CAS-gated
+   *  rewrite of amount/currency/message — only a `sent` quote, only its
+   *  owner, only while the parent RFQ is live (revising into a dead request
+   *  is noise). `createdAt` is untouched so response-time stats can't be
+   *  backdated by edits; the buyer sees new terms on next load + an email.
+   *  Returns the updated quote, or null when any gate fails. */
+  reviseQuote(
+    quoteId: string,
+    operatorId: string,
+    patch: { amount: number; currency: string; message: string },
+  ): Promise<Quote | null>;
 
   /** Job-queue visibility for /admin/jobs (QA-102). Memory mode runs its
    *  fan-out inline — it has no queue, so these are always empty/no-ops. */
