@@ -309,6 +309,82 @@ describe("activation matching", () => {
   });
 });
 
+describe("listing watch (QA-407)", () => {
+  async function activeListing(title = "Watched Jet") {
+    await opFixture();
+    const res = await postListing(mkListing(title));
+    expect(res.status).toBe(201);
+    return (await res.json()) as { id: string };
+  }
+
+  it("watching a listing mails on a live edit, never on others", async () => {
+    const { id } = await activeListing();
+    const res = await subscribe({
+      email: "watch@test.dev",
+      params: { watch: id },
+    });
+    expect(res.status).toBe(200);
+    const { devConfirmUrl } = (await res.json()) as {
+      devConfirmUrl?: string;
+    };
+    const cres = await confirm(
+      new URL(devConfirmUrl!).searchParams.get("token")!,
+    );
+    expect(cres.status).toBe(307);
+    // Watch confirm redirects onto the LISTING, not /search.
+    expect(cres.headers.get("location")).toContain(`/listing/${id}`);
+    expect(cres.headers.get("location")).toContain("alert=confirmed");
+    sendSpy.mockClear();
+
+    // Price edit on the watched listing → "was updated" mail.
+    const pres = await patchListing(
+      new Request(`http://test.local/api/listings/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ price: 8000 }),
+      }),
+      { params: Promise.resolve({ id }) },
+    );
+    expect(pres.status).toBe(200);
+    const mail = sendSpy.mock.calls.find(
+      (c: unknown[]) => toOf(c) === "watch@test.dev",
+    );
+    expect(mail).toBeDefined();
+    expect(subjectOf(mail!)).toContain("was updated");
+    expect(subjectOf(mail!)).toContain("Watched Jet");
+    expect((mail![0] as { text?: string }).text).toContain(`/listing/${id}`);
+
+    // An unrelated listing edit must NOT mail the watcher.
+    sendSpy.mockClear();
+    const other = await postListing(mkListing("Other Jet"));
+    const { id: otherId } = (await other.json()) as { id: string };
+    await patchListing(
+      new Request(`http://test.local/api/listings/${otherId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ price: 1 }),
+      }),
+      { params: Promise.resolve({ id: otherId }) },
+    );
+    expect(
+      sendSpy.mock.calls.filter((c: unknown[]) => toOf(c) === "watch@test.dev"),
+    ).toHaveLength(0);
+  });
+
+  it("rejects watch+filters (422) and unknown listing ids (404)", async () => {
+    const bad = await subscribe({
+      email: "w2@test.dev",
+      params: { watch: "00000000-0000-4000-8000-000000000000", type: "charter" },
+    });
+    expect(bad.status).toBe(422);
+    const missing = await subscribe({
+      email: "w2@test.dev",
+      params: { watch: "00000000-0000-4000-8000-000000000000" },
+    });
+    expect(missing.status).toBe(404);
+  });
+});
+
 describe("buyer self-service (QA-405)", () => {
   async function buyerRfq(email: string) {
     const listing = await repo.createListing({

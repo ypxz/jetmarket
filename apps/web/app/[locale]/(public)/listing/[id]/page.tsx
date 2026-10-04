@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { AttributeTable } from "@/components/attribute-table";
 import { Gallery } from "@/components/gallery";
 import { ListingCard } from "@/components/listing-card";
+import { SearchAlertForm } from "@/components/search-alert-form";
 import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
@@ -173,8 +174,32 @@ export default async function ListingPage({
         </div>
       </div>
 
+      {sp.alert === "confirmed" ? (
+        <p
+          className="mt-6 rounded-md border border-border bg-surface px-3 py-2 text-sm"
+          data-testid="watch-alert-confirmed"
+        >
+          {t("watchConfirmed")}
+        </p>
+      ) : null}
       <div className="mt-8">
         <Gallery photos={listing.photos} title={listing.title} />
+      </div>
+
+      {/* Listing watch (QA-407): email when this listing is edited/
+          repriced — same saved-search pipeline, params={watch:id}. */}
+      <div className="mt-6">
+        <SearchAlertForm
+          params={{ watch: listing.id }}
+          title={t("watchTitle")}
+          emailPlaceholder={t("watchEmail")}
+          submitLabel={t("watchSubmit")}
+          sendingLabel={t("watchSending")}
+          sentLabel={t("watchSent")}
+          errorLabel={t("watchError")}
+          freqInstantLabel={t("watchFreqInstant")}
+          freqDailyLabel={t("watchFreqDaily")}
+        />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">

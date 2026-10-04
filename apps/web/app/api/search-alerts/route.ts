@@ -7,7 +7,8 @@ import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
 import {
   searchAlertDedupeKey,
-  searchAlertSearchUrl,
+  searchAlertTargetUrl,
+  searchAlertWatchId,
 } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 
@@ -58,6 +59,19 @@ export async function POST(req: Request) {
   }
 
   const repo = await getRepo();
+  // Listing-watch (QA-407): `watch` pins the alert to one listing id and
+  // can't combine with filter params. The row must exist in THIS vertical —
+  // check before the row is created so a foreign id can't be pre-watched.
+  const watchId = searchAlertWatchId(params);
+  if (watchId) {
+    if (Object.keys(params).length > 1) {
+      return err("watch cannot be combined with filters", 422);
+    }
+    const watched = await repo.getListing(watchId);
+    if (!watched || watched.vertical !== verticalSlug()) {
+      return err("listing not found", 404);
+    }
+  }
   const token = crypto.randomUUID();
   const { alert, created } = await repo.createSearchAlert({
     vertical: verticalSlug(),
@@ -70,20 +84,25 @@ export async function POST(req: Request) {
 
   const appUrl = appOrigin(req);
   const confirmUrl = `${appUrl}/api/search-alerts/confirm?token=${encodeURIComponent(token)}`;
-  const searchUrl = searchAlertSearchUrl(appUrl, alert.params);
+  const searchUrl = searchAlertTargetUrl(appUrl, alert.params);
   // Confirm mail is the spam vector — failures must not fail the subscribe
   // (the row exists; a re-subscribe re-mints a link).
   try {
-    const subject = `Confirm your saved search on ${site.name}`;
+    const subject = watchId
+      ? `Confirm your listing watch on ${site.name}`
+      : `Confirm your saved search on ${site.name}`;
+    const hook = watchId
+      ? "Confirm to get an email when this listing is updated"
+      : "Confirm to get an email when new listings match your search";
     await emailProvider().send({
       to: email,
       subject,
-      text: `Confirm to get an email when new listings match your search: ${confirmUrl}\n\nYour search: ${searchUrl}\nUnsubscribe: ${appUrl}/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`,
+      text: `${hook}: ${confirmUrl}\n\n${watchId ? "The listing" : "Your search"}: ${searchUrl}\nUnsubscribe: ${appUrl}/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
         paragraphs: [
-          "Confirm to get an email when new listings match your search.",
+          `${hook}.`,
           `Unsubscribe: ${appUrl}/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`,
         ],
         cta: { url: confirmUrl, label: "Confirm alert" },

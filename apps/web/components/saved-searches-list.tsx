@@ -85,10 +85,16 @@ export function SavedSearchesList({
       ) : null}
       <ul className="mt-3 space-y-2">
         {rows.map((a) => {
+          const watch =
+            typeof a.params.watch === "string" ? a.params.watch : null;
           const qs = new URLSearchParams();
-          for (const [k, v] of Object.entries(a.params)) {
-            for (const x of Array.isArray(v) ? v : [v]) qs.append(k, String(x));
+          if (!watch) {
+            for (const [k, v] of Object.entries(a.params)) {
+              for (const x of Array.isArray(v) ? v : [v])
+                qs.append(k, String(x));
+            }
           }
+          const href = watch ? `/listing/${watch}` : `/search?${qs.toString()}`;
           return (
             <li
               key={a.id}
@@ -100,20 +106,22 @@ export function SavedSearchesList({
                   {t(`alertState.${a.status}`)} · {t(`alertFreq.${a.freq}`)} ·{" "}
                 </span>
                 <span className="break-all text-muted">
-                  {Object.entries(a.params)
-                    .map(([k, v]) =>
-                      `${k}=${Array.isArray(v) ? v.join("/") : String(v)}`,
-                    )
-                    .join(" · ") || t("alertsAll")}
+                  {watch
+                    ? t("alertWatch")
+                    : Object.entries(a.params)
+                        .map(([k, v]) =>
+                          `${k}=${Array.isArray(v) ? v.join("/") : String(v)}`,
+                        )
+                        .join(" · ") || t("alertsAll")}
                 </span>
               </div>
               <span className="flex shrink-0 items-center gap-2">
                 <a
-                  href={`/search?${qs.toString()}`}
+                  href={href}
                   className="text-xs underline underline-offset-4"
                   data-testid={`saved-search-open-${a.id}`}
                 >
-                  {t("alertOpen")}
+                  {watch ? t("alertOpenListing") : t("alertOpen")}
                 </a>
                 {a.status !== "off" ? (
                   <button

@@ -173,3 +173,72 @@ test('search alerts: subscribe → confirm → activation digest → unsubscribe
     await sql.end();
   }
 });
+
+test('listing watch: subscribe → confirm → price edit mails update (QA-407)', async () => {
+  test.setTimeout(90_000);
+  const sql = postgres(testDb);
+  const listingId = crypto.randomUUID();
+  const WATCHER = `e2e-watch-${run}@test.dev`;
+
+  try {
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.10' },
+    });
+    const op = await login(OP_EMAIL, 'operator');
+    const opRes = await op.post('/api/operators', {
+      data: { name: `E2E Watch Ops ${run}`, baseAirport: 'LSZH' },
+    });
+    expect(opRes.status()).toBe(201);
+    await sql`
+      insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+      select ${listingId}, id, 'jets', 'charter', ${`E2E Watched Jet ${run}`},
+             1200000, 'USD', 'active', '{}', '[]'
+      from operators where user_id = (select id from users where email = ${OP_EMAIL})`;
+
+    // Watch subscribe — the only param is the listing id.
+    const sub = await anon.post('/api/search-alerts', {
+      data: { email: WATCHER, params: { watch: listingId } },
+    });
+    expect(sub.status()).toBe(200);
+    const { devConfirmUrl } = (await sub.json()) as { devConfirmUrl?: string };
+    const confirmPath = new URL(devConfirmUrl!).pathname +
+      new URL(devConfirmUrl!).search;
+
+    // Confirm → redirect lands on the LISTING page.
+    const conf = await anon.get(confirmPath, { maxRedirects: 0 });
+    expect(conf.headers()['location']).toContain(`/listing/${listingId}`);
+    expect(conf.headers()['location']).toContain('alert=confirmed');
+
+    // A price edit is the watch event — mail carries update copy.
+    const cut = await op.patch(`/api/listings/${listingId}`, {
+      data: { price: 9000 },
+    });
+    expect(cut.status()).toBe(200);
+    let mail: string | null = null;
+    for (let i = 0; i < 20 && !mail; i++) {
+      mail = latestMailTo(WATCHER);
+      if (!mail || !mail.includes('you watch')) mail = null;
+      if (!mail) await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(mail, 'expected a watch update mail').toBeTruthy();
+    expect(mail!).toContain(`E2E Watched Jet ${run}`);
+
+    // Editing a DIFFERENT listing leaves the watcher silent.
+    const otherId = crypto.randomUUID();
+    await sql`
+      insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+      select ${otherId}, id, 'jets', 'charter', ${`E2E Unwatched ${run}`},
+             500000, 'USD', 'active', '{}', '[]'
+      from operators where user_id = (select id from users where email = ${OP_EMAIL})`;
+    await op.patch(`/api/listings/${otherId}`, { data: { price: 1 } });
+    await new Promise((r) => setTimeout(r, 1500));
+    const stale = latestMailTo(WATCHER);
+    expect(stale && stale.includes(`E2E Unwatched ${run}`)).toBeFalsy();
+  } finally {
+    await sql`delete from search_alerts where email = ${`e2e-watch-${run}@test.dev`}`;
+    await sql`delete from listings where title like ${`E2E Watch%${run}`} or title like ${`E2E Unwatched ${run}`}`;
+    await sql`delete from operators where user_id in (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email in (${OP_EMAIL})`;
+    await sql.end();
+  }
+});

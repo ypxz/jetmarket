@@ -144,40 +144,51 @@ export async function searchAlertFlush(deps: WorkerDeps): Promise<number> {
         await deps.repo.markSearchAlerted(alert.id);
         continue;
       }
-      const searchUrl = new URL(`${origin}/search`);
-      for (const [k, v] of Object.entries(alert.params)) {
-        for (const item of Array.isArray(v) ? v : [v]) {
-          if (item !== undefined && item !== null)
-            searchUrl.searchParams.append(k, String(item));
-        }
-      }
       const unsub = `${origin}/api/search-alerts/unsubscribe?token=${encodeURIComponent(alert.token)}`;
       const first = live[0]!.title;
-      const subject =
-        live.length === 1
+      // Watch rows (QA-407) link the watched listing and get update copy.
+      const watchId =
+        typeof alert.params["watch"] === "string" ? alert.params["watch"] : null;
+      const targetUrl = watchId
+        ? `${origin}/listing/${watchId}`
+        : (() => {
+            const u = new URL(`${origin}/search`);
+            for (const [k, v] of Object.entries(alert.params)) {
+              for (const item of Array.isArray(v) ? v : [v]) {
+                if (item !== undefined && item !== null)
+                  u.searchParams.append(k, String(item));
+              }
+            }
+            return u.toString();
+          })();
+      const subject = watchId
+        ? `A listing you watch was updated — “${first}”`
+        : live.length === 1
           ? `New listing matches your saved search — “${first}”`
           : `${live.length} new listings match your saved search`;
+      const intro = watchId
+        ? `A listing you watch on ${site.name} was updated:`
+        : `New listings on ${site.name} match your saved search:`;
       const lines = live.map((l) => `${l.title} — ${origin}/listing/${l.id}`);
       await deps.email.send({
         to: alert.email,
         subject,
         text: [
-          `New listings on ${site.name} match your saved search:`,
+          intro,
           "",
           ...lines,
           "",
-          `Your search: ${searchUrl.toString()}`,
+          `${watchId ? "The listing" : "Your search"}: ${targetUrl}`,
           `Unsubscribe: ${unsub}`,
         ].join("\n"),
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
-          paragraphs: [
-            `New listings on ${site.name} match your saved search:`,
-            ...lines,
-            `Unsubscribe: ${unsub}`,
-          ],
-          cta: { url: searchUrl.toString(), label: "See matching listings" },
+          paragraphs: [intro, ...lines, `Unsubscribe: ${unsub}`],
+          cta: {
+            url: targetUrl,
+            label: watchId ? "View listing" : "See matching listings",
+          },
         }),
       });
       await deps.repo.markSearchAlerted(alert.id);

@@ -97,7 +97,16 @@
     "rfqCta": "Request quotes for this listing",
     "back": "← Back to search",
     "metaDescription": "{title} — {price} on {siteName}. Request a quote from the operator.",
-    "similar": "Similar listings"
+    "similar": "Similar listings",
+    "watchTitle": "Watch this listing",
+    "watchEmail": "Email for updates",
+    "watchSubmit": "Watch",
+    "watchSending": "Saving…",
+    "watchSent": "Watching — check your inbox to confirm.",
+    "watchError": "Could not save the watch — try again.",
+    "watchFreqInstant": "Instant",
+    "watchFreqDaily": "Daily digest",
+    "watchConfirmed": "You're watching this listing — we'll email you when it changes."
   },
   "rfq": {
     "title": "Request a quote",
@@ -163,7 +172,9 @@
     "alertFreq": {
       "instant": "instant",
       "daily": "daily digest"
-    }
+    },
+    "alertWatch": "Watching a listing",
+    "alertOpenListing": "Open listing"
   },
   "design": {
     "title": "Design system",

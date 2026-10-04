@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/api";
 import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";
-import { searchAlertSearchUrl } from "@/lib/search-alerts";
+import { searchAlertTargetUrl } from "@/lib/search-alerts";
 
 /**
  * GET /api/search-alerts/confirm?token=… (QA-403): flips the alert
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   if (!alert) {
     return NextResponse.redirect(new URL("/search?alert=invalid", canonical));
   }
-  const target = new URL(searchAlertSearchUrl(canonical, alert.params));
+  const target = new URL(searchAlertTargetUrl(canonical, alert.params));
   target.searchParams.set("alert", "confirmed");
   return NextResponse.redirect(target);
 }

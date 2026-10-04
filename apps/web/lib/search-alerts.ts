@@ -40,6 +40,27 @@ export function searchAlertDedupeKey(
     .digest("hex");
 }
 
+/**
+ * Listing-watch (QA-407): `params.watch` pins the alert to ONE listing id —
+ * it fires on every saved-search alert event for that row (activation AND
+ * live edits: price cuts, attr changes), never on other listings.
+ */
+export function searchAlertWatchId(
+  params: Record<string, unknown>,
+): string | null {
+  const w = params["watch"];
+  return typeof w === "string" && w.length > 0 ? w : null;
+}
+
+/** Where an alert's links point: watched listing page, else the saved /search. */
+export function searchAlertTargetUrl(
+  origin: string,
+  params: Record<string, unknown>,
+): string {
+  const w = searchAlertWatchId(params);
+  return w ? `${origin}/listing/${w}` : searchAlertSearchUrl(origin, params);
+}
+
 /** Rebuild the /search URL an alert watches (confirm redirect + mail CTA). */
 export function searchAlertSearchUrl(
   origin: string,
@@ -63,6 +84,10 @@ async function alertMatchesListing(
   alert: SearchAlert,
   listingId: string,
 ): Promise<boolean> {
+  // Watchlist rows match by id only — the QA-404 liveEdit hook is what
+  // makes a price cut an alert event for watchers.
+  const watch = searchAlertWatchId(alert.params);
+  if (watch) return watch === listingId;
   const rows = await repo.listListings({
     ...listingFilterFor(alert.params as AlertParams),
     ids: [listingId],
@@ -75,15 +100,22 @@ async function sendAlertDigest(
   alert: SearchAlert,
   listings: Listing[],
 ): Promise<void> {
-  const searchUrl = searchAlertSearchUrl(origin, alert.params);
+  const watch = searchAlertWatchId(alert.params);
+  const targetUrl = searchAlertTargetUrl(origin, alert.params);
   const unsub = `${origin}/api/search-alerts/unsubscribe?token=${encodeURIComponent(
     alert.token,
   )}`;
   const first = listings[0]?.title ?? "";
-  const subject =
-    listings.length === 1
+  // A watch row only ever matches its one listing — the mail is an update,
+  // not a "new match".
+  const subject = watch
+    ? `A listing you watch was updated — “${first}”`
+    : listings.length === 1
       ? `New listing matches your saved search — “${first}”`
       : `${listings.length} new listings match your saved search`;
+  const intro = watch
+    ? `A listing you watch on ${site.name} was updated:`
+    : `${listings.length === 1 ? "A new listing" : "New listings"} on ${site.name} match your saved search:`;
   const lines = listings.map(
     (l) => `${l.title} — ${origin}/listing/${l.id}`,
   );
@@ -91,22 +123,21 @@ async function sendAlertDigest(
     to: alert.email,
     subject,
     text: [
-      `${lines.length === 1 ? "A new listing" : "New listings"} on ${site.name} match your saved search:`,
+      intro,
       "",
       ...lines,
       "",
-      `Your search: ${searchUrl}`,
+      `${watch ? "The listing" : "Your search"}: ${targetUrl}`,
       `Unsubscribe: ${unsub}`,
     ].join("\n"),
     html: brandedEmailHtml({
       siteName: site.name,
       title: subject,
-      paragraphs: [
-        `${lines.length === 1 ? "A new listing" : "New listings"} on ${site.name} match your saved search:`,
-        ...lines,
-        `Unsubscribe: ${unsub}`,
-      ],
-      cta: { url: searchUrl, label: "See matching listings" },
+      paragraphs: [intro, ...lines, `Unsubscribe: ${unsub}`],
+      cta: {
+        url: targetUrl,
+        label: watch ? "View listing" : "See matching listings",
+      },
     }),
   });
 }
