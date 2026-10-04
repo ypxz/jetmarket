@@ -12,6 +12,7 @@ import {
   analyticsProvider,
 } from "@jetmarket/providers";
 import { appOrigin } from "@/lib/origin";
+import { isExpiredListing } from "@/lib/search";
 import { verticalSlug } from "@/lib/vertical";
 
 const CreateQuote = z.object({
@@ -50,13 +51,26 @@ export async function POST(req: Request) {
   // A matched RFQ still references the originating listing for context —
   // if it was deleted there is nothing to quote against.
   if (!listing) return err("rfq not found", 404);
-  // Archiving is terminal (QA-247): a delisted item must stop minting new
-  // quotes — its still-open RFQs now expire out instead (QA-300).
-  if (listing.status === "archived") return err("rfq is no longer open", 409);
+  // Archiving AND sold are terminal (QA-247, QA-498): a delisted item must
+  // stop minting new quotes — its still-open RFQs now expire out instead
+  // (QA-300). 'sold' reaches here only via legacy rows, since QA-499 sweeps
+  // the live RFQs on the terminal flip.
+  if (listing.status === "archived" || listing.status === "sold")
+    return err("rfq is no longer open", 409);
   const allowed =
     listing.operatorId === operator.id ||
     (await repo.hasRfqMatch(rfq.id, operator.id));
   if (!allowed) return err("rfq does not belong to your listings", 403);
+  // QA-504: the owner's own quote on their expired listing can never mint
+  // a deal (QA-502 blocks it at accept) — don't let them create a dead
+  // quote; re-dating the listing relives it. Fan-out ops aren't gated:
+  // their quotes serve the buyer on their own aircraft.
+  if (
+    listing.operatorId === operator.id &&
+    isExpiredListing(listing)
+  ) {
+    return err("listing expired — update its date to relist", 409);
+  }
   // Live states only — expired/spam/closed RFQs reject new quotes (the iface
   // maps expired→closed in drizzle, so check the iface vocabulary).
   if (!["open", "matched", "quoted"].includes(rfq.status)) {

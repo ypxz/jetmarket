@@ -207,3 +207,50 @@ test('QA-498: empty_leg accept flips listing to sold and blocks a second deal', 
   });
   expect(reactivate.status()).toBe(403);
 });
+
+test('QA-504: expired leg blocks the owner quote; re-dating relists it', async ({
+  baseURL,
+}) => {
+  test.setTimeout(60_000);
+  const operator = await login(`exp-op-${run}@jetmarket.local`, 'operator');
+  const opRes = await operator.post('/api/operators', {
+    data: { name: `Expiry Ops ${run}`, baseAirport: 'LSZH', fleetSummary: 'E2E' },
+  });
+  expect(opRes.status()).toBe(201);
+
+  const legId = await createListing(operator, {
+    type: 'empty_leg',
+    title: `E2E Expiring Leg ${run}`,
+    price: 7200,
+    attributes: { from: 'ZRH', to: 'NCE', date: isoDateIn(14) },
+  });
+  const publicCtx = await request.newContext({
+    baseURL,
+    extraHTTPHeaders: { 'x-forwarded-for': `192.0.4.${(run % 200) + 1}` },
+  });
+  const rfq = await fileRfq(publicCtx, legId, `exp-b-${run}@jetmarket.local`);
+  expect(rfq.status()).toBe(201);
+  const { rfqId } = (await rfq.json()) as { rfqId: string };
+
+  // The leg's date slides into the past — read-time expired (QA-220).
+  const expire = await operator.patch(`/api/listings/${legId}`, {
+    data: { attributes: { date: '2020-01-01' } },
+  });
+  expect(expire.status()).toBe(200);
+
+  // The owner's quote on the dead leg 409s — it could never mint a deal.
+  const dead = await operator.post('/api/quotes', {
+    data: { rfqId, amount: 7200, message: 'dead leg' },
+  });
+  expect(dead.status()).toBe(409);
+
+  // Re-dating into the future relists it; the same quote path lands.
+  const relist = await operator.patch(`/api/listings/${legId}`, {
+    data: { attributes: { date: isoDateIn(10) } },
+  });
+  expect(relist.status()).toBe(200);
+  const live = await operator.post('/api/quotes', {
+    data: { rfqId, amount: 7200, message: 'relisted' },
+  });
+  expect(live.status()).toBe(201);
+});

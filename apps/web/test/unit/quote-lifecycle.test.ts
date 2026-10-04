@@ -356,3 +356,98 @@ describe("POST /api/quotes/[id]/accept transient deal failure (QA-310)", () => {
     expect((await repo.getQuote(sibling.id))?.status).toBe("declined");
   });
 });
+
+describe("POST /api/quotes expired-listing owner gate (QA-504)", () => {
+  it("the owner can't quote their expired leg; a fan-out op still can", async () => {
+    const repo = await getMemoryRepo();
+    const tag = Math.random().toString(36).slice(2, 8);
+    const opUser = await repo.createUser(`op-${tag}@test.dev`, "operator");
+    const op = await repo.upsertOperator({
+      userId: opUser.id,
+      name: `Owner ${tag}`,
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    const otherUser = await repo.createUser(`op2-${tag}@test.dev`, "operator");
+    const otherOp = await repo.upsertOperator({
+      userId: otherUser.id,
+      name: `Other ${tag}`,
+      baseAirport: "GVA",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    // The leg's date already passed — read-time expired (QA-220).
+    const listing = await repo.createListing({
+      operatorId: op.id,
+      vertical: "jets",
+      type: "empty_leg",
+      title: `Expired Leg ${tag}`,
+      price: 5000,
+      currency: "USD",
+      photos: [],
+      attributes: { date: "2020-01-01" },
+    });
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: `b-${tag}@test.dev`,
+      fields: {},
+    });
+    // Fan-out visibility for the other operator — they're a matched bidder,
+    // not the listing owner.
+    await repo.createRfqMatches([{ rfqId: rfq.id, operatorId: otherOp.id }]);
+
+    asUser(opUser.id);
+    const own = await createQuote(
+      post({ rfqId: rfq.id, amount: 5000 }),
+    );
+    expect(own.status).toBe(409);
+    expect(await repo.listQuotes({ rfqId: rfq.id })).toHaveLength(0);
+
+    asUser(otherUser.id);
+    const fanout = await createQuote(
+      post({ rfqId: rfq.id, amount: 5100 }),
+    );
+    expect(fanout.status).toBe(201);
+    asUser(null);
+  });
+
+  it("owner quotes on a re-dated leg work again", async () => {
+    const repo = await getMemoryRepo();
+    const tag = Math.random().toString(36).slice(2, 8);
+    const opUser = await repo.createUser(`op-${tag}@test.dev`, "operator");
+    const op = await repo.upsertOperator({
+      userId: opUser.id,
+      name: `Owner ${tag}`,
+      baseAirport: "ZRH",
+      fleetSummary: "",
+      verified: true,
+      plan: "pro",
+    });
+    const listing = await repo.createListing({
+      operatorId: op.id,
+      vertical: "jets",
+      type: "empty_leg",
+      title: `Future Leg ${tag}`,
+      price: 5000,
+      currency: "USD",
+      photos: [],
+      attributes: { date: "2999-01-01" },
+    });
+    const rfq = await repo.createRfq({
+      vertical: "jets",
+      listingId: listing.id,
+      buyerEmail: `b-${tag}@test.dev`,
+      fields: {},
+    });
+    asUser(opUser.id);
+    const res = await createQuote(
+      post({ rfqId: rfq.id, amount: 5000 }),
+    );
+    expect(res.status).toBe(201);
+    asUser(null);
+  });
+});

@@ -6,7 +6,7 @@ import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 import { operatorRfqView } from "@/lib/rfq-view";
-import { SEARCH_PAGE_SIZE } from "@/lib/search";
+import { SEARCH_PAGE_SIZE, isExpiredListing } from "@/lib/search";
 import { quoteStateVariant, rfqStateVariant } from "@/lib/state-variant";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { ListingFilter } from "./listing-filter";
@@ -287,7 +287,18 @@ export default async function RfqInboxPage({
                 className="rounded-md border border-border bg-surface p-4"
               >
                 <div className="flex items-center justify-between">
-                  <div className="font-medium">{listing?.title ?? t("listingFallback")}</div>
+                  <div className="font-medium">
+                    {listing?.title ?? t("listingFallback")}
+                    {listing && isExpiredListing(listing) ? (
+                      <Badge
+                        variant="warning"
+                        data-testid={`rfq-expired-listing-${r.id}`}
+                        className="ml-2"
+                      >
+                        {t("listingExpired")}
+                      </Badge>
+                    ) : null}
+                  </div>
                   <span className="flex items-center gap-2">
                     {lastSeen === undefined || r.createdAt > lastSeen ? (
                       <Badge variant="warning" data-testid={`rfq-new-${r.id}`}>
