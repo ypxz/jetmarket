@@ -516,10 +516,17 @@ class MemoryRepo implements Repo {
   async createRfq(
     r: Omit<
       Rfq,
-      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge"
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "status"
+      | "accessToken"
+      | "concierge"
+      | "locale"
     > & {
       dedupeKey?: string;
       accessToken?: string;
+      locale?: string;
     },
   ): Promise<Rfq> {
     if (r.dedupeKey) {
@@ -532,7 +539,7 @@ class MemoryRepo implements Repo {
         throw new Error("duplicate key value violates unique constraint");
       }
     }
-    const { dedupeKey, accessToken, ...rest } = r;
+    const { dedupeKey, accessToken, locale, ...rest } = r;
     void dedupeKey;
     // One stamp for both — separate now() calls can straddle a millisecond
     // and fake "amended since creation" on a never-edited row.
@@ -545,6 +552,7 @@ class MemoryRepo implements Repo {
       accessToken: accessToken ?? crypto.randomUUID(),
       createdAt: stamped,
       updatedAt: stamped,
+      locale: locale ?? "en",
     };
     this.rfqs.set(rfq.id, rfq);
     if (r.dedupeKey) this.rfqDedupe.set(r.dedupeKey, rfq.id);
@@ -1388,6 +1396,7 @@ class MemoryRepo implements Repo {
     token: string;
     dedupeKey: string;
     freq?: SearchAlert["freq"];
+    locale?: string;
   }): Promise<{ alert: SearchAlert; created: boolean }> {
     const email = input.email.toLowerCase();
     const hitId = this.searchAlertDedupe.get(input.dedupeKey);
@@ -1401,6 +1410,7 @@ class MemoryRepo implements Repo {
         row.email = email;
         row.params = input.params;
         row.freq = input.freq ?? "instant";
+        if (input.locale) row.locale = input.locale;
         if (row.status === "off") row.status = "pending";
         return { alert: row, created: false };
       }
@@ -1416,6 +1426,7 @@ class MemoryRepo implements Repo {
       lastAlertedAt: null,
       createdAt: now(),
       freq: input.freq ?? "instant",
+      locale: input.locale ?? "en",
     };
     this.searchAlertRows.set(alert.id, alert);
     this.searchAlertDedupe.set(input.dedupeKey, alert.id);

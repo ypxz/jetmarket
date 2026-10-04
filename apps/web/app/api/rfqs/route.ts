@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { brandedEmailHtml, captchaProvider, emailProvider, analyticsProvider } from "@jetmarket/providers";
 import { canonicalize } from "@/lib/rfq-dedupe";
 import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { z } from "zod";
 import { buildRfqSchema, getVertical, nonContactFields, rfqFieldLabels } from "@jetmarket/verticals";
 import { verticalMessages } from "@/lib/vertical";
@@ -23,6 +24,9 @@ const CreateRfq = z.object({
   // captcha token from the widget (cf-turnstile-response) — mock provider
   // always passes; turnstile verifies server-side.
   captchaToken: z.string().max(4096).optional(),
+  // QA-493: page locale the form rendered under — buyer mails keep it.
+  // API paths skip the intl middleware, so the locale arrives in the body.
+  locale: z.enum(["en", "de"]).optional(),
 });
 
 export async function POST(req: Request) {
@@ -34,7 +38,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await parseBody(req, CreateRfq);
   if (error) return error;
-  const { listingId, buyerEmail, fields, website, captchaToken } = data!;
+  const { listingId, buyerEmail, fields, website, captchaToken, locale } = data!;
   if (website) return ok({ received: true }, 201); // honeypot hit: fake success
 
   const repo = await getRepo();
@@ -103,6 +107,7 @@ export async function POST(req: Request) {
       buyerEmail: buyerEmail.toLowerCase(),
       fields: parsed.data,
       dedupeKey,
+      ...(locale ? { locale } : {}),
     });
   } catch (e) {
     if (isUniqueViolation(e)) {
@@ -173,23 +178,27 @@ export async function POST(req: Request) {
     `${appUrl}/rfq/thanks?id=${encodeURIComponent(rfq.id)}` +
     `&email=${encodeURIComponent(rfq.buyerEmail)}` +
     `#t=${encodeURIComponent(rfq.accessToken)}`;
-  const upsell =
-    `Need answers faster? Concierge expedite ($${CONCIERGE_PRICE_USD}) puts ` +
-    `your request in front of every matching operator right now: ${conciergeUrl}`;
+  // QA-493: the buyer's confirmation mail reads the RFQ's stamped locale.
+  const mc = await mailCopy(rfq.locale);
+  const upsell = mailT(mc, "rfqReceived.upsell", {
+    price: CONCIERGE_PRICE_USD,
+    url: conciergeUrl,
+  });
   try {
-    const subject = `Your request for “${listing.title}” was sent`;
+    const subject = mailT(mc, "rfqReceived.subject", {
+      title: listing.title,
+    });
+    const intro = mailT(mc, "rfqReceived.intro");
+    const track = mailT(mc, "rfqReceived.track", { url: inboxUrl });
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,
-      text: `We sent your request to the seller and matching operators. Track their quotes here: ${inboxUrl} ${upsell}`,
+      text: `${intro} ${track} ${upsell}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
-        paragraphs: [
-          "We sent your request to the seller and matching operators.",
-          upsell,
-        ],
-        cta: { url: inboxUrl, label: "Track your quotes" },
+        paragraphs: [intro, upsell],
+        cta: { url: inboxUrl, label: mailT(mc, "rfqReceived.cta") },
       }),
     });
   } catch (e) {

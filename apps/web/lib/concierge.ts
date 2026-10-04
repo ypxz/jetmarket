@@ -4,6 +4,7 @@ import {
   emailProvider,
 } from "@jetmarket/providers";
 import { CONCIERGE_PRICE_USD, site } from "@jetmarket/config";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { enqueueJob } from "@jetmarket/db";
 import { emailRfqMatches } from "@/lib/fanout";
 import { logInfo, logWarn } from "@/lib/log";
@@ -76,21 +77,31 @@ export async function applyConciergePaid(
       const listingTitle = rfq.listingId
         ? (await repo.getListing(rfq.listingId))?.title
         : undefined;
-      const title = listingTitle ?? "your request";
+      // QA-493: the buyer reads the RFQ's stamped locale.
+      const m = await mailCopy(rfq.locale);
+      const title = listingTitle ?? mailT(m, "shared.aListing");
       const origin =
         process.env.APP_URL?.replace(/\/+$/, "") ?? `https://${site.domain}`;
       const inboxUrl =
         `${origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}` +
         `#t=${encodeURIComponent(rfq.accessToken)}`;
       const delivered = res.matches.length;
-      const subject = `Concierge active — “${title}” is in every matching operator's inbox`;
-      const paid = `You paid $${CONCIERGE_PRICE_USD} for Concierge expedite on ${site.name}.`;
-      const what = delivered > 0
-        ? `We just delivered your request for “${title}” to ` +
-          `${delivered} matching operator${delivered === 1 ? "" : "s"} — ` +
-          `quotes usually follow quickly.`
-        : `Your request for “${title}” is already in every matching operator's inbox.`;
-      const track = `Track quotes here: ${inboxUrl}`;
+      const subject = mailT(m, "conciergePaid.subject", { title });
+      const paid = mailT(m, "conciergePaid.paid", {
+        price: CONCIERGE_PRICE_USD,
+        site: site.name,
+      });
+      const what =
+        delivered > 0
+          ? mailT(
+              m,
+              delivered === 1
+                ? "conciergePaid.deliveredOne"
+                : "conciergePaid.deliveredMany",
+              { title, count: delivered },
+            )
+          : mailT(m, "conciergePaid.queued", { title });
+      const track = mailT(m, "conciergePaid.track", { url: inboxUrl });
       await emailProvider().send({
         to: rfq.buyerEmail,
         subject,

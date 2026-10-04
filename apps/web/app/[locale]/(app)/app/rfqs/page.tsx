@@ -315,7 +315,7 @@ export default async function RfqInboxPage({
                 <p className="mt-1 text-sm text-muted">
                   {t("from", {
                     name: r.buyerName ?? t("anonymousBuyer"),
-                    date: new Date(r.createdAt).toLocaleString("en-US"),
+                    date: new Date(r.createdAt).toLocaleString(locale),
                   })}
                   {LIVE_RFQ_STATES.has(r.status) ? (
                     <span

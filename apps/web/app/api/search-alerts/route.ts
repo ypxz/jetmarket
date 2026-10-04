@@ -1,5 +1,6 @@
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { site } from "@jetmarket/config";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { z } from "zod";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { logWarn } from "@/lib/log";
@@ -21,6 +22,9 @@ const Subscribe = z.object({
   // 'daily' queues every match into the next matured-backlog digest
   // instead of instant-mailing (QA-406).
   freq: z.enum(["instant", "daily"]).default("instant"),
+  // QA-493: alert mails keep the page locale — API routes sit outside the
+  // intl middleware so the client stamps it explicitly.
+  locale: z.enum(["en", "de"]).optional(),
 });
 
 /**
@@ -81,6 +85,7 @@ export async function POST(req: Request) {
     token,
     dedupeKey: searchAlertDedupeKey(verticalSlug(), email, params),
     freq: parsed.data!.freq,
+    locale: parsed.data!.locale,
   });
 
   const appUrl = appOrigin(req);
@@ -89,24 +94,30 @@ export async function POST(req: Request) {
   // Confirm mail is the spam vector — failures must not fail the subscribe
   // (the row exists; a re-subscribe re-mints a link).
   try {
+    // QA-493: confirm mail in the alert's stamped locale.
+    const m = await mailCopy(alert.locale);
     const subject = watchId
-      ? `Confirm your listing watch on ${site.name}`
-      : `Confirm your saved search on ${site.name}`;
+      ? mailT(m, "alertConfirm.subjectWatch", { site: site.name })
+      : mailT(m, "alertConfirm.subject", { site: site.name });
     const hook = watchId
-      ? "Confirm to get an email when this listing is updated"
-      : "Confirm to get an email when new listings match your search";
+      ? mailT(m, "alertConfirm.hookWatch")
+      : mailT(m, "alertConfirm.hook");
+    const target = watchId
+      ? mailT(m, "alertConfirm.theListing")
+      : mailT(m, "alertConfirm.yourSearch");
+    const unsub = `${appUrl}/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`;
     await emailProvider().send({
       to: email,
       subject,
-      text: `${hook}: ${confirmUrl}\n\n${watchId ? "The listing" : "Your search"}: ${searchUrl}\nUnsubscribe: ${appUrl}/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`,
+      text: `${hook}: ${confirmUrl}\n\n${target}: ${searchUrl}\n${mailT(m, "shared.unsubscribe")}: ${unsub}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
         paragraphs: [
           `${hook}.`,
-          `Unsubscribe: ${appUrl}/api/search-alerts/unsubscribe?token=${encodeURIComponent(token)}`,
+          `${mailT(m, "shared.unsubscribe")}: ${unsub}`,
         ],
-        cta: { url: confirmUrl, label: "Confirm alert" },
+        cta: { url: confirmUrl, label: mailT(m, "alertConfirm.cta") },
       }),
     });
   } catch (e) {

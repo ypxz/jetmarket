@@ -95,6 +95,128 @@
     "emptyBody": "Check back soon — operators add listings on this route regularly.",
     "results": "{count, plural, =0 {No listings} one {# listing} other {# listings}}"
   },
+  "mail": {
+    "rfqReceived": {
+      "subject": "Your request for “{title}” was sent",
+      "intro": "We sent your request to the seller and matching operators.",
+      "upsell": "Need answers faster? Concierge expedite ($49) puts your request in front of every matching operator right now: {url}",
+      "cta": "Track your quotes",
+      "track": "Track their quotes here: {url}"
+    },
+    "quoteReceived": {
+      "subject": "Quote for “{title}” — {currency} {amount}",
+      "intro": "Operator {name} quoted {currency} {amount}.",
+      "cta": "View and accept"
+    },
+    "quoteWithdrawn": {
+      "subject": "A quote for “{title}” was withdrawn",
+      "body": "The operator withdrew their quote of {currency} {amount} for \"{title}\" on {site}. Other quotes on your request are unaffected."
+    },
+    "quoteRevised": {
+      "subject": "A quote for “{title}” was revised",
+      "body": "The operator revised their quote for \"{title}\" on {site} — the new offer is {currency} {amount}. Open your quotes link to accept or decline it."
+    },
+    "dealClosed": {
+      "subject": "You accepted a quote for “{title}”",
+      "body": "You accepted {operator}'s quote of {currency} {amount} for \"{title}\" on {site}.",
+      "contact": "Reach them directly at {email} — they have also been notified.",
+      "contactFallback": "The operator has been notified and will contact you to arrange fulfilment.",
+      "rate": "Rate how it went — it takes ten seconds and helps the next buyer: {url}"
+    },
+    "conciergePaid": {
+      "subject": "Concierge active — “{title}” is in every matching operator's inbox",
+      "paid": "You paid ${price} for Concierge expedite on {site}.",
+      "deliveredOne": "We just delivered your request for “{title}” to 1 matching operator — quotes usually follow quickly.",
+      "deliveredMany": "We just delivered your request for “{title}” to {count} matching operators — quotes usually follow quickly.",
+      "queued": "Your request for “{title}” is already in every matching operator's inbox.",
+      "track": "Track quotes here: {url}"
+    },
+    "alertConfirm": {
+      "subject": "Confirm your saved search on {site}",
+      "subjectWatch": "Confirm your listing watch on {site}",
+      "hook": "Confirm to get an email when new listings match your search",
+      "hookWatch": "Confirm to get an email when this listing is updated",
+      "yourSearch": "Your search",
+      "theListing": "The listing",
+      "cta": "Confirm alert"
+    },
+    "alertDigest": {
+      "subjectDrop": "Price dropped — “{title}”",
+      "subjectWatch": "A listing you watch was updated — “{title}”",
+      "subjectOne": "New listing matches your saved search — “{title}”",
+      "subjectMany": "{count} new listings match your saved search",
+      "introDrop": "The listing you watch on {site} dropped in price:",
+      "introWatch": "A listing you watch on {site} was updated:",
+      "introOne": "A new listing on {site} matches your saved search:",
+      "introMany": "New listings on {site} match your saved search:",
+      "lineDrop": "{title} — was {old}, now {new} — {url}",
+      "line": "{title} — {url}",
+      "ctaWatch": "View listing",
+      "cta": "See matching listings"
+    },
+    "watchEnded": {
+      "subject": "“{title}” was removed — your watch ended",
+      "intro": "The listing you were watching on {site} is no longer available:",
+      "browse": "Browse similar: {url}",
+      "cta": "Browse similar listings"
+    },
+    "buyerLinks": {
+      "subject": "Your {site} quote links",
+      "intro": "Here are your request links:",
+      "line": "- {title}: {url}",
+      "request": "Request {id}"
+    },
+    "magicLink": {
+      "subject": "Your {site} sign-in link",
+      "title": "Sign in",
+      "intro": "Use the link below to sign in — it expires in 15 minutes.",
+      "cta": "Sign in",
+      "text": "Sign in: {url}"
+    },
+    "staleQuotes": {
+      "subjectOne": "1 quote is waiting on your request",
+      "subjectMany": "{count} quotes are waiting on your request",
+      "bodyOne": "Your request{forTitle} on {site} has 1 operator quote waiting for a decision. Compare them and pick the one that fits — operators hold their offers open only while the request is live.",
+      "bodyMany": "Your request{forTitle} on {site} has {count} operator quotes waiting for a decision. Compare them and pick the one that fits — operators hold their offers open only while the request is live.",
+      "cta": "View your quotes",
+      "label": "Your quotes: {url}"
+    },
+    "noQuotes": {
+      "subject": "We're still gathering quotes for your request",
+      "reachOne": "went out to {count} operator",
+      "reachMany": "went out to {count} operators",
+      "reachOwner": "went straight to the listing owner",
+      "body": "Your request{forTitle} on {site} {reach}, and no quotes have landed yet — operators typically respond within a few days while the request is live. Nothing to do on your side; you'll get a mail the moment a quote arrives.",
+      "cta": "Check your request",
+      "label": "Your request: {url}"
+    },
+    "closingSoon": {
+      "subject": "Your request closes {date}",
+      "quotesOne": "{count} operator quote is still live on it — accept one before it dies",
+      "quotesMany": "{count} operator quotes are still live on it — accept one before it dies",
+      "quotesNone": "no quotes have landed yet — the request dies quiet",
+      "body": "Your request{forTitle} on {site} closes {date} — {quotes}. Need more time? Extend it by a week from your requests page and everything waiting on it stays alive.",
+      "cta": "View your request",
+      "label": "Your request: {url}"
+    },
+    "unratedDeal": {
+      "subject": "How was your deal with {who}?",
+      "body": "Your {site} deal{onTitle} closed a few days ago — one tap tells other buyers how {who} did, and it takes ten seconds.",
+      "cta": "Rate your deal",
+      "label": "Rate your deal: {url}"
+    },
+    "requestExpired": {
+      "subject": "Your request for “{title}” has expired",
+      "body": "Your request for \"{title}\" on {site} expired without an accepted quote. You can submit a fresh request anytime."
+    },
+    "shared": {
+      "aListing": "a listing",
+      "theOperator": "the operator",
+      "forTitle": " for \"{title}\"",
+      "onTitle": " on \"{title}\"",
+      "unsubscribe": "Unsubscribe"
+    }
+  },
   "listing": {
     "gallery": "Photos",
     "photoPlaceholder": "Photo {n}",

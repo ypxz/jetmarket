@@ -4,11 +4,14 @@ import { logInfo, logWarn } from "@/lib/log";
 import { getRepo } from "@/lib/repo";
 import { verticalSlug } from "@/lib/vertical";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { site } from "@jetmarket/config";
 import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
   email: z.string().email().max(254),
+  // QA-493: mail locale travels in the body — API routes sit outside intl middleware.
+  locale: z.enum(["en", "de"]).optional(),
 });
 
 const MAX_LINKS_PER_MAIL = 20;
@@ -57,22 +60,30 @@ export async function POST(req: Request) {
       })
     ).map((l) => [l.id, l.title] as const),
   );
-  const lines = rfqs.map(
-    (r) =>
-      `- ${(r.listingId ? listings.get(r.listingId) : undefined) ?? `Request ${r.id}`}: ${appUrl}/quotes?email=${encodeURIComponent(
+  // QA-493: the resend mail keeps the page's locale (transient — there is
+  // no persisted buyer preference, the body field is just for this send).
+  const m = await mailCopy(data!.locale);
+  const lines = rfqs.map((r) =>
+    mailT(m, "buyerLinks.line", {
+      title:
+        (r.listingId ? listings.get(r.listingId) : undefined) ??
+        mailT(m, "buyerLinks.request", { id: r.id }),
+      url: `${appUrl}/quotes?email=${encodeURIComponent(
         email,
       )}#t=${encodeURIComponent(r.accessToken)}`,
+    }),
   );
   try {
-    const subject = `Your ${site.name} quote links`;
+    const subject = mailT(m, "buyerLinks.subject", { site: site.name });
+    const intro = mailT(m, "buyerLinks.intro");
     await emailProvider().send({
       to: email,
       subject,
-      text: `Here are your request links:\n\n${lines.join("\n")}`,
+      text: `${intro}\n\n${lines.join("\n")}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: subject,
-        paragraphs: ["Here are your request links:"],
+        paragraphs: [intro],
         listItems: lines,
       }),
     });

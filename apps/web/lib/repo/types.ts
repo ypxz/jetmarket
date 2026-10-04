@@ -103,6 +103,8 @@ export interface Rfq {
    *  An operator's match delivered before this = the request changed since
    *  they first saw it. */
   updatedAt: string;
+  /** QA-493: locale the request was filed under — buyer mails render in it. */
+  locale: string;
 }
 
 /** QA-469: an operator's flag on an abusive RFQ — feeds the admin
@@ -228,6 +230,8 @@ export interface SearchAlert {
   lastAlertedAt: string | null;
   createdAt: string;
   freq: SearchAlertFreq;
+  /** QA-493: subscribe-page locale — confirm/digest mails render in it. */
+  locale: string;
 }
 
 export interface Subscription {
@@ -425,7 +429,7 @@ export interface Repo {
   createRfq(
     r: Omit<
       Rfq,
-      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge"
+      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge" | "locale"
     > & {
       /** sha256 natural key — collides only with a LIVE twin (open/matched/
        * quoted); inserting over a terminal RFQ mints a fresh row (QA-228). */
@@ -433,6 +437,8 @@ export interface Repo {
       /** Override the random bearer token — seeds use a known token so the
        * demo buyer-inbox link is stable (QA-237). */
       accessToken?: string;
+      /** QA-493: page locale the form was submitted under (mail copy). */
+      locale?: string;
     },
   ): Promise<Rfq>;
   getRfq(id: string): Promise<Rfq | undefined>;
@@ -605,6 +611,9 @@ export interface Repo {
     dedupeKey: string;
     /** Omitted = 'instant'. A dedupe re-subscribe adopts the new freq. */
     freq?: SearchAlertFreq;
+    /** QA-493: subscribe-page locale; omitted/empty keeps the stored one on
+     *  dedupe re-subscribe (the email may already digest in German). */
+    locale?: string;
   }): Promise<{ alert: SearchAlert; created: boolean }>;
   /** Confirm-link CAS: pending→active. Returns the flipped row (the route
    *  needs `params` to redirect onto the saved search) or null when the

@@ -65,7 +65,15 @@ test('/de search alert renders the ICU {count} template client-side (QA-492)', a
   // lands with a real count after submit.
   await page.goto('/de/search');
   await page.getByTestId('search-alert-email').fill('de-alert@example.test');
+  // Wait on the POST — a cold route compile eats the default 10s DOM window.
+  const subResp = page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/search-alerts') &&
+      r.request().method() === 'POST' &&
+      r.status() === 200,
+  );
   await page.getByTestId('search-alert-submit').click();
+  await subResp;
   await expect(page.getByTestId('search-alert-matched')).toHaveText(
     /^Aktuell live: „\d+“$/,
   );

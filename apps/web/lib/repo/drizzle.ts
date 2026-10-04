@@ -122,6 +122,7 @@ function toRfq(r: typeof rfqs.$inferSelect): Rfq {
     concierge: r.concierge,
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
+    locale: r.locale,
   };
 }
 function toQuote(r: typeof quotes.$inferSelect): Quote {
@@ -211,6 +212,7 @@ function toSearchAlert(r: typeof searchAlerts.$inferSelect): SearchAlert {
     lastAlertedAt: r.lastAlertedAt ? iso(r.lastAlertedAt) : null,
     createdAt: iso(r.createdAt),
     freq: r.freq as SearchAlert["freq"],
+    locale: r.locale,
   };
 }
 
@@ -837,10 +839,17 @@ export class DrizzleRepo implements Repo {
   async createRfq(
     r: Omit<
       Rfq,
-      "id" | "createdAt" | "updatedAt" | "status" | "accessToken" | "concierge"
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "status"
+      | "accessToken"
+      | "concierge"
+      | "locale"
     > & {
       dedupeKey?: string;
       accessToken?: string;
+      locale?: string;
     },
   ): Promise<Rfq> {
     const [row] = await this.db
@@ -853,6 +862,7 @@ export class DrizzleRepo implements Repo {
         status: "new",
         dedupeKey: r.dedupeKey ?? null,
         ...(r.accessToken ? { accessToken: r.accessToken } : {}),
+        ...(r.locale ? { locale: r.locale } : {}),
       })
       .returning();
     return toRfq(row!);
@@ -2054,6 +2064,7 @@ export class DrizzleRepo implements Repo {
     token: string;
     dedupeKey: string;
     freq?: SearchAlert["freq"];
+    locale?: string;
   }): Promise<{ alert: SearchAlert; created: boolean }> {
     // Dedupe key decides insert vs re-subscribe: an existing row gets a
     // ROTATED token (older emailed links die), an 'off' row re-opens to
@@ -2067,6 +2078,8 @@ export class DrizzleRepo implements Repo {
           params: input.params,
           // Latest subscribe wins cadence too (dedupe key ignores freq).
           freq: input.freq ?? "instant",
+          // Re-subscribing under another locale retargets the digest.
+          ...(input.locale ? { locale: input.locale } : {}),
           status: sql`case when ${searchAlerts.status} = 'off' then 'pending' else ${searchAlerts.status} end`,
         })
         .where(eq(searchAlerts.dedupeKey, input.dedupeKey))
@@ -2089,6 +2102,7 @@ export class DrizzleRepo implements Repo {
           token: input.token,
           dedupeKey: input.dedupeKey,
           freq: input.freq ?? "instant",
+          locale: input.locale ?? "en",
         })
         .returning();
       return { alert: toSearchAlert(row!), created: true };

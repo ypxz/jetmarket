@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { site } from "@jetmarket/config";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { formatMoney } from "@/lib/format";
 import { logWarn } from "@/lib/log";
@@ -179,23 +180,38 @@ async function sendAlertDigest(
   // A watch row only ever matches its one listing — the mail is an update,
   // not a "new match". QA-459: when the trigger was a price DECREASE the
   // mail says so — old→new is the actionable signal (Kayak-style).
+  // QA-493: digests read the alert's stamped locale.
+  const m = await mailCopy(alert.locale);
   const drop = watch !== null && priceDropFrom !== undefined;
   const subject = drop
-    ? `Price dropped — “${first}”`
+    ? mailT(m, "alertDigest.subjectDrop", { title: first })
     : watch
-      ? `A listing you watch was updated — “${first}”`
+      ? mailT(m, "alertDigest.subjectWatch", { title: first })
       : listings.length === 1
-        ? `New listing matches your saved search — “${first}”`
-        : `${listings.length} new listings match your saved search`;
+        ? mailT(m, "alertDigest.subjectOne", { title: first })
+        : mailT(m, "alertDigest.subjectMany", { count: listings.length });
   const intro = drop
-    ? `The listing you watch on ${site.name} dropped in price:`
+    ? mailT(m, "alertDigest.introDrop", { site: site.name })
     : watch
-      ? `A listing you watch on ${site.name} was updated:`
-      : `${listings.length === 1 ? "A new listing" : "New listings"} on ${site.name} match your saved search:`;
+      ? mailT(m, "alertDigest.introWatch", { site: site.name })
+      : mailT(
+          m,
+          listings.length === 1 ? "alertDigest.introOne" : "alertDigest.introMany",
+          { site: site.name },
+        );
+  const loc = alert.locale === "de" ? "de" : "en";
   const lines = listings.map((l) =>
     drop
-      ? `${l.title} — was ${formatMoney(priceDropFrom!, l.currency)}, now ${formatMoney(l.price, l.currency)} — ${origin}/listing/${l.id}`
-      : `${l.title} — ${origin}/listing/${l.id}`,
+      ? mailT(m, "alertDigest.lineDrop", {
+          title: l.title,
+          old: formatMoney(priceDropFrom!, l.currency, loc),
+          new: formatMoney(l.price, l.currency, loc),
+          url: `${origin}/listing/${l.id}`,
+        })
+      : mailT(m, "alertDigest.line", {
+          title: l.title,
+          url: `${origin}/listing/${l.id}`,
+        }),
   );
   await emailProvider().send({
     to: alert.email,
@@ -205,16 +221,16 @@ async function sendAlertDigest(
       "",
       ...lines,
       "",
-      `${watch ? "The listing" : "Your search"}: ${targetUrl}`,
-      `Unsubscribe: ${unsub}`,
+      `${watch ? mailT(m, "alertConfirm.theListing") : mailT(m, "alertConfirm.yourSearch")}: ${targetUrl}`,
+      `${mailT(m, "shared.unsubscribe")}: ${unsub}`,
     ].join("\n"),
     html: brandedEmailHtml({
       siteName: site.name,
       title: subject,
-      paragraphs: [intro, ...lines, `Unsubscribe: ${unsub}`],
+      paragraphs: [intro, ...lines, `${mailT(m, "shared.unsubscribe")}: ${unsub}`],
       cta: {
         url: targetUrl,
-        label: watch ? "View listing" : "See matching listings",
+        label: watch ? mailT(m, "alertDigest.ctaWatch") : mailT(m, "alertDigest.cta"),
       },
     }),
   });
@@ -242,24 +258,27 @@ export async function endListingWatches(
     for (const alert of watchers) {
       try {
         const searchUrl = searchAlertSearchUrl(origin, {});
+        // QA-493: the watcher reads the alert's stamped locale.
+        const m = await mailCopy(alert.locale);
+        const subject = mailT(m, "watchEnded.subject", {
+          title: listing.title,
+        });
+        const intro = mailT(m, "watchEnded.intro", { site: site.name });
         await emailProvider().send({
           to: alert.email,
-          subject: `“${listing.title}” was removed — your watch ended`,
+          subject,
           text: [
-            `The listing you were watching on ${site.name} is no longer available:`,
+            intro,
             "",
             listing.title,
             "",
-            `Browse similar: ${searchUrl}`,
+            mailT(m, "watchEnded.browse", { url: searchUrl }),
           ].join("\n"),
           html: brandedEmailHtml({
             siteName: site.name,
-            title: `“${listing.title}” was removed — your watch ended`,
-            paragraphs: [
-              `The listing you were watching on ${site.name} is no longer available:`,
-              listing.title,
-            ],
-            cta: { url: searchUrl, label: "Browse similar listings" },
+            title: subject,
+            paragraphs: [intro, listing.title],
+            cta: { url: searchUrl, label: mailT(m, "watchEnded.cta") },
           }),
         });
         await repo.unsubscribeSearchAlert(alert.token);

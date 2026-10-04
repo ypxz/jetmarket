@@ -12,6 +12,8 @@ export interface ExpiredRfqInfo {
   id: string;
   buyerEmail: string;
   listingTitle: string | null;
+  /** QA-493: buyer-mail locale, stamped at RFQ create. */
+  locale: string;
 }
 
 export interface ExpiredQuoteInfo {
@@ -60,7 +62,7 @@ export async function expireStaleRfqsDetailed(
           (coalesce(fields->>'dateTo', '') !~ '^\\d{4}-\\d{2}-\\d{2}$'
             AND created_at < ${cutoff.toISOString()}::timestamptz - interval '30 days')
         )
-      RETURNING id, buyer_email, listing_id
+      RETURNING id, buyer_email, listing_id, locale
     ),
     declined_quotes AS (
       UPDATE quotes SET status = 'declined', updated_at = now()
@@ -70,7 +72,8 @@ export async function expireStaleRfqsDetailed(
     )
     SELECT
       (SELECT coalesce(json_agg(row_to_json(t)), '[]') FROM (
-        SELECT e.id, e.buyer_email AS "buyerEmail", l.title AS "listingTitle"
+        SELECT e.id, e.buyer_email AS "buyerEmail", e.locale,
+               l.title AS "listingTitle"
         FROM expired_rfqs e LEFT JOIN listings l ON l.id = e.listing_id
       ) t) AS rfqs,
       (SELECT coalesce(json_agg(row_to_json(t)), '[]') FROM (

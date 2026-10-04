@@ -2,12 +2,15 @@
 
 import { readJsonOr } from "@/lib/fetch-json";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 export default function SignInPage() {
   const t = useTranslations("auth");
   const tc = useTranslations("common");
+  // QA-493: the sign-in mail keeps the page locale — API routes sit outside
+  // the intl middleware, so the form stamps it explicitly.
+  const locale = useLocale();
   // Hydrated gate — a pre-hydration submit posts the uncontrolled form
   // natively (405); same fix as /quotes and the RFQ form (QA-245).
   const [ready, setReady] = useState(false);
@@ -33,7 +36,7 @@ export default function SignInPage() {
       res = await fetch("/api/auth/magic-link", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email, role, locale }),
       });
     } catch {
       setFailed(true);

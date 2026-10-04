@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { sendAction } from "@/lib/fetch-action";
 
@@ -19,6 +19,8 @@ export function AlertResend({
   alertId: string;
 }) {
   const t = useTranslations("account");
+  // QA-493: resend keeps the page locale — the route stamps it on the row.
+  const locale = useLocale();
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function AlertResend({
           setPending(true);
           setError(null);
           const e = await sendAction("/api/search-alerts", {
-            body: { email, params, freq },
+            body: { email, params, freq, locale },
             fallback: t("resendFailed"),
           });
           setPending(false);

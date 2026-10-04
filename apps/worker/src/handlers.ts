@@ -12,6 +12,7 @@ import {
 import type { Sql } from "postgres";
 import type { MatchingConfig } from "@jetmarket/verticals";
 import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { logWarn } from "./log";
 import type { WorkerRepo } from "./repo";
 
@@ -367,26 +368,30 @@ export async function nudgeStaleQuotes(deps: WorkerDeps): Promise<number> {
       const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
-      const subject =
-        r.quoteCount === 1
-          ? `1 quote is waiting on your request`
-          : `${r.quoteCount} quotes are waiting on your request`;
-      const body =
-        `Your request${
-          r.listingTitle ? ` for "${r.listingTitle}"` : ""
-        } on ${site.name} has ${r.quoteCount} operator quote${
-          r.quoteCount === 1 ? "" : "s"
-        } waiting for a decision. Compare them and pick the one that fits — ` +
-        `operators hold their offers open only while the request is live.`;
+      // QA-493: the buyer reads the RFQ's stamped locale.
+      const m = await mailCopy(r.locale);
+      const forTitle = r.listingTitle
+        ? mailT(m, "shared.forTitle", { title: r.listingTitle })
+        : "";
+      const subject = mailT(
+        m,
+        r.quoteCount === 1 ? "staleQuotes.subjectOne" : "staleQuotes.subjectMany",
+        { count: r.quoteCount },
+      );
+      const body = mailT(
+        m,
+        r.quoteCount === 1 ? "staleQuotes.bodyOne" : "staleQuotes.bodyMany",
+        { forTitle, site: site.name, count: r.quoteCount },
+      );
       await deps.email.send({
         to: r.buyerEmail,
         subject,
-        text: `${body}\n\nYour quotes: ${quotesUrl}`,
+        text: `${body}\n\n${mailT(m, "staleQuotes.label", { url: quotesUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: quotesUrl, label: "View your quotes" },
+          cta: { url: quotesUrl, label: mailT(m, "staleQuotes.cta") },
         }),
       });
       deps.analytics?.track({
@@ -423,28 +428,33 @@ export async function nudgeUnquotedRfqs(deps: WorkerDeps): Promise<number> {
       const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
-      const subject = `We're still gathering quotes for your request`;
+      const m = await mailCopy(r.locale);
+      const subject = mailT(m, "noQuotes.subject");
+      const forTitle = r.listingTitle
+        ? mailT(m, "shared.forTitle", { title: r.listingTitle })
+        : "";
       const reach =
         r.matchCount > 0
-          ? `went out to ${r.matchCount} operator${
-              r.matchCount === 1 ? "" : "s"
-            }`
-          : "went straight to the listing owner";
-      const body =
-        `Your request${
-          r.listingTitle ? ` for "${r.listingTitle}"` : ""
-        } on ${site.name} ${reach}, and no quotes have landed yet — ` +
-        `operators typically respond within a few days while the request is live. ` +
-        `Nothing to do on your side; you'll get a mail the moment a quote arrives.`;
+          ? mailT(
+              m,
+              r.matchCount === 1 ? "noQuotes.reachOne" : "noQuotes.reachMany",
+              { count: r.matchCount },
+            )
+          : mailT(m, "noQuotes.reachOwner");
+      const body = mailT(m, "noQuotes.body", {
+        forTitle,
+        site: site.name,
+        reach,
+      });
       await deps.email.send({
         to: r.buyerEmail,
         subject,
-        text: `${body}\n\nYour request: ${quotesUrl}`,
+        text: `${body}\n\n${mailT(m, "noQuotes.label", { url: quotesUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: quotesUrl, label: "Check your request" },
+          cta: { url: quotesUrl, label: mailT(m, "noQuotes.cta") },
         }),
       });
       deps.analytics?.track({
@@ -485,35 +495,43 @@ export async function nudgeClosingSoonRfqs(
       const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
+      const m = await mailCopy(r.locale);
       const closes = new Date(`${r.closesOn}T00:00:00.000Z`)
-        .toLocaleDateString("en-US", {
+        .toLocaleDateString(r.locale === "de" ? "de-DE" : "en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
           timeZone: "UTC",
         });
-      const subject = `Your request closes ${closes}`;
+      const subject = mailT(m, "closingSoon.subject", { date: closes });
+      const forTitle = r.listingTitle
+        ? mailT(m, "shared.forTitle", { title: r.listingTitle })
+        : "";
       const quotesLine =
         r.quoteCount > 0
-          ? `${r.quoteCount} operator quote${
-              r.quoteCount === 1 ? "" : "s"
-            } ${r.quoteCount === 1 ? "is" : "are"} still live on it — accept one before it dies`
-          : "no quotes have landed yet — the request dies quiet";
-      const body =
-        `Your request${
-          r.listingTitle ? ` for "${r.listingTitle}"` : ""
-        } on ${site.name} closes ${closes} — ${quotesLine}. ` +
-        `Need more time? Extend it by a week from your requests page and ` +
-        `everything waiting on it stays alive.`;
+          ? mailT(
+              m,
+              r.quoteCount === 1
+                ? "closingSoon.quotesOne"
+                : "closingSoon.quotesMany",
+              { count: r.quoteCount },
+            )
+          : mailT(m, "closingSoon.quotesNone");
+      const body = mailT(m, "closingSoon.body", {
+        forTitle,
+        site: site.name,
+        date: closes,
+        quotes: quotesLine,
+      });
       await deps.email.send({
         to: r.buyerEmail,
         subject,
-        text: `${body}\n\nYour request: ${quotesUrl}`,
+        text: `${body}\n\n${mailT(m, "closingSoon.label", { url: quotesUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: quotesUrl, label: "View your request" },
+          cta: { url: quotesUrl, label: mailT(m, "closingSoon.cta") },
         }),
       });
       deps.analytics?.track({
@@ -550,22 +568,26 @@ export async function nudgeUnratedDeals(deps: WorkerDeps): Promise<number> {
       const rateUrl = `${origin}/quotes?email=${encodeURIComponent(
         r.buyerEmail,
       )}#t=${encodeURIComponent(r.accessToken)}`;
-      const who = r.operatorName ?? "the operator";
-      const subject = `How was your deal with ${who}?`;
-      const body =
-        `Your ${site.name} deal${
-          r.listingTitle ? ` on "${r.listingTitle}"` : ""
-        } closed a few days ago — one tap tells other buyers how ${who} ` +
-        `did, and it takes ten seconds.`;
+      const m = await mailCopy(r.locale);
+      const who = r.operatorName ?? mailT(m, "shared.theOperator");
+      const subject = mailT(m, "unratedDeal.subject", { who });
+      const onTitle = r.listingTitle
+        ? mailT(m, "shared.onTitle", { title: r.listingTitle })
+        : "";
+      const body = mailT(m, "unratedDeal.body", {
+        site: site.name,
+        onTitle,
+        who,
+      });
       await deps.email.send({
         to: r.buyerEmail,
         subject,
-        text: `${body}\n\nRate your deal: ${rateUrl}`,
+        text: `${body}\n\n${mailT(m, "unratedDeal.label", { url: rateUrl })}`,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
           paragraphs: [body],
-          cta: { url: rateUrl, label: "Rate your deal" },
+          cta: { url: rateUrl, label: mailT(m, "unratedDeal.cta") },
         }),
       });
       deps.analytics?.track({
@@ -752,8 +774,13 @@ export async function notifyExpirations(
   for (const rfq of expired.rfqs) {
     deps.analytics?.track({ name: "rfq_expired", props: { rfqId: rfq.id } });
     try {
-      const subject = `Your request for “${rfq.listingTitle ?? "a listing"}” has expired`;
-      const body = `Your request for "${rfq.listingTitle ?? "a listing"}" on ${site.name} expired without an accepted quote. You can submit a fresh request anytime.`;
+      const m = await mailCopy(rfq.locale);
+      const title = rfq.listingTitle ?? mailT(m, "shared.aListing");
+      const subject = mailT(m, "requestExpired.subject", { title });
+      const body = mailT(m, "requestExpired.body", {
+        title,
+        site: site.name,
+      });
       await deps.email.send({
         to: rfq.buyerEmail,
         subject,

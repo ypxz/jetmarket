@@ -30,7 +30,8 @@ const rfq = (fields: Record<string, unknown>): Rfq => ({
   concierge: false,
   status: "matched",
   createdAt: "2026-10-01T00:00:00.000Z",
-  updatedAt: "2026-10-02T00:00:00.000Z",
+  locale: "en",
+      updatedAt: "2026-10-02T00:00:00.000Z",
 });
 
 type SentMail = { to: string; subject: string; text: string };

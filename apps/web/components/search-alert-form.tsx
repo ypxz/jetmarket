@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "next-intl";
+
 import { Button, Input } from "@jetmarket/ui";
 import { useEffect, useState } from "react";
 
@@ -35,6 +37,7 @@ export function SearchAlertForm({
   /** "{count}" is replaced with the API's live-match count (QA-415). */
   matchedLabel?: string;
 }) {
+  const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -54,7 +57,8 @@ export function SearchAlertForm({
       const res = await fetch("/api/search-alerts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, params, freq }),
+        // Digest + confirm mails keep the subscribe-page locale (QA-493).
+        body: JSON.stringify({ email, params, freq, locale }),
       });
       const body = (await res.json().catch(() => null)) as {
         error?: string;

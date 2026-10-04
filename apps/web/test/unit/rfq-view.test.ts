@@ -31,6 +31,7 @@ const rfq: Rfq = {
   status: "open",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  locale: "en",
 };
 
 describe("operatorRfqView — contact masking (QA-152)", () => {

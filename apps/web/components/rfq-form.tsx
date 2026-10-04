@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "next-intl";
+
 import { Button, Field, Input, Select, Textarea } from "@jetmarket/ui";
 import { useRouter } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
@@ -48,6 +50,7 @@ export function RfqForm({
   repostLabel,
   turnstileSiteKey,
 }: RfqFormProps) {
+  const locale = useLocale();
   const router = useRouter();
 
   const [busy, setBusy] = useState(false);
@@ -124,6 +127,8 @@ export function RfqForm({
           captchaToken: String(
             fd.get("cf-turnstile-response") ?? fd.get("captchaToken") ?? "",
           ),
+          // Buyer mails keep the page locale (QA-493).
+          locale,
         }),
       });
     } catch {

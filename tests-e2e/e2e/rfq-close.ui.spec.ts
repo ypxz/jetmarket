@@ -85,7 +85,16 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
 
     const rfq = buyer.locator(tidPrefix('buyer-rfq-')).first();
     await expect(rfq).toBeVisible();
+    // Wait on the network, not the DOM — a cold dev-compile of the close
+    // route can eat the whole 10s expect window (QA-493).
+    const closeResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/close') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
     await rfq.locator(tidPrefix('close-rfq-')).click();
+    await closeResp;
     await expect(buyer.getByTestId('accept-msg')).toContainText(/closed/i);
 
     // after reload: status closed, no close button, quote shows declined

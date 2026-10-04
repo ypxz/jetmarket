@@ -1,4 +1,5 @@
 import { site } from "@jetmarket/config";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
 import { logWarn } from "@/lib/log";
 import type { Deal, Listing, Quote, Repo, Rfq } from "@/lib/repo/types";
@@ -66,9 +67,16 @@ export async function notifyBuyerQuoteWithdrawn(
     const listing = rfq.listingId
       ? await repo.getListing(rfq.listingId)
       : undefined;
-    const title = listing?.title ?? "a listing";
-    const subject = `A quote for “${title}” was withdrawn`;
-    const body = `The operator withdrew their quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. Other quotes on your request are unaffected.`;
+    // QA-493: buyer mails read the RFQ's stamped locale.
+    const m = await mailCopy(rfq.locale);
+    const title = listing?.title ?? mailT(m, "shared.aListing");
+    const subject = mailT(m, "quoteWithdrawn.subject", { title });
+    const body = mailT(m, "quoteWithdrawn.body", {
+      currency: quote.currency,
+      amount: quote.amount,
+      title,
+      site: site.name,
+    });
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,
@@ -98,9 +106,15 @@ export async function notifyBuyerQuoteRevised(
     const listing = rfq.listingId
       ? await repo.getListing(rfq.listingId)
       : undefined;
-    const title = listing?.title ?? "a listing";
-    const subject = `A quote for “${title}” was revised`;
-    const body = `The operator revised their quote for "${title}" on ${site.name} — the new offer is ${quote.currency} ${quote.amount}. Open your quotes link to accept or decline it.`;
+    const m = await mailCopy(rfq.locale);
+    const title = listing?.title ?? mailT(m, "shared.aListing");
+    const subject = mailT(m, "quoteRevised.subject", { title });
+    const body = mailT(m, "quoteRevised.body", {
+      title,
+      site: site.name,
+      currency: quote.currency,
+      amount: quote.amount,
+    });
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,
@@ -169,10 +183,11 @@ export async function notifyDealClosed(
     // The winning operator gets the buyer's email — the buyer needs the same
     // reach-back path or a silent operator leaves the deal stranded (QA-243).
     const owner = operator ? await repo.getUser(operator.userId) : undefined;
-    const subject = `You accepted a quote for “${title}”`;
+    const m = await mailCopy(rfq.locale);
+    const subject = mailT(m, "dealClosed.subject", { title });
     const contact = owner
-      ? `Reach them directly at ${owner.email} — they have also been notified.`
-      : "The operator has been notified and will contact you to arrange fulfilment.";
+      ? mailT(m, "dealClosed.contact", { email: owner.email })
+      : mailT(m, "dealClosed.contactFallback");
     // QA-452: the rating surface lives on the buyer inbox — the only moment
     // a buyer is guaranteed to return for is the close mail, so the once-
     // ever stars ride this link (same bearer deep-link as the fan-out mail).
@@ -181,10 +196,15 @@ export async function notifyDealClosed(
     const rateUrl =
       `${origin}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}` +
       `#t=${encodeURIComponent(rfq.accessToken)}`;
-    const rateLine = `Rate how it went — it takes ten seconds and helps the next buyer: ${rateUrl}`;
+    const rateLine = mailT(m, "dealClosed.rate", { url: rateUrl });
     const body =
-      `You accepted ${operator?.name ?? "the operator"}'s quote of ${quote.currency} ${quote.amount} for "${title}" on ${site.name}. ` +
-      contact;
+      mailT(m, "dealClosed.body", {
+        operator: operator?.name ?? mailT(m, "shared.theOperator"),
+        currency: quote.currency,
+        amount: quote.amount,
+        title,
+        site: site.name,
+      }) + ` ${contact}`;
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject,

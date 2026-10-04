@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { site } from "@jetmarket/config";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { logWarn } from "@/lib/log";
@@ -94,19 +95,30 @@ export async function POST(req: Request) {
   // in their inbox; the buyer's email can be resent later (QA-155).
   try {
     const inboxUrl = `${appOrigin(req)}/quotes?email=${encodeURIComponent(rfq.buyerEmail)}#t=${encodeURIComponent(rfq.accessToken)}`;
-    const quoteSubject = `Quote for “${listing.title}” — ${listing.currency} ${data!.amount}`;
+    // QA-493: buyer mails read the RFQ's stamped locale.
+    const m = await mailCopy(rfq.locale);
+    const quoteSubject = mailT(m, "quoteReceived.subject", {
+      title: listing.title,
+      currency: listing.currency,
+      amount: data!.amount,
+    });
+    const quotedLine = mailT(m, "quoteReceived.intro", {
+      name: operator.name,
+      currency: listing.currency,
+      amount: data!.amount,
+    });
     await emailProvider().send({
       to: rfq.buyerEmail,
       subject: quoteSubject,
-      text: `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.\n${data!.message}\nView and accept: ${inboxUrl}`,
+      text: `${quotedLine}\n${data!.message}\n${mailT(m, "quoteReceived.cta")}: ${inboxUrl}`,
       html: brandedEmailHtml({
         siteName: site.name,
         title: quoteSubject,
         paragraphs: [
-          `Operator ${operator.name} quoted ${listing.currency} ${data!.amount}.`,
+          quotedLine,
           ...(data!.message ? [data!.message] : []),
         ],
-        cta: { url: inboxUrl, label: "View and accept" },
+        cta: { url: inboxUrl, label: mailT(m, "quoteReceived.cta") },
       }),
     });
   } catch (e) {

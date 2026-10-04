@@ -87,7 +87,10 @@ test('buyer declines a quote: quote -> declined, rfq stays quoted', async ({
     // route can outlast the element timeout even though the request succeeds
     // (observed flake, QA-492 run).
     const resp = buyer.waitForResponse(
-      (r) => r.url().includes('/decline') && r.request().method() === 'POST',
+      (r) =>
+        r.url().includes('/decline') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
     );
     await quote.locator(tidPrefix('decline-')).click();
     expect((await resp).status()).toBe(200);

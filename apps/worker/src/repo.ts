@@ -100,6 +100,8 @@ export interface WorkerRepo {
       accessToken: string;
       listingTitle: string | null;
       quoteCount: number;
+      /** QA-493: buyer-mail locale stamped at RFQ create. */
+      locale: string;
     }[]
   >;
   /** QA-423 zero-quote nudge: claim RFQs that sat quote-less past
@@ -117,6 +119,8 @@ export interface WorkerRepo {
       accessToken: string;
       listingTitle: string | null;
       matchCount: number;
+      /** QA-493: buyer-mail locale stamped at RFQ create. */
+      locale: string;
     }[]
   >;
   /** QA-447 closing-soon nudge: claim live RFQs whose liveness horizon
@@ -136,6 +140,8 @@ export interface WorkerRepo {
       listingTitle: string | null;
       closesOn: string;
       quoteCount: number;
+      /** QA-493: buyer-mail locale stamped at RFQ create. */
+      locale: string;
     }[]
   >;
   /** QA-456 unrated-deal nudge: claim closed deals old enough to have been
@@ -154,6 +160,8 @@ export interface WorkerRepo {
       accessToken: string;
       operatorName: string | null;
       listingTitle: string | null;
+      /** QA-493: buyer-mail locale stamped on the deal's RFQ. */
+      locale: string;
     }[]
   >;
   /** QA-425 unanswered-demand digest: claim operators who have at least
@@ -524,6 +532,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         rfqId: string;
         buyerEmail: string;
         accessToken: string;
+        locale: string;
         listingTitle: string | null;
         quoteCount: number;
       }>(sql`
@@ -552,12 +561,14 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             r.id as "rfqId",
             r.buyer_email as "buyerEmail",
             r.access_token as "accessToken",
-            r.listing_id as "listingId"
+            r.listing_id as "listingId",
+            r.locale
         )
         select
           s."rfqId",
           s."buyerEmail",
           s."accessToken",
+          s.locale,
           l.title as "listingTitle",
           (
             select count(*)::int from quotes q
@@ -580,6 +591,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         rfqId: string;
         buyerEmail: string;
         accessToken: string;
+        locale: string;
         listingTitle: string | null;
         matchCount: number;
       }>(sql`
@@ -605,12 +617,14 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             r.id as "rfqId",
             r.buyer_email as "buyerEmail",
             r.access_token as "accessToken",
-            r.listing_id as "listingId"
+            r.listing_id as "listingId",
+            r.locale
         )
         select
           s."rfqId",
           s."buyerEmail",
           s."accessToken",
+          s.locale,
           l.title as "listingTitle",
           (
             select count(*)::int from rfq_matches m
@@ -635,6 +649,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         rfqId: string;
         buyerEmail: string;
         accessToken: string;
+        locale: string;
         listingTitle: string | null;
         closesOn: string;
         quoteCount: number;
@@ -667,12 +682,14 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             r.access_token as "accessToken",
             r.listing_id as "listingId",
             r.fields->>'dateTo' as "dateTo",
-            r.created_at as "createdAt"
+            r.created_at as "createdAt",
+            r.locale
         )
         select
           s."rfqId",
           s."buyerEmail",
           s."accessToken",
+          s.locale,
           l.title as "listingTitle",
           (
             case
@@ -700,6 +717,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         dealId: string;
         buyerEmail: string;
         accessToken: string;
+        locale: string;
         operatorName: string | null;
         listingTitle: string | null;
       }>(sql`
@@ -725,6 +743,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           s."dealId",
           r.buyer_email as "buyerEmail",
           r.access_token as "accessToken",
+          r.locale,
           o.name as "operatorName",
           l.title as "listingTitle"
         from stamped s

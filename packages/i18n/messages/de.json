@@ -95,6 +95,128 @@
     "emptyBody": "Schauen Sie bald wieder vorbei — Anbieter inserieren auf dieser Strecke regelmäßig.",
     "results": "{count, plural, =0 {Keine Inserate} one {# Inserat} other {# Inserate}}"
   },
+  "mail": {
+    "rfqReceived": {
+      "subject": "Ihre Anfrage für „{title}“ wurde gesendet",
+      "intro": "Wir haben Ihre Anfrage an den Inseratsinhaber und passende Anbieter gesendet.",
+      "upsell": "Sie brauchen schnellere Antworten? Concierge-Expedite (49 $) stellt Ihre Anfrage sofort allen passenden Anbietern zu: {url}",
+      "cta": "Angebote verfolgen",
+      "track": "Verfolgen Sie deren Angebote hier: {url}"
+    },
+    "quoteReceived": {
+      "subject": "Angebot für „{title}“ — {currency} {amount}",
+      "intro": "Der Anbieter {name} bietet {currency} {amount}.",
+      "cta": "Ansehen und annehmen"
+    },
+    "quoteWithdrawn": {
+      "subject": "Ein Angebot für „{title}“ wurde zurückgezogen",
+      "body": "Der Anbieter hat sein Angebot über {currency} {amount} für „{title}“ auf {site} zurückgezogen. Andere Angebote zu Ihrer Anfrage bleiben unverändert."
+    },
+    "quoteRevised": {
+      "subject": "Ein Angebot für „{title}“ wurde überarbeitet",
+      "body": "Der Anbieter hat sein Angebot für „{title}“ auf {site} überarbeitet — das neue Angebot lautet {currency} {amount}. Öffnen Sie Ihren Angebotslink, um es anzunehmen oder abzulehnen."
+    },
+    "dealClosed": {
+      "subject": "Sie haben ein Angebot für „{title}“ angenommen",
+      "body": "Sie haben das Angebot von {operator} über {currency} {amount} für „{title}“ auf {site} angenommen.",
+      "contact": "Kontaktieren Sie den Anbieter direkt unter {email} — er wurde ebenfalls benachrichtigt.",
+      "contactFallback": "Der Anbieter wurde benachrichtigt und wird Sie kontaktieren, um die Abwicklung zu besprechen.",
+      "rate": "Bewerten Sie, wie es lief — es dauert zehn Sekunden und hilft dem nächsten Käufer: {url}"
+    },
+    "conciergePaid": {
+      "subject": "Concierge aktiv — „{title}“ liegt im Posteingang jedes passenden Anbieters",
+      "paid": "Sie haben {price} $ für Concierge-Expedite auf {site} bezahlt.",
+      "deliveredOne": "Wir haben Ihre Anfrage für „{title}“ soeben an 1 passenden Anbieter zugestellt — Angebote folgen in der Regel schnell.",
+      "deliveredMany": "Wir haben Ihre Anfrage für „{title}“ soeben an {count} passende Anbieter zugestellt — Angebote folgen in der Regel schnell.",
+      "queued": "Ihre Anfrage für „{title}“ liegt bereits im Posteingang jedes passenden Anbieters.",
+      "track": "Angebote hier verfolgen: {url}"
+    },
+    "alertConfirm": {
+      "subject": "Bestätigen Sie Ihre gespeicherte Suche auf {site}",
+      "subjectWatch": "Bestätigen Sie Ihre Inserat-Beobachtung auf {site}",
+      "hook": "Bestätigen Sie, um eine E-Mail zu erhalten, sobald neue Inserate zu Ihrer Suche passen",
+      "hookWatch": "Bestätigen Sie, um eine E-Mail zu erhalten, sobald dieses Inserat aktualisiert wird",
+      "yourSearch": "Ihre Suche",
+      "theListing": "Das Inserat",
+      "cta": "Benachrichtigung bestätigen"
+    },
+    "alertDigest": {
+      "subjectDrop": "Preis gesenkt — „{title}“",
+      "subjectWatch": "Ein von Ihnen beobachtetes Inserat wurde aktualisiert — „{title}“",
+      "subjectOne": "Ein neues Inserat passt zu Ihrer gespeicherten Suche — „{title}“",
+      "subjectMany": "{count} neue Inserate passen zu Ihrer gespeicherten Suche",
+      "introDrop": "Ein von Ihnen beobachtetes Inserat auf {site} wurde im Preis gesenkt:",
+      "introWatch": "Ein von Ihnen beobachtetes Inserat auf {site} wurde aktualisiert:",
+      "introOne": "Ein neues Inserat auf {site} passt zu Ihrer gespeicherten Suche:",
+      "introMany": "Neue Inserate auf {site} passen zu Ihrer gespeicherten Suche:",
+      "lineDrop": "{title} — vorher {old}, jetzt {new} — {url}",
+      "line": "{title} — {url}",
+      "ctaWatch": "Inserat ansehen",
+      "cta": "Passende Inserate ansehen"
+    },
+    "watchEnded": {
+      "subject": "„{title}“ wurde entfernt — Ihre Beobachtung endete",
+      "intro": "Das Inserat, das Sie auf {site} beobachtet haben, ist nicht mehr verfügbar:",
+      "browse": "Ähnliche ansehen: {url}",
+      "cta": "Ähnliche Inserate ansehen"
+    },
+    "buyerLinks": {
+      "subject": "Ihre {site}-Angebotslinks",
+      "intro": "Hier sind Ihre Anfrage-Links:",
+      "line": "- {title}: {url}",
+      "request": "Anfrage {id}"
+    },
+    "magicLink": {
+      "subject": "Ihr {site}-Anmeldelink",
+      "title": "Anmelden",
+      "intro": "Nutzen Sie den Link unten, um sich anzumelden — er läuft in 15 Minuten ab.",
+      "cta": "Anmelden",
+      "text": "Anmelden: {url}"
+    },
+    "staleQuotes": {
+      "subjectOne": "1 Angebot wartet auf Ihre Anfrage",
+      "subjectMany": "{count} Angebote warten auf Ihre Anfrage",
+      "bodyOne": "Für Ihre Anfrage{forTitle} auf {site} wartet 1 Anbieterangebot auf eine Entscheidung. Vergleichen Sie die Angebote und wählen Sie das passende — Anbieter halten ihre Angebote nur offen, solange die Anfrage läuft.",
+      "bodyMany": "Für Ihre Anfrage{forTitle} auf {site} warten {count} Anbieterangebote auf eine Entscheidung. Vergleichen Sie die Angebote und wählen Sie das passende — Anbieter halten ihre Angebote nur offen, solange die Anfrage läuft.",
+      "cta": "Ihre Angebote ansehen",
+      "label": "Ihre Angebote: {url}"
+    },
+    "noQuotes": {
+      "subject": "Wir sammeln noch Angebote für Ihre Anfrage",
+      "reachOne": "ging an {count} Anbieter",
+      "reachMany": "ging an {count} Anbieter",
+      "reachOwner": "ging direkt an den Inseratsinhaber",
+      "body": "Ihre Anfrage{forTitle} auf {site} {reach}, und es sind noch keine Angebote eingegangen — Anbieter antworten in der Regel innerhalb weniger Tage, solange die Anfrage läuft. Sie müssen nichts tun; Sie erhalten eine E-Mail, sobald ein Angebot eintrifft.",
+      "cta": "Anfrage prüfen",
+      "label": "Ihre Anfrage: {url}"
+    },
+    "closingSoon": {
+      "subject": "Ihre Anfrage endet am {date}",
+      "quotesOne": "{count} Anbieterangebot ist noch aktiv — nehmen Sie eines an, bevor sie ausläuft",
+      "quotesMany": "{count} Anbieterangebote sind noch aktiv — nehmen Sie eines an, bevor sie ausläuft",
+      "quotesNone": "es sind noch keine Angebote eingegangen — die Anfrage läuft unbemerkt aus",
+      "body": "Ihre Anfrage{forTitle} auf {site} endet am {date} — {quotes}. Brauchen Sie mehr Zeit? Verlängern Sie sie auf Ihrer Anfragenseite um eine Woche, dann bleibt alles Wartende erhalten.",
+      "cta": "Anfrage ansehen",
+      "label": "Ihre Anfrage: {url}"
+    },
+    "unratedDeal": {
+      "subject": "Wie war Ihr Abschluss mit {who}?",
+      "body": "Ihr {site}-Abschluss{onTitle} wurde vor einigen Tagen abgeschlossen — ein Klick zeigt anderen Käufern, wie {who} war, und dauert zehn Sekunden.",
+      "cta": "Abschluss bewerten",
+      "label": "Abschluss bewerten: {url}"
+    },
+    "requestExpired": {
+      "subject": "Ihre Anfrage für „{title}“ ist abgelaufen",
+      "body": "Ihre Anfrage für „{title}“ auf {site} ist abgelaufen, ohne dass ein Angebot angenommen wurde. Sie können jederzeit eine neue Anfrage stellen."
+    },
+    "shared": {
+      "aListing": "ein Inserat",
+      "theOperator": "der Anbieter",
+      "forTitle": " für „{title}“",
+      "onTitle": " zu „{title}“",
+      "unsubscribe": "Abbestellen"
+    }
+  },
   "listing": {
     "gallery": "Fotos",
     "photoPlaceholder": "Foto {n}",

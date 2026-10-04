@@ -165,7 +165,7 @@ function QuotesInner() {
       res = await fetch("/api/buyer/access", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, locale }),
       });
     } catch {
       setMsg(tc("error"));

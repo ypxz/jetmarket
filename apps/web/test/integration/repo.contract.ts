@@ -1518,6 +1518,47 @@ export function repoContract(
       ).toBe("active");
     });
 
+    it("QA-493 locale: RFQ + alert stamp 'en' by default, keep a supplied locale", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mkRfq = (email: string, dedupeKey: string, locale?: string) =>
+        repo.createRfq({
+          vertical: "jets",
+          listingId: null,
+          buyerEmail: email,
+          fields: { name: "L Ocale", email },
+          dedupeKey,
+          ...(locale ? { locale } : {}),
+        });
+      // Omitted → 'en'; supplied → round-trips.
+      const en = await mkRfq(`l-en-${tag}@t.dev`, `lk-en-${tag}`);
+      expect(en.locale).toBe("en");
+      const de = await mkRfq(`l-de-${tag}@t.dev`, `lk-de-${tag}`, "de");
+      expect(de.locale).toBe("de");
+      // The stamp survives a read — it's a column, not an input echo.
+      expect((await repo.getRfq(de.id))?.locale).toBe("de");
+
+      const mkAlert = (email: string, token: string, key: string, locale?: string) =>
+        repo.createSearchAlert({
+          vertical: "jets",
+          email,
+          params: { type: "charter" },
+          token,
+          dedupeKey: key,
+          ...(locale ? { locale } : {}),
+        });
+      const aEn = await mkAlert(`a-en-${tag}@t.dev`, `at-${tag}-1`, `ak-${tag}-1`);
+      expect(aEn.alert.locale).toBe("en");
+      const aDe = await mkAlert(`a-de-${tag}@t.dev`, `at-${tag}-2`, `ak-${tag}-2`, "de");
+      expect(aDe.alert.locale).toBe("de");
+      // Re-subscribe with a new locale adopts it; omitting keeps the stored one.
+      const flip = await mkAlert(`a-de-${tag}@t.dev`, `at-${tag}-3`, `ak-${tag}-2`, "en");
+      expect(flip.created).toBe(false);
+      expect(flip.alert.locale).toBe("en");
+      const keep = await mkAlert(`a-de-${tag}@t.dev`, `at-${tag}-4`, `ak-${tag}-2`);
+      expect(keep.alert.locale).toBe("en");
+    });
+
     it("watch filters + countByWatch scope to active watchers only (QA-408)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

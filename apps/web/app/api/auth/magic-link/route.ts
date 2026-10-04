@@ -3,6 +3,7 @@ import { site } from "@jetmarket/config";
 import { clientIp, err, ok, parseBody, rateLimit } from "@/lib/api";
 import { getRepo } from "@/lib/repo";
 import { brandedEmailHtml, emailProvider } from "@jetmarket/providers";
+import { mailCopy, mailT } from "@jetmarket/i18n";
 import { logWarn } from "@/lib/log";
 import { signMagicLink } from "@/lib/auth";
 import { appOrigin } from "@/lib/origin";
@@ -10,12 +11,14 @@ import { appOrigin } from "@/lib/origin";
 const Body = z.object({
   email: z.string().email().max(254),
   role: z.enum(["buyer", "operator"]).default("buyer"),
+  // QA-493: sign-in mail keeps the page locale (transient, no user pref).
+  locale: z.enum(["en", "de"]).optional(),
 });
 
 export async function POST(req: Request) {
   const { data, error } = await parseBody(req, Body);
   if (error) return error;
-  const { email, role } = data!;
+  const { email, role, locale } = data!;
 
   // Only mock auth exists — check before doing any work so a real-provider
   // deploy doesn't rate-burn or mail a link for a request we then 501.
@@ -57,19 +60,19 @@ export async function POST(req: Request) {
         : "/app/onboarding"
       : "/";
   const link = `${appUrl}/api/auth/callback?token=${encodeURIComponent(signMagicLink(user.id))}&next=${encodeURIComponent(next)}`;
-  const subject = `Your ${site.name} sign-in link`;
+  // QA-493: sign-in mail in the page's locale.
+  const m = await mailCopy(locale);
+  const subject = mailT(m, "magicLink.subject", { site: site.name });
   try {
     await emailProvider().send({
       to: email,
       subject,
-      text: `Sign in: ${link}`,
+      text: mailT(m, "magicLink.text", { url: link }),
       html: brandedEmailHtml({
         siteName: site.name,
-        title: "Sign in",
-        paragraphs: [
-          "Use the link below to sign in — it expires in 15 minutes.",
-        ],
-        cta: { url: link, label: "Sign in" },
+        title: mailT(m, "magicLink.title"),
+        paragraphs: [mailT(m, "magicLink.intro")],
+        cta: { url: link, label: mailT(m, "magicLink.cta") },
       }),
     });
   } catch (e) {

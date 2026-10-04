@@ -692,7 +692,7 @@ describe("notifyExpirations", () => {
     sent.length = 0;
     await notifyExpirations(deps(repo), {
       rfqs: [
-        { id: "r1", buyerEmail: "buyer@x.com", listingTitle: "G650 charter" },
+        { id: "r1", buyerEmail: "buyer@x.com", listingTitle: "G650 charter", locale: "en" },
       ],
       quotes: [
         {
@@ -731,7 +731,7 @@ describe("notifyExpirations", () => {
     d.analytics = { track: (e) => void events.push(e) };
     await notifyExpirations(d, {
       rfqs: [
-        { id: "r9", buyerEmail: "buyer@x.com", listingTitle: "G650" },
+        { id: "r9", buyerEmail: "buyer@x.com", listingTitle: "G650", locale: "en" },
       ],
       quotes: [
         {
@@ -762,8 +762,8 @@ describe("notifyExpirations", () => {
     };
     await notifyExpirations(d, {
       rfqs: [
-        { id: "r1", buyerEmail: "buyer@x.com", listingTitle: null },
-        { id: "r2", buyerEmail: "buyer2@x.com", listingTitle: null },
+        { id: "r1", buyerEmail: "buyer@x.com", listingTitle: null, locale: "en" },
+        { id: "r2", buyerEmail: "buyer2@x.com", listingTitle: null, locale: "en" },
       ],
       quotes: [],
     });
@@ -895,6 +895,7 @@ describe("nudgeStaleQuotes (QA-422)", () => {
             rfqId: "r1",
             buyerEmail: "buyer@x.com",
             accessToken: "tok-one",
+            locale: "en",
             listingTitle: "ZRH–NCE Phenom leg",
             quoteCount: 2,
           },
@@ -902,6 +903,7 @@ describe("nudgeStaleQuotes (QA-422)", () => {
             rfqId: "r2",
             buyerEmail: "buyer2@x.com",
             accessToken: "tok two",
+            locale: "en",
             listingTitle: null,
             quoteCount: 1,
           },
@@ -924,6 +926,29 @@ describe("nudgeStaleQuotes (QA-422)", () => {
     expect(sent[1]!.text).toContain("#t=tok%20two");
   });
 
+  it("QA-493: mails render in the RFQ's stamped locale", async () => {
+    const repo = fakeRepo({
+      sweepStaleQuotes: async () => [
+        {
+          rfqId: "rd",
+          buyerEmail: "de@x.example",
+          accessToken: "tok-de",
+          locale: "de",
+          listingTitle: "ZRH–NCE Phenom leg",
+          quoteCount: 2,
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.quoteNudgeHours = 48;
+    expect(await nudgeStaleQuotes(d)).toBe(1);
+    expect(sent[0]!.to).toBe("de@x.example");
+    expect(sent[0]!.subject).toBe("2 Angebote warten auf Ihre Anfrage");
+    expect(sent[0]!.text).toContain("Für Ihre Anfrage für „ZRH–NCE Phenom leg“");
+    expect(sent[0]!.text).toContain("#t=tok-de");
+  });
+
   it("defaults to 48h, a failed send doesn't stall, zero claims sends nothing", async () => {
     const repo = fakeRepo({
       sweepStaleQuotes: async () => [
@@ -931,6 +956,7 @@ describe("nudgeStaleQuotes (QA-422)", () => {
           rfqId: "r1",
           buyerEmail: "bad@x.example",
           accessToken: "t1",
+            locale: "en",
           listingTitle: "A",
           quoteCount: 1,
         },
@@ -938,6 +964,7 @@ describe("nudgeStaleQuotes (QA-422)", () => {
           rfqId: "r2",
           buyerEmail: "ok@x.example",
           accessToken: "t2",
+            locale: "en",
           listingTitle: "B",
           quoteCount: 3,
         },
@@ -986,6 +1013,7 @@ describe("nudgeUnquotedRfqs (QA-423)", () => {
             rfqId: "r1",
             buyerEmail: "buyer@x.com",
             accessToken: "tok-one",
+            locale: "en",
             listingTitle: "ZRH–NCE Phenom leg",
             matchCount: 3,
           },
@@ -993,6 +1021,7 @@ describe("nudgeUnquotedRfqs (QA-423)", () => {
             rfqId: "r2",
             buyerEmail: "buyer2@x.com",
             accessToken: "tok two",
+            locale: "en",
             listingTitle: null,
             matchCount: 0,
           },
@@ -1026,6 +1055,7 @@ describe("nudgeUnquotedRfqs (QA-423)", () => {
           rfqId: "r1",
           buyerEmail: "bad@x.example",
           accessToken: "t1",
+            locale: "en",
           listingTitle: "A",
           matchCount: 1,
         },
@@ -1033,6 +1063,7 @@ describe("nudgeUnquotedRfqs (QA-423)", () => {
           rfqId: "r2",
           buyerEmail: "ok@x.example",
           accessToken: "t2",
+            locale: "en",
           listingTitle: "B",
           matchCount: 5,
         },
@@ -1082,6 +1113,7 @@ describe("nudgeClosingSoonRfqs (QA-447)", () => {
             rfqId: "r1",
             buyerEmail: "buyer@x.com",
             accessToken: "tok-one",
+            locale: "en",
             listingTitle: "ZRH–NCE Phenom leg",
             closesOn: "2026-09-17",
             quoteCount: 2,
@@ -1090,6 +1122,7 @@ describe("nudgeClosingSoonRfqs (QA-447)", () => {
             rfqId: "r2",
             buyerEmail: "buyer2@x.com",
             accessToken: "tok two",
+            locale: "en",
             listingTitle: null,
             closesOn: "2026-09-16",
             quoteCount: 0,
@@ -1123,6 +1156,7 @@ describe("nudgeClosingSoonRfqs (QA-447)", () => {
           rfqId: "r1",
           buyerEmail: "bad@x.example",
           accessToken: "t1",
+            locale: "en",
           listingTitle: "A",
           closesOn: "2026-09-16",
           quoteCount: 1,
@@ -1131,6 +1165,7 @@ describe("nudgeClosingSoonRfqs (QA-447)", () => {
           rfqId: "r2",
           buyerEmail: "ok@x.example",
           accessToken: "t2",
+            locale: "en",
           listingTitle: "B",
           closesOn: "2026-09-16",
           quoteCount: 1,
@@ -1181,6 +1216,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
             dealId: "d1",
             buyerEmail: "buyer@x.com",
             accessToken: "tok-one",
+            locale: "en",
             operatorName: "Alpine Air",
             listingTitle: "ZRH–NCE Phenom leg",
           },
@@ -1188,6 +1224,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
             dealId: "d2",
             buyerEmail: "buyer2@x.com",
             accessToken: "tok two",
+            locale: "en",
             operatorName: null,
             listingTitle: null,
           },
@@ -1219,6 +1256,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
           dealId: "d1",
           buyerEmail: "bad@x.example",
           accessToken: "t1",
+            locale: "en",
           operatorName: "Op",
           listingTitle: null,
         },
@@ -1226,6 +1264,7 @@ describe("nudgeUnratedDeals (QA-456)", () => {
           dealId: "d2",
           buyerEmail: "ok@x.example",
           accessToken: "t2",
+            locale: "en",
           operatorName: "Op",
           listingTitle: null,
         },

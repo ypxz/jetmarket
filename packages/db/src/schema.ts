@@ -16,6 +16,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -127,6 +128,9 @@ export const rfqs = pgTable(
     // Buyer concierge ($49/request): paid expedite — delayed fan-out matches
     // deliver immediately instead of after the free-plan delay.
     concierge: boolean("concierge").notNull().default(false),
+    // QA-493: buyer-mail locale, stamped at create from the page locale the
+    // request was filed under — route handlers can't see the intl segment.
+    locale: varchar("locale").notNull().default("en"),
     // QA-422: once-only stamp — the worker's stale-quote nudge mails the
     // buyer at most once per RFQ; NULL rows are claimable.
     quoteNudgeMailedAt: timestamp("quote_nudge_mailed_at", {
@@ -353,6 +357,8 @@ export const searchAlerts = pgTable(
     freq: text("freq", { enum: ["instant", "daily"] })
       .notNull()
       .default("instant"),
+    // QA-493: digest/confirm mail locale, stamped at subscribe.
+    locale: varchar("locale").notNull().default("en"),
     lastAlertedAt: timestamp("last_alerted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
