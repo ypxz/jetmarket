@@ -9,6 +9,7 @@ import { rfqDeadlineAt } from "@/lib/rfq-deadline";
 import { searchAlertSummary, searchAlertWatchId } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 import { AlertOffButton } from "./alert-off-button";
+import { WithdrawRfq } from "./withdraw-rfq";
 
 /** QA-468: buyer account surface. Buyers hold real sessions (report filing
  *  requires one) but had nothing under their name — /quotes is a
@@ -104,14 +105,19 @@ export default async function AccountPage() {
                 <span className="flex items-center gap-2">
                   <Badge variant="outline">{tc(`rfqState.${r.status}`)}</Badge>
                   {LIVE.has(r.status) ? (
-                    <span className="text-xs text-muted">
-                      {t("closesOn", {
-                        date: rfqDeadlineAt(r).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        }),
-                      })}
-                    </span>
+                    <>
+                      <span className="text-xs text-muted">
+                        {t("closesOn", {
+                          date: rfqDeadlineAt(r).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          }),
+                        })}
+                      </span>
+                      {/* QA-475: the account row was read-only — QA-474's
+                          session auth makes withdraw possible from here. */}
+                      <WithdrawRfq rfqId={r.id} buyerEmail={user.email} />
+                    </>
                   ) : null}
                 </span>
               </span>

@@ -185,3 +185,63 @@ test('buyer session: inbox + accept/close/rate without the emailed token (QA-474
     await sql.end();
   }
 });
+
+test('account page: withdraw a live request via session (QA-475)', async () => {
+  const sql = postgres(testDb, { max: 1 });
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.6.6' },
+  });
+  let listingId = '';
+  let rfqId = '';
+  try {
+    const operator = await login(OP_EMAIL, 'operator');
+    expect(
+      (
+        await operator.post('/api/operators', {
+          data: { name: `E2E BS2 Ops ${run}`, baseAirport: 'LSZH' },
+        })
+      ).status(),
+    ).toBe(201);
+    const lres = await operator.post('/api/listings', {
+      data: {
+        type: 'charter',
+        title: `E2E BS2 Charter ${run}`,
+        price: 38000,
+        currency: 'USD',
+        photos: [],
+        attributes: {},
+      },
+    });
+    expect(lres.status()).toBe(201);
+    listingId = ((await lres.json()) as { id: string }).id;
+
+    rfqId = (await mkRfq(publicCtx, listingId, BUYER)).rfqId;
+    const buyer = await login(BUYER);
+
+    // Live row offers the withdraw control…
+    const html1 = await (await buyer.get('/en/account')).text();
+    expect(html1).toContain(`account-rfq-withdraw-${rfqId}`);
+    // …which is the same session-authed close route (QA-474).
+    expect(
+      (
+        await buyer.post(`/api/rfqs/${rfqId}/close`, {
+          data: { buyerEmail: BUYER },
+        })
+      ).status(),
+    ).toBe(200);
+    // Closed rows lose the button and the closes-on note.
+    const html2 = await (await buyer.get('/en/account')).text();
+    expect(html2).toContain(`account-rfq-${rfqId}`);
+    expect(html2).not.toContain(`account-rfq-withdraw-${rfqId}`);
+  } finally {
+    if (rfqId) {
+      await sql`delete from rfq_matches where rfq_id = ${rfqId}`;
+      await sql`delete from rfqs where id = ${rfqId}`;
+    }
+    if (listingId) await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email in (${OP_EMAIL}, ${BUYER})`;
+    await sql.end();
+  }
+});
