@@ -8,6 +8,7 @@ import {
   handleJob,
   notifyExpiredListings,
   notifyExpirations,
+  nudgeStaleQuotes,
   rfqFanout,
   searchAlertFlush,
 } from "./handlers";
@@ -128,6 +129,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepExpiredListings: async (input) => {
       rec("sweepExpiredListings", input);
+      return [];
+    },
+    sweepStaleQuotes: async (input) => {
+      rec("sweepStaleQuotes", input);
       return [];
     },
     ...over,
@@ -802,6 +807,97 @@ describe("notifyExpiredListings", () => {
     const d2 = deps(empty);
     d2.expiry = jetsExpiry;
     expect(await notifyExpiredListings(d2)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeStaleQuotes (QA-422)", () => {
+  it("disabled when quoteNudgeHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepStaleQuotes: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.quoteNudgeHours = 0;
+    expect(await nudgeStaleQuotes(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed buyer with their tokened /quotes link", async () => {
+    let call: { vertical: string; olderThan: Date } | null = null;
+    const repo = fakeRepo({
+      sweepStaleQuotes: async (input) => {
+        call = input;
+        return [
+          {
+            rfqId: "r1",
+            buyerEmail: "buyer@x.com",
+            accessToken: "tok-one",
+            listingTitle: "ZRH–NCE Phenom leg",
+            quoteCount: 2,
+          },
+          {
+            rfqId: "r2",
+            buyerEmail: "buyer2@x.com",
+            accessToken: "tok two",
+            listingTitle: null,
+            quoteCount: 1,
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.quoteNudgeHours = 48;
+    expect(await nudgeStaleQuotes(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // olderThan = deps.now - 48h — deps.now is fixed 2026-09-15T12:00Z.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-13T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual(["buyer@x.com", "buyer2@x.com"]);
+    expect(sent[0]!.subject).toBe("2 quotes are waiting on your request");
+    expect(sent[1]!.subject).toBe("1 quote is waiting on your request");
+    // The fragment bearer token deep-links the buyer's inbox (AGENTS: #t=).
+    expect(sent[0]!.text).toContain("/quotes?email=buyer%40x.com#t=tok-one");
+    expect(sent[0]!.text).toContain("ZRH–NCE Phenom leg");
+    expect(sent[1]!.text).toContain("#t=tok%20two");
+  });
+
+  it("defaults to 48h, a failed send doesn't stall, zero claims sends nothing", async () => {
+    const repo = fakeRepo({
+      sweepStaleQuotes: async () => [
+        {
+          rfqId: "r1",
+          buyerEmail: "bad@x.example",
+          accessToken: "t1",
+          listingTitle: "A",
+          quoteCount: 1,
+        },
+        {
+          rfqId: "r2",
+          buyerEmail: "ok@x.example",
+          accessToken: "t2",
+          listingTitle: "B",
+          quoteCount: 3,
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // quoteNudgeHours unset → 48h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeStaleQuotes(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeStaleQuotes(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

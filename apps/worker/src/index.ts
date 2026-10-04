@@ -20,6 +20,7 @@ import {
   handleJob,
   notifyExpiredListings,
   notifyExpirations,
+  nudgeStaleQuotes,
   recoverUnfanoutedRfqs,
   searchAlertFlush,
   type WorkerDeps,
@@ -58,6 +59,11 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   const expiredListings = await notifyExpiredListings(deps);
   if (expiredListings)
     logInfo("worker.expired_listings", { count: expiredListings });
+
+  // Stale-quote buyer nudge (QA-422) — quoted RFQs whose offers all went
+  // cold mail the buyer once, deep-linking their /quotes inbox.
+  const nudged = await nudgeStaleQuotes(deps);
+  if (nudged) logInfo("worker.quote_nudges", { count: nudged });
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });

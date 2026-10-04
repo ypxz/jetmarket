@@ -35,6 +35,9 @@ export interface WorkerDeps {
   /** Vertical's dated-inventory expiry shape (QA-418) — machinery has
    *  none, so the listing-expiry sweep no-ops there. */
   expiry?: { type: string; attributeKey: string };
+  /** Hours of quote silence before the buyer nudge (QA-422); defaults to
+   *  48, <=0 disables the sweep. */
+  quoteNudgeHours?: number;
 }
 
 function at(deps: WorkerDeps): Date {
@@ -303,6 +306,61 @@ export async function notifyExpiredListings(deps: WorkerDeps): Promise<number> {
     } catch (e) {
       logWarn("worker.listing_expiry_email_failed", {
         listingId: l.listingId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * Stale-quote buyer nudge (QA-422): quotes landed, the buyer went quiet —
+ * one branded mail per RFQ deep-linking their /quotes inbox (the per-RFQ
+ * bearer token in the fragment, per AGENTS). Claims once per RFQ via the
+ * sweep's quote_nudge_mailed_at stamp; a fresh quote resets the window.
+ */
+export async function nudgeStaleQuotes(deps: WorkerDeps): Promise<number> {
+  const hours = deps.quoteNudgeHours ?? 48;
+  if (!(hours > 0)) return 0;
+  const rows = await deps.repo.sweepStaleQuotes({
+    vertical: deps.vertical,
+    olderThan: new Date(at(deps).getTime() - hours * 3_600_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
+        r.buyerEmail,
+      )}#t=${encodeURIComponent(r.accessToken)}`;
+      const subject =
+        r.quoteCount === 1
+          ? `1 quote is waiting on your request`
+          : `${r.quoteCount} quotes are waiting on your request`;
+      const body =
+        `Your request${
+          r.listingTitle ? ` for "${r.listingTitle}"` : ""
+        } on ${site.name} has ${r.quoteCount} operator quote${
+          r.quoteCount === 1 ? "" : "s"
+        } waiting for a decision. Compare them and pick the one that fits — ` +
+        `operators hold their offers open only while the request is live.`;
+      await deps.email.send({
+        to: r.buyerEmail,
+        subject,
+        text: `${body}\n\nYour quotes: ${quotesUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: quotesUrl, label: "View your quotes" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "quote_nudge_sent",
+        props: { rfqId: r.rfqId, quotes: r.quoteCount },
+      });
+    } catch (e) {
+      logWarn("worker.quote_nudge_failed", {
+        rfqId: r.rfqId,
         error: e instanceof Error ? e.message : String(e),
       });
     }

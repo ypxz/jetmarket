@@ -85,6 +85,23 @@ export interface WorkerRepo {
       legDate: string;
     }[]
   >;
+  /** QA-422 stale-quote nudge: claim RFQs that sat 'quoted' with every live
+   *  quote older than `olderThan` — one statement claims + stamps
+   *  quote_nudge_mailed_at under the row lock so racing ticks mail once.
+   *  A fresh quote resets the window (max(created_at) comparison). */
+  sweepStaleQuotes(input: {
+    vertical: string;
+    olderThan: Date;
+    limit?: number;
+  }): Promise<
+    {
+      rfqId: string;
+      buyerEmail: string;
+      accessToken: string;
+      listingTitle: string | null;
+      quoteCount: number;
+    }[]
+  >;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
@@ -390,6 +407,59 @@ export function createWorkerRepo(db: Db): WorkerRepo {
         from stamped s
         join operators o on o.id = s."operatorId"
         join users u on u.id = o.user_id
+      `);
+      return rows;
+    },
+
+    async sweepStaleQuotes({ vertical, olderThan, limit = 50 }) {
+      // 'quoted' + every live (sent) quote stale = the RFQ went quiet after
+      // quotes landed. The stamped CTE re-checks quote_nudge_mailed_at IS
+      // NULL under the row lock — a racing tick mails nobody twice.
+      const rows = await db.execute<{
+        rfqId: string;
+        buyerEmail: string;
+        accessToken: string;
+        listingTitle: string | null;
+        quoteCount: number;
+      }>(sql`
+        with due as (
+          select r.id
+          from rfqs r
+          where r.vertical = ${vertical}
+            and r.status = 'quoted'
+            and r.quote_nudge_mailed_at is null
+            and exists (
+              select 1 from quotes q
+              where q.rfq_id = r.id and q.status = 'sent'
+            )
+            and (
+              select max(q2.created_at) from quotes q2
+              where q2.rfq_id = r.id and q2.status = 'sent'
+            ) < ${olderThan.toISOString()}
+          limit ${limit}
+        ),
+        stamped as (
+          update rfqs r
+          set quote_nudge_mailed_at = now()
+          where r.id in (select id from due)
+            and r.quote_nudge_mailed_at is null
+          returning
+            r.id as "rfqId",
+            r.buyer_email as "buyerEmail",
+            r.access_token as "accessToken",
+            r.listing_id as "listingId"
+        )
+        select
+          s."rfqId",
+          s."buyerEmail",
+          s."accessToken",
+          l.title as "listingTitle",
+          (
+            select count(*)::int from quotes q
+            where q.rfq_id = s."rfqId" and q.status = 'sent'
+          ) as "quoteCount"
+        from stamped s
+        left join listings l on l.id = s."listingId"
       `);
       return rows;
     },

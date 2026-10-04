@@ -637,6 +637,113 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       );
   });
 
+  it("nudges the buyer once when all live quotes went stale (QA-422)", async () => {
+    const ops = await db
+      .select({ id: operators.id })
+      .from(operators)
+      .limit(2);
+    const [op, op2] = ops;
+    const tag = Date.now();
+    const mkRfq = async (status: "new" | "quoted" | "closed") => {
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical: "jets",
+          buyerEmail: `nudge-${tag}@x.com`,
+          status,
+          fields: { dateTo: isoIn(10) },
+        })
+        .returning({ id: rfqs.id, accessToken: rfqs.accessToken });
+      return r!;
+    };
+    const mkQuote = (
+      rfqId: string,
+      status: "sent" | "withdrawn" = "sent",
+      opId = op!.id,
+    ) =>
+      db
+        .insert(quotes)
+        .values({ rfqId, operatorId: opId, amountMinor: 10000, status })
+        .returning({ id: quotes.id });
+    const backdate = (quoteId: string, iso: string) =>
+      db.update(quotes).set({ createdAt: new Date(iso) }).where(eq(quotes.id, quoteId));
+
+    const stale = new Date(Date.now() - 72 * 3_600_000).toISOString();
+    const fresh = new Date(Date.now() - 60 * 60_000).toISOString(); // 1h ago
+
+    // stale-quoted: 2 sent quotes, all older than the window → claimable.
+    const rfqStale = await mkRfq("quoted");
+    // Two DISTINCT operators — quotes_rfq_operator_live_uniq caps one live
+    // quote per operator per RFQ.
+    const [q1] = await mkQuote(rfqStale.id);
+    const [q2] = await mkQuote(rfqStale.id, "sent", op2!.id);
+    await backdate(q1!.id, stale);
+    await backdate(q2!.id, stale);
+
+    // fresh-quoted: one stale + one fresh 'sent' — the fresh quote resets
+    // the silence window, so no nudge yet.
+    const rfqFresh = await mkRfq("quoted");
+    const [q3] = await mkQuote(rfqFresh.id);
+    const [q4] = await mkQuote(rfqFresh.id, "sent", op2!.id);
+    await backdate(q3!.id, stale);
+    await backdate(q4!.id, fresh);
+
+    // dead-quoted: only a withdrawn quote — nothing live to nudge about.
+    const rfqDead = await mkRfq("quoted");
+    const [q5] = await mkQuote(rfqDead.id, "withdrawn");
+    await backdate(q5!.id, stale);
+
+    // open-but-quoted-less: a sent quote on a non-'quoted' rfq stays out.
+    const rfqOpen = await mkRfq("new");
+    const [q6] = await mkQuote(rfqOpen.id);
+    await backdate(q6!.id, stale);
+
+    const window = new Date(Date.now() - 48 * 3_600_000);
+    const claimed = await deps().repo.sweepStaleQuotes({
+      vertical: "jets",
+      olderThan: window,
+    });
+    const ids = claimed.map((c) => c.rfqId);
+    expect(ids).toContain(rfqStale.id);
+    expect(ids).not.toContain(rfqFresh.id);
+    expect(ids).not.toContain(rfqDead.id);
+    expect(ids).not.toContain(rfqOpen.id);
+    const mine = claimed.find((c) => c.rfqId === rfqStale.id)!;
+    expect(mine.quoteCount).toBe(2);
+    expect(mine.buyerEmail).toBe(`nudge-${tag}@x.com`);
+    expect(mine.accessToken).toBe(rfqStale.accessToken);
+
+    // Once-only: the claim stamped quote_nudge_mailed_at — re-sweep misses.
+    expect(
+      (await deps().repo.sweepStaleQuotes({ vertical: "jets", olderThan: window }))
+        .map((c) => c.rfqId),
+    ).not.toContain(rfqStale.id);
+    const [stamped] = await db
+      .select({ t: rfqs.quoteNudgeMailedAt })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqStale.id));
+    expect(stamped!.t).toBeTruthy();
+
+    // Handler end-to-end: a second stale-quoted RFQ → outbox mail to buyer.
+    const rfqMail = await mkRfq("quoted");
+    const [q7] = await mkQuote(rfqMail.id);
+    await backdate(q7!.id, stale);
+    const { nudgeStaleQuotes } = await import("../../src/handlers");
+    expect(await nudgeStaleQuotes(deps())).toBeGreaterThanOrEqual(1);
+    const outbox = readOutbox(outboxDir);
+    const mail = outbox.find(
+      (m) =>
+        m.to === `nudge-${tag}@x.com` &&
+        (m.text ?? "").includes("/quotes?email="),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.subject).toContain("quote");
+    expect(mail!.text).toContain(`#t=${encodeURIComponent(rfqMail.accessToken)}`);
+
+    await db.delete(quotes).where(inArray(quotes.id, [q1!.id, q2!.id, q3!.id, q4!.id, q5!.id, q6!.id, q7!.id]));
+    await db.delete(rfqs).where(inArray(rfqs.id, [rfqStale.id, rfqFresh.id, rfqDead.id, rfqOpen.id, rfqMail.id]));
+  });
+
   it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {
     // Scale-out safety: two workers polling the same queue must partition
     // the pending set, not duplicate it. Serial tests can't prove the

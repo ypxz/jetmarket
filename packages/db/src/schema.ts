@@ -111,6 +111,11 @@ export const rfqs = pgTable(
     // Buyer concierge ($49/request): paid expedite — delayed fan-out matches
     // deliver immediately instead of after the free-plan delay.
     concierge: boolean("concierge").notNull().default(false),
+    // QA-422: once-only stamp — the worker's stale-quote nudge mails the
+    // buyer at most once per RFQ; NULL rows are claimable.
+    quoteNudgeMailedAt: timestamp("quote_nudge_mailed_at", {
+      withTimezone: true,
+    }),
     status: text("status", {
       enum: ["new", "matched", "quoted", "closed", "spam"],
     })
