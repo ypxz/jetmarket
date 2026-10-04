@@ -266,6 +266,43 @@ export async function notifyBuyerQuoteWithdrawn(
   }
 }
 
+/** Admin force-closed a live RFQ (QA-525): the buyer hears their request
+ *  ended — a silent close strands them waiting on quotes that are gone.
+ *  (Spam stays deliberately silent; this path is for legit-but-dead
+ *  requests, so the copy stays neutral — no moderation detail leaks.) */
+export async function notifyBuyerRfqClosed(
+  repo: Repo,
+  rfq: Rfq,
+): Promise<void> {
+  try {
+    const listing = rfq.listingId
+      ? await repo.getListing(rfq.listingId)
+      : undefined;
+    const m = await mailCopy(rfq.locale);
+    const title = listing?.title ?? mailT(m, "shared.aListing");
+    const subject = mailT(m, "rfqClosedByAdmin.subject", { title });
+    const body = mailT(m, "rfqClosedByAdmin.body", {
+      title,
+      site: site.name,
+    });
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.rfq_closed_failed", {
+      rfqId: rfq.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 /** Operator revised their still-open quote (QA-439): the buyer hears the
  *  new terms — a silent edit would blindside the accept decision. */
 export async function notifyBuyerQuoteRevised(

@@ -338,6 +338,10 @@
     "counterDeclined": {
       "subject": "Your {title} counter was declined",
       "body": "The operator declined your counter of {counterAmount} {currency} — the ask still stands at {amount} {currency}. You can accept it or make a new counter from {site}."
+    },
+    "rfqClosedByAdmin": {
+      "subject": "Your request for “{title}” was closed",
+      "body": "The {site} team closed your request for \"{title}\". Any open quotes on it have been withdrawn. You can start a new request from the listing page any time."
     }
   },
   "listing": {
@@ -1311,7 +1315,8 @@
     "colAdmin": "Admin",
     "colAction": "Action",
     "colTarget": "Target",
-    "noActivity": "No moderation activity yet."
+    "noActivity": "No moderation activity yet.",
+    "closeRfq": "Close request"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

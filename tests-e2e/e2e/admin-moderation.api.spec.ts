@@ -3,6 +3,33 @@
 // republishable nudge, and moderation is admin-only.
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
 import { isoDateIn } from '../helpers/flow';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '..', '..');
+const OUTBOX_DIRS = [
+  path.join(repoRoot, 'apps', 'web', 'tmp', 'outbox'),
+  path.join(repoRoot, 'tmp', 'outbox'),
+];
+
+/** Latest mock outbox file addressed to `email`, or null. */
+function latestMailTo(email: string): string | null {
+  for (const dir of OUTBOX_DIRS) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.eml'))
+      .map((f) => path.join(dir, f))
+      .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    for (const file of files) {
+      const body = fs.readFileSync(file, 'utf8');
+      if (body.toLowerCase().includes(email.toLowerCase())) return body;
+    }
+  }
+  return null;
+}
 
 // Isolated rate-limit bucket per spec file — the dev server keeps
 // buckets across the whole suite run (and across runs when reused), so
@@ -493,4 +520,115 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   });
   expect(spammed.status()).toBe(200);
   expect(((await spammed.json()) as { status: string }).status).toBe('spam');
+});
+
+// QA-525: admin force-close — the flagged/live-RFQ queue could spam junk
+// or dismiss flags, but a legit-but-dead request the buyer won't close had
+// no tool. 'closed' mirrors the buyer close (CAS + sent-quote decline
+// cascade + operator mail) and additionally mails the buyer.
+test('admin force-close: live RFQ closes, sent quote declines, buyer mailed (QA-525)', async () => {
+  test.setTimeout(60_000);
+
+  const operator = await login(`e2e-fc-operator-${run}@jetmarket.local`, 'operator');
+  const opRes = await operator.post('/api/operators', {
+    data: { name: `E2E FC Ops ${run}`, baseAirport: 'LSZH', fleetSummary: 'e2e' },
+  });
+  expect(opRes.status()).toBe(201);
+  const listingId = await createListing(operator, `E2E FC Charter ${run}`);
+
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.2.10' },
+  });
+  const BUYER = `e2e-fc-buyer-${run}@jetmarket.local`;
+  const rfq = await publicCtx.post('/api/rfqs', {
+    data: {
+      listingId,
+      buyerEmail: BUYER,
+      fields: {
+        departure: 'ZRH',
+        arrival: 'NCE',
+        dateFrom: isoDateIn(14),
+        dateTo: isoDateIn(16),
+        passengers: 2,
+        budgetUsd: 30000,
+        name: 'FC Buyer',
+        email: BUYER,
+      },
+    },
+  });
+  expect(rfq.status()).toBe(201);
+  const { rfqId, accessToken } = (await rfq.json()) as {
+    rfqId: string;
+    accessToken: string;
+  };
+  const quote = await operator.post('/api/quotes', {
+    data: { rfqId, amount: 28000, message: 'standing offer' },
+  });
+  expect(quote.status()).toBe(201);
+  const quoteId = ((await quote.json()) as { id: string }).id;
+
+  // Non-admin 403s — moderation is admin-only even on the new target.
+  expect(
+    (await operator.post(`/api/admin/rfqs/${rfqId}/status`, {
+      data: { status: 'closed' },
+    })).status(),
+  ).toBe(403);
+
+  const admin = await login(ADMIN_EMAIL);
+  const close = await admin.post(`/api/admin/rfqs/${rfqId}/status`, {
+    data: { status: 'closed' },
+  });
+  expect(close.status()).toBe(200);
+  const closedBody = (await close.json()) as { status: string; declined: number };
+  expect(closedBody.status).toBe('closed');
+  expect(closedBody.declined).toBe(1);
+
+  // The decline cascade landed: the standing offer reads 'declined' in
+  // the buyer's own inbox.
+  const buyerInbox = await publicCtx.get(
+    `/api/buyer/quotes?email=${encodeURIComponent(BUYER)}`,
+    { headers: { 'x-rfq-token': accessToken } },
+  );
+  expect(buyerInbox.ok()).toBeTruthy();
+  const inboxRfqs = (await buyerInbox.json()) as {
+    id: string;
+    status: string;
+    quotes: { id: string; status: string }[];
+  }[];
+  const closedRfq = inboxRfqs.find((r) => r.id === rfqId);
+  expect(closedRfq?.status).toBe('closed');
+  expect(closedRfq?.quotes.find((q) => q.id === quoteId)?.status).toBe(
+    'declined',
+  );
+
+  // Admin page + audit feed reflect it.
+  const adminHtml = await (await admin.get('/en/admin')).text();
+  const rfqRow = adminHtml.match(
+    new RegExp(`<tr[^>]*data-testid="admin-rfq-${rfqId}"[^>]*>[\\s\\S]*?</tr>`),
+  )?.[0];
+  expect(rfqRow).toContain('closed');
+
+  // Replay 409s — terminal rows refuse the flip.
+  expect(
+    (await admin.post(`/api/admin/rfqs/${rfqId}/status`, {
+      data: { status: 'closed' },
+    })).status(),
+  ).toBe(409);
+  // …and spam can't reopen it either.
+  expect(
+    (await admin.post(`/api/admin/rfqs/${rfqId}/status`, {
+      data: { status: 'spam' },
+    })).status(),
+  ).toBe(409);
+
+  // The buyer heard their request was closed (mock outbox — the close mail
+  // is the one addressed to the buyer mentioning the listing title).
+  let buyerMail: string | null = null;
+  for (let i = 0; i < 20 && !buyerMail; i++) {
+    buyerMail = latestMailTo(BUYER);
+    if (!buyerMail) await new Promise((r) => setTimeout(r, 500));
+  }
+  expect(buyerMail).not.toBeNull();
+  expect(buyerMail!.toLowerCase()).toContain('closed');
+  expect(buyerMail!).toContain(`E2E FC Charter ${run}`);
 });

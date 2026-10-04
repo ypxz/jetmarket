@@ -338,6 +338,10 @@
     "counterDeclined": {
       "subject": "Ihr {title}-Gegenangebot wurde abgelehnt",
       "body": "Der Anbieter hat Ihr Gegenangebot von {counterAmount} {currency} abgelehnt — sein Angebot gilt weiterhin zu {amount} {currency}. Sie können es annehmen oder auf {site} neu verhandeln."
+    },
+    "rfqClosedByAdmin": {
+      "subject": "Ihre Anfrage für „{title}“ wurde geschlossen",
+      "body": "Das {site}-Team hat Ihre Anfrage für \"{title}\" geschlossen. Alle offenen Angebote dazu wurden zurückgezogen. Sie können jederzeit eine neue Anfrage über die Angebotsseite starten."
     }
   },
   "listing": {
@@ -1311,7 +1315,8 @@
     "colAdmin": "Admin",
     "colAction": "Aktion",
     "colTarget": "Ziel",
-    "noActivity": "Noch keine Moderationsaktivität."
+    "noActivity": "Noch keine Moderationsaktivität.",
+    "closeRfq": "Anfrage schließen"
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",

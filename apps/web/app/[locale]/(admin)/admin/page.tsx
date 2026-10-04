@@ -16,7 +16,7 @@ import {
   MarkPaidButton,
   VoidInvoiceButton,
 } from "./mark-paid";
-import { RfqSpamButton } from "./rfq-mod-button";
+import { RfqCloseButton, RfqSpamButton } from "./rfq-mod-button";
 import { BuyerBlockButton } from "./buyer-block-button";
 import { DismissReportButton } from "./report-dismiss";
 import { SuspendButton, VerifyButton } from "./verify-button";
@@ -473,7 +473,10 @@ export default async function AdminPage({
                 <td className="py-2">
                   <span className="inline-flex gap-1">
                     {LIVE_RFQ.has(r.status) ? (
-                      <RfqSpamButton rfqId={r.id} />
+                      <>
+                        <RfqSpamButton rfqId={r.id} />
+                        <RfqCloseButton rfqId={r.id} />
+                      </>
                     ) : null}
                     <BuyerBlockButton
                       email={r.buyerEmail}
@@ -551,7 +554,10 @@ export default async function AdminPage({
                   </td>
                   <td className="py-2">
                     {rfq && LIVE_RFQ.has(rfq.status) ? (
-                      <RfqSpamButton rfqId={rfq.id} />
+                      <span className="inline-flex gap-1">
+                        <RfqSpamButton rfqId={rfq.id} />
+                        <RfqCloseButton rfqId={rfq.id} />
+                      </span>
                     ) : null}
                   </td>
                 </tr>

@@ -13,6 +13,13 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+process.env.EMAIL_OUTBOX_DIR = mkdtempSync(join(tmpdir(), "jm-outbox-"));
+
+import { email } from "@jetmarket/providers";
 import { sessionCookie, signSession } from "../../lib/auth";
 import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Quote, Repo } from "../../lib/repo/types";
@@ -575,9 +582,9 @@ describe("POST /api/admin/rfqs/[id]/status (QA-181)", () => {
 
     const admin = await repo.createUser(`admin-rfq-${rfq.id.slice(0, 6)}@test.dev`, "admin");
     asUser(admin.id);
-    // Only 'spam' is a valid moderation target.
+    // Moderation targets are spam|closed — a status re-write isn't one.
     const invalid = await moderateRfq(
-      post({ status: "closed" }),
+      post({ status: "open" }),
       params(rfq.id),
     );
     expect(invalid.status).toBe(422);
@@ -595,6 +602,42 @@ describe("POST /api/admin/rfqs/[id]/status (QA-181)", () => {
       params("00000000-0000-0000-0000-000000000000"),
     );
     expect(missing.status).toBe(404);
+  });
+
+  it("QA-525: 'closed' force-closes a live RFQ — sent quotes decline and the buyer is mailed", async () => {
+    const repo = await getMemoryRepo();
+    const { rfq, quote, buyerEmail, listing } = await fixture(repo);
+    const outboxBefore = email.readOutbox(
+      process.env.EMAIL_OUTBOX_DIR,
+    ).length;
+
+    const admin = await repo.createUser(
+      `admin-close-${rfq.id.slice(0, 6)}@test.dev`,
+      "admin",
+    );
+    asUser(admin.id);
+
+    const res = await moderateRfq(post({ status: "closed" }), params(rfq.id));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; declined: number };
+    expect(body.status).toBe("closed");
+    expect(body.declined).toBe(1);
+    expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
+    expect((await repo.getQuote(quote.id))?.status).toBe("declined");
+
+    // Buyer + operator both heard: close mail to the buyer, decline mail
+    // to the quoting operator.
+    const sent = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).slice(outboxBefore);
+    expect(sent.some((m) => m.to === buyerEmail && m.subject.includes(listing.title))).toBe(true);
+
+    // Terminal — replay 409s, and a late accept can't mint a deal.
+    const again = await moderateRfq(post({ status: "closed" }), params(rfq.id));
+    expect(again.status).toBe(409);
+    const lateAccept = await acceptQuote(
+      post({ buyerEmail, token: rfq.accessToken }),
+      params(quote.id),
+    );
+    expect(lateAccept.status).toBe(409);
   });
 });
 
