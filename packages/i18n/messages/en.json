@@ -164,6 +164,7 @@
     "by": "by {name}",
     "bestPrice": "Best price",
     "updated": "Updated",
+    "staleOffer": "Sent before your latest update",
     "dealsCount": "{count, plural, one {# deal closed} other {# deals closed}}",
     "decline": "Decline",
     "operatorUnavailable": "This operator isn't available — their offer can't be accepted.",

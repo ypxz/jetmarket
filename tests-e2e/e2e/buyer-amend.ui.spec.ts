@@ -65,6 +65,19 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     });
   });
 
+  await step('operator sends a quote on the request', async () => {
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    await expect(item).toBeVisible();
+    await item.locator(tidPrefix('quote-amount-')).fill('13500');
+    await item.locator(tidPrefix('quote-send-')).click();
+    await expect(item.locator(tidPrefix('op-quote-'))).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
   await step('buyer opens the inline edit form and changes departure', async () => {
     await buyer.getByTestId('rfq-view-quotes').click();
     const emailInput = buyer.getByTestId('buyer-email');
@@ -89,11 +102,45 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     await expect(buyer.getByTestId('accept-msg')).toContainText(/updated/i);
     await expect(rfq.locator(tidPrefix('rfq-echo-'))).toContainText('GVA');
     await expect(rfq.locator(tidPrefix('rfq-edit-form-'))).toHaveCount(0);
+
+    // QA-485: the offer sent BEFORE the amend is flagged — the buyer can
+    // tell which quotes predate the latest request details.
+    const quoteCard = buyer.locator('li[data-testid^="quote-"]').first();
+    await expect(quoteCard.locator(tidPrefix('quote-stale-'))).toContainText(
+      /before/i,
+    );
   });
 
   await step('the amendment survives a reload', async () => {
     await buyer.reload();
     const rfq = buyer.locator(tidPrefix('buyer-rfq-')).first();
     await expect(rfq.locator(tidPrefix('rfq-echo-'))).toContainText('GVA');
+    await expect(
+      rfq.locator(tidPrefix('quote-stale-')),
+    ).toBeVisible();
+  });
+
+  await step('operator revision clears the pre-update flag', async () => {
+    const opQuote = operator.locator(tidPrefix('op-quote-')).first();
+    await expect(opQuote).toBeVisible();
+    // The form mounts on toggle — before that the revise-* match is unique.
+    await opQuote.locator('button[data-testid^="revise-"]').click();
+    await opQuote.locator('input[data-testid^="revise-amount-"]').fill('12800');
+    await opQuote
+      .locator('button[data-testid^="revise-save-"]')
+      .click();
+    await expect(opQuote.locator(tidPrefix('quote-state-'))).toContainText(
+      /sent/i,
+      { timeout: 15_000 },
+    );
+
+    await buyer.reload();
+    const rfq = buyer.locator(tidPrefix('buyer-rfq-')).first();
+    const quoteCard = rfq.locator('li[data-testid^="quote-"]').first();
+    // revised after the amend → no stale flag; the QA-445 Updated chip shows
+    await expect(quoteCard.locator(tidPrefix('quote-stale-'))).toHaveCount(0);
+    await expect(
+      quoteCard.locator(tidPrefix('quote-updated-')),
+    ).toBeVisible();
   });
 });

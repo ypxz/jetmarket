@@ -41,6 +41,9 @@ interface Rfq {
   concierge?: boolean;
   buyerEmail: string;
   createdAt: string;
+  /** QA-482: last content-write stamp — a quote whose own updatedAt is
+   *  older predates the latest amendment (QA-485 stale-offer chip). */
+  updatedAt: string;
   /** The request's own field map — echoed by the API for the repost
    *  handoff (QA-410); contact keys ride along for the form to reuse. */
   fields?: Record<string, unknown>;
@@ -550,6 +553,15 @@ function QuotesInner() {
                           {q.status === "sent" && q.updatedAt !== q.createdAt ? (
                             <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border" data-testid={`quote-updated-${q.id}`}>
                               {t("updated")}
+                            </span>
+                          ) : null}{" "}
+                          {/* QA-485: the request was amended AFTER this
+                              offer's last touch — the operator was mailed
+                              the diff but the buyer needs the same signal
+                              when comparing. Clears when they revise. */}
+                          {q.status === "sent" && r.updatedAt > q.updatedAt ? (
+                            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-warning ring-1 ring-border" data-testid={`quote-stale-${q.id}`}>
+                              {t("staleOffer")}
                             </span>
                           ) : null}{" "}
                           <span className="text-sm text-muted">
