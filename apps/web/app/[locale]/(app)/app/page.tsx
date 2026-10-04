@@ -120,6 +120,7 @@ export default async function OperatorDashboard() {
     avgResponseH,
     ratingSelf,
     declineReasons,
+    countersWaiting,
   ] = isPro
     ? await Promise.all([
         repo.countRfqs({ operatorId: operator.id, vertical: getVertical().slug }),
@@ -154,8 +155,12 @@ export default async function OperatorDashboard() {
         // QA-509: QA-508's reason data aggregated — "why am I losing"
         // beside the bare win/loss rates.
         repo.countQuotesByDeclineReason(operator.id),
+        // QA-517: the funnel's hottest open items — buyers who named a
+        // price and still wait on an answer. Same live-only predicate
+        // as the ?f=countered inbox filter.
+        repo.countQuotes({ operatorId: operator.id, countered: true }),
       ])
-    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined, {}];
+    : [0, 0, 0, 0, 0, 0, 0, 0, undefined, undefined, {}, 0];
   const winRate =
     quotesWon + quotesLost > 0
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
@@ -265,6 +270,7 @@ export default async function OperatorDashboard() {
                   ["statWon", quotesWon],
                   ["statWinRate", winRate === null ? "—" : `${winRate}%`],
                   ["statSeenRate", seenRate === null ? "—" : `${seenRate}%`],
+                  ["statCountered", countersWaiting],
                   [
                     "statReply",
                     avgResponseH === undefined

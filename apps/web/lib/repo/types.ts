@@ -788,6 +788,10 @@ export interface Repo {
     since?: string;
     /** QA-506/507: only count quotes with a buyer read receipt set. */
     buyerSeen?: boolean;
+    /** QA-517: only count quotes holding a live buyer counter ('sent'
+     *  + countered_at set) — the QA-513 "countered" predicate; a revise
+     *  or close drops the row. */
+    countered?: boolean;
   }): Promise<number>;
   /** QA-509: the "why am I losing" leg of the funnel — declined-quote
    *  count grouped by the buyer's QA-508 reason key. Rows declined with

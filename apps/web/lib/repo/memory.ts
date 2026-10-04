@@ -967,12 +967,18 @@ class MemoryRepo implements Repo {
     }
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  async countQuotes(filter?: { operatorId?: string; status?: Quote["status"]; since?: string; buyerSeen?: boolean }) {
+  async countQuotes(filter?: { operatorId?: string; status?: Quote["status"]; since?: string; buyerSeen?: boolean; countered?: boolean }) {
     let out = [...this.quotes.values()];
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
     if (filter?.status) out = out.filter((q) => q.status === filter.status);
     if (filter?.since) out = out.filter((q) => q.createdAt >= filter.since!);
     if (filter?.buyerSeen) out = out.filter((q) => !!q.buyerSeenAt);
+    // QA-517: a counter only counts while it waits — an answered one
+    // (revise clears it; close transitions the row) is a done thing.
+    if (filter?.countered)
+      out = out.filter(
+        (q) => q.status === "sent" && q.counteredAt !== undefined,
+      );
     return out.length;
   }
   async countQuotesByDeclineReason(operatorId: string) {

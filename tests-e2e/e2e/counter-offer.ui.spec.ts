@@ -259,6 +259,21 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     expect((await resp).status()).toBe(200);
   });
 
+  // QA-517: while the round-2 counter still waits, the operator goes
+  // Pro — the funnel's "Counters waiting" tile should read exactly 1.
+  await step('operator upgrades — stat tile counts the waiting counter', async () => {
+    await operator.goto('/app/billing');
+    await operator.getByTestId('checkout-pro').click();
+    await expect(operator.getByTestId('pro-active')).toBeVisible();
+    await operator.goto('/app');
+    const stats = operator.getByTestId('operator-stats');
+    await expect(stats).toBeVisible();
+    // The round-2 counter sits unanswered; round-1's was answered by
+    // the revise so it no longer counts. Tile text is label + value
+    // (a bare '1' would false-match the 100% seen-rate tile).
+    await expect(stats).toContainText(/Counters waiting\s*1/);
+  });
+
   await step('operator takes the counter — deal closes at 9,000 (QA-515)', async () => {
     await operator.goto('/app/rfqs');
     const item = operator
@@ -280,5 +295,10 @@ test('buyer counters a quote; operator revises; buyer accepts', async ({
     // Deal row on the dashboard carries the countered price — not the ask.
     await operator.goto('/app');
     await expect(operator.locator('main')).toContainText('9,000');
+    // QA-517: the accepted counter left the waiting bucket — the tile
+    // reads 0 again beside the won deal.
+    await expect(operator.getByTestId('operator-stats')).toContainText(
+      /Counters waiting\s*0/,
+    );
   });
 });

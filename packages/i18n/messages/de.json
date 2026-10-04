@@ -1035,6 +1035,7 @@
       "statWon": "Gewonnene Angebote",
       "statWinRate": "Gewinnquote",
       "statSeenRate": "Gesehen-Rate",
+      "statCountered": "Offene Gegenangebote",
       "declineBreakdown": "Verloren wegen: {reasons}",
       "declineNoReason": "ohne Angabe",
       "statReply": "Übliche Antwortzeit",

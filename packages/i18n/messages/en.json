@@ -1035,6 +1035,7 @@
       "statWon": "Quotes won",
       "statWinRate": "Win rate",
       "statSeenRate": "Seen rate",
+      "statCountered": "Counters waiting",
       "declineBreakdown": "Lost to: {reasons}",
       "declineNoReason": "no reason given",
       "statReply": "Typical reply",

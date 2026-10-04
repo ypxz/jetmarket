@@ -1217,6 +1217,74 @@ export function repoContract(
       ).toEqual([]);
     });
 
+    it("countQuotes({countered}) counts only live unanswered counters (QA-517)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const u = await repo.createUser(`cw-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: u.id,
+        name: "CW Op",
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `CW Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const mkPair = async (n: string) => {
+        const rfq = await repo.createRfq({
+          vertical: "jets",
+          listingId: listing.id,
+          buyerEmail: `cw-${n}-${tag}@test.dev`,
+          fields: { ref: n },
+          dedupeKey: `cw-${n}-${tag}`,
+        });
+        const q = await repo.createQuote({
+          rfqId: rfq.id,
+          operatorId: op.id,
+          amount: 10000,
+          currency: "USD",
+          message: "",
+        });
+        return { rfq, q: q! };
+      };
+      const count = () =>
+        repo.countQuotes({ operatorId: op.id, countered: true });
+
+      const { q: hot } = await mkPair("hot");
+      const { q: plain } = await mkPair("plain");
+      expect(await count()).toBe(0); // nothing countered yet
+
+      // A live counter counts; a plain sent quote doesn't.
+      expect(await repo.counterQuote(hot.id, 8000)).toBe(true);
+      expect(await count()).toBe(1);
+
+      // Answering (revise clears the counter) drops it; a counter on
+      // someone ELSE's quote never enters this operator's bucket.
+      expect(await repo.reviseQuote(hot.id, op.id, {
+        amount: 9500,
+        currency: "USD",
+        message: "",
+      })).toBeTruthy();
+      expect(await count()).toBe(0);
+      await repo.setQuoteStatus(plain.id, "declined", "sent");
+
+      // A re-countered round re-arms the count.
+      expect(await repo.counterQuote(hot.id, 9000)).toBe(true);
+      expect(await count()).toBe(1);
+      // And closing the quote drops it for good.
+      await repo.setQuoteStatus(hot.id, "accepted", "sent");
+      expect(await count()).toBe(0);
+    });
+
     it("sort='deadline' orders operator lists by the liveness horizon; concierge rank is operator-only (QA-443)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

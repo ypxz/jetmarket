@@ -1560,6 +1560,7 @@ export class DrizzleRepo implements Repo {
     status?: QuoteStatus;
     since?: string;
     buyerSeen?: boolean;
+    countered?: boolean;
   }): Promise<number> {
     const conds = [];
     if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
@@ -1567,6 +1568,13 @@ export class DrizzleRepo implements Repo {
     if (filter?.since)
       conds.push(gte(quotes.createdAt, new Date(filter.since)));
     if (filter?.buyerSeen) conds.push(isNotNull(quotes.buyerSeenAt));
+    // QA-517 "counters waiting": the same live-only predicate the
+    // ?f=countered inbox uses — answered counters (revised, closed)
+    // leave the bucket.
+    if (filter?.countered) {
+      conds.push(eq(quotes.status, "sent"));
+      conds.push(isNotNull(quotes.counteredAt));
+    }
     const [r] = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(quotes)
