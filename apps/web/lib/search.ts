@@ -30,7 +30,7 @@ interface ParsedParams {
   verifiedOnly?: boolean;
 }
 
-const SORTS: ListingSort[] = ["newest", "price_asc", "price_desc"];
+const SORTS: ListingSort[] = ["newest", "price_asc", "price_desc", "rating"];
 
 function parseParams(params: SearchParams): ParsedParams {
   const vertical = getVertical();

@@ -489,6 +489,15 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(buyer.getByTestId('operator-rating')).toHaveText(
         '★ 5.0 (1 buyer rating)',
       );
+
+      // QA-453: the comparison grid shows ★ on cards and can sort by it —
+      // the rated op's listing outranks every unrated competitor.
+      await buyer.goto(
+        `/search?q=${encodeURIComponent(LISTING_TITLE)}&sort=rating`,
+      );
+      await expect(
+        buyer.getByTestId('search-result').first().getByTestId('listing-rating'),
+      ).toContainText('★ 5.0');
     } finally {
       await sql.end();
     }

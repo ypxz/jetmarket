@@ -6,7 +6,7 @@
 // jets: charter|empty_leg|aircraft_sale, machinery: for_sale|for_rent|auction.
 export type ListingType = string;
 export type ListingStatus = "draft" | "active" | "paused" | "archived";
-export type ListingSort = "newest" | "price_asc" | "price_desc";
+export type ListingSort = "newest" | "price_asc" | "price_desc" | "rating";
 export type UserRole = "buyer" | "operator" | "admin";
 export type Plan = "free" | "pro";
 
@@ -287,6 +287,9 @@ export interface Repo {
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
     /** Result order — `newest` (createdAt desc) is the default. */
+    /** "rating" (QA-453): listings whose operator carries buyer ratings
+     *  order by ★ avg desc, unrated operators last. Reputation is
+     *  operator-global — not vertical-scoped (QA-451). */
     sort?: ListingSort;
     /** Page slice applied after all other filters. */
     limit?: number;

@@ -40,6 +40,7 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
               <option value="newest">{t("sortNewest")}</option>
               <option value="price_asc">{t("sortPriceAsc")}</option>
               <option value="price_desc">{t("sortPriceDesc")}</option>
+              <option value="rating">{t("sortRating")}</option>
             </Select>
           </div>
           {vertical.facets.map((f) => {

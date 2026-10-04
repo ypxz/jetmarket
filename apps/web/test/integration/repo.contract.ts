@@ -2493,6 +2493,65 @@ export function repoContract(
       expect(byQuotes[0]!.buyerRating).toBe(5);
       const rates = await repo.ratingSummaryPerOperator([op.id]);
       expect(rates[op.id]).toEqual({ avg: 5, count: 1 });
+      // QA-453: sort="rating" — rated-first by avg desc, unrated last.
+      const lowOp = await repo.upsertOperator({
+        userId: (await repo.createUser(`low-${tag}@test.dev`, "operator")).id,
+        name: `Low ${tag}`,
+        baseAirport: "XXX",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const lowRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `lb-${tag}@test.dev`,
+        fields: {},
+      });
+      const lowQuote = await repo.createQuote({
+        rfqId: lowRfq.id,
+        operatorId: lowOp.id,
+        amount: 4000,
+        currency: "USD",
+        message: "",
+      });
+      const lowDeal = await repo.createDeal({
+        quoteId: lowQuote.id,
+        operatorId: lowOp.id,
+        amount: 4000,
+        currency: "USD",
+        feePct: 0.03,
+        feeAmount: 120,
+        invoiceStatus: "pending",
+      });
+      expect(await repo.rateDeal(lowDeal.id, 1)).toBe(true);
+      const unOp = await repo.upsertOperator({
+        userId: (await repo.createUser(`un-${tag}@test.dev`, "operator")).id,
+        name: `Unrated ${tag}`,
+        baseAirport: "XXX",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+      const mkLi = (opId: string, n: string) =>
+        repo.createListing({
+          vertical: "jets",
+          operatorId: opId,
+          type: "charter",
+          title: `rt-${n}-${tag}`,
+          price: 1000,
+          currency: "USD",
+          photos: [],
+          attributes: {},
+        });
+      const liHi = await mkLi(op.id, "hi");
+      const liLo = await mkLi(lowOp.id, "lo");
+      const liUn = await mkLi(unOp.id, "un");
+      const byRating = await repo.listListings({
+        ids: [liUn.id, liLo.id, liHi.id],
+        sort: "rating",
+      });
+      expect(byRating.map((l) => l.id)).toEqual([liHi.id, liLo.id, liUn.id]);
       expect((await repo.getDeal(deal.id))?.invoiceStatus).toBe("paid");
       expect((await repo.getDeal(deal.id))?.invoiceRef).toBe("inv_test_1");
       // deals.quote_id is unique — a racing double-accept must be rejected.

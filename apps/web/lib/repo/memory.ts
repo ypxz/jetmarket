@@ -236,7 +236,24 @@ class MemoryRepo implements Repo {
         : filter?.sort === "price_desc"
           ? (a: Listing, b: Listing) => b.price - a.price || byNewest(a, b)
           : byFeatured;
-    const out = this.filterListings(filter).sort(cmp);
+    const out = this.filterListings(filter);
+    // QA-453: "rating" needs the summary before sorting — batched once so
+    // the comparator stays sync like its siblings.
+    if (filter?.sort === "rating") {
+      const summary = await this.ratingSummaryPerOperator(
+        [...new Set(out.map((l) => l.operatorId))],
+      );
+      const rated = (l: Listing) => summary[l.operatorId] !== undefined;
+      out.sort(
+        (a, b) =>
+          Number(rated(b)) - Number(rated(a)) ||
+          (summary[b.operatorId]?.avg ?? 0) -
+            (summary[a.operatorId]?.avg ?? 0) ||
+          byNewest(a, b),
+      );
+    } else {
+      out.sort(cmp);
+    }
     const start = filter?.offset ?? 0;
     return filter?.limit !== undefined
       ? out.slice(start, start + filter.limit)

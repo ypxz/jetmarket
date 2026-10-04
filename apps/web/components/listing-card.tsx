@@ -13,9 +13,12 @@ interface ListingCardProps {
   operator?: PublicOperator | null;
   /** Serialized search params — round-trips to the listing's back link. */
   from?: string;
+  /** QA-453: operator's ★ avg/count when the surface already loaded it —
+   *  search results + similar rail batch one summary call. */
+  rating?: { avg: number; count: number };
 }
 
-export async function ListingCard({ listing, operator, from }: ListingCardProps) {
+export async function ListingCard({ listing, operator, from, rating }: ListingCardProps) {
   const vertical = getVertical();
   const vt = await getTranslations(vertical.copy.namespace);
   const ct = await getTranslations("common");
@@ -84,6 +87,11 @@ export async function ListingCard({ listing, operator, from }: ListingCardProps)
               ) : (
                 <Badge variant="warning">{ct("unverified")}</Badge>
               )}
+              {rating ? (
+                <Badge variant="outline" data-testid="listing-rating">
+                  ★ {rating.avg.toFixed(1)} ({rating.count})
+                </Badge>
+              ) : null}
             </p>
           ) : null}
         </CardBody>

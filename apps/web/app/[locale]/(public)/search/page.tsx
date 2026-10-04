@@ -43,6 +43,10 @@ export default async function SearchPage({
       })
     ).map((o) => [o.id, publicOperator(o)] as const),
   );
+  // QA-453: ★ rides the comparison grid — one batched read for every op
+  // the page renders (results rail only; the QA-432 empty-rail stays
+  // rating-free — those are "latest" discovery cards, not comparisons).
+  const ratings = await repo.ratingSummaryPerOperator([...ops.keys()]);
 
   // QA-432: a zero-result page used to dead-end — surface the newest live
   // listings under the empty state so a too-tight filter still lands
@@ -138,6 +142,7 @@ export default async function SearchPage({
                     <ListingCard
                       listing={l}
                       operator={ops.get(l.operatorId) ?? null}
+                      rating={ratings[l.operatorId]}
                       from={fromQuery || undefined}
                     />
                   </div>

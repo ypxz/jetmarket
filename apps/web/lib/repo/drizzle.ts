@@ -549,6 +549,15 @@ export class DrizzleRepo implements Repo {
           ? [asc(listings.priceMinor), desc(listings.createdAt)]
           : filter?.sort === "price_desc"
             ? [desc(listings.priceMinor), desc(listings.createdAt)]
+            : filter?.sort === "rating"
+              ? [
+                  // QA-453: ★ avg across the operator's rated deals —
+                  // correlated subquery keeps it a pure sort key, unrated
+                  // operators sink to NULLS LAST (not avg=0, which would
+                  // punish a never-rated op below a 1-star one).
+                  sql`(select avg(d.buyer_rating)::float8 from deals d join quotes q on q.id = d.quote_id where q.operator_id = ${listings.operatorId} and d.buyer_rating is not null) desc nulls last`,
+                  desc(listings.createdAt),
+                ]
             : [
                 // Default ("newest") ordering honors the Pro plan's
                 // priority-placement feature: pro operators' listings sort
