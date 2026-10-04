@@ -115,7 +115,7 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
 
     // QA-490: the offer card links through to the operator's public
     // profile — the trust-check that used to dead-end on a name.
-    const profile = quoteCard.locator('a[data-testid^="quote-op-profile-"]');
+    const profile = quoteCard.locator('a[data-testid^="op-profile-"]');
     await expect(profile).toBeVisible();
     expect(await profile.getAttribute('href')).toContain('/operators/');
   });

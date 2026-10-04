@@ -628,14 +628,17 @@ function QuotesInner() {
                                 name + stats but the public profile with
                                 fleet/response-time sat unreachable.
                                 Suspended operators' profiles 404, so the
-                                link drops to plain text then. */}
+                                link drops to plain text then. Testid
+                                deliberately NOT quote-*: descendant
+                                [data-testid^="quote-"] locators would
+                                count it as a second card (demo-inbox). */}
                             {q.operator?.id && !q.operator.unavailable ? (
                               <>
                                 {" "}
                                 <Link
                                   href={`/operators/${q.operator.id}`}
                                   className="text-primary underline"
-                                  data-testid={`quote-op-profile-${q.id}`}
+                                  data-testid={`op-profile-${q.id}`}
                                 >
                                   {t("viewProfile")}
                                 </Link>
