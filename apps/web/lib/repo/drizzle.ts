@@ -777,6 +777,7 @@ export class DrizzleRepo implements Repo {
   }
 
   async listRfqs(filter?: {
+    ids?: string[];
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
@@ -846,6 +847,11 @@ export class DrizzleRepo implements Repo {
       return (await q).map((r) => toRfq(r.rfq));
     }
     const conds = [];
+    if (filter?.ids) {
+      const ids = filter.ids.filter(isUuid);
+      if (ids.length === 0) return [];
+      conds.push(inArray(rfqs.id, ids));
+    }
     if (filter?.buyerEmail)
       conds.push(eq(rfqs.buyerEmail, filter.buyerEmail.toLowerCase()));
     if (filter?.vertical)
@@ -1116,10 +1122,12 @@ export class DrizzleRepo implements Repo {
     operatorId?: string;
     ids?: string[];
     rfqIds?: string[];
+    status?: QuoteStatus;
   }): Promise<Quote[]> {
     const conds = [];
     if (filter?.rfqId) conds.push(eq(quotes.rfqId, filter.rfqId));
     if (filter?.operatorId) conds.push(eq(quotes.operatorId, filter.operatorId));
+    if (filter?.status) conds.push(eq(quotes.status, filter.status));
     if (filter?.ids) {
       const ids = filter.ids.filter(isUuid);
       if (ids.length === 0) return [];

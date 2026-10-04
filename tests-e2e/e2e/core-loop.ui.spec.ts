@@ -206,6 +206,20 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
     }
   });
 
+  await step('operator dashboard shows the live offer pipeline (QA-424)', async () => {
+    await operator.goto('/app');
+    const section = operator.getByTestId('operator-open-offers');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Open offers (1)');
+    const row = section.locator(tidPrefix('open-offer-'));
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText(QUOTE_AMOUNT_FMT);
+    await expect(row).toContainText(LISTING_TITLE);
+    // The CTA lands back on the RFQ inbox where the live offer sits.
+    await row.getByRole('link').click();
+    await expect(operator).toHaveURL(/\/app\/rfqs/);
+  });
+
   await step('buyer accepts the quote', async () => {
     // the thanks page's 'view quotes' link carries the per-RFQ bearer token (QA-39)
     await buyer.getByTestId('rfq-view-quotes').click();

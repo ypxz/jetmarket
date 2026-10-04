@@ -47,6 +47,8 @@ export default async function OperatorDashboard() {
     deals,
     dealCount,
     openRfqs,
+    openOffers,
+    openOfferCount,
     sub,
     watchCounts,
     rfqCounts,
@@ -69,6 +71,12 @@ export default async function OperatorDashboard() {
         // writes "closed", memory "expired") — exclude both + spam (QA-163).
         statusNot: ["closed", "expired", "spam"],
       }),
+      // Open-offers pipeline (QA-424): the operator's live 'sent' quotes —
+      // money already on the table awaiting the buyer's decision. The deal
+      // ledger only ever showed CLOSED obligations; nothing answered "what
+      // do I have outstanding?" without opening every RFQ row.
+      repo.listQuotes({ operatorId: operator.id, status: "sent" }),
+      repo.countQuotes({ operatorId: operator.id, status: "sent" }),
       repo.getSubscription(operator.id),
       // Watchlist demand signal (QA-408): one grouped query, chip per row.
       repo.countSearchAlertsByWatch(getVertical().slug),
@@ -114,6 +122,25 @@ export default async function OperatorDashboard() {
       ? Math.round((quotesWon / (quotesWon + quotesLost)) * 100)
       : null;
   const limit = isPro ? "∞" : String(FREE_LISTING_LIMIT);
+
+  // Batch-join the offer rows' context — one listRfqs(ids) + one
+  // listListings(ids) instead of an N+1 per quote (QA-424). Display cap:
+  // the header carries the true total; the wall caps at 20 rows.
+  const offerRfqs = openOffers.length
+    ? await repo.listRfqs({ ids: openOffers.map((q) => q.rfqId) })
+    : [];
+  const offerRfqById = new Map(offerRfqs.map((r) => [r.id, r]));
+  const offerListingIds = [
+    ...new Set(
+      offerRfqs.flatMap((r) => (r.listingId ? [r.listingId] : [])),
+    ),
+  ];
+  const offerListingById = new Map(
+    (offerListingIds.length
+      ? await repo.listListings({ ids: offerListingIds })
+      : []
+    ).map((l) => [l.id, l]),
+  );
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -273,6 +300,45 @@ export default async function OperatorDashboard() {
           </ul>
         )}
       </section>
+
+      {openOffers.length > 0 ? (
+        <section className="mt-10" data-testid="operator-open-offers">
+          <h2 className="text-lg font-semibold">
+            {t("openOffers", { count: openOfferCount })}
+          </h2>
+          <ul className="mt-4 divide-y divide-border rounded-md border border-border">
+            {openOffers.slice(0, 20).map((q) => {
+              const rfq = offerRfqById.get(q.rfqId);
+              const listing = rfq?.listingId
+                ? offerListingById.get(rfq.listingId)
+                : undefined;
+              return (
+                <li
+                  key={q.id}
+                  data-testid={`open-offer-${q.id}`}
+                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                >
+                  <div>
+                    <div className="font-medium">
+                      {formatMoney(q.amount, q.currency)}
+                    </div>
+                    <div className="text-xs text-muted">
+                      {listing?.title ?? t("openOfferFallback")} ·{" "}
+                      {new Date(q.createdAt).toDateString()}
+                    </div>
+                  </div>
+                  <Link
+                    href="/app/rfqs"
+                    className="text-sm font-medium text-primary underline"
+                  >
+                    {t("openOfferCta")}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       {deals.length > 0 ? (
         <section className="mt-10" data-testid="operator-deals">

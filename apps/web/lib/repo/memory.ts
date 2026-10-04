@@ -468,6 +468,7 @@ class MemoryRepo implements Repo {
     return { applied: true, matches };
   }
   async listRfqs(filter?: {
+    ids?: string[];
     buyerEmail?: string;
     operatorId?: string;
     needsQuote?: boolean;
@@ -477,6 +478,10 @@ class MemoryRepo implements Repo {
     offset?: number;
   }): Promise<Rfq[]> {
     let out = [...this.rfqs.values()];
+    if (filter?.ids) {
+      const want = new Set(filter.ids);
+      out = out.filter((r) => want.has(r.id));
+    }
     if (filter?.vertical)
       out = out.filter((r) => r.vertical === filter.vertical);
     // buyerEmail is stored lowercase at create (QA-153); normalize the
@@ -677,10 +682,11 @@ class MemoryRepo implements Repo {
   async getQuote(id: string) {
     return this.quotes.get(id);
   }
-  async listQuotes(filter?: { rfqId?: string; operatorId?: string; ids?: string[]; rfqIds?: string[] }): Promise<Quote[]> {
+  async listQuotes(filter?: { rfqId?: string; operatorId?: string; ids?: string[]; rfqIds?: string[]; status?: Quote["status"] }): Promise<Quote[]> {
     let out = [...this.quotes.values()];
     if (filter?.rfqId) out = out.filter((q) => q.rfqId === filter.rfqId);
     if (filter?.operatorId) out = out.filter((q) => q.operatorId === filter.operatorId);
+    if (filter?.status) out = out.filter((q) => q.status === filter.status);
     if (filter?.ids) {
       const want = new Set(filter.ids);
       out = out.filter((q) => want.has(q.id));

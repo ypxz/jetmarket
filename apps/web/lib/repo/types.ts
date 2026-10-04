@@ -354,6 +354,9 @@ export interface Repo {
     id: string,
   ): Promise<{ applied: boolean; matches: { id: string; operatorId: string }[] }>;
   listRfqs(filter?: {
+    /** Batch-lookup by id (QA-424 — join-style pages fetch their RFQ
+     *  context in one call instead of N getRfq round-trips). */
+    ids?: string[];
     buyerEmail?: string;
     /** Listing owner OR an operator with a delivered (pending) rfq_match. */
     operatorId?: string;
@@ -510,6 +513,9 @@ export interface Repo {
     ids?: string[];
     /** Batch-lookup: quotes belonging to any of these RFQs. */
     rfqIds?: string[];
+    /** Only rows in this status (QA-424 — the dashboard's open-offers
+     *  pipeline reads 'sent' without fetching terminal rows). */
+    status?: QuoteStatus;
   }): Promise<Quote[]>;
   /** Quote count for operator stats — avoids an unbounded listQuotes fetch
    *  on the dashboard (QA-151). */

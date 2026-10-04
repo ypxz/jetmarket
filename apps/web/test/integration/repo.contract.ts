@@ -184,6 +184,23 @@ export function repoContract(
         message: "all-in",
       });
       expect(await repo.listQuotes({ rfqId: rfq.id })).toHaveLength(1);
+      // QA-424 batch/filter additions, both impls: listRfqs ids-lookup
+      // ignores non-uuid noise, listQuotes status isolates live offers.
+      expect(
+        (await repo.listRfqs({ ids: [rfq.id, other.id, "nope"] }))
+          .map((r) => r.id)
+          .sort(),
+      ).toEqual([other.id, rfq.id].sort());
+      expect(await repo.listRfqs({ ids: [] })).toEqual([]);
+      expect(await repo.listRfqs({ ids: ["nope"] })).toEqual([]);
+      expect(
+        (await repo.listQuotes({ operatorId: op.id, status: "sent" })).map(
+          (q) => q.id,
+        ),
+      ).toEqual([quote.id]);
+      expect(
+        await repo.listQuotes({ operatorId: op.id, status: "accepted" }),
+      ).toEqual([]);
       // countQuotes mirrors the same filters without fetching rows (QA-151).
       expect(await repo.countQuotes({ operatorId: op.id })).toBe(1);
       expect(await repo.countQuotes({ operatorId: op.id, status: "sent" })).toBe(1);
