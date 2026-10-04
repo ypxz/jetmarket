@@ -35,10 +35,44 @@ export function ListingActions({ listing }: { listing: Pick<Listing, "id" | "sta
     }
   }
 
+  async function duplicate() {
+    if (pending) return;
+    setPending(true);
+    try {
+      const res = await fetch(`/api/listings/${listing.id}/duplicate`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(data?.error ?? tc("error"));
+        return;
+      }
+      setError(null);
+      const copy = (await res.json()) as { id?: string };
+      // Land on the new draft's editor — the operator renames/publishes it.
+      router.push(copy.id ? `/app/listings/${copy.id}/edit` : "/app");
+    } catch {
+      setError(tc("error"));
+    } finally {
+      setPending(false);
+    }
+  }
+
   const btn =
     "rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50";
   return (
     <span className="flex flex-wrap items-center gap-1">
+      {/* Shown on every status incl. archived — cloning is the revive path. */}
+      <button
+        className={btn}
+        disabled={pending}
+        data-testid={`duplicate-listing-${listing.id}`}
+        onClick={duplicate}
+      >
+        {t("duplicate")}
+      </button>
       {listing.status !== "archived" ? (
         <Link
           href={`/app/listings/${listing.id}/edit`}

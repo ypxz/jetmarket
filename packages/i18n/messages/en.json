@@ -650,6 +650,7 @@
       "listings": "Listings ({count}/{limit})",
       "newListing": "New listing",
       "edit": "Edit",
+      "duplicate": "Duplicate",
       "pause": "Pause",
       "publish": "Publish",
       "archive": "Archive",

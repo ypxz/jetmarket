@@ -87,4 +87,32 @@ test('listing edit UI: dashboard → edit → save → dashboard reflects change
     await operator.goto(`/listing/${listingId}`);
     await expect(operator.getByTestId('listing-title')).toContainText(EDITED_TITLE);
   });
+
+  await step('duplicate clones to a draft and lands on its editor (QA-412)', async () => {
+    await operator.goto('/app');
+    const row = operator
+      .locator('li')
+      .filter({ hasText: EDITED_TITLE })
+      .first();
+    const dupBtn = row.getByTestId(/^duplicate-listing-/);
+    await expect(dupBtn).toBeVisible();
+    await dupBtn.click();
+    // Lands straight on the copy's editor — a different listing id.
+    await expect(operator).toHaveURL(
+      new RegExp(`/app/listings/(?!${listingId}\\b)[0-9a-f-]{36}/edit`),
+      { timeout: 30_000 },
+    );
+    await expect(operator.getByTestId('edit-title')).toHaveValue(
+      `${EDITED_TITLE} (copy)`,
+    );
+    await expect(operator.getByTestId('edit-price')).toHaveValue('41000');
+    // The copy is a draft — back on the dashboard it never activated.
+    await operator.goto('/app');
+    const copyRow = operator
+      .locator('li')
+      .filter({ hasText: '(copy)' })
+      .first();
+    await expect(copyRow).toBeVisible();
+    await expect(copyRow).toContainText('draft');
+  });
 });
