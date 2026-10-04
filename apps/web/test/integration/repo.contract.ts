@@ -3682,6 +3682,19 @@ export function repoContract(
       expect(openNow.map((r) => r.id)).not.toContain(flagged3!.id);
       // Resolved rows keep the dismissed stamp; second sweep is a no-op.
       expect(await repo.resolveListingReportsByReporter(spammer.id)).toBe(0);
+
+      // QA-468: reporterId filter — the account page reads a user's own
+      // filings across statuses, nobody else's.
+      const mine = await repo.listListingReports({ reporterId: spammer.id });
+      expect(mine.map((r) => r.id)).toEqual(
+        expect.arrayContaining([flagged1!.id, flagged2!.id, flagged3!.id]),
+      );
+      expect(mine.map((r) => r.id)).not.toContain(otherFlag!.id);
+      expect(
+        (await repo.listListingReports({ reporterId: other.id })).map(
+          (r) => r.id,
+        ),
+      ).toEqual([otherFlag!.id]);
     });
 
     it("admin events: append-only feed, vertical scope, newest first (QA-467)", async () => {

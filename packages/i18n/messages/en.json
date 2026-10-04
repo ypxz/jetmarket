@@ -43,7 +43,8 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "design": "Design",
-    "theme": "Toggle dark mode"
+    "theme": "Toggle dark mode",
+    "account": "Account"
   },
   "footer": {
     "tos": "Terms of service",
@@ -917,5 +918,27 @@
     "dealsClosed": "{count, plural, one {# deal closed} other {# deals closed}}",
     "responseTime": "Typically replies in ~{count, plural, one {# hour} other {# hours}}",
     "buyerRating": "★ {avg} ({count, plural, one {# buyer rating} other {# buyer ratings}})"
+  },
+  "account": {
+    "title": "Your account",
+    "operatorTitle": "Operator",
+    "openDashboard": "Open your dashboard",
+    "becomeOperator": "Become an operator",
+    "requests": "Your requests ({count})",
+    "viewInbox": "View your quotes inbox →",
+    "closesOn": "closes {date}",
+    "noRequests": "No requests yet — file one from any listing.",
+    "reports": "Your reports ({count})",
+    "noReports": "You haven't flagged any listings.",
+    "reportStatus": {
+      "open": "under review",
+      "dismissed": "reviewed"
+    },
+    "reason": {
+      "misleading": "misleading",
+      "unavailable": "unavailable",
+      "scam": "scam",
+      "other": "other"
+    }
   }
 }

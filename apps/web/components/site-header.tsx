@@ -55,6 +55,16 @@ export async function SiteHeader() {
               {t("myQuotes")}
             </Link>
           )}
+          {/* QA-468: signed-in buyers get a session home — requests +
+              filed-report status. Anon/buyer surfaces stay on /quotes. */}
+          {user?.role === "buyer" ? (
+            <Link
+              href="/account"
+              className="shrink-0 text-muted hover:text-foreground"
+            >
+              {t("account")}
+            </Link>
+          ) : null}
           <ThemeToggle label={t("theme")} />
           {user ? (
             <>

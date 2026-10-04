@@ -1619,10 +1619,14 @@ export class DrizzleRepo implements Repo {
   async listListingReports(opts?: {
     status?: ListingReportStatus;
     vertical?: string;
+    reporterId?: string;
     limit?: number;
   }): Promise<ListingReport[]> {
     const conds = [];
     if (opts?.status) conds.push(eq(listingReports.status, opts.status));
+    // QA-468: the buyer account page lists a reporter's own filings.
+    if (opts?.reporterId)
+      conds.push(eq(listingReports.reporterId, opts.reporterId));
     // Reports carry no vertical — resolve through the listing (QA-461).
     if (opts?.vertical) {
       conds.push(eq(listings.vertical, opts.vertical));

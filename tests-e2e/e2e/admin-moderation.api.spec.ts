@@ -315,6 +315,14 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   });
   expect(flag.status()).toBe(201);
 
+  // QA-468: the buyer's session home shows their own request + the flag's
+  // live status — the report feedback loop that didn't exist.
+  const account = await buyer.get('/en/account');
+  const accountHtml = await account.text();
+  expect(accountHtml).toContain('account-report-');
+  expect(accountHtml).toContain('under review');
+  expect(accountHtml).toContain('account-rfq-');
+
   const admin = await login(ADMIN_EMAIL);
   const block = await admin.post('/api/admin/buyers/block', {
     data: { email: BUYER.toUpperCase() }, // case-fold: caps can't slip past
@@ -333,6 +341,11 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   // block body renders; unblock acts in place from the same section).
   const registry = await admin.get('/en/admin');
   expect(await registry.text()).toContain(`blocked-row-${BUYER}`);
+  // The buyer's own view flips too — their flag is now 'reviewed', and
+  // reads stay open (blocking gates writes, not the session).
+  expect(await (await buyer.get('/en/account')).text()).toContain(
+    'reviewed',
+  );
 
   // Blocked: new RFQs 403 (not 404 — the listing exists, the buyer is the
   // problem). The per-RFQ spam mark still works on their history.

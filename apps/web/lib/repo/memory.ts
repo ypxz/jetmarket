@@ -1042,10 +1042,14 @@ class MemoryRepo implements Repo {
   async listListingReports(opts?: {
     status?: ListingReportStatus;
     vertical?: string;
+    reporterId?: string;
     limit?: number;
   }): Promise<ListingReport[]> {
     let out = [...this.listingReports.values()];
     if (opts?.status) out = out.filter((r) => r.status === opts.status);
+    // QA-468: the buyer account page lists a reporter's own filings.
+    if (opts?.reporterId)
+      out = out.filter((r) => r.reporterId === opts.reporterId);
     // Reports carry no vertical — resolve through the listing (QA-461).
     if (opts?.vertical) {
       out = out.filter(

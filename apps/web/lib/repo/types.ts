@@ -781,6 +781,7 @@ export interface Repo {
   listListingReports(opts?: {
     status?: ListingReportStatus;
     vertical?: string;
+    reporterId?: string;
     limit?: number;
   }): Promise<ListingReport[]>;
 
