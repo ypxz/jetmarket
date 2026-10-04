@@ -102,6 +102,23 @@ export interface WorkerRepo {
       quoteCount: number;
     }[]
   >;
+  /** QA-423 zero-quote nudge: claim RFQs that sat quote-less past
+   *  `olderThan` — one statement claims + stamps no_quotes_mailed_at under
+   *  the row lock so racing ticks mail once. 'quoted'/terminal rows and
+   *  any RFQ with a live 'sent' quote are ineligible. */
+  sweepUnquotedRfqs(input: {
+    vertical: string;
+    olderThan: Date;
+    limit?: number;
+  }): Promise<
+    {
+      rfqId: string;
+      buyerEmail: string;
+      accessToken: string;
+      listingTitle: string | null;
+      matchCount: number;
+    }[]
+  >;
   /** operatorId -> owner email, for quote-expiry notifications. */
   loadOperatorEmails(
     operatorIds: string[],
@@ -458,6 +475,59 @@ export function createWorkerRepo(db: Db): WorkerRepo {
             select count(*)::int from quotes q
             where q.rfq_id = s."rfqId" and q.status = 'sent'
           ) as "quoteCount"
+        from stamped s
+        left join listings l on l.id = s."listingId"
+      `);
+      return rows;
+    },
+
+    async sweepUnquotedRfqs({ vertical, olderThan, limit = 50 }) {
+      // 'new'/'matched' + zero live quotes past the window = the buyer heard
+      // nothing since the confirmation mail — the lifecycle's last silence.
+      // The stamped CTE re-checks no_quotes_mailed_at IS NULL under the row
+      // lock — a racing tick mails nobody twice. A quote that lands between
+      // claim and send is acceptable (same as QA-422): the buyer just got
+      // better news than the nudge promised.
+      const rows = await db.execute<{
+        rfqId: string;
+        buyerEmail: string;
+        accessToken: string;
+        listingTitle: string | null;
+        matchCount: number;
+      }>(sql`
+        with due as (
+          select r.id
+          from rfqs r
+          where r.vertical = ${vertical}
+            and r.status in ('new', 'matched')
+            and r.no_quotes_mailed_at is null
+            and r.created_at < ${olderThan.toISOString()}
+            and not exists (
+              select 1 from quotes q
+              where q.rfq_id = r.id and q.status = 'sent'
+            )
+          limit ${limit}
+        ),
+        stamped as (
+          update rfqs r
+          set no_quotes_mailed_at = now()
+          where r.id in (select id from due)
+            and r.no_quotes_mailed_at is null
+          returning
+            r.id as "rfqId",
+            r.buyer_email as "buyerEmail",
+            r.access_token as "accessToken",
+            r.listing_id as "listingId"
+        )
+        select
+          s."rfqId",
+          s."buyerEmail",
+          s."accessToken",
+          l.title as "listingTitle",
+          (
+            select count(*)::int from rfq_matches m
+            where m.rfq_id = s."rfqId" and m.state <> 'delayed'
+          ) as "matchCount"
         from stamped s
         left join listings l on l.id = s."listingId"
       `);

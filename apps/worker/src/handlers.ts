@@ -38,6 +38,10 @@ export interface WorkerDeps {
   /** Hours of quote silence before the buyer nudge (QA-422); defaults to
    *  48, <=0 disables the sweep. */
   quoteNudgeHours?: number;
+  /** QA-423 zero-quote nudge window in hours (defaults to 24, <=0 disables):
+   *  how long a live RFQ may sit with zero live quotes before the buyer gets
+   *  one "still gathering quotes" mail. Machinery picks its own window. */
+  unquotedNudgeHours?: number;
 }
 
 function at(deps: WorkerDeps): Date {
@@ -360,6 +364,64 @@ export async function nudgeStaleQuotes(deps: WorkerDeps): Promise<number> {
       });
     } catch (e) {
       logWarn("worker.quote_nudge_failed", {
+        rfqId: r.rfqId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * QA-423: a live RFQ with zero live quotes past the nudge window leaves the
+ * buyer completely dark since the submit confirmation — one branded mail
+ * says operators were notified (or the listing owner was, for direct
+ * requests) and deep-links their /quotes inbox so they can watch or close.
+ * Claims once per RFQ via the sweep's no_quotes_mailed_at stamp.
+ */
+export async function nudgeUnquotedRfqs(deps: WorkerDeps): Promise<number> {
+  const hours = deps.unquotedNudgeHours ?? 24;
+  if (!(hours > 0)) return 0;
+  const rows = await deps.repo.sweepUnquotedRfqs({
+    vertical: deps.vertical,
+    olderThan: new Date(at(deps).getTime() - hours * 3_600_000),
+  });
+  const origin = `https://${site.domain}`;
+  for (const r of rows) {
+    try {
+      const quotesUrl = `${origin}/quotes?email=${encodeURIComponent(
+        r.buyerEmail,
+      )}#t=${encodeURIComponent(r.accessToken)}`;
+      const subject = `We're still gathering quotes for your request`;
+      const reach =
+        r.matchCount > 0
+          ? `went out to ${r.matchCount} operator${
+              r.matchCount === 1 ? "" : "s"
+            }`
+          : "went straight to the listing owner";
+      const body =
+        `Your request${
+          r.listingTitle ? ` for "${r.listingTitle}"` : ""
+        } on ${site.name} ${reach}, and no quotes have landed yet — ` +
+        `operators typically respond within a few days while the request is live. ` +
+        `Nothing to do on your side; you'll get a mail the moment a quote arrives.`;
+      await deps.email.send({
+        to: r.buyerEmail,
+        subject,
+        text: `${body}\n\nYour request: ${quotesUrl}`,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+          cta: { url: quotesUrl, label: "Check your request" },
+        }),
+      });
+      deps.analytics?.track({
+        name: "unquoted_nudge_sent",
+        props: { rfqId: r.rfqId, matches: r.matchCount },
+      });
+    } catch (e) {
+      logWarn("worker.unquoted_nudge_failed", {
         rfqId: r.rfqId,
         error: e instanceof Error ? e.message : String(e),
       });

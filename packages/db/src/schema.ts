@@ -116,6 +116,11 @@ export const rfqs = pgTable(
     quoteNudgeMailedAt: timestamp("quote_nudge_mailed_at", {
       withTimezone: true,
     }),
+    // QA-423: once-only stamp — the "still working on it" nudge mails the
+    // buyer at most once per quote-less RFQ; NULL rows are claimable.
+    noQuotesMailedAt: timestamp("no_quotes_mailed_at", {
+      withTimezone: true,
+    }),
     status: text("status", {
       enum: ["new", "matched", "quoted", "closed", "spam"],
     })

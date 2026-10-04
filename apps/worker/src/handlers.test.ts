@@ -9,6 +9,7 @@ import {
   notifyExpiredListings,
   notifyExpirations,
   nudgeStaleQuotes,
+  nudgeUnquotedRfqs,
   rfqFanout,
   searchAlertFlush,
 } from "./handlers";
@@ -133,6 +134,10 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
     },
     sweepStaleQuotes: async (input) => {
       rec("sweepStaleQuotes", input);
+      return [];
+    },
+    sweepUnquotedRfqs: async (input) => {
+      rec("sweepUnquotedRfqs", input);
       return [];
     },
     ...over,
@@ -898,6 +903,102 @@ describe("nudgeStaleQuotes (QA-422)", () => {
     const empty = fakeRepo();
     sent.length = 0;
     expect(await nudgeStaleQuotes(deps(empty))).toBe(0);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("nudgeUnquotedRfqs (QA-423)", () => {
+  it("disabled when unquotedNudgeHours <= 0 — repo never called", async () => {
+    const repo = fakeRepo({
+      sweepUnquotedRfqs: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unquotedNudgeHours = 0;
+    expect(await nudgeUnquotedRfqs(d)).toBe(0);
+    expect(sent).toEqual([]);
+  });
+
+  it("mails each claimed buyer — copy names the operator reach", async () => {
+    let call: { vertical: string; olderThan: Date } | null = null;
+    const repo = fakeRepo({
+      sweepUnquotedRfqs: async (input) => {
+        call = input;
+        return [
+          {
+            rfqId: "r1",
+            buyerEmail: "buyer@x.com",
+            accessToken: "tok-one",
+            listingTitle: "ZRH–NCE Phenom leg",
+            matchCount: 3,
+          },
+          {
+            rfqId: "r2",
+            buyerEmail: "buyer2@x.com",
+            accessToken: "tok two",
+            listingTitle: null,
+            matchCount: 0,
+          },
+        ];
+      },
+    });
+    sent.length = 0;
+    const d = deps(repo);
+    d.unquotedNudgeHours = 24;
+    expect(await nudgeUnquotedRfqs(d)).toBe(2);
+    expect(call!.vertical).toBe("jets");
+    // olderThan = deps.now - 24h — deps.now is fixed 2026-09-15T12:00Z.
+    expect(call!.olderThan.toISOString()).toBe("2026-09-14T12:00:00.000Z");
+    expect(sent.map((m) => m.to)).toEqual(["buyer@x.com", "buyer2@x.com"]);
+    expect(sent[0]!.subject).toBe(
+      "We're still gathering quotes for your request",
+    );
+    // Matched request says how many operators were notified; an unmatched
+    // (direct-listing) request credits the owner instead.
+    expect(sent[0]!.text).toContain("went out to 3 operators");
+    expect(sent[0]!.text).toContain("ZRH–NCE Phenom leg");
+    expect(sent[1]!.text).toContain("went straight to the listing owner");
+    // Fragment-token deep link (AGENTS: bearer tokens travel in #t=).
+    expect(sent[0]!.text).toContain("/quotes?email=buyer%40x.com#t=tok-one");
+  });
+
+  it("defaults to 24h, a failed send doesn't stall, zero claims silent", async () => {
+    const repo = fakeRepo({
+      sweepUnquotedRfqs: async () => [
+        {
+          rfqId: "r1",
+          buyerEmail: "bad@x.example",
+          accessToken: "t1",
+          listingTitle: "A",
+          matchCount: 1,
+        },
+        {
+          rfqId: "r2",
+          buyerEmail: "ok@x.example",
+          accessToken: "t2",
+          listingTitle: "B",
+          matchCount: 5,
+        },
+      ],
+    });
+    sent.length = 0;
+    const d = deps(repo); // unquotedNudgeHours unset → 24h default
+    d.email = {
+      send: async (m) => {
+        if (m.to.startsWith("bad")) throw new Error("bounce");
+        sent.push(m);
+        return { id: "e1", to: m.to, subject: m.subject, at: "t" };
+      },
+    };
+    expect(await nudgeUnquotedRfqs(d)).toBe(2);
+    expect(sent.map((m) => m.to)).toEqual(["ok@x.example"]);
+    expect(sent[0]!.text).toContain("went out to 5 operators");
+
+    const empty = fakeRepo();
+    sent.length = 0;
+    expect(await nudgeUnquotedRfqs(deps(empty))).toBe(0);
     expect(sent).toEqual([]);
   });
 });

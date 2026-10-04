@@ -21,6 +21,7 @@ import {
   notifyExpiredListings,
   notifyExpirations,
   nudgeStaleQuotes,
+  nudgeUnquotedRfqs,
   recoverUnfanoutedRfqs,
   searchAlertFlush,
   type WorkerDeps,
@@ -64,6 +65,12 @@ export async function tick(deps: WorkerDeps): Promise<number> {
   // cold mail the buyer once, deep-linking their /quotes inbox.
   const nudged = await nudgeStaleQuotes(deps);
   if (nudged) logInfo("worker.quote_nudges", { count: nudged });
+
+  // Zero-quote buyer nudge (QA-423) — live RFQs that never drew a quote
+  // mail the buyer a "still gathering" reassurance once.
+  const unquotedNudged = await nudgeUnquotedRfqs(deps);
+  if (unquotedNudged)
+    logInfo("worker.unquoted_nudges", { count: unquotedNudged });
 
   const delivered = await deliverDueMatches(deps);
   if (delivered) logInfo("worker.delivered_matches", { count: delivered });

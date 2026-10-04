@@ -744,6 +744,104 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
     await db.delete(rfqs).where(inArray(rfqs.id, [rfqStale.id, rfqFresh.id, rfqDead.id, rfqOpen.id, rfqMail.id]));
   });
 
+  it("nudges the buyer once when no quotes ever landed (QA-423)", async () => {
+    const ops = await db.select({ id: operators.id }).from(operators).limit(3);
+    const [op, op2, op3] = ops;
+    const tag = Date.now();
+    const mkRfq = async (status: "new" | "matched" | "quoted" | "closed", iso: string) => {
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical: "jets",
+          buyerEmail: `unquoted-${tag}@x.com`,
+          status,
+          createdAt: new Date(iso),
+          fields: { dateTo: isoIn(10) },
+        })
+        .returning({ id: rfqs.id, accessToken: rfqs.accessToken });
+      return r!;
+    };
+    const mkMatch = (rfqId: string, state: "delayed" | "pending" = "pending", opId = op!.id) =>
+      db
+        .insert(rfqMatches)
+        .values({ rfqId, operatorId: opId, state, deliverAt: new Date() })
+        .returning({ id: rfqMatches.id });
+
+    const old = new Date(Date.now() - 30 * 3_600_000).toISOString();
+    const fresh = new Date(Date.now() - 60 * 60_000).toISOString(); // 1h ago
+
+    // matched + quote-less + past window, 2 live matches + 1 delayed —
+    // delayed isn't delivered yet, so matchCount counts only 2.
+    const rfqQuiet = await mkRfq("matched", old);
+    const [m1] = await mkMatch(rfqQuiet.id);
+    const [m2] = await mkMatch(rfqQuiet.id, "pending", op2!.id);
+    const [m3] = await mkMatch(rfqQuiet.id, "delayed", op3!.id);
+
+    // Fresh 'matched' — inside the window.
+    const rfqFresh = await mkRfq("matched", fresh);
+
+    // 'quoted' status gate — QA-422's sweep owns this row.
+    const rfqQuoted = await mkRfq("quoted", old);
+
+    // 'closed' terminal — no nudge to a dead request.
+    const rfqClosed = await mkRfq("closed", old);
+
+    // Quote-less in name only: a live 'sent' quote exists → not quote-less.
+    const rfqHasQuote = await mkRfq("new", old);
+    await db.insert(quotes).values({
+      rfqId: rfqHasQuote.id,
+      operatorId: op!.id,
+      amountMinor: 10000,
+      status: "sent",
+    });
+
+    const window = new Date(Date.now() - 24 * 3_600_000);
+    const claimed = await deps().repo.sweepUnquotedRfqs({
+      vertical: "jets",
+      olderThan: window,
+    });
+    const ids = claimed.map((c) => c.rfqId);
+    expect(ids).toContain(rfqQuiet.id);
+    expect(ids).not.toContain(rfqFresh.id);
+    expect(ids).not.toContain(rfqQuoted.id);
+    expect(ids).not.toContain(rfqClosed.id);
+    expect(ids).not.toContain(rfqHasQuote.id);
+    const mine = claimed.find((c) => c.rfqId === rfqQuiet.id)!;
+    expect(mine.matchCount).toBe(2); // delayed match excluded
+    expect(mine.buyerEmail).toBe(`unquoted-${tag}@x.com`);
+    expect(mine.accessToken).toBe(rfqQuiet.accessToken);
+
+    // Once-only: stamp persisted, re-sweep misses.
+    const [stamped] = await db
+      .select({ t: rfqs.noQuotesMailedAt })
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqQuiet.id));
+    expect(stamped!.t).toBeTruthy();
+    expect(
+      (await deps().repo.sweepUnquotedRfqs({ vertical: "jets", olderThan: window }))
+        .map((c) => c.rfqId),
+    ).not.toContain(rfqQuiet.id);
+
+    // Handler end-to-end: a second quiet RFQ → branded outbox mail.
+    const rfqMail = await mkRfq("matched", old);
+    const { nudgeUnquotedRfqs } = await import("../../src/handlers");
+    expect(await nudgeUnquotedRfqs(deps())).toBeGreaterThanOrEqual(1);
+    const outbox = readOutbox(outboxDir);
+    const mail = outbox.find(
+      (m) =>
+        m.to === `unquoted-${tag}@x.com` &&
+        (m.subject ?? "").includes("still gathering"),
+    );
+    expect(mail).toBeDefined();
+    expect(mail!.text).toContain(`#t=${encodeURIComponent(rfqMail.accessToken)}`);
+
+    await db.delete(rfqMatches).where(inArray(rfqMatches.id, [m1!.id, m2!.id, m3!.id]));
+    await db.delete(quotes).where(eq(quotes.rfqId, rfqHasQuote.id));
+    await db.delete(rfqs).where(
+      inArray(rfqs.id, [rfqQuiet.id, rfqFresh.id, rfqQuoted.id, rfqClosed.id, rfqHasQuote.id, rfqMail.id]),
+    );
+  });
+
   it("two concurrent claimers never claim the same job (SKIP LOCKED)", async () => {
     // Scale-out safety: two workers polling the same queue must partition
     // the pending set, not duplicate it. Serial tests can't prove the
