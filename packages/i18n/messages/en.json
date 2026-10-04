@@ -788,6 +788,15 @@
       "listingFilterClear": "clear listing filter",
       "newBadge": "New",
       "filterAnswered": "Answered",
+      "flag": "Flag",
+      "flagSent": "Reported — our team will review this request.",
+      "flagging": "Sending…",
+      "flagSubmit": "Send report",
+      "flagSpam": "Spam or mass solicitation",
+      "flagAbusive": "Abusive or offensive",
+      "flagDuplicate": "Duplicate request",
+      "flagOther": "Other",
+      "flagNotePlaceholder": "Optional details for our team",
       "sortEnding": "Ending first"
     },
     "billing": {
@@ -893,6 +902,7 @@
     "noRfqs": "No RFQs yet.",
     "concierge": "Concierge: {count} expedites · {total} revenue",
     "conciergeBadge": "Concierge",
+    "rfqFlagged": "flagged ×{count}",
     "blocked": "Blocked buyers ({count})",
     "colEmail": "Email",
     "colBlocked": "Blocked",

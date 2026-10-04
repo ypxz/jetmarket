@@ -15,6 +15,7 @@ import { QuoteForm } from "./quote-form";
 import { WithdrawButton } from "./withdraw-button";
 import { ReviseQuote } from "./revise-quote";
 import { DismissAllButton, DismissButton, RestoreAllButton, RestoreButton } from "./dismiss-button";
+import { ReportRfq } from "./report-rfq";
 
 /** RFQ states that still accept quotes — same gate as POST /api/quotes. */
 const LIVE_RFQ_STATES = new Set(["open", "matched", "quoted"]);
@@ -369,6 +370,11 @@ export default async function RfqInboxPage({
                   <div className="mt-3 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <QuoteForm rfqId={r.id} />
+                      {/* QA-469: flag abuse into admin moderation — the
+                          demand-side twin of the buyer listing report. */}
+                      <div className="mt-2">
+                        <ReportRfq rfqId={r.id} />
+                      </div>
                     </div>
                     {/* Dismiss only on rows with no quote history to lose
                         sight of — a quoted row keeps its context (QA-420). */}

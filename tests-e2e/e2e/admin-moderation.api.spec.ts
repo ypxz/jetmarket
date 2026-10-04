@@ -370,4 +370,48 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   // misses it and this call mints a fresh row — the point is the request
   // clears the block, not which 2xx it gets.
   expect((await mkRfq()).ok()).toBeTruthy();
+
+  // QA-469: the listing's operator flags the fresh RFQ into moderation —
+  // the demand-side twin of the buyer listing flag. Visibility = owns the
+  // listing or holds a delivered match (same gate as dismiss).
+  const freshRfq = await mkRfq();
+  const freshId = ((await freshRfq.json()) as { rfqId: string }).rfqId;
+  const rfqFlag = await operator.post(`/api/operator/rfqs/${freshId}/report`, {
+    data: { reason: 'spam', note: 'mass solicitation' },
+  });
+  expect(rfqFlag.status()).toBe(201);
+  // One flag per (rfq, operator) — a repeat 409s.
+  expect(
+    (
+      await operator.post(`/api/operator/rfqs/${freshId}/report`, {
+        data: { reason: 'duplicate' },
+      })
+    ).status(),
+  ).toBe(409);
+  // An operator with no visibility on the RFQ 404s — no existence probe.
+  const stranger = await login(
+    `e2e-rrep-stranger-${run}@jetmarket.local`,
+    'operator',
+  );
+  const strangerOp = await stranger.post('/api/operators', {
+    data: { name: `E2E Stranger ${run}`, baseAirport: 'LFMN', fleetSummary: 'x' },
+  });
+  expect(strangerOp.status()).toBe(201);
+  expect(
+    (
+      await stranger.post(`/api/operator/rfqs/${freshId}/report`, {
+        data: { reason: 'spam' },
+      })
+    ).status(),
+  ).toBe(404);
+  // Admin RFQ rows carry the flag count as a badge…
+  expect(await (await admin.get('/en/admin')).text()).toContain(
+    `admin-rfq-flagged-${freshId}`,
+  );
+  // …and the flag never blocks enforcement — spam-mark still flips it.
+  const spammed = await admin.post(`/api/admin/rfqs/${freshId}/status`, {
+    data: { status: 'spam' },
+  });
+  expect(spammed.status()).toBe(200);
+  expect(((await spammed.json()) as { status: string }).status).toBe('spam');
 });

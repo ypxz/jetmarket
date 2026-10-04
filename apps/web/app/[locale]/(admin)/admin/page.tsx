@@ -63,7 +63,7 @@ export default async function AdminPage({
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? Math.min(rawPage, dealPages) : 1;
   // Wave 2: the lookups that hang off wave-1 rows.
-  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows] =
+  const [deals, listingCountRows, modOpRows, rfqListingRows, reportListingRows, reportUserRows, rfqFlagCounts] =
     await Promise.all([
       repo.listDeals({
         limit: SEARCH_PAGE_SIZE,
@@ -90,6 +90,9 @@ export default async function AdminPage({
         ids: [...new Set(reports.map((r) => r.listingId))],
       }),
       repo.listUsers([...new Set(reports.map((r) => r.reporterId))]),
+      // QA-469: operator flags on the RFQ queue — one grouped count per
+      // row powers the "flagged ×N" badge (RFQ side of buyer reports).
+      repo.countRfqReports(modRfqs.map((r) => r.id)),
     ]);
   // QA-467: audit rows show who did it — resolve admin emails in one go.
   const modEventUserRows = await repo.listUsers([
@@ -426,6 +429,15 @@ export default async function AdminPage({
                       data-testid={`admin-rfq-concierge-${r.id}`}
                     >
                       {t("conciergeBadge")}
+                    </Badge>
+                  ) : null}
+                  {(rfqFlagCounts[r.id] ?? 0) > 0 ? (
+                    <Badge
+                      variant="warning"
+                      className="ml-1"
+                      data-testid={`admin-rfq-flagged-${r.id}`}
+                    >
+                      {t("rfqFlagged", { count: rfqFlagCounts[r.id] ?? 0 })}
                     </Badge>
                   ) : null}
                 </td>

@@ -101,6 +101,17 @@ export interface Rfq {
   createdAt: string;
 }
 
+/** QA-469: an operator's flag on an abusive RFQ — feeds the admin
+ *  moderation rows a "flagged ×N" signal. */
+export interface RfqReport {
+  id: string;
+  rfqId: string;
+  reporterId: string;
+  reason: string;
+  note: string | null;
+  createdAt: string;
+}
+
 /** QA-467: one append-only moderation audit row — who did what to which
  *  target, newest-first feed on the admin page. */
 export interface AdminEvent {
@@ -797,6 +808,19 @@ export interface Repo {
    *  block route runs it so a flagged spammer's accusations stop
    *  cluttering the queue at the same moment their demand is purged. */
   resolveListingReportsByReporter(reporterId: string): Promise<number>;
+
+  /** QA-469: operator flags an abusive RFQ — the demand-side twin of the
+   *  buyer listing flag. One flag per (rfq, reporter); a repeat returns
+   *  null so the route 409s. The flag's lifecycle IS the RFQ's — a
+   *  spam-marked RFQ is terminal, so rows carry no status. */
+  createRfqReport(input: {
+    rfqId: string;
+    reporterId: string;
+    reason: string;
+    note?: string;
+  }): Promise<RfqReport | null>;
+  /** Admin RFQ rows show a "flagged ×N" badge — one grouped count. */
+  countRfqReports(rfqIds: string[]): Promise<Record<string, number>>;
 
   /** QA-467: append-only moderation audit trail. Every enforcement route
    *  appends after its write (non-fatal — never lets auditability fail a

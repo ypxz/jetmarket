@@ -30,6 +30,7 @@ import type {
   QuoteStatus,
   Repo,
   Rfq,
+  RfqReport,
   RfqStatus,
   SearchAlert,
   Subscription,
@@ -53,6 +54,7 @@ const {
   searchAlerts,
   listingReports,
   blockedEmails,
+  rfqReports,
   adminEvents,
 } = schema;
 
@@ -151,6 +153,17 @@ function toBlockedEmail(r: typeof blockedEmails.$inferSelect): BlockedEmail {
     email: r.email,
     reason: r.reason,
     createdBy: r.createdBy,
+    createdAt: iso(r.createdAt),
+  };
+}
+
+function toRfqReport(r: typeof rfqReports.$inferSelect): RfqReport {
+  return {
+    id: r.id,
+    rfqId: r.rfqId,
+    reporterId: r.reporterId,
+    reason: r.reason,
+    note: r.note,
     createdAt: iso(r.createdAt),
   };
 }
@@ -1738,6 +1751,38 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(blockedEmails.createdAt))
       .limit(500);
     return rows.map(toBlockedEmail);
+  }
+
+  async createRfqReport(input: {
+    rfqId: string;
+    reporterId: string;
+    reason: string;
+    note?: string;
+  }): Promise<RfqReport | null> {
+    // QA-469: ON CONFLICT DO NOTHING against the unique pair — a repeat
+    // flag returns null (route 409s) instead of stacking a second row.
+    const rows = await this.db
+      .insert(rfqReports)
+      .values({
+        rfqId: input.rfqId,
+        reporterId: input.reporterId,
+        reason: input.reason,
+        note: input.note ?? null,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return rows[0] ? toRfqReport(rows[0]) : null;
+  }
+
+  async countRfqReports(rfqIds: string[]): Promise<Record<string, number>> {
+    const ids = rfqIds.filter(isUuid);
+    if (ids.length === 0) return {};
+    const rows = await this.db
+      .select({ rfqId: rfqReports.rfqId, n: sql<number>`count(*)::int` })
+      .from(rfqReports)
+      .where(inArray(rfqReports.rfqId, ids))
+      .groupBy(rfqReports.rfqId);
+    return Object.fromEntries(rows.map((r) => [r.rfqId, r.n]));
   }
 
   async logAdminEvent(

@@ -425,6 +425,28 @@ export const listingReports = pgTable(
   ],
 );
 
+export const rfqReports = pgTable(
+  "rfq_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    rfqId: uuid("rfq_id")
+      .notNull()
+      .references(() => rfqs.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // One flag per operator per RFQ (QA-469).
+    uniqueIndex("rfq_reports_dedupe").on(t.rfqId, t.reporterId),
+  ],
+);
+
 export const adminEvents = pgTable(
   "admin_events",
   {

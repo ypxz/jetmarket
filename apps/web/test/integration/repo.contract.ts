@@ -3738,5 +3738,60 @@ export function repoContract(
         (await repo.listAdminEvents({ vertical: "jets", limit: 1 })).length,
       ).toBe(1);
     });
+
+    it("rfq reports: dedupe per operator, grouped counts (QA-469)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const op1 = await repo.createUser(`rrep-op1-${tag}@test.dev`, "operator");
+      const op2 = await repo.createUser(`rrep-op2-${tag}@test.dev`, "operator");
+      const rfqA = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `rrep-a-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `rrep-a-${tag}`,
+      });
+      const rfqB = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `rrep-b-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `rrep-b-${tag}`,
+      });
+
+      const r1 = await repo.createRfqReport({
+        rfqId: rfqA.id,
+        reporterId: op1.id,
+        reason: "spam",
+        note: "mass solicitation",
+      });
+      expect(r1!.rfqId).toBe(rfqA.id);
+      expect(r1!.note).toBe("mass solicitation");
+      // Same (rfq, reporter) again → dedupe null (route 409s).
+      expect(
+        await repo.createRfqReport({
+          rfqId: rfqA.id,
+          reporterId: op1.id,
+          reason: "duplicate",
+        }),
+      ).toBeNull();
+      // A second operator MAY flag the same RFQ — the pair is the key.
+      const r2 = await repo.createRfqReport({
+        rfqId: rfqA.id,
+        reporterId: op2.id,
+        reason: "abusive",
+      });
+      expect(r2).not.toBeNull();
+
+      // Grouped count: 2 flags on A, 0 on B; junk ids get nothing.
+      const counts = await repo.countRfqReports([
+        rfqA.id,
+        rfqB.id,
+        "not-a-uuid",
+      ]);
+      expect(counts[rfqA.id]).toBe(2);
+      expect(counts[rfqB.id] ?? 0).toBe(0);
+      expect(await repo.countRfqReports([])).toEqual({});
+    });
   });
 }

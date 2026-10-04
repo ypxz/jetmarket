@@ -15,6 +15,7 @@ import type {
   Quote,
   Repo,
   Rfq,
+  RfqReport,
   SearchAlert,
   Subscription,
   User,
@@ -1107,6 +1108,7 @@ class MemoryRepo implements Repo {
 
   private blockedEmails = new Map<string, BlockedEmail>(); // key: lower email
   private adminEvents = new Map<string, AdminEvent>();
+  private rfqReports = new Map<string, RfqReport>();
 
   async blockBuyerEmail(
     email: string,
@@ -1140,6 +1142,40 @@ class MemoryRepo implements Repo {
     return [...this.blockedEmails.values()].sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt),
     );
+  }
+
+  async createRfqReport(input: {
+    rfqId: string;
+    reporterId: string;
+    reason: string;
+    note?: string;
+  }): Promise<RfqReport | null> {
+    // QA-469: sync dedupe scan — a repeat flag from the same operator
+    // returns null (route 409s) instead of stacking a second row.
+    for (const r of this.rfqReports.values()) {
+      if (r.rfqId === input.rfqId && r.reporterId === input.reporterId) {
+        return null;
+      }
+    }
+    const row: RfqReport = {
+      id: uid("rrep"),
+      rfqId: input.rfqId,
+      reporterId: input.reporterId,
+      reason: input.reason,
+      note: input.note ?? null,
+      createdAt: now(),
+    };
+    this.rfqReports.set(row.id, row);
+    return row;
+  }
+
+  async countRfqReports(rfqIds: string[]): Promise<Record<string, number>> {
+    const want = new Set(rfqIds);
+    const out: Record<string, number> = {};
+    for (const r of this.rfqReports.values()) {
+      if (want.has(r.rfqId)) out[r.rfqId] = (out[r.rfqId] ?? 0) + 1;
+    }
+    return out;
   }
 
   async logAdminEvent(
