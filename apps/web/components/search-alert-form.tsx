@@ -12,6 +12,7 @@ export function SearchAlertForm({
   params,
   title,
   emailPlaceholder,
+  emailDefault,
   submitLabel,
   sendingLabel,
   sentLabel,
@@ -22,6 +23,8 @@ export function SearchAlertForm({
   params: Record<string, string | string[] | undefined>;
   title: string;
   emailPlaceholder: string;
+  /** Pre-fills the email field (e.g. the buyer's RFQ contact on /rfq/thanks). */
+  emailDefault?: string;
   submitLabel: string;
   sendingLabel: string;
   sentLabel: string;
@@ -87,6 +90,7 @@ export function SearchAlertForm({
         name="email"
         required
         placeholder={emailPlaceholder}
+        defaultValue={emailDefault}
         className="min-w-0 flex-1 sm:max-w-56"
         data-testid="search-alert-email"
       />

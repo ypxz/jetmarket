@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
+import { isoDateIn } from '../helpers/flow';
 
 // Isolated rate-limit bucket for this spec file (QA-289).
 test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' } });
@@ -235,6 +236,34 @@ test('listing watch: subscribe → confirm → price edit mails update (QA-407)'
     const stale = latestMailTo(WATCHER);
     expect(stale && stale.includes(`E2E Unwatched ${run}`)).toBeFalsy();
 
+    // QA-411: /rfq/thanks offers a watch CTA for a real RFQ — the form's
+    // params embed the listing id, and the buyer's email prefills.
+    const rfqRes = await anon.post('/api/rfqs', {
+      data: {
+        listingId,
+        buyerEmail: WATCHER,
+        fields: {
+          departure: 'ZRH',
+          arrival: 'LTN',
+          dateFrom: isoDateIn(20),
+          dateTo: isoDateIn(21),
+          passengers: 4,
+          name: 'E2E Watch',
+          email: WATCHER,
+        },
+      },
+    });
+    expect(rfqRes.status()).toBe(201);
+    const { rfqId } = (await rfqRes.json()) as { rfqId: string };
+    const thanks = await anon.get(
+      `/rfq/thanks?id=${rfqId}&email=${encodeURIComponent(WATCHER)}`,
+    );
+    expect(thanks.status()).toBe(200);
+    const thanksHtml = await thanks.text();
+    expect(thanksHtml).toContain('thanks-watch');
+    // The RSC payload serializes params as watch\":\"<id>\" (escaped quotes).
+    expect(thanksHtml).toContain(`watch\\":\\"${listingId}`);
+
     // QA-408: archiving is terminal — one "watch ended" mail, alert flips off.
     const arch = await op.patch(`/api/listings/${listingId}`, {
       data: { status: 'archived' },
@@ -252,6 +281,8 @@ test('listing watch: subscribe → confirm → price edit mails update (QA-407)'
     expect(alertRow?.status).toBe('off');
   } finally {
     await sql`delete from search_alerts where email = ${`e2e-watch-${run}@test.dev`}`;
+    await sql`delete from rfq_matches where rfq_id in (select id from rfqs where buyer_email = ${`e2e-watch-${run}@test.dev`})`;
+    await sql`delete from rfqs where buyer_email = ${`e2e-watch-${run}@test.dev`}`;
     await sql`delete from listings where title like ${`E2E Watch%${run}`} or title like ${`E2E Unwatched ${run}`}`;
     await sql`delete from operators where user_id in (select id from users where email = ${OP_EMAIL})`;
     await sql`delete from users where email in (${OP_EMAIL})`;
