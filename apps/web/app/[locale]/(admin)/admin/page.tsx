@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { Badge } from "@jetmarket/ui";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -129,11 +130,15 @@ export default async function AdminPage({
   });
   // QA-529 wave-3 joins: quote-flag rows resolve the request (title,
   // buyer) and the flagged operator in one batched pass.
-  const [reportQuoteRfqRows, reportQuoteOpRows] = await Promise.all([
+  // QA-535: the revision ladder joins too — a moderator judging an
+  // "off_platform" flag needs the flagged message AND whether the op
+  // rewrote it after filing (each rung carries the superseded text).
+  const [reportQuoteRfqRows, reportQuoteOpRows, reportQuoteRevRows] = await Promise.all([
     repo.listRfqs({ ids: [...new Set(reportQuoteRows.map((q) => q.rfqId))] }),
     repo.listOperators({
       ids: [...new Set(reportQuoteRows.map((q) => q.operatorId))],
     }),
+    repo.listQuoteRevisions(reportQuoteRows.map((q) => q.id)),
   ]);
   const reportQuoteListingRows = await repo.listListings({
     ids: [
@@ -213,6 +218,12 @@ export default async function AdminPage({
   const reportQuoteOps = new Map(
     reportQuoteOpRows.map((o) => [o.id, o] as const),
   );
+  const reportQuoteRevs = new Map<string, typeof reportQuoteRevRows>();
+  for (const rev of reportQuoteRevRows) {
+    const rungs = reportQuoteRevs.get(rev.quoteId) ?? [];
+    rungs.push(rev);
+    reportQuoteRevs.set(rev.quoteId, rungs);
+  }
   const LIVE_RFQ: ReadonlySet<string> = new Set(["open", "matched", "quoted"]);
   const blockedEmails = new Set(
     blockedRows.map((b) => b.email.toLowerCase()),
@@ -500,8 +511,10 @@ export default async function AdminPage({
                 ? reportQuoteListings.get(rfq.listingId)
                 : undefined;
               const op = q ? reportQuoteOps.get(q.operatorId) : undefined;
+              const revs = q ? reportQuoteRevs.get(q.id) : undefined;
               return (
-              <tr key={r.id} data-testid={`quote-report-${r.id}`}>
+              <Fragment key={r.id}>
+              <tr data-testid={`quote-report-${r.id}`}>
                 <td className="py-2 pr-4 font-medium">
                   {q ? formatMoney(q.amount, q.currency, locale) : "—"}
                 </td>
@@ -531,6 +544,38 @@ export default async function AdminPage({
                   </span>
                 </td>
               </tr>
+              {/* Moderation needs the flagged text, not just the flag:
+                  the full message plus every superseded revision
+                  (each rung carries the pre-revise terms) — QA-535. */}
+              <tr data-testid={`quote-report-detail-${r.id}`}>
+                <td colSpan={8} className="pb-4 pt-0">
+                  {q?.message ? (
+                    <p
+                      className="text-sm"
+                      data-testid={`quote-report-msg-${r.id}`}
+                    >
+                      {q.message}
+                    </p>
+                  ) : null}
+                  {revs && revs.length > 0 ? (
+                    <ul
+                      className="mt-1 space-y-0.5 text-xs text-muted"
+                      data-testid={`quote-report-revs-${r.id}`}
+                    >
+                      {revs.map((rev) => (
+                        <li key={rev.id} data-testid={`quoterev-${rev.id}`}>
+                          {t("revLine", {
+                            amount: formatMoney(rev.amount, rev.currency, locale),
+                            date: new Date(rev.supersededAt).toLocaleDateString(locale),
+                          })}
+                          {rev.message ? ` — ${rev.message}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </td>
+              </tr>
+              </Fragment>
               );
             })}
           </tbody>

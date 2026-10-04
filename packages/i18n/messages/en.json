@@ -1355,7 +1355,8 @@
     "quoteReports": "Quote flags ({count})",
     "noQuoteReports": "No open quote flags.",
     "colQuote": "Quote",
-    "colOnRfq": "Request"
+    "colOnRfq": "Request",
+    "revLine": "Revised — was {amount} before {date}"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

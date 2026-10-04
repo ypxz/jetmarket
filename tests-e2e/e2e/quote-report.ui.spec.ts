@@ -128,6 +128,28 @@ test('buyer flags a quote; admin reviews and dismisses it', async ({
     expect(replay.status()).toBe(409);
   });
 
+  await step('operator revises the flagged offer (QA-535 trail)', async () => {
+    // The flag filed against the ORIGINAL message — the op then edits it.
+    // Moderation must see the flagged text plus the superseded rung.
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    await expect(item).toBeVisible();
+    await item.locator(`button${tidPrefix('revise-')}`).first().click();
+    await item.locator(tidPrefix('revise-amount-')).fill('19800');
+    await item.locator(tidPrefix('revise-message-')).fill('revised terms, no phone');
+    const rev = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/revise') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await item.locator(tidPrefix('revise-save-')).click();
+    await rev;
+    await expect(item.locator(`button${tidPrefix('revise-')}`)).toBeVisible();
+  });
+
   await step('admin queue shows the flag; dismiss clears it once', async () => {
     const [report] = await sql<{ id: string }[]>`
       select qr.id from quote_reports qr
@@ -146,6 +168,14 @@ test('buyer flags a quote; admin reviews and dismisses it', async ({
     await expect(row).toContainText('off_platform');
     await expect(row).toContainText(BUYER_EMAIL);
     await expect(row).toContainText('phone number in message');
+
+    // QA-535: the detail row under the flag carries the CURRENT message
+    // and the superseded rung (the flagged text) — moderation reads both.
+    const detail = section.getByTestId(`quote-report-detail-${report!.id}`);
+    await expect(detail).toContainText('revised terms, no phone');
+    await expect(
+      detail.locator('[data-testid^="quoterev-"]'),
+    ).toHaveCount(1);
 
     const dismiss = admin.waitForResponse(
       (r) =>

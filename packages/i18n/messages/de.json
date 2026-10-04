@@ -1355,7 +1355,8 @@
     "quoteReports": "Angebots-Meldungen ({count})",
     "noQuoteReports": "Keine offenen Angebots-Meldungen.",
     "colQuote": "Angebot",
-    "colOnRfq": "Anfrage"
+    "colOnRfq": "Anfrage",
+    "revLine": "Überarbeitet — bis {date}: {amount}"
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",
