@@ -135,6 +135,17 @@ export async function FacetSidebar({ params }: { params: SearchParams }) {
             />
             {t("verifiedOnly")}
           </label>
+          <label className="flex items-center gap-2 text-sm" htmlFor="f-minrating">
+            <input
+              id="f-minrating"
+              name="minRating"
+              type="checkbox"
+              value="4"
+              defaultChecked={Boolean(get("minRating"))}
+              data-testid="facet-min-rating"
+            />
+            {t("minRating")}
+          </label>
           <div className="flex gap-2">
             <Button type="submit" data-testid="facet-apply">
               {t("submit")}

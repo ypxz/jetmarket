@@ -28,6 +28,7 @@ interface ParsedParams {
   query?: string;
   sort?: ListingSort;
   verifiedOnly?: boolean;
+  minRating?: number;
 }
 
 const SORTS: ListingSort[] = ["newest", "price_asc", "price_desc", "rating"];
@@ -83,6 +84,11 @@ function parseParams(params: SearchParams): ParsedParams {
     // QA-436: `verified=1` keeps only verified operators' listings. Any other
     // value is ignored (fail-open, same posture as unknown sorts).
     ...(str(params.verified) === "1" ? { verifiedOnly: true } : {}),
+    // QA-454: `minRating=N` keeps listings whose operator's ★ avg >= N —
+    // the sidebar only ever mints 4, but any parseable number composes.
+    ...(toNumber(str(params.minRating)) !== undefined
+      ? { minRating: toNumber(str(params.minRating)) }
+      : {}),
   };
 }
 
@@ -149,6 +155,7 @@ function repoFilter(p: ParsedParams) {
     ...(facetRanges.length ? { facetRanges } : {}),
     ...(facetDateRanges.length ? { facetDateRanges } : {}),
     ...(p.verifiedOnly ? { verifiedOnly: true } : {}),
+    ...(p.minRating !== undefined ? { minRating: p.minRating } : {}),
     ...browseExpiry(),
   };
 }

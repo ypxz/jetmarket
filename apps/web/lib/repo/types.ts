@@ -284,6 +284,10 @@ export interface Repo {
      *  Listings whose operator row is missing never match — mirrors the
      *  EXISTS-subquery semantics, so unverifiable rows hide rather than leak. */
     verifiedOnly?: boolean;
+    /** Only rows whose operator's ★ average meets the floor (QA-454).
+     *  Unrated operators never match — like verifiedOnly, an
+     *  unverifiable signal hides rather than leaking. */
+    minRating?: number;
     /** Fetch these listing ids directly — batch-lookup for join-style pages. */
     ids?: string[];
     /** Result order — `newest` (createdAt desc) is the default. */
@@ -308,6 +312,10 @@ export interface Repo {
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
     /** See {@link Repo.listListings}. */
     verifiedOnly?: boolean;
+    /** See {@link Repo.listListings}. */
+    minRating?: number;
+    /** See {@link Repo.listListings}. */
+    ids?: string[];
   }): Promise<number>;
   updateListingStatus(
     id: string,

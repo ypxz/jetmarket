@@ -216,6 +216,7 @@ class MemoryRepo implements Repo {
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
     verifiedOnly?: boolean;
+    minRating?: number;
     ids?: string[];
     sort?: ListingSort;
     limit?: number;
@@ -236,21 +237,29 @@ class MemoryRepo implements Repo {
         : filter?.sort === "price_desc"
           ? (a: Listing, b: Listing) => b.price - a.price || byNewest(a, b)
           : byFeatured;
-    const out = this.filterListings(filter);
-    // QA-453: "rating" needs the summary before sorting — batched once so
-    // the comparator stays sync like its siblings.
-    if (filter?.sort === "rating") {
+    let out = this.filterListings(filter);
+    // QA-453/QA-454: sort="rating" + minRating both need the summary — one
+    // batched read keeps the sync comparator/filter shapes intact.
+    if (filter?.sort === "rating" || filter?.minRating !== undefined) {
       const summary = await this.ratingSummaryPerOperator(
         [...new Set(out.map((l) => l.operatorId))],
       );
-      const rated = (l: Listing) => summary[l.operatorId] !== undefined;
-      out.sort(
-        (a, b) =>
-          Number(rated(b)) - Number(rated(a)) ||
-          (summary[b.operatorId]?.avg ?? 0) -
-            (summary[a.operatorId]?.avg ?? 0) ||
-          byNewest(a, b),
-      );
+      if (filter?.minRating !== undefined) {
+        const min = filter.minRating;
+        out = out.filter((l) => (summary[l.operatorId]?.avg ?? -1) >= min);
+      }
+      if (filter?.sort === "rating") {
+        const rated = (l: Listing) => summary[l.operatorId] !== undefined;
+        out.sort(
+          (a, b) =>
+            Number(rated(b)) - Number(rated(a)) ||
+            (summary[b.operatorId]?.avg ?? 0) -
+              (summary[a.operatorId]?.avg ?? 0) ||
+            byNewest(a, b),
+        );
+      } else {
+        out.sort(cmp);
+      }
     } else {
       out.sort(cmp);
     }
@@ -270,9 +279,20 @@ class MemoryRepo implements Repo {
     facetDateRanges?: { key: string; from?: string; to?: string }[];
     notExpiredByAttr?: { type: string; attr: string; asOf: string };
     verifiedOnly?: boolean;
+    minRating?: number;
     ids?: string[];
   }): Promise<number> {
-    return this.filterListings(filter).length;
+    let rows = this.filterListings(filter);
+    if (filter?.minRating !== undefined) {
+      // QA-454: unrated ops drop out — same semantics as the SQL
+      // subquery's NULL >= n.
+      const summary = await this.ratingSummaryPerOperator(
+        [...new Set(rows.map((l) => l.operatorId))],
+      );
+      const min = filter.minRating;
+      rows = rows.filter((l) => (summary[l.operatorId]?.avg ?? -1) >= min);
+    }
+    return rows.length;
   }
   private filterListings(filter?: {
     operatorId?: string;

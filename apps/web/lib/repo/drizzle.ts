@@ -213,6 +213,7 @@ interface ListingFilter {
   facetDateRanges?: { key: string; from?: string; to?: string }[];
   notExpiredByAttr?: { type: string; attr: string; asOf: string };
   verifiedOnly?: boolean;
+  minRating?: number;
 }
 
 /** Shared WHERE builder so listListings/countListings never drift apart.
@@ -292,6 +293,14 @@ function listingConds(filter?: ListingFilter) {
         sql`${v} is null`,
         sql`${v} >= ${asOf}`,
       )!,
+    );
+  }
+  if (filter?.minRating !== undefined) {
+    // QA-454: same correlated avg as sort="rating" — NULL >= n is NULL (not
+    // true), so unrated operators drop out exactly like verifiedOnly drops
+    // missing ones.
+    conds.push(
+      sql`(select avg(d.buyer_rating)::float8 from deals d join quotes q on q.id = d.quote_id where q.operator_id = ${listings.operatorId} and d.buyer_rating is not null) >= ${filter.minRating}`,
     );
   }
   if (filter?.verifiedOnly) {

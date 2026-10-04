@@ -2552,6 +2552,18 @@ export function repoContract(
         sort: "rating",
       });
       expect(byRating.map((l) => l.id)).toEqual([liHi.id, liLo.id, liUn.id]);
+      // QA-454: minRating facet — unrated ops drop (NULL >= n), count agrees.
+      const fourPlus = await repo.listListings({
+        ids: [liUn.id, liLo.id, liHi.id],
+        minRating: 4,
+      });
+      expect(fourPlus.map((l) => l.id)).toEqual([liHi.id]);
+      expect(
+        await repo.countListings({ ids: [liUn.id, liLo.id, liHi.id], minRating: 4 }),
+      ).toBe(1);
+      expect(
+        await repo.countListings({ ids: [liUn.id, liLo.id, liHi.id], minRating: 1 }),
+      ).toBe(2);
       expect((await repo.getDeal(deal.id))?.invoiceStatus).toBe("paid");
       expect((await repo.getDeal(deal.id))?.invoiceRef).toBe("inv_test_1");
       // deals.quote_id is unique — a racing double-accept must be rejected.

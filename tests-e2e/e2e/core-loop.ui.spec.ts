@@ -498,6 +498,15 @@ test('core loop UI: signup → listings → search → RFQ → quote → accept 
       await expect(
         buyer.getByTestId('search-result').first().getByTestId('listing-rating'),
       ).toContainText('★ 5.0');
+      // QA-454: the 4★+ facet keeps the rated listing and drops the rest.
+      await buyer.goto(
+        `/search?q=${encodeURIComponent(LISTING_TITLE)}&minRating=4`,
+      );
+      await expect(buyer.getByTestId('search-result')).toHaveCount(1);
+      await buyer.goto(
+        `/search?q=${encodeURIComponent(LISTING_TITLE)}&minRating=6`,
+      );
+      await expect(buyer.getByTestId('search-result')).toHaveCount(0);
     } finally {
       await sql.end();
     }
