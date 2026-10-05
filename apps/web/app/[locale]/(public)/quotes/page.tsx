@@ -2,6 +2,7 @@
 
 import { ConciergeUpsell } from "@/components/concierge-upsell";
 import { SavedSearchesList } from "@/components/saved-searches-list";
+import { AccountDataPanel } from "@/components/account-data-panel";
 import { CONCIERGE_PRICE_USD } from "@jetmarket/config";
 import { readJsonOr } from "@/lib/fetch-json";
 import { errText } from "@/lib/error-catalog";
@@ -1491,6 +1492,9 @@ function QuotesInner() {
         )
       ) : null}
       {rfqs ? <SavedSearchesList email={email} token={token} /> : null}
+      {/* QA-559: data-rights panel — the export/delete routes (QA-543/544)
+          had no UI entry point; mount them on the mailbox-proved page. */}
+      {rfqs ? <AccountDataPanel email={email} token={token} /> : null}
     </main>
   );
 }

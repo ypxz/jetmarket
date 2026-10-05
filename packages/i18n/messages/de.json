@@ -533,7 +533,13 @@
       "scam": "Betrug",
       "abusive": "Missbräuchlich",
       "other": "Sonstiges"
-    }
+    },
+    "accountData": "Deine Daten",
+    "accountDataHint": "Lade alles herunter, was wir über deine Anfragen, Angebote und Aufträge gespeichert haben, oder lösche das Postfach samt Verlauf endgültig.",
+    "exportData": "Meine Daten herunterladen (JSON)",
+    "deleteAccount": "Konto löschen",
+    "deleteAccountConfirm": "Endgültig löschen — kein Rückgängig",
+    "accountDeleted": "Dein Konto und alle zugehörigen Daten wurden gelöscht."
   },
   "design": {
     "title": "Designsystem",

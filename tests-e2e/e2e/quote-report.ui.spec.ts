@@ -197,5 +197,38 @@ test('buyer flags a quote; admin reviews and dismisses it', async ({
     expect(replay.status()).toBe(409);
   });
 
+  await step('data-rights panel: export link + two-step delete (QA-559)', async () => {
+    // The export/delete routes existed but nothing linked to them — the
+    // emailed-link buyer's only path was knowing the URL.
+    await buyer.reload();
+    const panel = buyer.getByTestId('account-data');
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+
+    const exportLink = panel.getByTestId('account-export');
+    const href = await exportLink.getAttribute('href');
+    expect(href).toContain(`email=${encodeURIComponent(BUYER_EMAIL)}`);
+    expect(href).toContain('t=');
+    const exportRes = await buyer.request.get(href!);
+    expect(exportRes.ok()).toBeTruthy();
+    const data = (await exportRes.json()) as {
+      email: string;
+      rfqs: unknown[];
+      quoteReports: unknown[];
+    };
+    expect(data.email).toBe(BUYER_EMAIL);
+    expect(data.rfqs.length).toBeGreaterThan(0);
+    expect(data.quoteReports.length).toBeGreaterThan(0);
+
+    // Two-step delete, then the mailbox is tombstoned: the same link
+    // that just exported now 401s (no live RFQ bearer left to prove it).
+    await panel.getByTestId('account-delete').click();
+    await panel.getByTestId('account-delete-confirm').click();
+    await expect(buyer.getByTestId('account-deleted')).toBeVisible({
+      timeout: 15_000,
+    });
+    const exportAfter = await buyer.request.get(href!);
+    expect(exportAfter.status()).toBe(401);
+  });
+
   await sql.end();
 });

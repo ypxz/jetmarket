@@ -533,7 +533,13 @@
       "scam": "Scam / fraud",
       "abusive": "Abusive",
       "other": "Other"
-    }
+    },
+    "accountData": "Your data",
+    "accountDataHint": "Download everything we hold about your requests, quotes and deals, or delete the mailbox and its history entirely.",
+    "exportData": "Download my data (JSON)",
+    "deleteAccount": "Delete my account",
+    "deleteAccountConfirm": "Permanently delete — no undo",
+    "accountDeleted": "Your account and all associated data were deleted."
   },
   "design": {
     "title": "Design system",
