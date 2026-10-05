@@ -1429,7 +1429,10 @@
     "colDemandBacklog": "Digest-Warteschlange",
     "colDemandNewest": "Neuestes Abo",
     "demandAny": "beliebiges passendes Inserat",
-    "noDemand": "Noch keine aktiven Suchabos."
+    "noDemand": "Noch keine aktiven Suchabos.",
+    "demandFlush": "Digest jetzt senden",
+    "demandFlushing": "Senden…",
+    "demandFlushed": "{count} gesendet"
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",

@@ -636,3 +636,127 @@ test('admin demand radar groups active search alerts (QA-562)', async () => {
     await sql.end();
   }
 });
+
+// QA-564: the demand radar's backlog badge is actionable — an admin who
+// just seeded inventory for a hot demand signature shouldn't wait for
+// the worker's 20h matured-window pass. "Send digest now" flushes every
+// queued alert in the group: digest lands in the buyer's mailbox, the
+// backlog clears, and the row re-reads 0.
+test('admin flush sends queued digests from the demand radar (QA-564)', async () => {
+  test.setTimeout(90_000);
+  const sql = postgres(testDb);
+  const FL_BUYER = `e2e-fl-a-${run}@jetmarket.local`;
+  const FL_ADMIN = `e2e-admin-fl-${run}@jetmarket.local`;
+  const FL_OP = `e2e-fl-op-${run}@jetmarket.local`;
+  const SIG = `xfl${run}`;
+  const listingId = crypto.randomUUID();
+
+  try {
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+    });
+    // 'daily' cadence queues EVERY activation into pending_ids — the
+    // only delivery path is a matured flush (worker or this button).
+    const sub = await anon.post('/api/search-alerts', {
+      data: {
+        email: FL_BUYER,
+        params: { q: SIG, type: 'charter' },
+        freq: 'daily',
+      },
+    });
+    expect(sub.status()).toBe(200);
+    const { devConfirmUrl } = (await sub.json()) as {
+      devConfirmUrl?: string;
+    };
+    const conf = new URL(devConfirmUrl!);
+    await anon.get(conf.pathname + conf.search, { maxRedirects: 0 });
+
+    // A matching activation queues (no mail — daily never instant-sends).
+    const op = await login(FL_OP, 'operator');
+    const opRes = await op.post('/api/operators', {
+      data: { name: `E2E Flush Ops ${run}`, baseAirport: 'LSZH' },
+    });
+    expect(opRes.status()).toBe(201);
+    await sql`
+      insert into listings (id, operator_id, vertical, type, title, price_minor, currency, status, attributes, photos)
+      select ${listingId}, id, 'jets', 'charter', ${`E2E ${SIG} Charter`},
+             750000, 'USD', 'draft', '{}', '[]'
+      from operators where user_id = (select id from users where email = ${FL_OP})`;
+    const act = await op.patch(`/api/listings/${listingId}`, {
+      data: { status: 'active' },
+    });
+    expect(act.status()).toBe(200);
+    const [queued] = await sql`
+      select pending_ids from search_alerts where email = ${FL_BUYER}`;
+    expect(queued?.pending_ids).toContain(listingId);
+
+    // The radar row carries the backlog badge AND the flush control.
+    const admin = await login(FL_ADMIN);
+    const html = await (await admin.get('/admin')).text();
+    const sectionStart = html.indexOf('admin-demand');
+    const section = html.slice(
+      sectionStart,
+      html.indexOf('</section>', sectionStart),
+    );
+    const rowStart = section.indexOf(`q=${SIG}`);
+    expect(rowStart).toBeGreaterThan(-1);
+    const rowHtml = section.slice(
+      section.lastIndexOf('demand-row', rowStart),
+      section.indexOf('</tr>', rowStart),
+    );
+    expect(rowHtml).toContain('demand-backlog');
+    expect(rowHtml).toContain('demand-flush');
+
+    // Signature is re-derived server-side — only this demand group flushes.
+    const flush = await admin.post('/api/admin/search-alerts/flush', {
+      data: { signature: `q=${SIG} · type=charter` },
+    });
+    expect(flush.status()).toBe(200);
+    const body = (await flush.json()) as { sent: number };
+    expect(body.sent).toBe(1);
+
+    // Digest lands — same mail shape the worker flush sends.
+    let mail: string | null = null;
+    for (let i = 0; i < 20 && !mail; i++) {
+      mail = latestMailTo(FL_BUYER);
+      if (!mail || !mail.includes('saved search')) mail = null;
+      if (!mail) await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(mail, 'expected the flushed digest mail').toBeTruthy();
+    expect(mail!).toContain(`E2E ${SIG} Charter`);
+
+    // Backlog cleared + stamped — the radar re-reads 0.
+    const [after] = await sql`
+      select pending_ids, last_alerted_at from search_alerts
+      where email = ${FL_BUYER}`;
+    expect(after?.pending_ids ?? []).toHaveLength(0);
+    expect(after?.last_alerted_at).not.toBeNull();
+    const html2 = await (await admin.get('/admin')).text();
+    const s2 = html2.indexOf('admin-demand');
+    const section2 = html2.slice(s2, html2.indexOf('</section>', s2));
+    const r2 = section2.indexOf(`q=${SIG}`);
+    const row2 = section2.slice(
+      section2.lastIndexOf('demand-row', r2),
+      section2.indexOf('</tr>', r2),
+    );
+    expect(row2).not.toContain('demand-flush');
+    // backlog cell now renders a plain 0 — badge only on >0.
+    expect(row2).toContain('>0<');
+
+    // A repeat click has nothing to flush; a stranger can't flush at all.
+    const replay = await admin.post('/api/admin/search-alerts/flush', {
+      data: { signature: `q=${SIG} · type=charter` },
+    });
+    expect(replay.status()).toBe(409);
+    const stranger = await anon.post('/api/admin/search-alerts/flush', {
+      data: { signature: `q=${SIG} · type=charter` },
+    });
+    expect(stranger.status()).toBe(403);
+  } finally {
+    await sql`delete from search_alerts where email = ${FL_BUYER}`;
+    await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from operators where user_id in (select id from users where email = ${FL_OP})`;
+    await sql`delete from users where email in (${FL_BUYER}, ${FL_OP}, ${FL_ADMIN})`;
+    await sql.end();
+  }
+});

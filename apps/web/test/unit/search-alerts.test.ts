@@ -26,6 +26,7 @@ import { GET as buyerAlertsGet } from "../../app/api/buyer/search-alerts/route";
 import { POST as alertOffPost } from "../../app/api/search-alerts/[id]/off/route";
 import { POST as alertPausePost } from "../../app/api/search-alerts/[id]/pause/route";
 import { POST as alertResumePost } from "../../app/api/search-alerts/[id]/resume/route";
+import { POST as flushPost } from "../../app/api/admin/search-alerts/flush/route";
 
 const subscribe = (body: unknown) =>
   subscribePost(
@@ -745,5 +746,111 @@ describe("pause/resume (QA-542)", () => {
       ).status,
     ).toBe(200);
     expect(await statusOf("tokpa@test.dev", id)).toBe("active");
+  });
+});
+
+describe("admin demand flush (QA-564)", () => {
+  const flush = (signature: string) =>
+    flushPost(
+      new Request("http://test.local/api/admin/search-alerts/flush", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ signature }),
+      }),
+    );
+
+  const mkAlert = async (
+    email: string,
+    params: Record<string, unknown>,
+  ): Promise<string> => {
+    const { alert } = await repo.createSearchAlert({
+      vertical: "jets",
+      email,
+      params,
+      token: crypto.randomUUID(),
+      dedupeKey: crypto.randomUUID(),
+      freq: "daily",
+    });
+    await repo.confirmSearchAlert(alert.token);
+    return alert.id;
+  };
+
+  it("flushes only the re-derived signature group; admin-gated; 409 empty", async () => {
+    const listing = await repo.createListing({
+      operatorId: "op_x",
+      vertical: "jets",
+      type: "charter",
+      title: "Flush Jet",
+      price: 9000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    // Two alerts share ONE signature; a third sits in another group.
+    const idA = await mkAlert("fl-a@test.dev", { q: "x", type: "charter" });
+    const idB = await mkAlert("fl-b@test.dev", { type: "charter", q: "x" });
+    const idC = await mkAlert("fl-c@test.dev", { type: "for_sale" });
+    for (const id of [idA, idB, idC]) {
+      await repo.appendSearchAlertPending(id, listing.id);
+    }
+
+    const admin = await repo.createUser("fl-admin@test.dev", "admin");
+    jar.set(sessionCookie, signSession(admin.id, 1));
+    sendSpy.mockClear();
+
+    const res = await flush("q=x · type=charter");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { sent: number }).sent).toBe(2);
+    const sent = sendSpy.mock.calls.map(toOf).sort();
+    expect(sent).toEqual(["fl-a@test.dev", "fl-b@test.dev"]);
+
+    const rows = await repo.listSearchAlerts({ vertical: "jets" });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    expect(byId.get(idA)!.pendingIds).toHaveLength(0);
+    expect(byId.get(idB)!.pendingIds).toHaveLength(0);
+    // The foreign group was never touched — its backlog survives.
+    expect(byId.get(idC)!.pendingIds).toEqual([listing.id]);
+
+    // Nothing left in the group → 409; strangers 403.
+    expect((await flush("q=x · type=charter")).status).toBe(409);
+    expect((await flush("type=for_sale")).status).toBe(200); // idC still has backlog
+    const outsider = await repo.createUser("fl-buyer@test.dev", "operator");
+    jar.set(sessionCookie, signSession(outsider.id, 1));
+    expect((await flush("type=for_sale")).status).toBe(403);
+  });
+
+  it("an all-delisted backlog clears silently with no mail", async () => {
+    const listing = await repo.createListing({
+      operatorId: "op_x",
+      vertical: "jets",
+      type: "charter",
+      title: "Dead Jet",
+      price: 9000,
+      currency: "USD",
+      photos: [],
+      attributes: {},
+    });
+    const id = await mkAlert("fl-dead@test.dev", {
+      q: "deadsig",
+      type: "charter",
+    });
+    await repo.appendSearchAlertPending(id, listing.id);
+    await repo.updateListingStatus(listing.id, "archived");
+
+    const admin = await repo.createUser("fl-admin2@test.dev", "admin");
+    jar.set(sessionCookie, signSession(admin.id, 1));
+    sendSpy.mockClear();
+    const res = await flush("q=deadsig · type=charter");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { sent: number; cleared: number };
+    expect(body.sent).toBe(0);
+    expect(body.cleared).toBe(1);
+    expect(
+      sendSpy.mock.calls.filter((c: unknown[]) => toOf(c) === "fl-dead@test.dev"),
+    ).toHaveLength(0);
+    const row = (await repo.listSearchAlerts({ vertical: "jets" })).find(
+      (a) => a.id === id,
+    )!;
+    expect(row.pendingIds).toHaveLength(0);
   });
 });

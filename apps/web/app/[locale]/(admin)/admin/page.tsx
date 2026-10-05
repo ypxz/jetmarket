@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { amendmentDiffs } from "@/lib/rfq-amendments";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
+import { searchAlertSignature } from "@/lib/search-alerts";
 import { invoiceStateVariant } from "@/lib/state-variant";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
 import { ListingModButton } from "./listing-mod-button";
@@ -22,6 +23,7 @@ import {
 } from "./mark-paid";
 import { RfqCloseButton, RfqSpamButton } from "./rfq-mod-button";
 import { BuyerBlockButton } from "./buyer-block-button";
+import { DemandFlushButton } from "./demand-flush";
 import {
   DismissDealReportButton,
   DismissQuoteReportButton,
@@ -361,10 +363,7 @@ export default async function AdminPage({
       { signature: string; buyers: number; backlog: number; newest: string }
     >();
     for (const a of searchAlerts) {
-      const entries = Object.entries(a.params)
-        .filter(([k, v]) => k !== "watch" && v !== undefined && v !== null && v !== "")
-        .sort(([x], [y]) => x.localeCompare(y));
-      const signature = entries.map(([k, v]) => `${k}=${v}`).join(" · ");
+      const signature = searchAlertSignature(a.params);
       const key = signature || "(any)";
       const g = groups.get(key) ?? {
         signature,
@@ -1303,6 +1302,7 @@ export default async function AdminPage({
               <th className="py-2 pr-4">{t("colDemandBuyers")}</th>
               <th className="py-2 pr-4">{t("colDemandBacklog")}</th>
               <th className="py-2">{t("colDemandNewest")}</th>
+              <th className="py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -1324,11 +1324,16 @@ export default async function AdminPage({
                 <td className="py-2 text-muted">
                   {new Date(g.newest).toLocaleDateString(locale)}
                 </td>
+                <td className="py-2">
+                  {g.backlog > 0 ? (
+                    <DemandFlushButton signature={g.signature} />
+                  ) : null}
+                </td>
               </tr>
             ))}
             {demandGroups.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-muted">
+                <td colSpan={5} className="py-6 text-center text-muted">
                   {t("noDemand")}
                 </td>
               </tr>

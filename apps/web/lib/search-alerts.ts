@@ -245,6 +245,52 @@ async function sendAlertDigest(
 }
 
 /**
+ * Canonical demand signature (QA-564): the admin demand radar groups
+ * alerts by this — sorted `k=v` pairs minus `watch` and unset values.
+ * Shared between the admin page render and the flush route so what the
+ * row displays can never drift from what a flush POST matches.
+ */
+export function searchAlertSignature(
+  params: Record<string, unknown>,
+): string {
+  const entries = Object.entries(params)
+    .filter(
+      ([k, v]) =>
+        k !== "watch" && v !== undefined && v !== null && v !== "",
+    )
+    .sort(([x], [y]) => x.localeCompare(y));
+  return entries.map(([k, v]) => `${k}=${v}`).join(" · ");
+}
+
+/**
+ * Admin-triggered backlog flush (QA-564): send one alert's pending digest
+ * NOW instead of waiting for the worker's matured-window pass. Mirrors
+ * `alertSavedSearches`' send semantics — live in-vertical listings only;
+ * an all-delisted backlog clears silently; a failed send keeps the queue
+ * so the next worker pass retries (mark only runs post-send).
+ */
+export async function flushSearchAlertBacklog(
+  repo: Repo,
+  alert: SearchAlert,
+  origin: string,
+): Promise<"sent" | "cleared" | "failed"> {
+  const live = (await repo.listListings({ ids: alert.pendingIds })).filter(
+    (l) => l.status === "active" && l.vertical === alert.vertical,
+  );
+  try {
+    if (live.length) await sendAlertDigest(origin, alert, live);
+    await repo.markSearchAlerted(alert.id);
+    return live.length ? "sent" : "cleared";
+  } catch (e) {
+    logWarn("search_alerts.admin_flush_failed", {
+      alertId: alert.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return "failed";
+  }
+}
+
+/**
  * End-of-watch (QA-408): archiving is operator-terminal — the watched row
  * can never come back, so every watch on it is dead. Mail each watcher a
  * "watch ended" notice and flip their alert 'off' (a fresh subscribe would

@@ -1429,7 +1429,10 @@
     "colDemandBacklog": "Queued digest",
     "colDemandNewest": "Newest alert",
     "demandAny": "any matching listing",
-    "noDemand": "No active search alerts yet."
+    "noDemand": "No active search alerts yet.",
+    "demandFlush": "Send digest now",
+    "demandFlushing": "Sending…",
+    "demandFlushed": "{count} sent"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",
