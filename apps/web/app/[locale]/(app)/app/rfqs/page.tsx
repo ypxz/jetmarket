@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import { amendmentDiffs } from "@/lib/rfq-amendments";
 import { operatorRfqView } from "@/lib/rfq-view";
 import { SEARCH_PAGE_SIZE, isExpiredListing } from "@/lib/search";
 import { quoteStateVariant, rfqStateVariant } from "@/lib/state-variant";
@@ -441,27 +442,17 @@ export default async function RfqInboxPage({
                 {(() => {
                   const rungs = amendsByRfq.get(r.id);
                   if (!rungs?.length) return null;
-                  const lines = rungs
-                    .map((a, i) => {
-                      const after = i === 0 ? r.fields : rungs[i - 1]!.fields;
-                      const changes = [
-                        ...new Set([
-                          ...Object.keys(a.fields),
-                          ...Object.keys(after),
-                        ]),
-                      ]
-                        .filter(
-                          (k) =>
-                            String(a.fields[k] ?? "") !==
-                            String(after[k] ?? ""),
-                        )
-                        .map(
-                          (k) =>
-                            `${fieldLabels.get(k) ?? k}: ${String(a.fields[k] ?? "—")} → ${String(after[k] ?? "—")}`,
-                        );
-                      return { a, changes };
-                    })
-                    .filter((l) => l.changes.length > 0);
+                  // QA-538: shared diff — rung vs next-newer/live, empty
+                  // drops out.
+                  const lines = amendmentDiffs(rungs, r.fields).map(
+                    ({ amendment: a, changes }) => ({
+                      a,
+                      changes: changes.map(
+                        (c) =>
+                          `${fieldLabels.get(c.key) ?? c.key}: ${c.old} → ${c.next}`,
+                      ),
+                    }),
+                  );
                   if (!lines.length) return null;
                   return (
                     <ul

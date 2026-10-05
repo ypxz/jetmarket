@@ -8,6 +8,7 @@ import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
+import { amendmentDiffs } from "@/lib/rfq-amendments";
 import { SEARCH_PAGE_SIZE } from "@/lib/search";
 import { invoiceStateVariant } from "@/lib/state-variant";
 import { verticalConfig, verticalSlug } from "@/lib/vertical";
@@ -34,6 +35,13 @@ export default async function AdminPage({
   const params = await searchParams;
   const t = await getTranslations("admin");
   const tc = await getTranslations("common");
+  // QA-538: RFQ-flag detail rows render the request's field map +
+  // amendment rungs — labels resolve through the vertical's rfqFields
+  // labelKeys like the op inbox (raw key on unknown).
+  const vt = await getTranslations(verticalConfig().copy.namespace);
+  const fieldLabels = new Map(
+    verticalConfig().rfqFields.map((f) => [f.key, vt(f.labelKey)] as const),
+  );
   const user = await currentUser();
   if (!user || user.role !== "admin") redirect("/sign-in");
 
@@ -115,10 +123,19 @@ export default async function AdminPage({
     ]);
   // QA-470: flag rows join their RFQ (status + buyer), the reporter's
   // email, and the RFQ's listing title in one batched wave.
-  const [rfqFlagRfqRows, rfqFlagReporterRows] = await Promise.all([
+  const [rfqFlagRfqRows, rfqFlagReporterRows, rfqFlagAmendRows] = await Promise.all([
     repo.listRfqs({ ids: [...new Set(rfqFlagRows.map((r) => r.rfqId))] }),
     repo.listUsers([...new Set(rfqFlagRows.map((r) => r.reporterId))]),
+    // QA-538: the amendment trail joins too — a "spam" flag is judged
+    // partly on whether the buyer rewrote the request after filing.
+    repo.listRfqAmendments(rfqFlagRows.map((r) => r.rfqId)),
   ]);
+  const rfqFlagAmends = new Map<string, typeof rfqFlagAmendRows>();
+  for (const a of rfqFlagAmendRows) {
+    const arr = rfqFlagAmends.get(a.rfqId) ?? [];
+    arr.push(a);
+    rfqFlagAmends.set(a.rfqId, arr);
+  }
   const rfqFlagListingRows = await repo.listListings({
     ids: [
       ...new Set(
@@ -686,7 +703,8 @@ export default async function AdminPage({
             {rfqFlagRows.map((r) => {
               const rfq = rfqFlagRfqs.get(r.rfqId);
               return (
-                <tr key={r.id} data-testid={`rfq-report-${r.id}`}>
+                <Fragment key={r.id}>
+                <tr data-testid={`rfq-report-${r.id}`}>
                   <td className="py-2 pr-4 font-medium">
                     {rfq?.buyerEmail ?? "—"}
                   </td>
@@ -719,6 +737,62 @@ export default async function AdminPage({
                     ) : null}
                   </td>
                 </tr>
+                {/* QA-538: the flag says WHY someone objected — the detail
+                    row shows WHAT they objected to: the request's live
+                    field map plus its amendment rungs (each carries the
+                    superseded map), so a post-flag edit is visible too. */}
+                <tr data-testid={`rfq-report-detail-${r.id}`}>
+                  <td colSpan={8} className="pb-3 pt-0">
+                    {rfq ? (
+                      <div
+                        className="max-w-2xl truncate text-xs text-muted"
+                        data-testid={`rfq-report-fields-${r.id}`}
+                      >
+                        {Object.entries(rfq.fields)
+                          .map(
+                            ([k, v]) =>
+                              `${fieldLabels.get(k) ?? k}: ${String(v ?? "")}`,
+                          )
+                          .join(" · ")}
+                      </div>
+                    ) : null}
+                    {(() => {
+                      const lines = rfq
+                        ? amendmentDiffs(
+                            rfqFlagAmends.get(rfq.id) ?? [],
+                            rfq.fields,
+                          )
+                        : [];
+                      if (!lines.length) return null;
+                      return (
+                        <ul
+                          className="mt-1 space-y-0.5 text-xs text-muted"
+                          data-testid={`rfq-report-amends-${r.id}`}
+                        >
+                          {lines.map(({ amendment: a, changes }) => (
+                            <li key={a.id} data-testid={`rfqamend-${a.id}`}>
+                              {t("amendLine", {
+                                date: new Date(
+                                  a.amendedAt,
+                                ).toLocaleDateString(locale, {
+                                  month: "short",
+                                  day: "numeric",
+                                }),
+                                changes: changes
+                                  .map(
+                                    (c) =>
+                                      `${fieldLabels.get(c.key) ?? c.key}: ${c.old} → ${c.next}`,
+                                  )
+                                  .join(" · "),
+                              })}
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                  </td>
+                </tr>
+                </Fragment>
               );
             })}
           </tbody>

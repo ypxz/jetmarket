@@ -1358,7 +1358,8 @@
     "noQuoteReports": "No open quote flags.",
     "colQuote": "Quote",
     "colOnRfq": "Request",
-    "revLine": "Revised — was {amount} before {date}"
+    "revLine": "Revised — was {amount} before {date}",
+    "amendLine": "Buyer edited — {date}: {changes}"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

@@ -1358,7 +1358,8 @@
     "noQuoteReports": "Keine offenen Angebots-Meldungen.",
     "colQuote": "Angebot",
     "colOnRfq": "Anfrage",
-    "revLine": "Überarbeitet — bis {date}: {amount}"
+    "revLine": "Überarbeitet — bis {date}: {amount}",
+    "amendLine": "Vom Käufer geändert — {date}: {changes}"
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",

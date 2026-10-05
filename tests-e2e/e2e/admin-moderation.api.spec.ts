@@ -383,7 +383,7 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
     extraHTTPHeaders: { 'fly-client-ip': '10.99.2.9' },
   });
   const BUYER = `e2e-blk-buyer-${run}@jetmarket.local`;
-  const mkRfq = () =>
+  const mkRfq = (fields: Record<string, unknown> = {}) =>
     publicCtx.post('/api/rfqs', {
       data: {
         listingId,
@@ -397,6 +397,7 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
           budgetUsd: 45000,
           name: 'Buyer Test',
           email: BUYER,
+          ...fields,
         },
       },
     });
@@ -469,8 +470,15 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   // QA-469: the listing's operator flags the fresh RFQ into moderation —
   // the demand-side twin of the buyer listing flag. Visibility = owns the
   // listing or holds a delivered match (same gate as dismiss).
-  const freshRfq = await mkRfq();
-  const freshId = ((await freshRfq.json()) as { rfqId: string }).rfqId;
+  // QA-538: distinct payload → a genuinely fresh row (an identical
+  // repost dedupe-replays and omits the accessToken the PATCH below
+  // needs for buyer authorization).
+  const freshRfq = await mkRfq({ passengers: 3 });
+  const freshJson = (await freshRfq.json()) as {
+    rfqId: string;
+    accessToken: string;
+  };
+  const freshId = freshJson.rfqId;
   const rfqFlag = await operator.post(`/api/operator/rfqs/${freshId}/report`, {
     data: { reason: 'spam', note: 'mass solicitation' },
   });
@@ -514,6 +522,35 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
     new RegExp(`<tr[^>]*data-testid="rfq-report-${flagId}"[^>]*>[\\s\\S]*?</tr>`),
   )?.[0];
   expect(flagRow).toContain(`mod-rfq-spam-${freshId}`);
+
+  // QA-538: the flag detail row carries the REQUEST itself — live field
+  // map + the amendment trail — so a moderator reads what was flagged AND
+  // whether the buyer rewrote it after filing. The buyer edits arrival
+  // NCE → GVA post-flag via the bearer token from the rfq POST response.
+  const amend = await publicCtx.patch(`/api/rfqs/${freshId}`, {
+    data: {
+      buyerEmail: BUYER,
+      token: freshJson.accessToken,
+      fields: {
+        departure: 'ZRH',
+        arrival: 'GVA',
+        dateFrom: isoDateIn(14),
+        dateTo: isoDateIn(16),
+        passengers: 3,
+        budgetUsd: 45000,
+        name: 'Buyer Test',
+        email: BUYER,
+      },
+    },
+  });
+  expect(amend.status()).toBe(200);
+  const adminHtml2 = await (await admin.get('/en/admin')).text();
+  expect(adminHtml2).toContain(`rfq-report-detail-${flagId}`);
+  expect(adminHtml2).toContain(`rfq-report-fields-${flagId}`);
+  expect(adminHtml2).toContain('GVA');
+  // One rung: superseded arrival NCE → live GVA.
+  expect(adminHtml2).toContain(`rfq-report-amends-${flagId}`);
+  expect(adminHtml2).toContain('NCE → GVA');
   // …and the flag never blocks enforcement — spam-mark still flips it.
   const spammed = await admin.post(`/api/admin/rfqs/${freshId}/status`, {
     data: { status: 'spam' },
