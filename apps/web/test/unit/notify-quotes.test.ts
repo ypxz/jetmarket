@@ -62,11 +62,27 @@ async function fixture(repo: Repo, opLocale?: string) {
   return { opUser, op, listing, rfq, quote };
 }
 
+
+/** Outbox snapshot helper (QA-548): .json files sort by filename and mail
+ *  ids are `<ms>-<rand>` — a new mail can sort EARLIER than an existing
+ *  same-ms row, so `.slice(beforeCount)` silently drops it (flake seen in
+ *  test:all). Diff by id instead of position. */
+const outboxIds = () =>
+  new Set(
+    email
+      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
+      .map((m) => m.id),
+  );
+const newMails = (before: Set<string>) =>
+  email
+    .readOutbox(process.env.EMAIL_OUTBOX_DIR)
+    .filter((m) => !before.has(m.id));
+
 describe("notifyQuoteDeclined", () => {
   it("mails the quote's operator for each reason", async () => {
     const repo = await getMemoryRepo();
     const { opUser, listing, rfq, quote } = await fixture(repo);
-    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+    const before = outboxIds();
 
     for (const reason of [
       "declined",
@@ -75,9 +91,7 @@ describe("notifyQuoteDeclined", () => {
     ] as const) {
       await notifyQuoteDeclined(repo, quote, rfq, reason);
     }
-    const sent = email
-      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
-      .slice(before)
+    const sent = newMails(before)
       .filter((m) => m.to === opUser.email);
     expect(sent).toHaveLength(3);
     for (const m of sent) {
@@ -94,13 +108,11 @@ describe("notifyQuoteDeclined", () => {
   it("QA-494: renders in the operator's users.locale", async () => {
     const repo = await getMemoryRepo();
     const { opUser, listing, rfq, quote } = await fixture(repo, "de");
-    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+    const before = outboxIds();
 
     await notifyQuoteDeclined(repo, quote, rfq, "declined");
 
-    const sent = email
-      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
-      .slice(before)
+    const sent = newMails(before)
       .filter((m) => m.to === opUser.email);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.subject).toBe(
@@ -114,13 +126,11 @@ describe("notifyQuoteDeclined", () => {
   it("QA-508: a buyer-picked reason appends the localized 'Reason given' line", async () => {
     const repo = await getMemoryRepo();
     const { opUser, quote, rfq } = await fixture(repo);
-    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+    const before = outboxIds();
 
     await notifyQuoteDeclined(repo, quote, rfq, "declined", "timing");
 
-    const sent = email
-      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
-      .slice(before)
+    const sent = newMails(before)
       .filter((m) => m.to === opUser.email);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain(
@@ -133,13 +143,11 @@ describe("notifyBuyerQuoteWithdrawn", () => {
   it("mails the buyer (unauthenticated — email is the only channel)", async () => {
     const repo = await getMemoryRepo();
     const { listing, rfq, quote } = await fixture(repo);
-    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+    const before = outboxIds();
 
     await notifyBuyerQuoteWithdrawn(repo, quote, rfq);
 
-    const sent = email
-      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
-      .slice(before)
+    const sent = newMails(before)
       .filter((m) => m.to === rfq.buyerEmail);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.subject).toContain("withdrawn");
@@ -180,13 +188,11 @@ describe("notifyDealRated (QA-457)", () => {
       invoiceStatus: "pending",
     });
     await repo.rateDeal(d2.id, 4);
-    const before = email.readOutbox(process.env.EMAIL_OUTBOX_DIR).length;
+    const before = outboxIds();
 
     await notifyDealRated(repo, deal, 5);
 
-    const sent = email
-      .readOutbox(process.env.EMAIL_OUTBOX_DIR)
-      .slice(before)
+    const sent = newMails(before)
       .filter((m) => m.to === opUser.email);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.subject).toBe("The buyer rated your deal ★ 5");
