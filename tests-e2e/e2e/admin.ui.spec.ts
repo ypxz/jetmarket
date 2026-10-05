@@ -39,6 +39,16 @@ test('admin dashboard + jobs render and verify toggles', async ({ page }) => {
   await page.getByTestId(`verify-${opId}`).click();
   await expect(cell).toHaveText(before ?? '');
 
+  // QA-552: the operator name links into the drill-down card; "← all
+  // operators" returns to the plain dashboard.
+  await page.getByTestId(`op-view-${opId}`).click();
+  await expect(page.getByTestId('op-detail')).toBeVisible();
+  await expect(page.getByTestId('op-detail-meta')).toContainText('@');
+  await expect(page.getByTestId('op-detail-book')).toContainText('Book:');
+  await expect(page.getByTestId('op-detail-flags')).toContainText('Open flags:');
+  await page.getByText('← all operators').click();
+  await expect(page.getByTestId('op-detail')).toBeHidden();
+
   // Jobs page renders — rows or the documented empty state.
   await page.goto('/admin/jobs');
   await expect(

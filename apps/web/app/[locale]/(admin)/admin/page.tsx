@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Pager } from "@/components/pager";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
+import type { Deal, Listing } from "@/lib/repo/types";
 import { Link } from "@/i18n/navigation";
 import { getRepo } from "@/lib/repo";
 import { amendmentDiffs } from "@/lib/rfq-amendments";
@@ -253,6 +254,76 @@ export default async function AdminPage({
     blockedRows.map((b) => b.email.toLowerCase()),
   );
 
+  // QA-552: operator drill-down — ?op=<id> renders a moderation detail
+  // card above the table: the fields a moderator checks before a
+  // verify/suspend decision. Flag counts reuse the already-loaded open
+  // queues (they are "on the queue right now" figures, not history).
+  const opParam = typeof params.op === "string" ? params.op : undefined;
+  const detailOp = opParam ? await repo.getOperator(opParam) : undefined;
+  let opDetail:
+    | {
+        email?: string;
+        listings: Listing[];
+        bookLive: number;
+        bookTotal: number;
+        deals: Deal[];
+        dealCount: number;
+        dealFees: number;
+        rating?: { avg: number; count: number };
+        flags: { listings: number; quotes: number; filed: number };
+      }
+    | undefined;
+  if (opParam && detailOp) {
+    const [opUsers, opListings, opLiveRows, opBookTotal, opDeals, opDealCount, opDealFees, opRating] =
+      await Promise.all([
+        repo.listUsers([detailOp.userId]),
+        repo.listListings({
+          operatorId: detailOp.id,
+          vertical: verticalSlug(),
+          limit: 10,
+        }),
+        repo.listListingCountsByOperator([detailOp.id], verticalSlug()),
+        repo.countListings({
+          operatorId: detailOp.id,
+          vertical: verticalSlug(),
+        }),
+        repo.listDeals({
+          operatorId: detailOp.id,
+          vertical: verticalSlug(),
+          limit: 6,
+        }),
+        repo.countDeals({
+          operatorId: detailOp.id,
+          vertical: verticalSlug(),
+        }),
+        repo.sumDealFees({
+          operatorId: detailOp.id,
+          vertical: verticalSlug(),
+        }),
+        repo.ratingSummaryPerOperator([detailOp.id]),
+      ]);
+    opDetail = {
+      email: opUsers[0]?.email,
+      listings: opListings,
+      bookLive: opLiveRows[detailOp.id] ?? 0,
+      bookTotal: opBookTotal,
+      deals: opDeals,
+      dealCount: opDealCount,
+      dealFees: opDealFees,
+      rating: opRating[detailOp.id],
+      flags: {
+        listings: reports.filter(
+          (r) => reportListings.get(r.listingId)?.operatorId === detailOp.id,
+        ).length,
+        quotes: quoteReports.filter(
+          (r) => reportQuotes.get(r.quoteId)?.operatorId === detailOp.id,
+        ).length,
+        filed: rfqFlagRows.filter((r) => r.reporterId === detailOp.userId)
+          .length,
+      },
+    };
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -261,6 +332,132 @@ export default async function AdminPage({
           {t("viewJobs")}
         </Link>
       </p>
+
+      {opParam && detailOp === undefined ? (
+        <p className="mt-4 text-sm text-muted" data-testid="op-not-found">
+          {t("opNotFound", { id: opParam })}
+        </p>
+      ) : null}
+      {detailOp && opDetail ? (
+        <section
+          id="op-detail"
+          data-testid="op-detail"
+          className="mt-6 rounded-lg border border-border bg-surface p-4"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">
+              {t("opDetail")} — {detailOp.name}
+            </h2>
+            <Link href="/admin" className="text-sm text-muted underline">
+              {t("backToOps")}
+            </Link>
+          </div>
+          <p className="mt-1 text-sm text-muted" data-testid="op-detail-meta">
+            <span data-testid="op-detail-email">{opDetail.email ?? "—"}</span>
+            {" · "}
+            {detailOp.baseAirport}
+            {" · "}
+            {detailOp.plan}
+            {" · "}
+            {t("colJoined")}{" "}
+            {new Date(detailOp.createdAt).toLocaleDateString(locale)}
+          </p>
+          <p className="mt-2 flex flex-wrap gap-1 text-sm">
+            <Badge variant={detailOp.verified ? "success" : "outline"}>
+              {detailOp.verified ? tc("verified") : tc("unverified")}
+            </Badge>
+            {detailOp.suspended ? (
+              <Badge variant="danger">{t("suspendedBadge")}</Badge>
+            ) : null}
+            <Badge variant="outline">
+              {detailOp.acceptingRfqs ? t("opReceivingRfqs") : t("opAway")}
+            </Badge>
+            {!detailOp.notifyRfqMatch ? (
+              <Badge variant="outline">{t("opMailMuted")}</Badge>
+            ) : null}
+          </p>
+          <p className="mt-2 text-sm" data-testid="op-detail-rating">
+            {opDetail.rating
+              ? t("opRatingLine", {
+                  avg: opDetail.rating.avg.toFixed(1),
+                  count: opDetail.rating.count,
+                })
+              : t("opNoRating")}
+          </p>
+          <p className="mt-1 text-sm" data-testid="op-detail-book">
+            {t("opBookLine", {
+              total: opDetail.bookTotal,
+              live: opDetail.bookLive,
+            })}
+          </p>
+          <p className="mt-1 text-sm" data-testid="op-detail-flags">
+            {t("opFlagsLine", {
+              listings: opDetail.flags.listings,
+              quotes: opDetail.flags.quotes,
+              filed: opDetail.flags.filed,
+            })}
+          </p>
+
+          <h3 className="mt-4 text-sm font-semibold">
+            {t("listings", { count: opDetail.bookTotal })}
+          </h3>
+          <table className="mt-1 w-full text-left text-sm">
+            <tbody className="divide-y divide-border">
+              {opDetail.listings.map((l) => (
+                <tr key={l.id} data-testid={`op-listing-${l.id}`}>
+                  <td className="py-1 pr-4 font-medium">{l.title}</td>
+                  <td className="py-1 pr-4">{l.type}</td>
+                  <td className="py-1 pr-4">{l.status}</td>
+                  <td className="py-1 text-muted">
+                    {new Date(l.createdAt).toLocaleDateString(locale)}
+                  </td>
+                </tr>
+              ))}
+              {opDetail.listings.length === 0 ? (
+                <tr>
+                  <td className="py-2 text-muted">{t("noListings")}</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+
+          <h3 className="mt-4 text-sm font-semibold">
+            {t("ledger", {
+              count: opDetail.dealCount,
+              total: formatMoney(opDetail.dealFees, siteCurrency, locale),
+            })}
+          </h3>
+          <table className="mt-1 w-full text-left text-sm">
+            <tbody className="divide-y divide-border">
+              {opDetail.deals.map((d) => (
+                <tr key={d.id} data-testid={`op-deal-${d.id}`}>
+                  <td className="py-1 pr-4 font-mono text-xs">{d.id}</td>
+                  <td className="py-1 pr-4">{d.buyerEmail ?? "—"}</td>
+                  <td className="py-1 pr-4">
+                    {formatMoney(d.feeAmount, d.currency, locale)}
+                  </td>
+                  <td className="py-1 pr-4">
+                    <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
+                      {tc(`invoiceState.${d.invoiceStatus}`)}
+                    </Badge>
+                  </td>
+                  <td className="py-1 pr-4">
+                    {d.buyerRating !== undefined ? `★ ${d.buyerRating}` : "—"}
+                  </td>
+                  <td className="py-1 text-muted">
+                    {new Date(d.closedAt).toLocaleDateString(locale)}
+                  </td>
+                </tr>
+              ))}
+              {opDetail.deals.length === 0 ? (
+                <tr>
+                  <td className="py-2 text-muted">{t("noDeals")}</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold">
@@ -280,7 +477,16 @@ export default async function AdminPage({
           <tbody className="divide-y divide-border">
             {operators.map((o) => (
               <tr key={o.id} data-testid={`admin-op-${o.id}`}>
-                <td className="py-2 pr-4 font-medium">{o.name}</td>
+                <td className="py-2 pr-4 font-medium">
+                  <Link
+                    href={`/admin?op=${o.id}#op-detail`}
+                    className="underline"
+                    title={t("viewOperator")}
+                    data-testid={`op-view-${o.id}`}
+                  >
+                    {o.name}
+                  </Link>
+                </td>
                 <td className="py-2 pr-4">{o.baseAirport}</td>
                 <td className="py-2 pr-4">{o.plan}</td>
                 <td className="py-2 pr-4">{listingCounts.get(o.id) ?? 0}</td>

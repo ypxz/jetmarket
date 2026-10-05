@@ -1375,7 +1375,19 @@
     "colQuote": "Quote",
     "colOnRfq": "Request",
     "revLine": "Revised — was {amount} before {date}",
-    "amendLine": "Buyer edited — {date}: {changes}"
+    "amendLine": "Buyer edited — {date}: {changes}",
+    "opDetail": "Operator detail",
+    "viewOperator": "Open detail",
+    "backToOps": "← all operators",
+    "opNotFound": "No operator with id {id}.",
+    "opRatingLine": "Buyer rating: ★ {avg} across {count} ratings",
+    "opNoRating": "No buyer ratings yet.",
+    "opBookLine": "Book: {total} listings · {live} live",
+    "opFlagsLine": "Open flags: {listings} on listings · {quotes} on quotes · {filed} RFQs flagged by them",
+    "colJoined": "Joined",
+    "opReceivingRfqs": "receiving RFQs",
+    "opAway": "away — no new RFQs",
+    "opMailMuted": "RFQ mail muted"
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

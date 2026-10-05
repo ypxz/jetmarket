@@ -289,6 +289,25 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   }>).find((d) => d.id === deal!.id);
   expect(finalRow?.buyerRating).toBe(5);
 
+  // --- QA-552: ?op=<id> detail card — the moderator's drill-down ----------
+  // This op now has: 1 listing, 1 paid deal rated ★5 — the card must join
+  // all of it (profile + book + ledger + rating + open-flag counts).
+  const detail = await admin.get(`/admin?op=${operatorId}`);
+  expect(detail.status()).toBe(200);
+  const detailHtml = await detail.text();
+  expect(detailHtml).toContain('data-testid="op-detail"');
+  expect(detailHtml).toContain(`op-deal-${deal!.id}`);
+  expect(detailHtml).toContain(`op-view-${operatorId}`);
+  expect(detailHtml).toContain(OPERATOR_EMAIL);
+  expect(detailHtml).toContain('op-detail-rating');
+  expect(detailHtml).toContain('op-detail-flags');
+  // A missing id renders the not-found note, not a crash.
+  const missing = await admin.get(
+    '/admin?op=00000000-0000-4000-8000-00000000ffff',
+  );
+  expect(missing.status()).toBe(200);
+  expect((await missing.text())).toContain('op-not-found');
+
   // --- logout: server-side revocation kills the cookie --------------------
   const me1 = await buyer.get('/api/auth/me');
   expect(((await me1.json()) as { user: unknown }).user).toBeTruthy();

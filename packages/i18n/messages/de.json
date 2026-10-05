@@ -1375,7 +1375,19 @@
     "colQuote": "Angebot",
     "colOnRfq": "Anfrage",
     "revLine": "Überarbeitet — bis {date}: {amount}",
-    "amendLine": "Vom Käufer geändert — {date}: {changes}"
+    "amendLine": "Vom Käufer geändert — {date}: {changes}",
+    "opDetail": "Operator-Detail",
+    "viewOperator": "Detail öffnen",
+    "backToOps": "← alle Operatoren",
+    "opNotFound": "Kein Operator mit ID {id}.",
+    "opRatingLine": "Käufer-Bewertung: ★ {avg} aus {count} Bewertungen",
+    "opNoRating": "Noch keine Käufer-Bewertungen.",
+    "opBookLine": "Bestand: {total} Inserate · {live} live",
+    "opFlagsLine": "Offene Meldungen: {listings} zu Inseraten · {quotes} zu Angeboten · {filed} RFQs von ihnen gemeldet",
+    "colJoined": "Beigetreten",
+    "opReceivingRfqs": "empfängt RFQs",
+    "opAway": "abwesend — keine neuen RFQs",
+    "opMailMuted": "RFQ-Mail stumm"
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",
