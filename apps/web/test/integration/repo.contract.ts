@@ -2731,6 +2731,154 @@ export function repoContract(
       expect(liveAfter?.status).toBe("quoted");
     });
 
+    it("exportOperatorData returns the operator's whole business record (QA-547)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+
+      const opUser = await repo.createUser(`oxp-${tag}@t.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: opUser.id,
+        name: "Oxp Air",
+        baseAirport: "ZRH",
+        fleetSummary: "Phenom 300",
+        verified: true,
+        plan: "pro",
+      });
+      // A foreign operator with its own note + template — isolation pin.
+      const otherUser = await repo.createUser(`oxp2-${tag}@t.dev`, "operator");
+      const other = await repo.upsertOperator({
+        userId: otherUser.id,
+        name: "Other Air",
+        baseAirport: "GVA",
+        fleetSummary: "",
+        verified: false,
+        plan: "free",
+      });
+
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Oxp jet ${tag}`,
+        attributes: {},
+        photos: [],
+        price: 5000,
+        currency: "USD",
+      });
+      // Cross-vertical book rows are the operator's OWN business data —
+      // the export is deliberately unscoped (unlike the mailbox-side
+      // export, which composes inside one deploy's vertical).
+      const machListing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "machinery",
+        type: "for_sale",
+        title: `Oxp lathe ${tag}`,
+        attributes: {},
+        photos: [],
+        price: 3000,
+        currency: "EUR",
+      });
+      const otherListing = await repo.createListing({
+        operatorId: other.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Foreign jet ${tag}`,
+        attributes: {},
+        photos: [],
+        price: 100,
+        currency: "USD",
+      });
+
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `oxpb-${tag}@test.dev`,
+        fields: { name: "B Uyer", email: `oxpb-${tag}@test.dev` },
+        dedupeKey: `oxp-dk-${tag}`,
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "operator terms",
+      });
+      await repo.counterQuote(quote.id, 8000, "buyer words");
+      await repo.reviseQuote(quote.id, op.id, {
+        amount: 8500,
+        currency: "USD",
+        message: "sharpened",
+      });
+      const deal = await repo.createDeal({
+        quoteId: quote.id,
+        operatorId: op.id,
+        amount: 8000,
+        currency: "USD",
+        feePct: 0.03,
+        feeAmount: 240,
+        invoiceStatus: "pending",
+      });
+      await repo.setRfqNote(op.id, rfq.id, "repeat buyer — prioritize");
+      await repo.setRfqNote(other.id, rfq.id, "foreign note");
+      await repo.upsertQuoteTemplate({
+        operatorId: op.id,
+        name: "Oxp preset",
+        amount: 7000,
+        message: "incl. handling",
+      });
+      await repo.upsertQuoteTemplate({
+        operatorId: other.id,
+        name: "Foreign preset",
+        amount: 1,
+        message: "",
+      });
+      await repo.upsertSubscription({
+        operatorId: op.id,
+        plan: "pro",
+        status: "active",
+        currentPeriodEnd: "2026-10-15T00:00:00.000Z",
+      });
+
+      const out = await repo.exportOperatorData(op.id);
+
+      expect(out).toBeDefined();
+      expect(out!.operatorId).toBe(op.id);
+      expect(Date.parse(out!.exportedAt)).toBeLessThanOrEqual(Date.now());
+      expect(out!.operator.name).toBe("Oxp Air");
+      expect(out!.user?.id).toBe(opUser.id);
+      // Whole book incl. the machinery row — the other op's listing stays out.
+      expect(out!.listings.map((l) => l.id).sort()).toEqual(
+        [listing.id, machListing.id].sort(),
+      );
+      expect(out!.quotes).toHaveLength(1);
+      expect(out!.quotes[0]!.quote.id).toBe(quote.id);
+      expect(out!.quotes[0]!.counterRounds.length).toBeGreaterThanOrEqual(1);
+      expect(out!.quotes[0]!.revisions.length).toBeGreaterThanOrEqual(1);
+      expect(out!.deals.map((d) => d.id)).toEqual([deal.id]);
+      expect(out!.rfqNotes.map((n) => n.note)).toEqual([
+        "repeat buyer — prioritize",
+      ]);
+      expect(out!.quoteTemplates.map((t) => t.name)).toEqual(["Oxp preset"]);
+      expect(out!.subscription?.plan).toBe("pro");
+      // Nothing from the other operator leaked.
+      const blob = JSON.stringify(out);
+      expect(blob).not.toContain(otherListing.id);
+      expect(blob).not.toContain("Foreign preset");
+      expect(blob).not.toContain("foreign note");
+
+      // Unknown operator → undefined, never a partial tree.
+      expect(
+        await repo.exportOperatorData(crypto.randomUUID()),
+      ).toBeUndefined();
+      // listRfqNotes with omitted ids — the QA-547 whole-book read.
+      expect((await repo.listRfqNotes(op.id)).map((n) => n.note)).toEqual([
+        "repeat buyer — prioritize",
+      ]);
+      // Read-only: the book is still fully live afterward.
+      expect((await repo.getListing(listing.id))?.status).toBe("active");
+      expect((await repo.getQuote(quote.id))?.status).toBe("sent");
+    });
+
     it("QA-493 locale: RFQ + alert stamp 'en' by default, keep a supplied locale", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

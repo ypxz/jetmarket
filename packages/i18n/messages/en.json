@@ -1080,6 +1080,7 @@
       "paying": "Paying…",
       "payFailed": "Payment failed — retry",
       "editProfile": "Edit profile",
+      "exportData": "Export my data (JSON)",
       "statsTitle": "Performance",
       "statRfqs": "RFQs received",
       "statQuotes": "Quotes sent",

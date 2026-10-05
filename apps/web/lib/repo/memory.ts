@@ -6,6 +6,7 @@ import type {
   BlockedEmail,
   BuyerDeleteResult,
   BuyerExport,
+  OperatorExport,
   CounterRound,
   CounterRoundOutcome,
   Deal,
@@ -1182,9 +1183,11 @@ class MemoryRepo implements Repo {
     mine.set(rfqId, row);
     return row;
   }
-  async listRfqNotes(operatorId: string, rfqIds: string[]) {
+  async listRfqNotes(operatorId: string, rfqIds?: string[]) {
     const mine = this.rfqNotes.get(operatorId);
     if (!mine) return [];
+    // QA-547: omitted rfqIds → the operator's whole note book (export).
+    if (rfqIds === undefined) return [...mine.values()];
     const out: RfqNote[] = [];
     for (const id of rfqIds) {
       const row = mine.get(id);
@@ -2026,6 +2029,44 @@ class MemoryRepo implements Repo {
       searchAlerts,
       quoteReports,
       listingReports,
+    };
+  }
+
+  async exportOperatorData(
+    operatorId: string,
+  ): Promise<OperatorExport | undefined> {
+    const operator = await this.getOperator(operatorId);
+    if (!operator) return undefined;
+    const [user, listings, quotes, deals, rfqNotes, quoteTemplates, subscription] =
+      await Promise.all([
+        this.getUser(operator.userId),
+        this.listListings({ operatorId, limit: 10_000 }),
+        this.listQuotes({ operatorId }),
+        this.listDeals({ operatorId, limit: 10_000 }),
+        this.listRfqNotes(operatorId),
+        this.listQuoteTemplates(operatorId),
+        this.getSubscription(operatorId),
+      ]);
+    const quoteIds = quotes.map((q) => q.id);
+    const [counterRounds, revisions] = await Promise.all([
+      this.listCounterRounds(quoteIds),
+      this.listQuoteRevisions(quoteIds),
+    ]);
+    return {
+      operatorId,
+      exportedAt: now(),
+      operator,
+      user,
+      listings,
+      quotes: quotes.map((quote) => ({
+        quote,
+        counterRounds: counterRounds.filter((r) => r.quoteId === quote.id),
+        revisions: revisions.filter((r) => r.quoteId === quote.id),
+      })),
+      deals,
+      rfqNotes,
+      quoteTemplates,
+      subscription,
     };
   }
 

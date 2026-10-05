@@ -566,3 +566,83 @@ test('account export downloads the mailbox tree as JSON (QA-544)', async () => {
     await sql.end();
   }
 });
+
+test('operator export downloads the business record as JSON (QA-547)', async () => {
+  const sql = postgres(testDb, { max: 1 });
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.6.10' },
+  });
+  const OPX = `e2e-opx-${run}@jetmarket.local`;
+  const BX = `e2e-opx-b-${run}@jetmarket.local`;
+  let listingId = '';
+  let rfqId = '';
+  try {
+    const operator = await login(OPX, 'operator');
+    expect(
+      (
+        await operator.post('/api/operators', {
+          data: { name: `E2E Opx Ops ${run}`, baseAirport: 'LSZH' },
+        })
+      ).status(),
+    ).toBe(201);
+    const lres = await operator.post('/api/listings', {
+      data: {
+        type: 'charter',
+        title: `E2E Opx Charter ${run}`,
+        price: 38000,
+        currency: 'USD',
+        photos: [],
+        attributes: {},
+      },
+    });
+    expect(lres.status()).toBe(201);
+    listingId = ((await lres.json()) as { id: string }).id;
+    const r = await mkRfq(publicCtx, listingId, BX);
+    rfqId = r.rfqId;
+    const q = await operator.post('/api/quotes', {
+      data: { rfqId, amount: 41000, message: 'opx' },
+    });
+    expect(q.status()).toBe(201);
+    const qId = ((await q.json()) as { id: string }).id;
+    // The dashboard surface links the download.
+    const dashHtml = await (await operator.get('/app')).text();
+    expect(dashHtml).toContain('operator-export');
+
+    const res = await operator.get('/api/operator/export');
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-disposition']).toContain(
+      'jetmarket-operator-export-',
+    );
+    expect(res.headers()['cache-control']).toContain('no-store');
+    const data = (await res.json()) as {
+      operatorId: string;
+      user?: { email: string };
+      listings: { id: string }[];
+      quotes: { quote: { id: string } }[];
+      deals: unknown[];
+    };
+    expect(data.user?.email).toBe(OPX);
+    expect(data.listings.map((l) => l.id)).toEqual([listingId]);
+    expect(data.quotes.map((x) => x.quote.id)).toEqual([qId]);
+
+    // Denials: anonymous → 401; a buyer session without a profile → 404.
+    expect((await publicCtx.get('/api/operator/export')).status()).toBe(401);
+    const buyerOnly = await login(BX);
+    expect((await buyerOnly.get('/api/operator/export')).status()).toBe(404);
+    // Read-only — the book is still live.
+    const [row] = await sql`
+      select status from listings where id = ${listingId}`;
+    expect(row!.status).toBe('active');
+  } finally {
+    if (rfqId) {
+      await sql`delete from rfq_matches where rfq_id = ${rfqId}`;
+      await sql`delete from quotes where rfq_id = ${rfqId}`;
+      await sql`delete from rfqs where id = ${rfqId}`;
+    }
+    if (listingId) await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${OPX})`;
+    await sql`delete from users where email in (${OPX}, ${BX})`;
+    await sql.end();
+  }
+});

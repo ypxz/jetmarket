@@ -1080,6 +1080,7 @@
       "paying": "Wird bezahlt…",
       "payFailed": "Zahlung fehlgeschlagen — erneut versuchen",
       "editProfile": "Profil bearbeiten",
+      "exportData": "Meine Daten exportieren (JSON)",
       "statsTitle": "Leistung",
       "statRfqs": "Erhaltene Anfragen",
       "statQuotes": "Gesendete Angebote",

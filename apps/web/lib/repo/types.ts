@@ -403,6 +403,37 @@ export interface BuyerExport {
   listingReports: ListingReport[];
 }
 
+/** QA-547: one quote inside an operator export — the offer plus its
+ *  negotiation trail (buyer counters, own revisions). The deal closes
+ *  ride the flat `deals` list (its joined rows carry rfq/listing/buyer
+ *  context the quote row doesn't). */
+export interface OperatorExportQuote {
+  quote: Quote;
+  counterRounds: CounterRound[];
+  revisions: QuoteRevision[];
+}
+
+/** QA-547: GDPR-style portability export for the operator side — a sole
+ *  trader's business data is still personal data. Compose-only over the
+ *  public reads; deliberately NOT vertical-scoped — an operator's book,
+ *  quotes and deals are their own business across deploys (the same
+ *  unscoped rule the dashboard ledger already follows). */
+export interface OperatorExport {
+  operatorId: string;
+  exportedAt: string;
+  operator: Operator;
+  /** The login row behind the profile (email/locale/sessionVersion). */
+  user?: User;
+  /** Whole book — every status incl. archived/sold. */
+  listings: Listing[];
+  quotes: OperatorExportQuote[];
+  deals: Deal[];
+  /** Private inbox notes (`operatorRfqView`-side data, still theirs). */
+  rfqNotes: RfqNote[];
+  quoteTemplates: QuoteTemplate[];
+  subscription?: Subscription;
+}
+
 /** Saved-search alert (QA-403): a buyer's whitelisted /search filter set +
  * confirm/unsubscribe bearer. `pendingIds` queues matched listings during
  * the per-alert mail cooldown and flushes with the next digest. */
@@ -1040,8 +1071,10 @@ export interface Repo {
     rfqId: string,
     note: string | null,
   ): Promise<RfqNote | null>;
-  /** QA-524: batch read of the operator's notes for the inbox page. */
-  listRfqNotes(operatorId: string, rfqIds: string[]): Promise<RfqNote[]>;
+  /** QA-524: batch read of the operator's notes for the inbox page.
+   *  `rfqIds` omitted → ALL of the operator's notes (QA-547 export);
+   *  a defined-but-empty array still returns []. */
+  listRfqNotes(operatorId: string, rfqIds?: string[]): Promise<RfqNote[]>;
   /** QA-527: the operator's saved quote templates, name-asc. */
   listQuoteTemplates(operatorId: string): Promise<QuoteTemplate[]>;
   /** QA-527: upsert a template by (operatorId, name) — the name is the
@@ -1308,6 +1341,17 @@ export interface Repo {
    *  export deliberately — they are the mailbox's data and the token is
    *  the bearer proof a sessionless buyer uses elsewhere. */
   exportBuyerData(email: string, vertical: string): Promise<BuyerExport>;
+
+  /** QA-547: the operator-side portability counterpart — compose the
+   *  whole operator record for download (profile, user row, book,
+   *  sent offers + trails, deal ledger, private notes, templates,
+   *  subscription). Read-only, session-scoped (the caller resolves the
+   *  operator id from their own login — no bearer path: ops always
+   *  have accounts). Cross-vertical by design: business data is the
+   *  operator's own regardless of which deploy wrote it. */
+  exportOperatorData(
+    operatorId: string,
+  ): Promise<OperatorExport | undefined>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

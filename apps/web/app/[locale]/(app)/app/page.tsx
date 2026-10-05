@@ -240,6 +240,16 @@ export default async function OperatorDashboard() {
           <div className="mt-1 flex flex-col gap-1">
             <AvailabilityToggle accepting={operator.acceptingRfqs} />
             <NotifyPrefsToggle on={operator.notifyRfqMatch} />
+            {/* QA-547: GDPR portability for the operator side — one JSON
+                pull of the whole business record. */}
+            <a
+              href="/api/operator/export"
+              download
+              className="text-sm text-primary underline"
+              data-testid="operator-export"
+            >
+              {t("exportData")}
+            </a>
           </div>
         </div>
       </div>

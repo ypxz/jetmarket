@@ -18,6 +18,7 @@ import type {
   BlockedEmail,
   BuyerDeleteResult,
   BuyerExport,
+  OperatorExport,
   CounterRound,
   CounterRoundOutcome,
   Deal,
@@ -2021,17 +2022,19 @@ export class DrizzleRepo implements Repo {
   }
   async listRfqNotes(
     operatorId: string,
-    rfqIds: string[],
+    rfqIds?: string[],
   ): Promise<RfqNote[]> {
-    const ids = rfqIds.filter(isUuid);
-    if (!ids.length) return [];
+    // QA-547: omitted rfqIds → the operator's whole note book (export);
+    // a defined-but-empty array still returns [].
+    const ids = rfqIds?.filter(isUuid);
+    if (ids && !ids.length) return [];
     const rows = await this.db
       .select()
       .from(operatorRfqNotes)
       .where(
         and(
           eq(operatorRfqNotes.operatorId, operatorId),
-          inArray(operatorRfqNotes.rfqId, ids),
+          ids ? inArray(operatorRfqNotes.rfqId, ids) : undefined,
         ),
       );
     return rows.map(toRfqNote);
@@ -2921,6 +2924,44 @@ export class DrizzleRepo implements Repo {
       searchAlerts,
       quoteReports,
       listingReports,
+    };
+  }
+
+  async exportOperatorData(
+    operatorId: string,
+  ): Promise<OperatorExport | undefined> {
+    const operator = await this.getOperator(operatorId);
+    if (!operator) return undefined;
+    const [user, listings, quotes, deals, rfqNotes, quoteTemplates, subscription] =
+      await Promise.all([
+        this.getUser(operator.userId),
+        this.listListings({ operatorId, limit: 10_000 }),
+        this.listQuotes({ operatorId }),
+        this.listDeals({ operatorId, limit: 10_000 }),
+        this.listRfqNotes(operatorId),
+        this.listQuoteTemplates(operatorId),
+        this.getSubscription(operatorId),
+      ]);
+    const quoteIds = quotes.map((q) => q.id);
+    const [counterRounds, revisions] = await Promise.all([
+      this.listCounterRounds(quoteIds),
+      this.listQuoteRevisions(quoteIds),
+    ]);
+    return {
+      operatorId,
+      exportedAt: new Date().toISOString(),
+      operator,
+      user,
+      listings,
+      quotes: quotes.map((quote) => ({
+        quote,
+        counterRounds: counterRounds.filter((r) => r.quoteId === quote.id),
+        revisions: revisions.filter((r) => r.quoteId === quote.id),
+      })),
+      deals,
+      rfqNotes,
+      quoteTemplates,
+      subscription,
     };
   }
 
