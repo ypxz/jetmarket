@@ -429,6 +429,29 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   expect(accountHtml).toContain('under review');
   expect(accountHtml).toContain('account-rfq-');
 
+  // QA-565: the buyer also holds saved-search demand — one confirmed
+  // alert and one still-pending. The block must kill all of it, and the
+  // address must lose the mail path entirely (subscribe + confirm).
+  const subA = await publicCtx.post('/api/search-alerts', {
+    data: { email: BUYER, params: { type: 'charter' } },
+  });
+  expect(subA.status()).toBe(200);
+  const { devConfirmUrl: confA } = (await subA.json()) as {
+    devConfirmUrl?: string;
+  };
+  const confUrlA = new URL(confA!);
+  await publicCtx.get(confUrlA.pathname + confUrlA.search, {
+    maxRedirects: 0,
+  });
+  const subB = await publicCtx.post('/api/search-alerts', {
+    data: { email: BUYER, params: { q: 'xblk' } },
+  });
+  expect(subB.status()).toBe(200);
+  const { devConfirmUrl: confB } = (await subB.json()) as {
+    devConfirmUrl?: string;
+  };
+  const confUrlB = new URL(confB!); // left unconfirmed pre-block
+
   const admin = await login(ADMIN_EMAIL);
   const block = await admin.post('/api/admin/buyers/block', {
     data: { email: BUYER.toUpperCase() }, // case-fold: caps can't slip past
@@ -442,6 +465,21 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   };
   expect(blocked.rfqsSpammed).toBe(1);
   expect(blocked.reportsCleared).toBe(1);
+  // QA-565: both alerts (active + pending) flipped 'off' in the sweep.
+  const blockedBody = blocked as unknown as { alertsKilled: number };
+  expect(blockedBody.alertsKilled).toBe(2);
+
+  // The mail path is dead too: subscribe refuses, and the pending
+  // confirm link minted pre-block lands on the invalid banner.
+  const subDenied = await publicCtx.post('/api/search-alerts', {
+    data: { email: BUYER, params: { type: 'for_sale' } },
+  });
+  expect(subDenied.status()).toBe(403);
+  const deadConf = await publicCtx.get(
+    confUrlB.pathname + confUrlB.search,
+    { maxRedirects: 0 },
+  );
+  expect(deadConf.headers()['location']).toContain('alert=invalid');
 
   // QA-466: the blocked-address registry lists the row (reason from the
   // block body renders; unblock acts in place from the same section).
@@ -466,6 +504,12 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   });
   expect(unblock.status()).toBe(200);
   expect(((await unblock.json()) as { blocked: boolean }).blocked).toBe(false);
+  // QA-565: unblocking restores the mail path — a fresh subscribe
+  // re-arms to pending (the killed alerts stay 'off', resub-only).
+  const resub = await publicCtx.post('/api/search-alerts', {
+    data: { email: BUYER, params: { type: 'for_sale' } },
+  });
+  expect(resub.status()).toBe(200);
   const afterUnblock = await admin.get('/en/admin');
   expect(await afterUnblock.text()).not.toContain(`blocked-row-${BUYER}`);
   // QA-467: block AND unblock both append to the audit feed.

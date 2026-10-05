@@ -27,6 +27,12 @@ export async function GET(req: Request) {
   if (!alert) {
     return NextResponse.redirect(new URL("/search?alert=invalid", canonical));
   }
+  // QA-565: a token mailed before the buyer's block must not re-arm mail —
+  // kill the just-flipped alert and land them on the invalid banner.
+  if (await repo.isEmailBlocked(alert.email)) {
+    await repo.unsubscribeSearchAlert(token);
+    return NextResponse.redirect(new URL("/search?alert=invalid", canonical));
+  }
   const target = new URL(
     searchAlertTargetUrl(canonical, alert.params, alert.locale),
   );

@@ -916,6 +916,11 @@ export interface Repo {
     to: "active" | "paused",
     from: SearchAlertStatus[],
   ): Promise<SearchAlert | null>;
+  /** Buyer-block sweep (QA-565): flip EVERY non-'off' alert the address
+   *  holds in this vertical to 'off' — a blocked buyer's saved searches
+   *  stop mailing and stop queueing digests. Returns rows flipped
+   *  (already-off rows don't count). Case-insensitive on email. */
+  offSearchAlertsByEmail(email: string, vertical: string): Promise<number>;
   listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlertStatus;

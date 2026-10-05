@@ -854,3 +854,25 @@ describe("admin demand flush (QA-564)", () => {
     expect(row.pendingIds).toHaveLength(0);
   });
 });
+
+describe("blocked-buyer alert kill (QA-565)", () => {
+  it("blocked email can't subscribe; a pre-block confirm link dies", async () => {
+    const email = "blk-alert@test.dev";
+    // Pending alert exists BEFORE the block lands.
+    const res = await subscribe({ email, params: { type: "charter" } });
+    const { devConfirmUrl } = (await res.json()) as {
+      devConfirmUrl?: string;
+    };
+    const token = new URL(devConfirmUrl!).searchParams.get("token")!;
+
+    await repo.blockBuyerEmail(email, { by: "admin" });
+    expect((await subscribe({ email, params: { type: "charter" } })).status).toBe(
+      403,
+    );
+    const cres = await confirm(token);
+    expect(cres.status).toBe(307);
+    expect(cres.headers.get("location")).toContain("alert=invalid");
+    const row = (await repo.listSearchAlerts({ vertical: "jets", email }))[0]!;
+    expect(row.status).toBe("off");
+  });
+});

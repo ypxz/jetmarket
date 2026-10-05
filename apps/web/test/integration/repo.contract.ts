@@ -2395,6 +2395,49 @@ export function repoContract(
       ).toBe("off");
     });
 
+    it("offSearchAlertsByEmail kills every live alert for the address (QA-565)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const email = `kill-${tag}@test.dev`;
+      const mk = (t: string, vertical = "jets") =>
+        repo.createSearchAlert({
+          vertical,
+          email,
+          params: { type: "charter" },
+          token: t,
+          dedupeKey: `${t}-${tag}`,
+        });
+      const a = await mk(`k1-${tag}`);
+      const b = await mk(`k2-${tag}`);
+      const c = await mk(`k3-${tag}`, "machinery");
+      await repo.confirmSearchAlert(`k1-${tag}`); // active
+      await repo.confirmSearchAlert(`k2-${tag}`); // active → paused below
+      await repo.confirmSearchAlert(`k3-${tag}`); // foreign-vertical active
+      await repo.setSearchAlertStatus(b.alert.id, "paused", ["active"]);
+      await mk(`k4-${tag}`);
+      await repo.confirmSearchAlert(`k4-${tag}`);
+      await repo.unsubscribeSearchAlert(`k4-${tag}`); // already off
+
+      const n = await repo.offSearchAlertsByEmail(email.toUpperCase(), "jets");
+      expect(n).toBe(2); // active + paused, already-off not counted
+      const mine = await repo.listSearchAlerts({
+        vertical: "jets",
+        email,
+      });
+      expect(mine.map((r) => r.status)).toEqual(["off", "off", "off"]);
+      // Case-folds (upper input) and vertical-scopes (machinery alive).
+      const foreign = await repo.listSearchAlerts({
+        vertical: "machinery",
+        email,
+      });
+      expect(foreign[0]!.status).toBe("active");
+      // Second sweep is a no-op; a stranger's alerts are untouched.
+      expect(await repo.offSearchAlertsByEmail(email, "jets")).toBe(0);
+      expect(await repo.offSearchAlertsByEmail("nobody@test.dev", "jets")).toBe(0);
+      void a;
+      void c;
+    });
+
     it("deleteBuyerData tombstones the mailbox everywhere, keeps other rows (QA-543)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

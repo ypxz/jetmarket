@@ -9,7 +9,8 @@ import { verticalSlug } from "@/lib/vertical";
 /**
  * Buyer email block toggle (QA-463) — the account-level counterpart of the
  * per-RFQ spam mark: a serial abuser's address is refused at RFQ-create and
- * report filing. Deliberately silent toward the blocked party — confirming
+ * report filing, and (QA-565) loses its saved-search alerts + the right to
+ * re-subscribe. Deliberately silent toward the blocked party — confirming
  * the block to a spammer only tells them the address works (unlike the
  * operator suspension, where the counterparty is a real partner).
  */
@@ -47,6 +48,13 @@ export async function POST(req: Request) {
   // already delivered — every live RFQ from the address flips to spam
   // (stops matching + notifying, per QA-181).
   const spammed = await repo.spamBuyerRfqs(email, verticalSlug());
+  // QA-565: the mail side of the kill — every saved-search alert the
+  // address holds flips 'off'. Backlog never digests, watch mails die,
+  // and subscribe/confirm now refuse the address outright.
+  const alertsKilled = await repo.offSearchAlertsByEmail(
+    email,
+    verticalSlug(),
+  );
   // QA-465: if the blocked address is also a signed-in user, their open
   // listing flags leave the queue too — weaponized reports shouldn't keep
   // demanding admin attention after the account is dead.
@@ -69,13 +77,14 @@ export async function POST(req: Request) {
     email,
     rfqsSpammed: spammed,
     reportsCleared,
+    alertsKilled,
   });
   await auditAdmin(repo, {
     adminId: user.id,
     event: "buyer_blocked",
     targetType: "buyer_email",
     targetId: email,
-    meta: { rfqsSpammed: spammed, reportsCleared },
+    meta: { rfqsSpammed: spammed, reportsCleared, alertsKilled },
   });
-  return ok({ ...row, rfqsSpammed: spammed, reportsCleared });
+  return ok({ ...row, rfqsSpammed: spammed, reportsCleared, alertsKilled });
 }

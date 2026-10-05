@@ -2351,6 +2351,25 @@ class MemoryRepo implements Repo {
     return row;
   }
 
+  async offSearchAlertsByEmail(
+    email: string,
+    vertical: string,
+  ): Promise<number> {
+    const want = email.toLowerCase();
+    let n = 0;
+    for (const row of this.searchAlertRows.values()) {
+      if (
+        row.vertical === vertical &&
+        row.email.toLowerCase() === want &&
+        row.status !== "off"
+      ) {
+        row.status = "off";
+        n += 1;
+      }
+    }
+    return n;
+  }
+
   async listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlert["status"];

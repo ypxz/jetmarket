@@ -49,6 +49,13 @@ export async function POST(req: Request) {
     return err("rate limit exceeded — try again later", 429);
   }
 
+  const repo = await getRepo();
+  // QA-565: a blocked address can't (re-)arm marketplace mail — same
+  // refusal as RFQ-create/report-filing.
+  if (await repo.isEmailBlocked(email)) {
+    return err("this address is blocked", 403);
+  }
+
   // Sanitize params to the shapes URLSearchParams produces — strings or
   // string arrays — capped so a huge body can't bloat a row.
   const params: Record<string, string | string[]> = {};
@@ -63,7 +70,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const repo = await getRepo();
   // Listing-watch (QA-407): `watch` pins the alert to one listing id and
   // can't combine with filter params. The row must exist in THIS vertical —
   // check before the row is created so a foreign id can't be pre-watched.

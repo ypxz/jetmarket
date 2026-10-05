@@ -3333,6 +3333,24 @@ export class DrizzleRepo implements Repo {
     return r ? toSearchAlert(r) : null;
   }
 
+  async offSearchAlertsByEmail(
+    email: string,
+    vertical: string,
+  ): Promise<number> {
+    const rows = await this.db
+      .update(searchAlerts)
+      .set({ status: "off" })
+      .where(
+        and(
+          sql`lower(${searchAlerts.email}) = ${email.toLowerCase()}`,
+          eq(searchAlerts.vertical, vertical),
+          ne(searchAlerts.status, "off"),
+        ),
+      )
+      .returning({ id: searchAlerts.id });
+    return rows.length;
+  }
+
   async listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlert["status"];
