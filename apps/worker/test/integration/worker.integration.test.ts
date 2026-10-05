@@ -566,6 +566,102 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
         .where(eq(deals.id, fixture.dealId));
   });
 
+  it("machinery unrated-deal nudge claims machinery deals, leaves jets rows (QA-554)", async () => {
+    // QA-456 pins the jets sweep skipping a machinery row. Reverse it:
+    // the MACHINERY worker (deps.vertical='machinery') must claim the
+    // machinery deal through the deal→quote→rfq join — deals carry no
+    // vertical column, the subtlest shared-DB path — and leave the jets
+    // deal in the same table completely alone.
+    const tag = randomUUID().slice(0, 8);
+    const [u] = await db
+      .insert(users)
+      .values({ email: `mach-rate-${tag}@x.com` })
+      .returning({ id: users.id });
+    const [o] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "Mach Nudge" })
+      .returning({ id: operators.id });
+    const mkDeal = async (vertical: string, buyerTag: string) => {
+      const [l] = await db
+        .insert(listings)
+        .values({
+          operatorId: o!.id,
+          vertical,
+          type: vertical === "machinery" ? "for_sale" : "charter",
+          title: `MachRate ${tag}`,
+          priceMinor: 900000,
+          currency: "EUR",
+          status: "active",
+          attributes: {},
+        })
+        .returning({ id: listings.id });
+      const [r] = await db
+        .insert(rfqs)
+        .values({
+          vertical,
+          listingId: l!.id,
+          buyerEmail: `${buyerTag}-${tag}@x.com`,
+          fields: {},
+        })
+        .returning({ id: rfqs.id, accessToken: rfqs.accessToken });
+      const [q] = await db
+        .insert(quotes)
+        .values({
+          rfqId: r!.id,
+          operatorId: o!.id,
+          amountMinor: 100000,
+          currency: "EUR",
+          status: "accepted",
+        })
+        .returning({ id: quotes.id });
+      const [d] = await db
+        .insert(deals)
+        .values({
+          quoteId: q!.id,
+          closedAt: new Date(Date.now() - 4 * 86_400_000), // 4d > 72h
+          feePct: 0.02,
+          feeAmountMinor: 2000,
+          currency: "EUR",
+          invoiceStatus: "paid",
+        })
+        .returning({ id: deals.id });
+      return { dealId: d!.id, rfq: r! };
+    };
+    const mach = await mkDeal("machinery", "mach-unrated");
+    const jets = await mkDeal("jets", "jets-unrated");
+
+    const d = deps();
+    d.vertical = "machinery";
+    d.unratedNudgeHours = 72;
+    const mineDir = mkdtempSync(join(tmpdir(), "jm-mach-rate-outbox-"));
+    d.email = new MockEmailProvider({ outboxDir: mineDir });
+
+    // >=1 — this fixture is the suite's only unstamped machinery deal,
+    // but assert via the outbox, not the count, for resilience.
+    expect(await nudgeUnratedDeals(d)).toBeGreaterThanOrEqual(1);
+    const mails = await readOutbox(mineDir);
+    const mine = mails.filter((m) => m.to === `mach-unrated-${tag}@x.com`);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]!.subject).toContain("Mach Nudge");
+    expect(mine[0]!.text).toContain(
+      `#t=${encodeURIComponent(mach.rfq.accessToken)}`,
+    );
+
+    // The jets neighbour deal was never claimed — no stamp, no mail.
+    const [jetsRow] = await db
+      .select({ t: deals.ratingMailedAt })
+      .from(deals)
+      .where(eq(deals.id, jets.dealId));
+    expect(jetsRow!.t).toBeNull();
+    expect(mails.filter((m) => m.to === `jets-unrated-${tag}@x.com`)).toHaveLength(0);
+
+    // Teardown: stamp the jets deal so later sweeps/tests don't pick it up.
+    await db
+      .update(deals)
+      .set({ ratingMailedAt: new Date() })
+      .where(eq(deals.id, jets.dealId));
+  });
+
   it("delivers delayed matches on sweep and sends notifications end-to-end", async () => {
     const rfqId = await insertRfq({
       departure: "NCE",
