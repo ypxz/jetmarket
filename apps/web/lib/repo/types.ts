@@ -351,7 +351,7 @@ export interface Deal {
 /** Saved-search alert (QA-403): a buyer's whitelisted /search filter set +
  * confirm/unsubscribe bearer. `pendingIds` queues matched listings during
  * the per-alert mail cooldown and flushes with the next digest. */
-export type SearchAlertStatus = "pending" | "active" | "off";
+export type SearchAlertStatus = "pending" | "active" | "paused" | "off";
 /** 'instant' mails at match time (cooldown batches); 'daily' never
  *  instant-mails — every match queues into the matured-backlog digest. */
 export type SearchAlertFreq = "instant" | "daily";
@@ -801,6 +801,15 @@ export interface Repo {
   /** Unsubscribe-link CAS: any non-'off' status → 'off'. Returns the row so
    *  callers can render the landing page in the alert's locale (QA-496). */
   unsubscribeSearchAlert(token: string): Promise<SearchAlert | null>;
+  /** QA-542 pause/resume CAS: `from`-gated status flip. Returns the row, or
+   *  null when the current status isn't in `from` (pending/off can't pause,
+   *  already-active can't resume). Session-side only — the mailed links use
+   *  the token CASes above. */
+  setSearchAlertStatus(
+    id: string,
+    to: "active" | "paused",
+    from: SearchAlertStatus[],
+  ): Promise<SearchAlert | null>;
   listSearchAlerts(filter: {
     vertical: string;
     status?: SearchAlertStatus;

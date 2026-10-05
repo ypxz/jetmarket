@@ -2331,6 +2331,68 @@ export function repoContract(
       expect(
         (await repo.confirmSearchAlert("tok3"))?.status,
       ).toBe("active");
+
+      // QA-542 pause/resume CAS (session-side mute): only 'active' pauses
+      // and only 'paused' resumes — every other from-gate nulls.
+      const paused = await repo.setSearchAlertStatus(
+        first.alert.id,
+        "paused",
+        ["active"],
+      );
+      expect(paused?.status).toBe("paused");
+      expect(
+        await repo.setSearchAlertStatus(first.alert.id, "paused", ["active"]),
+      ).toBeNull();
+      expect(
+        await repo.setSearchAlertStatus(first.alert.id, "paused", [
+          "pending",
+          "off",
+        ]),
+      ).toBeNull();
+      // Re-subscribing a paused row counts as dead: it drops back to
+      // 'pending' so re-arming always passes the confirm mail, and the
+      // new token is the only live link again.
+      const repause = await repo.createSearchAlert(
+        input(`sa-${tag}@test.dev`, "tok4", key),
+      );
+      expect(repause.created).toBe(false);
+      expect(repause.alert.status).toBe("pending");
+      expect(
+        await repo.setSearchAlertStatus(first.alert.id, "active", ["paused"]),
+      ).toBeNull(); // nothing paused anymore — gate holds
+      expect(
+        (await repo.confirmSearchAlert("tok4"))?.status,
+      ).toBe("active");
+      // Pause → resume for real; a stale second resume no-ops.
+      expect(
+        (
+          await repo.setSearchAlertStatus(first.alert.id, "paused", [
+            "active",
+          ])
+        )?.status,
+      ).toBe("paused");
+      expect(
+        (
+          await repo.setSearchAlertStatus(first.alert.id, "active", [
+            "paused",
+          ])
+        )?.status,
+      ).toBe("active");
+      expect(
+        await repo.setSearchAlertStatus(first.alert.id, "active", ["paused"]),
+      ).toBeNull();
+      // 'off' still reaches from paused — unsubscribe is the mail-side
+      // kill switch and doesn't care about the session mute.
+      expect(
+        (
+          await repo.setSearchAlertStatus(first.alert.id, "paused", [
+            "active",
+          ])
+        )?.status,
+      ).toBe("paused");
+      expect(
+        (await repo.unsubscribeSearchAlert("tok4"))?.status,
+      ).toBe("off");
     });
 
     it("QA-493 locale: RFQ + alert stamp 'en' by default, keep a supplied locale", async () => {

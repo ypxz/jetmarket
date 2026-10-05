@@ -1401,7 +1401,8 @@
     "alertStatus": {
       "active": "On",
       "pending": "Confirm via email",
-      "off": "Off"
+      "off": "Off",
+      "paused": "Paused"
     },
     "alertFreq": {
       "instant": "instant",
@@ -1430,6 +1431,12 @@
     "reopen": "Reopen",
     "reopening": "Reopening…",
     "reopenedMsg": "Request reopened — operators can quote again",
-    "reopenFailed": "Could not reopen this request"
+    "reopenFailed": "Could not reopen this request",
+    "alertPause": "Pause",
+    "alertPausing": "Pausing…",
+    "alertPauseFailed": "Couldn't pause it — try again.",
+    "alertResume": "Resume",
+    "alertResuming": "Resuming…",
+    "alertResumeFailed": "Couldn't resume it — try again."
   }
 }

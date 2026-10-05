@@ -13,6 +13,7 @@ import {
 } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 import { AlertOffButton } from "./alert-off-button";
+import { AlertPauseToggle } from "./alert-pause-toggle";
 import { AlertResend } from "./alert-resend";
 import { ReopenRfq } from "./reopen-rfq";
 import { WithdrawRfq } from "./withdraw-rfq";
@@ -220,6 +221,15 @@ export default async function AccountPage() {
                         params={a.params}
                         freq={a.freq}
                         alertId={a.id}
+                      />
+                    ) : null}
+                    {/* QA-542: pause keeps the row + backlog; 'off'
+                        retires it — both offered while the alert is
+                        live or paused. */}
+                    {a.status === "active" || a.status === "paused" ? (
+                      <AlertPauseToggle
+                        alertId={a.id}
+                        paused={a.status === "paused"}
                       />
                     ) : null}
                     {a.status !== "off" ? (

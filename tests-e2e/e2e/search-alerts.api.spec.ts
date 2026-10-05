@@ -504,3 +504,71 @@ test('saved searches manageable on /account with a session (QA-473)', async () =
     await sql.end();
   }
 });
+
+test('saved search pause/resume on /account keeps the row (QA-542)', async () => {
+  const sql = postgres(testDb);
+  const PAUSE = `e2e-alertpause-${run}@jetmarket.local`;
+  try {
+    // Subscribe + confirm to reach 'active' — pause is meaningless on
+    // pending (it 409s by design).
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.10' },
+    });
+    const sub = await anon.post('/api/search-alerts', {
+      data: { email: PAUSE, params: { type: 'charter' } },
+    });
+    expect(sub.status()).toBe(200);
+    const { devConfirmUrl } = (await sub.json()) as {
+      devConfirmUrl: string;
+    };
+    const conf = await anon.get(devConfirmUrl, { maxRedirects: 0 });
+    expect(conf.status()).toBeLessThan(400);
+    const [alert] = await sql`
+      select id, status from search_alerts where email = ${PAUSE}`;
+    expect(alert?.status).toBe('active');
+    const alertId = alert!.id as string;
+
+    const buyer = await login(PAUSE);
+    const html1 = await (await buyer.get('/en/account')).text();
+    expect(html1).toContain(`alert-pause-${alertId}`);
+    expect(html1).not.toContain(`alert-resume-${alertId}`);
+
+    // Session POST pause — row stays, mail eligibility drops.
+    expect(
+      (await buyer.post(`/api/search-alerts/${alertId}/pause`)).status(),
+    ).toBe(200);
+    const [paused] = await sql`
+      select status from search_alerts where id = ${alertId}`;
+    expect(paused?.status).toBe('paused');
+    // Replay + wrong-direction flips 409 instead of silently flipping.
+    expect(
+      (await buyer.post(`/api/search-alerts/${alertId}/pause`)).status(),
+    ).toBe(409);
+    const html2 = await (await buyer.get('/en/account')).text();
+    expect(html2).toContain(`alert-resume-${alertId}`);
+
+    // Resume puts it back to live delivery.
+    expect(
+      (await buyer.post(`/api/search-alerts/${alertId}/resume`)).status(),
+    ).toBe(200);
+    const [resumed] = await sql`
+      select status from search_alerts where id = ${alertId}`;
+    expect(resumed?.status).toBe('active');
+    expect(
+      (await buyer.post(`/api/search-alerts/${alertId}/resume`)).status(),
+    ).toBe(409);
+
+    // Paused is not a cage — the unsubscribe kill switch still reaches it.
+    await buyer.post(`/api/search-alerts/${alertId}/pause`);
+    expect(
+      (await buyer.post(`/api/search-alerts/${alertId}/off`)).status(),
+    ).toBe(200);
+    const [final] = await sql`
+      select status from search_alerts where id = ${alertId}`;
+    expect(final?.status).toBe('off');
+  } finally {
+    await sql`delete from search_alerts where email = ${PAUSE}`;
+    await sql`delete from users where email = ${PAUSE}`;
+    await sql.end();
+  }
+});

@@ -1401,7 +1401,8 @@
     "alertStatus": {
       "active": "Aktiv",
       "pending": "Per E-Mail bestätigen",
-      "off": "Aus"
+      "off": "Aus",
+      "paused": "Pausiert"
     },
     "alertFreq": {
       "instant": "sofort",
@@ -1430,6 +1431,12 @@
     "reopen": "Wieder öffnen",
     "reopening": "Öffnet wieder…",
     "reopenedMsg": "Anfrage wieder geöffnet — Betreiber können erneut anbieten",
-    "reopenFailed": "Anfrage konnte nicht wieder geöffnet werden"
+    "reopenFailed": "Anfrage konnte nicht wieder geöffnet werden",
+    "alertPause": "Pausieren",
+    "alertPausing": "Wird pausiert…",
+    "alertPauseFailed": "Pausieren fehlgeschlagen — erneut versuchen.",
+    "alertResume": "Fortsetzen",
+    "alertResuming": "Wird fortgesetzt…",
+    "alertResumeFailed": "Fortsetzen fehlgeschlagen — erneut versuchen."
   }
 }

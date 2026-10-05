@@ -450,7 +450,7 @@ export const searchAlerts = pgTable(
     /** hash(vertical | email | canonical params) — same search re-subscribes
      *  one row with a rotated token, never a stack of duplicates. */
     dedupeKey: text("dedupe_key").notNull().unique(),
-    status: text("status", { enum: ["pending", "active", "off"] })
+    status: text("status", { enum: ["pending", "active", "paused", "off"] })
       .notNull()
       .default("pending"),
     /** Matched listing ids queued during the per-alert mail cooldown — the

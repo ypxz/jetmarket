@@ -1934,9 +1934,10 @@ class MemoryRepo implements Repo {
     const email = input.email.toLowerCase();
     const hitId = this.searchAlertDedupe.get(input.dedupeKey);
     if (hitId) {
-      // Re-subscribe: rotate token (old emailed links die); an 'off' row
-      // re-opens to 'pending'; 'active'/'pending' keep status. Sync between
-      // the read and the writes (no await) — see createRfq dedupe.
+      // Re-subscribe: rotate token (old emailed links die); a dead row
+      // ('off' or 'paused', QA-542) re-opens to 'pending' so re-arming
+      // always passes the confirm mail; 'active'/'pending' keep status.
+      // Sync between the read and the writes (no await) — see createRfq dedupe.
       const row = this.searchAlertRows.get(hitId);
       if (row) {
         row.token = input.token;
@@ -1944,7 +1945,8 @@ class MemoryRepo implements Repo {
         row.params = input.params;
         row.freq = input.freq ?? "instant";
         if (input.locale) row.locale = input.locale;
-        if (row.status === "off") row.status = "pending";
+        if (row.status === "off" || row.status === "paused")
+          row.status = "pending";
         return { alert: row, created: false };
       }
     }
@@ -1986,6 +1988,17 @@ class MemoryRepo implements Repo {
       }
     }
     return null;
+  }
+
+  async setSearchAlertStatus(
+    id: string,
+    to: "active" | "paused",
+    from: SearchAlert["status"][],
+  ): Promise<SearchAlert | null> {
+    const row = this.searchAlertRows.get(id);
+    if (!row || !from.includes(row.status)) return null;
+    row.status = to;
+    return row;
   }
 
   async listSearchAlerts(filter: {

@@ -167,3 +167,14 @@ links and stripped via `replaceState`.
 default and must run the product fully offline. Real impls that aren't wired
 throw `todoGoLive` (typed skeleton) — see `GO_LIVE.md` for the flip list.
 License policy: MIT/Apache-2/BSD/ISC only; record deps in `THIRD_PARTY.md`.
+
+## Shared packages
+
+Node-only modules (node:crypto, fs, DB clients) must never be exported
+through a package barrel (`src/index.ts`) that client code can reach —
+Next/webpack client bundles pull the barrel wholesale and fail the compile
+with `UnhandledSchemeError`, 500ing every client page that imports the
+package (QA-541 hotfix). Server-only helpers go behind an `exports`
+subpath (e.g. `@jetmarket/config/tokens`) and are imported from routes,
+server components, and workers only — never from `"use client"` files or
+anything they transitively import.

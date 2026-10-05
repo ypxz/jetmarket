@@ -24,6 +24,8 @@ import { POST as createListing } from "../../app/api/listings/route";
 import { PATCH as patchListing } from "../../app/api/listings/[id]/route";
 import { GET as buyerAlertsGet } from "../../app/api/buyer/search-alerts/route";
 import { POST as alertOffPost } from "../../app/api/search-alerts/[id]/off/route";
+import { POST as alertPausePost } from "../../app/api/search-alerts/[id]/pause/route";
+import { POST as alertResumePost } from "../../app/api/search-alerts/[id]/resume/route";
 
 const subscribe = (body: unknown) =>
   subscribePost(
@@ -637,5 +639,111 @@ describe("buyer self-service (QA-405)", () => {
     expect(
       sendSpy.mock.calls.some((c: unknown[]) => toOf(c) === "rearm@test.dev"),
     ).toBe(true);
+  });
+});
+
+describe("pause/resume (QA-542)", () => {
+  const act = (
+    verb: "pause" | "resume",
+    id: string,
+    opts: { email?: string; token?: string } = {},
+  ) => {
+    const handler = verb === "pause" ? alertPausePost : alertResumePost;
+    const q = opts.email ? `?email=${opts.email}` : "";
+    return handler(
+      new Request(
+        `http://test.local/api/search-alerts/${id}/${verb}${q}`,
+        {
+          method: "POST",
+          headers: opts.token ? { "x-rfq-token": opts.token } : {},
+        },
+      ),
+      { params: Promise.resolve({ id }) },
+    );
+  };
+
+  const statusOf = async (email: string, id: string) =>
+    (await repo.listSearchAlerts({ vertical: "jets", email })).find(
+      (a) => a.id === id,
+    )!.status;
+
+  // Fixtures go through the repo layer (contract-covered): the suite's
+  // subscribe-route calls share one 30/h IP bucket that's nearly spent
+  // by earlier describes.
+  const mkAlert = async (
+    email: string,
+    confirm = true,
+  ): Promise<string> => {
+    const { alert } = await repo.createSearchAlert({
+      vertical: "jets",
+      email,
+      params: { type: "charter" },
+      token: crypto.randomUUID(),
+      dedupeKey: crypto.randomUUID(),
+    });
+    if (confirm) await repo.confirmSearchAlert(alert.token);
+    return alert.id;
+  };
+
+  it("pauses and resumes via session; replays and wrong states 409", async () => {
+    const user = await repo.createUser("pauser@test.dev", "operator");
+    jar.set(sessionCookie, signSession(user.id, 1));
+    const id = await mkAlert("pauser@test.dev");
+    const pendingId = await mkAlert("pauser@test.dev", false);
+
+    // Signed-in mailbox owner flips active → paused → active.
+    expect((await act("pause", id)).status).toBe(200);
+    expect(await statusOf("pauser@test.dev", id)).toBe("paused");
+    expect((await act("pause", id)).status).toBe(409); // replay
+    expect((await act("resume", id)).status).toBe(200);
+    expect(await statusOf("pauser@test.dev", id)).toBe("active");
+    expect((await act("resume", id)).status).toBe(409); // replay
+    // A never-confirmed alert can't pause; a bogus id 404s.
+    expect((await act("pause", pendingId)).status).toBe(409);
+    expect(
+      (await act("pause", "00000000-0000-4000-8000-000000000000")).status,
+    ).toBe(404);
+  });
+
+  it("bearer-token mailbox proof works too; foreign id 404s, no-auth 401s", async () => {
+    const rfqUser = await repo.createRfq({
+      vertical: "jets",
+      listingId: null,
+      buyerEmail: "tokpa@test.dev",
+      fields: { name: "T" },
+    });
+    const id = await mkAlert("tokpa@test.dev");
+    const alien = await mkAlert("alienp@test.dev");
+
+    expect(
+      (await act("pause", id, { email: "tokpa@test.dev" })).status,
+    ).toBe(401); // no token
+    expect(
+      (
+        await act("pause", alien, {
+          email: "tokpa@test.dev",
+          token: rfqUser.accessToken,
+        })
+      ).status,
+    ).toBe(404); // mailbox doesn't own it
+    expect(
+      (
+        await act("pause", id, {
+          email: "tokpa@test.dev",
+          token: rfqUser.accessToken,
+        })
+      ).status,
+    ).toBe(200);
+    expect(await statusOf("tokpa@test.dev", id)).toBe("paused");
+    // Resume via the same token path.
+    expect(
+      (
+        await act("resume", id, {
+          email: "tokpa@test.dev",
+          token: rfqUser.accessToken,
+        })
+      ).status,
+    ).toBe(200);
+    expect(await statusOf("tokpa@test.dev", id)).toBe("active");
   });
 });

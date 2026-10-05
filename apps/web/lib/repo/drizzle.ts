@@ -2846,7 +2846,10 @@ export class DrizzleRepo implements Repo {
           freq: input.freq ?? "instant",
           // Re-subscribing under another locale retargets the digest.
           ...(input.locale ? { locale: input.locale } : {}),
-          status: sql`case when ${searchAlerts.status} = 'off' then 'pending' else ${searchAlerts.status} end`,
+          // Re-subscribing a dead row ('off' or 'paused') re-arms it through
+          // the confirm mail — resume alone can't be claimed by re-saving
+          // the same search set (QA-542).
+          status: sql`case when ${searchAlerts.status} in ('off','paused') then 'pending' else ${searchAlerts.status} end`,
         })
         .where(eq(searchAlerts.dedupeKey, input.dedupeKey))
         .returning();
@@ -2896,6 +2899,24 @@ export class DrizzleRepo implements Repo {
       .set({ status: "off" })
       .where(
         and(eq(searchAlerts.token, token), ne(searchAlerts.status, "off")),
+      )
+      .returning();
+    return r ? toSearchAlert(r) : null;
+  }
+
+  async setSearchAlertStatus(
+    id: string,
+    to: "active" | "paused",
+    from: SearchAlert["status"][],
+  ): Promise<SearchAlert | null> {
+    const [r] = await this.db
+      .update(searchAlerts)
+      .set({ status: to })
+      .where(
+        and(
+          eq(searchAlerts.id, id),
+          inArray(searchAlerts.status, from),
+        ),
       )
       .returning();
     return r ? toSearchAlert(r) : null;
