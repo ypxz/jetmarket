@@ -1,9 +1,10 @@
 // Machinery-scope pins (QA-545/QA-546): the vertical invariants the core-loop
 // spec doesn't assert.
-//  A. oneOff divergence — a closed deal consumes a for_sale machine (sold) but
-//     a for_rent machine stays on the market (capacity inventory, QA-498's
-//     mapping under machinery's mixed taxonomy). Fee table proves the EUR
-//     split: for_sale 2% vs for_rent 1.5%.
+//  A. oneOff divergence — a closed deal consumes a for_sale OR auction
+//     machine (sold) but a for_rent machine stays on the market (capacity
+//     inventory, QA-498's mapping under machinery's mixed taxonomy). Fee
+//     table proves the EUR split: for_sale/auction 2% vs for_rent 1.5%
+//     (QA-549 — the auction leg closes the taxonomy; all 3 types pinned).
 //  B. Shared-DB isolation on the GDPR routes (QA-543/544 under machinery) —
 //     two deploys may share one Postgres; a jets-vertical row in the same
 //     buyer mailbox must never appear in, nor be touched by, the machinery
@@ -21,10 +22,12 @@ const testDb =
   'postgres://jetmarket:jetmarket@localhost:5432/jetmarket_test';
 
 // Seeded machinery listings (packages/db/src/seed/machinery.ts): 1200 is
-// alpine-werkzeug's first for_sale, 1206 nord-foerdertechnik's first for_rent
-// — both outside the demo RFQ trail (which hangs off 1208).
+// alpine-werkzeug's first for_sale, 1206 nord-foerdertechnik's first
+// for_rent, 1216 sud-presses' lone auction — all outside the demo RFQ
+// trail (which hangs off 1208).
 const SALE_LISTING = '00000000-0000-4000-8000-000000001200';
 const RENT_LISTING = '00000000-0000-4000-8000-000000001206';
+const AUCTION_LISTING = '00000000-0000-4000-8000-000000001216';
 
 async function mkRfq(ctx: APIRequestContext, listingId: string, email: string) {
   const res = await ctx.post('/api/rfqs', {
@@ -38,7 +41,7 @@ async function mkRfq(ctx: APIRequestContext, listingId: string, email: string) {
   return (await res.json()) as { rfqId: string; accessToken: string };
 }
 
-test('machinery scope: for_sale sells out on deal close, for_rent stays live', async () => {
+test('machinery scope: one-off listings sell out on deal close, for_rent stays live', async () => {
   test.skip(process.env.VERTICAL !== 'machinery', 'run with VERTICAL=machinery');
   const publicCtx = await request.newContext({
     extraHTTPHeaders: { 'fly-client-ip': '10.99.13.9' },
@@ -46,13 +49,15 @@ test('machinery scope: for_sale sells out on deal close, for_rent stays live', a
   const sql = postgres(testDb);
   const SALE_BUYER = `e2e-mach-sale-${run}@jetmarket.local`;
   const RENT_BUYER = `e2e-mach-rent-${run}@jetmarket.local`;
+  const AUCTION_BUYER = `e2e-mach-auc-${run}@jetmarket.local`;
   const rfqIds: string[] = [];
   try {
-    // Same deal on both listing kinds — quote SQL-inserted 'sent' so the
-    // buyer accept is the only mutation under test.
+    // Same deal on all three listing kinds — quote SQL-inserted 'sent' so
+    // the buyer accept is the only mutation under test.
     for (const [listingId, buyer] of [
       [SALE_LISTING, SALE_BUYER],
       [RENT_LISTING, RENT_BUYER],
+      [AUCTION_LISTING, AUCTION_BUYER],
     ] as const) {
       const { rfqId, accessToken } = await mkRfq(publicCtx, listingId, buyer);
       rfqIds.push(rfqId);
@@ -92,6 +97,19 @@ test('machinery scope: for_sale sells out on deal close, for_rent stays live', a
       where r.buyer_email = ${RENT_BUYER}`;
     expect(Number(rentDeal!.fee_pct)).toBeCloseTo(0.015, 4);
     expect(Number(rentDeal!.fee_amount_minor)).toBe(15000);
+
+    // Auction lots are one-off too (QA-549): sold on close, same 2% fee —
+    // the third and last listing kind in the taxonomy, pinned end-to-end.
+    const [auctionListing] = await sql`
+      select status from listings where id = ${AUCTION_LISTING}`;
+    expect(auctionListing!.status).toBe('sold');
+    const [auctionDeal] = await sql`
+      select d.fee_pct, d.fee_amount_minor from deals d
+      join quotes q on q.id = d.quote_id
+      join rfqs r on r.id = q.rfq_id
+      where r.buyer_email = ${AUCTION_BUYER}`;
+    expect(Number(auctionDeal!.fee_pct)).toBeCloseTo(0.02, 4);
+    expect(Number(auctionDeal!.fee_amount_minor)).toBe(20000);
   } finally {
     for (const rid of rfqIds) {
       await sql`delete from rfq_matches where rfq_id = ${rid}`;
@@ -100,9 +118,9 @@ test('machinery scope: for_sale sells out on deal close, for_rent stays live', a
       await sql`delete from quotes where rfq_id = ${rid}`;
       await sql`delete from rfqs where id = ${rid}`;
     }
-    // Restore the seeded row — other machinery runs re-seed anyway, but a
+    // Restore the seeded rows — other machinery runs re-seed anyway, but a
     // mid-suite dogfood shouldn't inherit a sold listing.
-    await sql`update listings set status = 'active' where id = ${SALE_LISTING}`;
+    await sql`update listings set status = 'active' where id in (${SALE_LISTING}, ${AUCTION_LISTING})`;
     await sql.end();
   }
 });

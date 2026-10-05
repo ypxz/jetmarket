@@ -27,6 +27,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MockEmailProvider, readOutbox } from "@jetmarket/providers/email/index";
 import { defaultPlans } from "@jetmarket/domain";
+import { machineryVertical } from "@jetmarket/verticals";
 import {
   deliverDueMatches,
   handleJob,
@@ -71,10 +72,10 @@ afterAll(async () => {
   await sql.end();
 });
 
-async function insertRfq(fields: Record<string, unknown>) {
+async function insertRfq(fields: Record<string, unknown>, vertical = "jets") {
   const [row] = await db
     .insert(rfqs)
-    .values({ vertical: "jets", buyerEmail: "buyer@x.com", fields })
+    .values({ vertical, buyerEmail: "buyer@x.com", fields })
     .returning({ id: rfqs.id });
   return row!.id;
 }
@@ -188,6 +189,121 @@ describe("worker pipeline vs compose postgres + jets seed", () => {
       undefined,
     );
     expect(machCands.map((c) => c.id)).toContain(machDealer);
+  });
+
+  it("runs fan-out + delayed delivery under the machinery deploy on a shared DB (QA-549)", async () => {
+    // QA-295/307 pin the scoping clauses read-side; this runs the whole
+    // deliver pipeline with the OTHER deploy's config: machinery plans
+    // (free → 24h delay) + machinery matching, while a jets RFQ's delayed
+    // row in the SAME table stays put under the machinery sweep.
+    const machDeps = (): import("../../src/handlers").WorkerDeps => ({
+      ...deps(),
+      vertical: "machinery",
+      plans: machineryVertical.fees.subscriptionPlans,
+      matching: machineryVertical.matching,
+    });
+
+    // A free-plan machinery dealer — book entirely machinery, so a dealer
+    // there (excluded from jets candidates per QA-307) but matchable here.
+    const [machUser] = await db
+      .insert(users)
+      .values({ email: `mach-qa549-${randomUUID()}@x.com` })
+      .returning({ id: users.id });
+    const [machOp] = await db
+      .insert(operators)
+      .values({ userId: machUser!.id, name: "Mach Dealer", plan: "free" })
+      .returning({ id: operators.id });
+    await db.insert(listings).values({
+      operatorId: machOp!.id,
+      vertical: "machinery",
+      type: "for_sale",
+      title: "Lathe",
+      status: "active",
+      attributes: { machineryCategory: "lathe" },
+    });
+
+    // Machinery RFQ (fields carry the category — the machinery form asks
+    // for it via rfqCategoryKeys) + a jets RFQ whose delayed match row
+    // sits in the same table, due NOW — the row the machinery sweep must
+    // not touch.
+    const machRfqId = await insertRfq(
+      { name: "M", email: "mb@x.com", machineryCategory: "lathe" },
+      "machinery",
+    );
+    const jetsRfqId = await insertRfq({ name: "J", email: "j@x.com" });
+
+    await rfqFanout(machDeps(), { rfqId: machRfqId });
+    const inserted = await db
+      .select({ operatorId: rfqMatches.operatorId, state: rfqMatches.state })
+      .from(rfqMatches)
+      .where(eq(rfqMatches.rfqId, machRfqId));
+    // Exactly the machinery dealer matched (jets-book dealers excluded,
+    // zero-fleet brokers can't prove the machineryCategory fit) — and
+    // machinery's free plan delays delivery 24h.
+    expect(inserted).toEqual([
+      { operatorId: machOp!.id, state: "delayed" },
+    ]);
+    const [machRfq] = await db
+      .select({ status: rfqs.status })
+      .from(rfqs)
+      .where(eq(rfqs.id, machRfqId));
+    expect(machRfq!.status).toBe("matched");
+
+    // Make the machinery match due + plant a due jets delayed match.
+    await db
+      .update(rfqMatches)
+      .set({ deliverAt: new Date(Date.now() - 1000) })
+      .where(eq(rfqMatches.rfqId, machRfqId));
+    const [jetsOp] = await db
+      .select({ id: operators.id })
+      .from(operators)
+      .limit(1);
+    const [jetsMatch] = await db
+      .insert(rfqMatches)
+      .values({
+        rfqId: jetsRfqId,
+        operatorId: jetsOp!.id,
+        state: "delayed",
+        deliverAt: new Date(Date.now() - 1000),
+      })
+      .returning({ id: rfqMatches.id });
+    const [machMatch] = await db
+      .select({ id: rfqMatches.id })
+      .from(rfqMatches)
+      .where(eq(rfqMatches.rfqId, machRfqId));
+
+    // Machinery sweep flips ONLY the machinery row; its notification job
+    // is stamped 'machinery' so only this deploy's worker claims it.
+    expect(await deliverDueMatches(machDeps())).toBe(1);
+    const states = await db
+      .select({ id: rfqMatches.id, state: rfqMatches.state })
+      .from(rfqMatches)
+      .where(inArray(rfqMatches.id, [machMatch!.id, jetsMatch!.id]));
+    expect(Object.fromEntries(states.map((s) => [s.id, s.state]))).toEqual({
+      [machMatch!.id]: "pending",
+      [jetsMatch!.id]: "delayed",
+    });
+    const jobRows = await sql<{ matchId: string; vertical: string | null }[]>`
+      select payload ->> 'matchId' as "matchId", vertical from jobs
+      where kind = 'email.quote_notification'
+        and payload ->> 'matchId' in (${machMatch!.id}, ${jetsMatch!.id})`;
+    expect(jobRows).toEqual([
+      { matchId: machMatch!.id, vertical: "machinery" },
+    ]);
+
+    // The jets sweep still delivers its own row afterwards — and stamps
+    // the job for the jets deploy.
+    expect(await deliverDueMatches(deps())).toBeGreaterThanOrEqual(1);
+    const [jetsState] = await db
+      .select({ state: rfqMatches.state })
+      .from(rfqMatches)
+      .where(eq(rfqMatches.id, jetsMatch!.id));
+    expect(jetsState!.state).toBe("pending");
+    const jetsJobRows = await sql<{ vertical: string | null }[]>`
+      select vertical from jobs
+      where kind = 'email.quote_notification'
+        and payload ->> 'matchId' = ${jetsMatch!.id}`;
+    expect(jetsJobRows).toEqual([{ vertical: "jets" }]);
   });
 
   it("drops away operators from candidates but keeps their inbox (QA-427)", async () => {
