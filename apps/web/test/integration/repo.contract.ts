@@ -5150,6 +5150,95 @@ export function repoContract(
       ).toBe(1);
     });
 
+    it("rfq report lifecycle: dismiss CAS, open-dedupe re-flag, sweeps (QA-539)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const op1 = await repo.createUser(`rrep2-op1-${tag}@test.dev`, "operator");
+      const op2 = await repo.createUser(`rrep2-op2-${tag}@test.dev`, "operator");
+      const rfqA = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `rrep2-a-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `rrep2-a-${tag}`,
+      });
+      const rfqB = await repo.createRfq({
+        vertical: "jets",
+        listingId: null,
+        buyerEmail: `rrep2-b-${tag}@test.dev`,
+        fields: {},
+        dedupeKey: `rrep2-b-${tag}`,
+      });
+      const r1 = await repo.createRfqReport({
+        rfqId: rfqA.id,
+        reporterId: op1.id,
+        reason: "spam",
+      });
+      expect(r1!.status).toBe("open");
+      expect(r1!.resolvedAt).toBeNull();
+
+      // Dismiss CAS: first resolves, repeat misses, unknown id misses.
+      expect(await repo.resolveRfqReport(r1!.id)).toBe(true);
+      expect(await repo.resolveRfqReport(r1!.id)).toBe(false);
+      expect(await repo.resolveRfqReport(crypto.randomUUID())).toBe(false);
+      const after = (await repo.listRfqReports({ rfqId: rfqA.id })).find(
+        (r) => r.id === r1!.id,
+      );
+      expect(after!.status).toBe("dismissed");
+      expect(after!.resolvedAt).not.toBeNull();
+      // Status filter + open-only count.
+      expect(
+        await repo.listRfqReports({ status: "open", rfqId: rfqA.id }),
+      ).toEqual([]);
+      expect(
+        (await repo.listRfqReports({ status: "dismissed", rfqId: rfqA.id }))
+          .map((r) => r.id),
+      ).toEqual([r1!.id]);
+      expect((await repo.countRfqReports([rfqA.id]))[rfqA.id] ?? 0).toBe(0);
+
+      // A dismissed flag re-arms — the open-only dedupe admits a fresh
+      // row where the old unique pair would have 409'd.
+      const r2 = await repo.createRfqReport({
+        rfqId: rfqA.id,
+        reporterId: op1.id,
+        reason: "spam",
+      });
+      expect(r2).not.toBeNull();
+      expect(r2!.id).not.toBe(r1!.id);
+      // But a second OPEN flag still dedupes.
+      expect(
+        await repo.createRfqReport({
+          rfqId: rfqA.id,
+          reporterId: op1.id,
+          reason: "spam",
+        }),
+      ).toBeNull();
+      expect((await repo.countRfqReports([rfqA.id]))[rfqA.id]).toBe(1);
+
+      // ForRfq sweep (spam-mark/force-close path): clears every open flag
+      // on the target, leaves the dismissed one and other RFQs' flags.
+      const other = await repo.createRfqReport({
+        rfqId: rfqB.id,
+        reporterId: op2.id,
+        reason: "abusive",
+      });
+      expect(await repo.resolveRfqReportsForRfq(rfqA.id)).toBe(1);
+      expect(await repo.resolveRfqReportsForRfq(rfqA.id)).toBe(0);
+      expect(
+        (
+          await repo.listRfqReports({ rfqId: rfqB.id })
+        ).find((r) => r.id === other!.id)!.status,
+      ).toBe("open");
+
+      // ByReporter sweep (buyer-block path): op2's flag clears; op1's
+      // re-flag on A is already dismissed so nothing changes there.
+      expect(await repo.resolveRfqReportsByReporter(op2.id)).toBe(1);
+      expect(await repo.resolveRfqReportsByReporter(op2.id)).toBe(0);
+      expect(
+        await repo.listRfqReports({ status: "open", rfqId: rfqB.id }),
+      ).toEqual([]);
+    });
+
     it("rfq notes: per-operator upsert, batch list, empty clears (QA-524)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

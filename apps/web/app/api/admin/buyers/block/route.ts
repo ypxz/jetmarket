@@ -55,8 +55,11 @@ export async function POST(req: Request) {
     ? await repo.resolveListingReportsByReporter(reporter.id)
     : 0;
   // QA-529: quote flags key the reporter by email — sweep them too.
+  // QA-539: RFQ flags join the sweep (operator-side surface, but a
+  // blocked account's filings die the same way).
   const reportsCleared =
     listingReportsCleared +
+    (reporter ? await repo.resolveRfqReportsByReporter(reporter.id) : 0) +
     (await repo.resolveQuoteReportsByReporter(email));
   logInfo("admin.buyer_blocked", {
     adminId: user.id,

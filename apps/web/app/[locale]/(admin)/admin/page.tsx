@@ -23,6 +23,7 @@ import { BuyerBlockButton } from "./buyer-block-button";
 import {
   DismissQuoteReportButton,
   DismissReportButton,
+  DismissRfqReportButton,
 } from "./report-dismiss";
 import { SuspendButton, VerifyButton } from "./verify-button";
 
@@ -113,8 +114,13 @@ export default async function AdminPage({
       // row powers the "flagged ×N" badge (RFQ side of buyer reports).
       repo.countRfqReports(modRfqs.map((r) => r.id)),
       // QA-470: the flag detail behind the badge — reason/note/reporter
-      // rows a moderator reads before spam-marking.
-      repo.listRfqReports({ vertical: verticalSlug(), limit: 30 }),
+      // rows a moderator reads before spam-marking. QA-539: OPEN only —
+      // a dismissed flag clears the queue like every report surface.
+      repo.listRfqReports({
+        status: "open",
+        vertical: verticalSlug(),
+        limit: 30,
+      }),
       // QA-529: quote flag rows join their quote (amount, operator) — the
       // RFQ/listing context resolves in the next wave.
       repo.listQuotes({
@@ -729,12 +735,17 @@ export default async function AdminPage({
                     {new Date(r.createdAt).toLocaleDateString(locale)}
                   </td>
                   <td className="py-2">
-                    {rfq && LIVE_RFQ.has(rfq.status) ? (
-                      <span className="inline-flex gap-1">
-                        <RfqSpamButton rfqId={rfq.id} />
-                        <RfqCloseButton rfqId={rfq.id} />
-                      </span>
-                    ) : null}
+                    {/* QA-539: dismiss is always offered — a bogus flag
+                        clears without punishing a legit RFQ. */}
+                    <span className="inline-flex gap-1">
+                      {rfq && LIVE_RFQ.has(rfq.status) ? (
+                        <>
+                          <RfqSpamButton rfqId={rfq.id} />
+                          <RfqCloseButton rfqId={rfq.id} />
+                        </>
+                      ) : null}
+                      <DismissRfqReportButton reportId={r.id} />
+                    </span>
                   </td>
                 </tr>
                 {/* QA-538: the flag says WHY someone objected — the detail

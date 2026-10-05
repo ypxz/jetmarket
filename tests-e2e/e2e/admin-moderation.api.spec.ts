@@ -551,11 +551,36 @@ test('buyer block: RFQ-create 403s while blocked, unblock restores (QA-463)', as
   // One rung: superseded arrival NCE → live GVA.
   expect(adminHtml2).toContain(`rfq-report-amends-${flagId}`);
   expect(adminHtml2).toContain('NCE → GVA');
-  // …and the flag never blocks enforcement — spam-mark still flips it.
+
+  // QA-539: a flag judged BOGUS clears without acting on the RFQ —
+  // dismiss CAS resolves it (repeat 409s), the row leaves the open
+  // queue, and the open-only dedupe re-arms the operator's flag.
+  const dismissed = await admin.post(
+    `/api/admin/rfq-reports/${flagId}/dismiss`,
+  );
+  expect(dismissed.status()).toBe(200);
+  expect(
+    (await admin.post(`/api/admin/rfq-reports/${flagId}/dismiss`)).status(),
+  ).toBe(409);
+  const adminHtml3 = await (await admin.get('/en/admin')).text();
+  expect(adminHtml3).not.toContain(`rfq-report-${flagId}`);
+  const reflag = await operator.post(`/api/operator/rfqs/${freshId}/report`, {
+    data: { reason: 'spam', note: 'second look — still junk' },
+  });
+  expect(reflag.status()).toBe(201);
+  const flagId2 = ((await reflag.json()) as { id: string }).id;
+
+  // …and the flag never blocks enforcement — spam-mark still flips it,
+  // and the flip itself retires the re-flag (flagsCleared: 1).
   const spammed = await admin.post(`/api/admin/rfqs/${freshId}/status`, {
     data: { status: 'spam' },
   });
   expect(spammed.status()).toBe(200);
+  expect(
+    ((await spammed.json()) as { flagsCleared: number }).flagsCleared,
+  ).toBe(1);
+  const adminHtml4 = await (await admin.get('/en/admin')).text();
+  expect(adminHtml4).not.toContain(`rfq-report-${flagId2}`);
   expect(((await spammed.json()) as { status: string }).status).toBe('spam');
 });
 

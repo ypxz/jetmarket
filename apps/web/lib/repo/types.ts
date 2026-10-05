@@ -122,13 +122,17 @@ export interface Rfq {
 
 /** QA-469: an operator's flag on an abusive RFQ — feeds the admin
  *  moderation rows a "flagged ×N" signal. */
+export type RfqReportStatus = "open" | "dismissed";
+
 export interface RfqReport {
   id: string;
   rfqId: string;
   reporterId: string;
   reason: string;
   note: string | null;
+  status: RfqReportStatus;
   createdAt: string;
+  resolvedAt: string | null;
 }
 
 /** QA-467: one append-only moderation audit row — who did what to which
@@ -1128,25 +1132,41 @@ export interface Repo {
   resolveListingReportsByReporter(reporterId: string): Promise<number>;
 
   /** QA-469: operator flags an abusive RFQ — the demand-side twin of the
-   *  buyer listing flag. One flag per (rfq, reporter); a repeat returns
-   *  null so the route 409s. The flag's lifecycle IS the RFQ's — a
-   *  spam-marked RFQ is terminal, so rows carry no status. */
+   *  buyer listing flag. One OPEN flag per (rfq, reporter); a repeat
+   *  returns null so the route 409s, a dismissed flag re-arms (QA-539 —
+   *  bogus-flag clears need the open/dismissed lifecycle after all). */
   createRfqReport(input: {
     rfqId: string;
     reporterId: string;
     reason: string;
     note?: string;
   }): Promise<RfqReport | null>;
-  /** Admin RFQ rows show a "flagged ×N" badge — one grouped count. */
+  /** Admin RFQ rows show a "flagged ×N" badge — one grouped count.
+   *  QA-539: OPEN flags only — a dismissed flag no longer demands
+   *  review. */
   countRfqReports(rfqIds: string[]): Promise<Record<string, number>>;
   /** QA-470: the badge counts but a moderator needs the WHY — newest-
    *  first flag detail. Reports carry no vertical column: the scope
-   *  resolves through the rfq join (same rule as listing reports). */
+   *  resolves through the rfq join (same rule as listing reports).
+   *  QA-539: optionally scoped to one status. */
   listRfqReports(filter: {
+    status?: RfqReportStatus;
     vertical?: string;
     rfqId?: string;
     limit?: number;
   }): Promise<RfqReport[]>;
+  /** QA-539: admin dismisses an RFQ flag — CAS on status='open' so a
+   *  repeat click 409s instead of rewriting. False when nothing open
+   *  was found. */
+  resolveRfqReport(id: string): Promise<boolean>;
+  /** QA-539: bulk-dismiss every open flag on one RFQ — spam-marks and
+   *  force-closes resolve the target, so its flags leave the queue with
+   *  it (listing-archive parity, QA-462). Returns the count closed. */
+  resolveRfqReportsForRfq(rfqId: string): Promise<number>;
+  /** QA-539: bulk-dismiss every open flag one user filed — the buyer
+   *  block sweeps a purged account's accusations out of the queue
+   *  (QA-465 parity). */
+  resolveRfqReportsByReporter(reporterId: string): Promise<number>;
 
   /** QA-529: buyer flags a quote they received — one OPEN report per
    *  (quote, reporter email); a repeat flag returns null (route 409s)

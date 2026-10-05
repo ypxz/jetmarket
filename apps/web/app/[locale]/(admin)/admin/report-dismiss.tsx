@@ -72,3 +72,13 @@ export function DismissQuoteReportButton({ reportId }: { reportId: string }) {
     />
   );
 }
+
+/** QA-539: same dismiss for the operator RFQ-flag queue. */
+export function DismissRfqReportButton({ reportId }: { reportId: string }) {
+  return (
+    <DismissButton
+      endpoint={`/api/admin/rfq-reports/${reportId}/dismiss`}
+      testid={`dismiss-rfq-report-${reportId}`}
+    />
+  );
+}

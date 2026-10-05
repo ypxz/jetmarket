@@ -39,6 +39,7 @@ import type {
   Rfq,
   RfqNote,
   RfqReport,
+  RfqReportStatus,
   RfqStatus,
   SearchAlert,
   Subscription,
@@ -254,7 +255,9 @@ function toRfqReport(r: typeof rfqReports.$inferSelect): RfqReport {
     reporterId: r.reporterId,
     reason: r.reason,
     note: r.note,
+    status: r.status,
     createdAt: iso(r.createdAt),
+    resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
   };
 }
 
@@ -2495,17 +2498,22 @@ export class DrizzleRepo implements Repo {
     const rows = await this.db
       .select({ rfqId: rfqReports.rfqId, n: sql<number>`count(*)::int` })
       .from(rfqReports)
-      .where(inArray(rfqReports.rfqId, ids))
+      // QA-539: open only — the badge tracks what still needs review.
+      .where(
+        and(inArray(rfqReports.rfqId, ids), eq(rfqReports.status, "open")),
+      )
       .groupBy(rfqReports.rfqId);
     return Object.fromEntries(rows.map((r) => [r.rfqId, r.n]));
   }
 
   async listRfqReports(filter: {
+    status?: RfqReportStatus;
     vertical?: string;
     rfqId?: string;
     limit?: number;
   }): Promise<RfqReport[]> {
     const conds = [];
+    if (filter.status) conds.push(eq(rfqReports.status, filter.status));
     if (filter.rfqId) conds.push(eq(rfqReports.rfqId, filter.rfqId));
     // Reports carry no vertical — resolve through the RFQ (QA-470, same
     // rule as listing reports through their listing).
@@ -2518,6 +2526,40 @@ export class DrizzleRepo implements Repo {
       .orderBy(desc(rfqReports.createdAt))
       .limit(Math.min(filter.limit ?? 100, 200));
     return rows.map((r) => toRfqReport(r.report));
+  }
+
+  async resolveRfqReport(id: string): Promise<boolean> {
+    const rows = await this.db
+      .update(rfqReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(and(eq(rfqReports.id, id), eq(rfqReports.status, "open")))
+      .returning({ id: rfqReports.id });
+    return rows.length > 0;
+  }
+
+  async resolveRfqReportsForRfq(rfqId: string): Promise<number> {
+    const rows = await this.db
+      .update(rfqReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(eq(rfqReports.rfqId, rfqId), eq(rfqReports.status, "open")),
+      )
+      .returning({ id: rfqReports.id });
+    return rows.length;
+  }
+
+  async resolveRfqReportsByReporter(reporterId: string): Promise<number> {
+    const rows = await this.db
+      .update(rfqReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(
+          eq(rfqReports.reporterId, reporterId),
+          eq(rfqReports.status, "open"),
+        ),
+      )
+      .returning({ id: rfqReports.id });
+    return rows.length;
   }
 
   async createQuoteReport(input: {

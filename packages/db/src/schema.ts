@@ -558,13 +558,20 @@ export const rfqReports = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     reason: text("reason").notNull(),
     note: text("note"),
+    status: text("status", { enum: ["open", "dismissed"] })
+      .notNull()
+      .default("open"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   },
   (t) => [
-    // One flag per operator per RFQ (QA-469).
-    uniqueIndex("rfq_reports_dedupe").on(t.rfqId, t.reporterId),
+    // One open flag per operator per RFQ — a dismissed flag re-arms
+    // (QA-539; every report surface uses the same open-only partial).
+    uniqueIndex("rfq_reports_open_dedupe")
+      .on(t.rfqId, t.reporterId)
+      .where(sql`status = 'open'`),
   ],
 );
 

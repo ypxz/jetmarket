@@ -24,6 +24,7 @@ import type {
   RfqAmendment,
   RfqNote,
   RfqReport,
+  RfqReportStatus,
   SearchAlert,
   Subscription,
   User,
@@ -1622,10 +1623,15 @@ class MemoryRepo implements Repo {
     reason: string;
     note?: string;
   }): Promise<RfqReport | null> {
-    // QA-469: sync dedupe scan — a repeat flag from the same operator
-    // returns null (route 409s) instead of stacking a second row.
+    // QA-469: sync dedupe scan — a repeat OPEN flag from the same
+    // operator returns null (route 409s); a dismissed flag re-arms
+    // (QA-539, pg's partial unique).
     for (const r of this.rfqReports.values()) {
-      if (r.rfqId === input.rfqId && r.reporterId === input.reporterId) {
+      if (
+        r.rfqId === input.rfqId &&
+        r.reporterId === input.reporterId &&
+        r.status === "open"
+      ) {
         return null;
       }
     }
@@ -1635,7 +1641,9 @@ class MemoryRepo implements Repo {
       reporterId: input.reporterId,
       reason: input.reason,
       note: input.note ?? null,
+      status: "open",
       createdAt: now(),
+      resolvedAt: null,
     };
     this.rfqReports.set(row.id, row);
     return row;
@@ -1645,18 +1653,25 @@ class MemoryRepo implements Repo {
     const want = new Set(rfqIds);
     const out: Record<string, number> = {};
     for (const r of this.rfqReports.values()) {
-      if (want.has(r.rfqId)) out[r.rfqId] = (out[r.rfqId] ?? 0) + 1;
+      // QA-539: open only — the badge tracks what still needs review.
+      if (want.has(r.rfqId) && r.status === "open") {
+        out[r.rfqId] = (out[r.rfqId] ?? 0) + 1;
+      }
     }
     return out;
   }
 
   async listRfqReports(filter: {
+    status?: RfqReportStatus;
     vertical?: string;
     rfqId?: string;
     limit?: number;
   }): Promise<RfqReport[]> {
     // Reports carry no vertical — scope through the RFQ (drizzle joins).
     const rows = [...this.rfqReports.values()].filter((r) => {
+      if (filter.status !== undefined && r.status !== filter.status) {
+        return false;
+      }
       if (filter.rfqId !== undefined && r.rfqId !== filter.rfqId) return false;
       if (filter.vertical !== undefined) {
         const rfq = this.rfqs.get(r.rfqId);
@@ -1674,6 +1689,30 @@ class MemoryRepo implements Repo {
       )
       .map((x) => x.r)
       .slice(0, filter.limit ?? 100);
+  }
+
+  private resolveRfqReports(pred: (r: RfqReport) => boolean): number {
+    let n = 0;
+    for (const r of this.rfqReports.values()) {
+      if (r.status === "open" && pred(r)) {
+        r.status = "dismissed";
+        r.resolvedAt = now();
+        n++;
+      }
+    }
+    return n;
+  }
+
+  async resolveRfqReport(id: string): Promise<boolean> {
+    return this.resolveRfqReports((r) => r.id === id) > 0;
+  }
+
+  async resolveRfqReportsForRfq(rfqId: string): Promise<number> {
+    return this.resolveRfqReports((r) => r.rfqId === rfqId);
+  }
+
+  async resolveRfqReportsByReporter(reporterId: string): Promise<number> {
+    return this.resolveRfqReports((r) => r.reporterId === reporterId);
   }
 
   async createQuoteReport(input: {

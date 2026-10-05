@@ -62,18 +62,23 @@ export async function POST(
     await notifyBuyerRfqClosed(repo, rfq);
   }
 
+  // QA-539: the flags die with their target — spam/close resolves the
+  // question every open flag was asking (QA-462 listing parity).
+  const flagsCleared = await repo.resolveRfqReportsForRfq(id);
+
   logInfo("admin.rfq_moderated", {
     adminId: user.id,
     rfqId: id,
     status: data!.status,
     declined,
+    flagsCleared,
   });
   await auditAdmin(repo, {
     adminId: user.id,
     event: "rfq_moderated",
     targetType: "rfq",
     targetId: id,
-    meta: { status: data!.status, declined },
+    meta: { status: data!.status, declined, flagsCleared },
   });
-  return ok({ id, status: data!.status, declined });
+  return ok({ id, status: data!.status, declined, flagsCleared });
 }
