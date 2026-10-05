@@ -119,4 +119,16 @@ describe("POST /api/operator/deals/[id]/rate (QA-528)", () => {
     ).toBe(404);
     asUser(null);
   });
+
+  it("QA-551: a voided deal isn't rateable — 409 before the CAS", async () => {
+    const repo = await getMemoryRepo();
+    const { opUser, deal } = await fixture(repo);
+    await repo.setDealInvoice(deal.id, "void", undefined, ["pending"]);
+    asUser(opUser.id);
+    expect((await rateDeal(post({ rating: 1 }), params(deal.id))).status).toBe(
+      409,
+    );
+    expect((await repo.getDeal(deal.id))?.operatorRating).toBeUndefined();
+    asUser(null);
+  });
 });

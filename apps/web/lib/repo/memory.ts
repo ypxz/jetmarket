@@ -1409,7 +1409,15 @@ class MemoryRepo implements Repo {
   async rateDeal(id: string, rating: number): Promise<boolean> {
     const deal = this.deals.get(id);
     // Sync check-write — once-ever + in-range in one pass (QA-333).
-    if (!deal || deal.buyerRating !== undefined || rating < 1 || rating > 5) {
+    // QA-551: a voided deal fell through — a ★ on it would corrupt the
+    // operator's public record for a transaction that never settled.
+    if (
+      !deal ||
+      deal.buyerRating !== undefined ||
+      deal.invoiceStatus === "void" ||
+      rating < 1 ||
+      rating > 5
+    ) {
       return false;
     }
     this.deals.set(id, {
@@ -1422,7 +1430,14 @@ class MemoryRepo implements Repo {
   async rateDealByOperator(id: string, rating: number): Promise<boolean> {
     const deal = this.deals.get(id);
     // Sync check-write — once-ever + in-range in one pass (QA-333).
-    if (!deal || deal.operatorRating !== undefined || rating < 1 || rating > 5) {
+    // QA-551: voided deals aren't rateable — see rateDeal.
+    if (
+      !deal ||
+      deal.operatorRating !== undefined ||
+      deal.invoiceStatus === "void" ||
+      rating < 1 ||
+      rating > 5
+    ) {
       return false;
     }
     this.deals.set(id, {

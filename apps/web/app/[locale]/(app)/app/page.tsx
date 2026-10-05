@@ -572,7 +572,10 @@ export default async function OperatorDashboard() {
                   {d.invoiceStatus === "invoiced" && d.invoiceUrl ? (
                     <PayFee dealId={d.id} />
                   ) : null}
-                  {d.operatorRating === undefined ? (
+                  {/* QA-551: a voided deal fell through — the rate
+                      control would 409 anyway; hide it. */}
+                  {d.operatorRating === undefined &&
+                  d.invoiceStatus !== "void" ? (
                     <RateBuyer dealId={d.id} />
                   ) : null}
                 </span>

@@ -4378,6 +4378,97 @@ export function repoContract(
       ).toBe(1);
     });
 
+    it("refuses ratings on a voided deal from either side (QA-551)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const op = await repo.upsertOperator({
+        userId: (await repo.createUser(`void-${tag}@test.dev`, "operator")).id,
+        name: `Void Air ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Void Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `vb-${tag}@test.dev`,
+        fields: {},
+      });
+      const quote = await repo.createQuote({
+        rfqId: rfq.id,
+        operatorId: op.id,
+        amount: 5000,
+        currency: "USD",
+        message: "",
+      });
+      const deal = await repo.createDeal({
+        quoteId: quote.id,
+        operatorId: op.id,
+        amount: 5000,
+        currency: "USD",
+        feePct: 0.03,
+        feeAmount: 150,
+        invoiceStatus: "pending",
+      });
+      // Live first — both directions land while the deal stands.
+      expect(await repo.rateDeal(deal.id, 4)).toBe(true);
+      expect(await repo.rateDealByOperator(deal.id, 3)).toBe(true);
+      expect(
+        (await repo.ratingSummaryPerOperator([op.id]))[op.id],
+      ).toEqual({ avg: 4, count: 1 });
+
+      // Second live quote needs its own RFQ — one live quote per op+rfq.
+      const rfq2 = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `vb2-${tag}@test.dev`,
+        fields: {},
+      });
+      const deal2Quote = await repo.createQuote({
+        rfqId: rfq2.id,
+        operatorId: op.id,
+        amount: 5100,
+        currency: "USD",
+        message: "",
+      });
+      const voidDeal = await repo.createDeal({
+        quoteId: deal2Quote.id,
+        operatorId: op.id,
+        amount: 5100,
+        currency: "USD",
+        feePct: 0.03,
+        feeAmount: 153,
+        invoiceStatus: "pending",
+      });
+      expect(
+        await repo.setDealInvoice(voidDeal.id, "void", undefined, ["pending"]),
+      ).toBe(true);
+      // The fell-through deal can't collect a ★ from either side — the
+      // rating would land on the operator's public record for a
+      // transaction that never settled.
+      expect(await repo.rateDeal(voidDeal.id, 1)).toBe(false);
+      expect(await repo.rateDealByOperator(voidDeal.id, 1)).toBe(false);
+      expect((await repo.getDeal(voidDeal.id))?.buyerRating).toBeUndefined();
+      expect(
+        (await repo.getDeal(voidDeal.id))?.operatorRating,
+      ).toBeUndefined();
+      // And the summary only ever counted the real transaction.
+      expect(
+        (await repo.ratingSummaryPerOperator([op.id]))[op.id],
+      ).toEqual({ avg: 4, count: 1 });
+    });
+
     it("countDealsPerOperator groups closed deals per op, vertical-scoped (QA-431)", async () => {
       const repo = await factory();
       const tag = `dt-${Date.now().toString(36)}`;

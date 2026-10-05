@@ -451,6 +451,7 @@
     "reachOperator": "Abschluss geschlossen — erreichen Sie {name} direkt unter",
     "ratePrompt": "Diesen Abschluss bewerten:",
     "ratedMsg": "Sie haben diesen Abschluss mit {rating}/5 bewertet.",
+    "dealVoided": "Dieses Geschäft ist geplatzt — es wurde storniert und ist nicht bewertbar.",
     "ratingAvg": "★ {avg} ({count, plural, one {# Bewertung} other {# Bewertungen}})",
     "extendedMsg": "Anfrage verlängert — sie schließt nun in einer Woche.",
     "edit": "Anfrage bearbeiten",

@@ -29,6 +29,7 @@ import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Listing, Repo, Rfq } from "../../lib/repo/types";
 import { POST as acceptQuote } from "../../app/api/quotes/[id]/accept/route";
 import { POST as revertDeal } from "../../app/api/admin/deals/[id]/revert/route";
+import { POST as rateDeal } from "../../app/api/deals/[id]/rate/route";
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (body?: unknown) =>
@@ -146,6 +147,15 @@ describe("POST /api/admin/deals/[id]/revert (QA-550)", () => {
     };
     expect(againBody.restoredListingId).toBeUndefined();
     expect(await status(listing)).toBe("active");
+
+    // QA-551: a voided deal can't collect a buyer ★ — the fell-through
+    // transaction never feeds the operator's public record.
+    const rate = await rateDeal(
+      post({ buyerEmail, token: rfq.accessToken, rating: 1 }),
+      params(deal.id),
+    );
+    expect(rate.status).toBe(409);
+    expect((await repo.getDeal(deal.id))?.buyerRating).toBeUndefined();
   });
 
   it("resumes a partial revert: already-void invoice still restores the listing", async () => {

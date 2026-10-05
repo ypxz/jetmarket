@@ -388,6 +388,19 @@ test('admin api: deal revert voids the fee and frees the consumed one-off (QA-55
       select invoice_status from deals where id = ${deal!.id}`;
     expect(inv!.invoice_status).toBe('void');
 
+    // QA-551: neither side can score a voided deal — a ★ here would
+    // corrupt the operator's public record for a deal that fell through.
+    const rateBuyer = await (
+      await request.newContext({ extraHTTPHeaders: adminIp })
+    ).post(`/api/deals/${deal!.id}/rate`, {
+      data: { buyerEmail: BUYER2, token: accessToken, rating: 1 },
+    });
+    expect(rateBuyer.status()).toBe(409);
+    const rateOp = await operator.post(`/api/operator/deals/${deal!.id}/rate`, {
+      data: { rating: 1 },
+    });
+    expect(rateOp.status()).toBe(409);
+
     // The freed listing really is live again — a second RFQ closes on it,
     // and that PAID deal correctly refuses revert (money moved).
     const rfq2 = await (

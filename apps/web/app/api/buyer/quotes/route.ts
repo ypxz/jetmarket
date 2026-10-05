@@ -232,6 +232,9 @@ export async function GET(req: Request) {
               ? {
                   id: dealByQuoteId.get(q.id)?.id,
                   buyerRating: dealByQuoteId.get(q.id)?.buyerRating,
+                  // QA-551: a voided (reverted) deal renders as "fell
+                  // through" — not a rateable outcome.
+                  invoiceStatus: dealByQuoteId.get(q.id)?.invoiceStatus,
                 }
               : undefined,
           operator: (() => {

@@ -451,6 +451,7 @@
     "reachOperator": "Deal closed — reach {name} directly at",
     "ratePrompt": "Rate this deal:",
     "ratedMsg": "You rated this deal {rating}/5.",
+    "dealVoided": "This deal fell through — it was voided and isn’t rateable.",
     "ratingAvg": "★ {avg} ({count, plural, one {# rating} other {# ratings}})",
     "extendedMsg": "Request extended — it now closes a week from today.",
     "edit": "Edit request",

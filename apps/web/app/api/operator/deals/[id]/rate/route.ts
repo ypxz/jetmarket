@@ -31,6 +31,10 @@ export async function POST(
   if (!operator) return err("create an operator profile first", 409);
   const deal = await repo.getDeal(id);
   if (!deal || deal.operatorId !== operator.id) return err("not found", 404);
+  // QA-551: a voided deal fell through — nothing real to score.
+  if (deal.invoiceStatus === "void") {
+    return err("deal was voided — nothing to rate", 409);
+  }
   const rated = await repo.rateDealByOperator(id, data!.rating);
   if (!rated) return err("already rated", 409);
   return ok({ rated: true });

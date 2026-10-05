@@ -37,8 +37,10 @@ interface Quote {
      *  while it lasts (it revives on reinstate, it isn't voided). */
     unavailable?: boolean;
   } | null;
-  /** QA-451: on accepted quotes — the deal id to rate + the rating given. */
-  deal?: { id?: string; buyerRating?: number };
+  /** QA-451: on accepted quotes — the deal id to rate + the rating given.
+   *  QA-551: `invoiceStatus` distinguishes a voided (reverted) deal, which
+   *  renders "fell through" instead of a rate widget. */
+  deal?: { id?: string; buyerRating?: number; invoiceStatus?: string };
   /** QA-511: the buyer's live counter-offer (one per offer round — a
    *  revise clears it). */
   counterAmount?: number;
@@ -1199,8 +1201,22 @@ function QuotesInner() {
                             ) : null}
                           </span>
                           {q.message ? <p className="mt-1 text-sm">{q.message}</p> : null}
+                          {/* QA-551: a reverted deal isn't a rateable
+                              outcome — the card reads "fell through"
+                              instead of offering stars that would 409. */}
+                          {q.status === "accepted" &&
+                          q.deal?.invoiceStatus === "void" ? (
+                            <p
+                              className="mt-1 text-sm text-muted"
+                              data-testid={`deal-voided-${q.id}`}
+                            >
+                              {t("dealVoided")}
+                            </p>
+                          ) : null}
                           {/* QA-451: once-ever 1-5 rating, in place. */}
-                          {q.status === "accepted" && q.deal?.id ? (
+                          {q.status === "accepted" &&
+                          q.deal?.id &&
+                          q.deal.invoiceStatus !== "void" ? (
                             <p className="mt-1 text-sm" data-testid={`rate-deal-${q.deal.id}`}>
                               {q.deal.buyerRating ? (
                                 t("ratedMsg", { rating: q.deal.buyerRating })

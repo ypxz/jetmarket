@@ -42,6 +42,11 @@ export async function POST(
     return err("not found", 404);
   }
 
+  // QA-551: a voided deal fell through — clearer error than the
+  // once-ever CAS's generic refusal below.
+  if (deal!.invoiceStatus === "void") {
+    return err("deal was voided — nothing to rate", 409);
+  }
   const rated = await repo.rateDeal(id, data!.rating);
   if (!rated) return err("already rated", 409);
   // The rating just rewrote the operator's public ★ record — the notify

@@ -2267,6 +2267,8 @@ export class DrizzleRepo implements Repo {
         and(
           eq(deals.id, id),
           sql`${deals.buyerRating} is null`,
+          // QA-551: a voided deal fell through — never rateable.
+          ne(deals.invoiceStatus, "void"),
           sql`${rating} between 1 and 5`,
         ),
       )
@@ -2282,6 +2284,8 @@ export class DrizzleRepo implements Repo {
         and(
           eq(deals.id, id),
           sql`${deals.operatorRating} is null`,
+          // QA-551: a voided deal fell through — never rateable.
+          ne(deals.invoiceStatus, "void"),
           sql`${rating} between 1 and 5`,
         ),
       )
