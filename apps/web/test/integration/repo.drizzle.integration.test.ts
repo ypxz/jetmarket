@@ -267,3 +267,97 @@ describe.skipIf(!reachable)("rfq survives listing delete (QA-159)", () => {
     ).toContain(rfq!.id);
   });
 });
+
+// QA-543 (pg-only): pending buyer-facing jobs on the deleted mailbox's
+// rfqs/matches cancel inside the sweep — done/failed jobs and other
+// buyers' pending jobs survive.
+describe.skipIf(!reachable)("deleteBuyerData cancels pending buyer jobs (QA-543)", () => {
+  const { users, operators, listings, rfqs, rfqMatches, jobs, searchAlerts } =
+    schema;
+
+  it("pending fanout/quote-notification jobs die; done + foreign stay", async () => {
+    const db = client!.db;
+    const repo = new DrizzleRepo(db);
+    const tag = Date.now().toString(36);
+    const email = `wipedb-${tag}@test.dev`;
+
+    const [u] = await db
+      .insert(users)
+      .values({ email: `wipeop2-${tag}@t.dev`, role: "operator" })
+      .returning();
+    const [op] = await db
+      .insert(operators)
+      .values({ userId: u!.id, name: "WDB Air", plan: "pro" })
+      .returning();
+    const [l] = await db
+      .insert(listings)
+      .values({
+        operatorId: op!.id,
+        vertical: "jets",
+        type: "charter",
+        title: `WDB ${tag}`,
+        priceMinor: 900000,
+        status: "active",
+      })
+      .returning();
+    const [mine] = await db
+      .insert(rfqs)
+      .values({ vertical: "jets", buyerEmail: email, listingId: l!.id, fields: { email } })
+      .returning();
+    const [notMine] = await db
+      .insert(rfqs)
+      .values({
+        vertical: "jets",
+        buyerEmail: `other-${tag}@test.dev`,
+        listingId: l!.id,
+        fields: {},
+      })
+      .returning();
+    const [match] = await db
+      .insert(rfqMatches)
+      .values({ rfqId: mine!.id, operatorId: op!.id, listingId: l!.id, state: "delayed" })
+      .returning();
+
+    // Pending jobs that would mail the dead mailbox.
+    const [j1] = await db
+      .insert(jobs)
+      .values({ kind: "rfq.fanout", payload: { rfqId: mine!.id }, vertical: "jets" })
+      .returning();
+    const [j2] = await db
+      .insert(jobs)
+      .values({ kind: "email.quote_notification", payload: { matchId: match!.id }, vertical: "jets" })
+      .returning();
+    // Survivors: a done job on their rfq + a pending job on a stranger's.
+    const [j3] = await db
+      .insert(jobs)
+      .values({ kind: "rfq.fanout", payload: { rfqId: mine!.id }, vertical: "jets", status: "done" })
+      .returning();
+    const [j4] = await db
+      .insert(jobs)
+      .values({ kind: "rfq.fanout", payload: { rfqId: notMine!.id }, vertical: "jets" })
+      .returning();
+
+    const res = await repo.deleteBuyerData(email, "jets");
+    expect(res.pendingJobs).toBe(2);
+    const remaining = (await db.select({ id: jobs.id }).from(jobs)).map(
+      (r) => r.id,
+    );
+    expect(remaining).not.toContain(j1!.id);
+    expect(remaining).not.toContain(j2!.id);
+    expect(remaining).toContain(j3!.id);
+    expect(remaining).toContain(j4!.id);
+
+    // admin event landed inside the same tx; search_alerts insert+gone works.
+    await db
+      .insert(searchAlerts)
+      .values({
+        vertical: "jets",
+        email,
+        token: `sd-${tag}`,
+        dedupeKey: `sdk-${tag}`,
+        status: "active",
+      });
+    const res2 = await repo.deleteBuyerData(email, "jets");
+    expect(res2.alerts).toBe(1);
+  });
+});

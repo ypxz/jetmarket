@@ -352,3 +352,118 @@ test('quotes inbox auto-loads for a signed-in buyer, no click needed (QA-480)', 
     await sql.end();
   }
 });
+
+test('account self-delete wipes the mailbox, session and bearer proofs (QA-543)', async () => {
+  const sql = postgres(testDb, { max: 1 });
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.6.8' },
+  });
+  let listingId = '';
+  let rfqId = '';
+  let bearerRfqId = '';
+  const WIPE = `e2e-wipe-${run}@jetmarket.local`;
+  const WIPE2 = `e2e-wipe2-${run}@jetmarket.local`;
+  try {
+    const operator = await login(OP_EMAIL, 'operator');
+    expect(
+      (
+        await operator.post('/api/operators', {
+          data: { name: `E2E Wipe Ops ${run}`, baseAirport: 'LSZH' },
+        })
+      ).status(),
+    ).toBe(201);
+    const lres = await operator.post('/api/listings', {
+      data: {
+        type: 'charter',
+        title: `E2E Wipe Charter ${run}`,
+        price: 38000,
+        currency: 'USD',
+        photos: [],
+        attributes: {},
+      },
+    });
+    expect(lres.status()).toBe(201);
+    listingId = ((await lres.json()) as { id: string }).id;
+
+    // --- session proof: the /account danger-zone path -------------------
+    rfqId = (await mkRfq(publicCtx, listingId, WIPE)).rfqId;
+    const buyer = await login(WIPE);
+    // Saved search so the sweep has more than RFQs to eat.
+    expect(
+      (
+        await buyer.post('/api/search-alerts', {
+          data: {
+            email: WIPE,
+            params: { type: 'charter', f_aircraftCategory: 'light' },
+          },
+        })
+      ).status(),
+    ).toBeLessThan(400);
+    // The button renders; the API is the act (client adds confirm()).
+    const acctHtml = await (await buyer.get('/en/account')).text();
+    expect(acctHtml).toContain('account-delete');
+    const del = await buyer.post('/api/account/delete');
+    expect(del.status()).toBe(200);
+    const body = (await del.json()) as {
+      rfqs: number;
+      alerts: number;
+      userDeleted: boolean;
+    };
+    expect(body.rfqs).toBe(1);
+    expect(body.alerts).toBe(1);
+    expect(body.userDeleted).toBe(true);
+    // SQL ground truth: mailbox tombstoned, live request closed.
+    const [row] = await sql`
+      select buyer_email, access_token, status, fields
+      from rfqs where id = ${rfqId}`;
+    expect(row!.buyer_email).toBe(`del_${rfqId}@deleted.invalid`);
+    expect(row!.access_token).toBe(`del-${rfqId}`);
+    expect(row!.status).toBe('closed');
+    expect((row!.fields as Record<string, string>).email).toBe(
+      `del_${rfqId}@deleted.invalid`,
+    );
+    expect(
+      (await sql`select email from search_alerts where email = ${WIPE}`)
+        .length,
+    ).toBe(0);
+    expect(
+      (await sql`select id from users where email = ${WIPE}`).length,
+    ).toBe(0);
+    // Session died with the user row — /account bounces to sign-in.
+    const deadSess = await buyer.get('/en/account', { maxRedirects: 0 });
+    expect([302, 307]).toContain(deadSess.status());
+
+    // --- bearer proof: emailed-links buyer, never signed in -------------
+    const r2 = await mkRfq(publicCtx, listingId, WIPE2);
+    bearerRfqId = r2.rfqId;
+    const bearerDel = await publicCtx.post(
+      `/api/account/delete?email=${encodeURIComponent(WIPE2)}&t=${r2.accessToken}`,
+    );
+    expect(bearerDel.status()).toBe(200);
+    const [row2] = await sql`
+      select buyer_email, status from rfqs where id = ${bearerRfqId}`;
+    expect(row2!.buyer_email).toBe(`del_${bearerRfqId}@deleted.invalid`);
+    // A foreign bearer can't delete: 401 and the row survives.
+    const r3 = await mkRfq(publicCtx, listingId, `e2e-wipe3-${run}@jetmarket.local`);
+    const denied = await publicCtx.post(
+      `/api/account/delete?email=${encodeURIComponent(WIPE2)}&t=${r3.accessToken}`,
+    );
+    expect(denied.status()).toBe(401);
+    await sql`delete from rfq_matches where rfq_id = ${r3.rfqId}`;
+    await sql`delete from rfqs where id = ${r3.rfqId}`;
+  } finally {
+    for (const id of [rfqId, bearerRfqId]) {
+      if (id) {
+        await sql`delete from rfq_matches where rfq_id = ${id}`;
+        await sql`delete from rfqs where id = ${id}`;
+      }
+    }
+    if (listingId) await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from admin_events where event = 'buyer_data_deleted'`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email in
+      (${OP_EMAIL}, ${WIPE}, ${WIPE2}, ${`e2e-wipe3-${run}@jetmarket.local`})`;
+    await sql.end();
+  }
+});

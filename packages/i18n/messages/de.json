@@ -1437,6 +1437,12 @@
     "alertPauseFailed": "Pausieren fehlgeschlagen — erneut versuchen.",
     "alertResume": "Fortsetzen",
     "alertResuming": "Wird fortgesetzt…",
-    "alertResumeFailed": "Fortsetzen fehlgeschlagen — erneut versuchen."
+    "alertResumeFailed": "Fortsetzen fehlgeschlagen — erneut versuchen.",
+    "dangerZone": "Gefahrenzone",
+    "deleteBlurb": "Entfernt Ihre E-Mail-Adresse dauerhaft aus diesem Marktplatz — offene Anfragen werden geschlossen, gespeicherte Suchen und gemeldete Einträge gelöscht, Ihr Login funktioniert nicht mehr. Betreiber behalten anonymisierte Geschäftsdaten.",
+    "deleteData": "Meine Daten löschen",
+    "deletePending": "Wird gelöscht…",
+    "deleteConfirm": "Alle Ihre Daten wirklich löschen? Das kann nicht rückgängig gemacht werden — Ihre Anfragen werden geschlossen und Ihr Login zerstört.",
+    "deleteFailed": "Daten konnten nicht gelöscht werden — bitte erneut versuchen"
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "@/lib/search-alerts";
 import { verticalSlug } from "@/lib/vertical";
 import { AlertOffButton } from "./alert-off-button";
+import { DeleteAccount } from "./delete-account";
 import { AlertPauseToggle } from "./alert-pause-toggle";
 import { AlertResend } from "./alert-resend";
 import { ReopenRfq } from "./reopen-rfq";
@@ -281,6 +282,11 @@ export default async function AccountPage() {
           ) : null}
         </ul>
       </section>
+
+      {/* QA-543: session proves the mailbox — the destructive sweep is
+          gated behind a confirm dialog client-side and the same dual
+          proof server-side. */}
+      <DeleteAccount />
     </main>
   );
 }

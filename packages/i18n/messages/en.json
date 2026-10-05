@@ -1437,6 +1437,12 @@
     "alertPauseFailed": "Couldn't pause it — try again.",
     "alertResume": "Resume",
     "alertResuming": "Resuming…",
-    "alertResumeFailed": "Couldn't resume it — try again."
+    "alertResumeFailed": "Couldn't resume it — try again.",
+    "dangerZone": "Danger zone",
+    "deleteBlurb": "Permanently remove your email from this marketplace — open requests close, saved searches and filed reports are deleted, and your sign-in stops working. Operators keep anonymized deal records.",
+    "deleteData": "Delete my data",
+    "deletePending": "Deleting…",
+    "deleteConfirm": "Really delete all your data? This cannot be undone — your requests close and your sign-in is destroyed.",
+    "deleteFailed": "Couldn't delete your data — try again"
   }
 }

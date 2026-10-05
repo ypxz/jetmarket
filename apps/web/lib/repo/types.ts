@@ -348,6 +348,25 @@ export interface Deal {
   listingTitle?: string;
 }
 
+/** QA-543: per-surface counts from `deleteBuyerData` — feeds the admin
+ *  audit event's meta and the route's response. */
+export interface BuyerDeleteResult {
+  /** RFQs tombstoned (live ones closed first). */
+  rfqs: number;
+  /** search_alerts rows deleted. */
+  alerts: number;
+  /** quote_reports whose reporterEmail was anonymized. */
+  quoteReports: number;
+  /** quotes.counterMessage + counter-round notes nulls. */
+  counterScrubbed: number;
+  /** rfq_amendment field-snapshots scrubbed. */
+  amendmentsScrubbed: number;
+  /** pending buyer-facing jobs cancelled. */
+  pendingJobs: number;
+  /** role='buyer' users row removed (sessions die, reports cascade). */
+  userDeleted: boolean;
+}
+
 /** Saved-search alert (QA-403): a buyer's whitelisted /search filter set +
  * confirm/unsubscribe bearer. `pendingIds` queues matched listings during
  * the per-alert mail cooldown and flushes with the next digest. */
@@ -1228,6 +1247,20 @@ export interface Repo {
    *  One statement on pg; returns the flipped count for the admin log.
    *  Vertical-scoped like every moderation write. */
   spamBuyerRfqs(email: string, vertical: string): Promise<number>;
+
+  /** QA-543: GDPR-style self-delete — scrubs a buyer mailbox out of every
+   *  buyer-side surface in one transaction (memory impl stays synchronous
+   *  check-to-write, QA-333). Live RFQs close AND tombstone
+   *  (email/token/dedupe → `del_<id>@deleted.invalid`, contact-field
+   *  values equal to the email scrubbed); search_alerts hard-delete;
+   *  quote_reports anonymize; buyer-authored counter text nulls; pending
+   *  buyer-facing jobs (rfq.fanout / email.quote_notification on their
+   *  rfqs) cancel; the role='buyer' users row deletes (kills sessions +
+   *  cascades their filed listing/rfq reports). A `buyer_data_deleted`
+   *  admin event lands inside the same write — targetId is the tombstone
+   *  hash, never the raw address. Operator/admin users are untouched:
+   *  their account is business data, not the deleted mailbox's. */
+  deleteBuyerData(email: string, vertical: string): Promise<BuyerDeleteResult>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;

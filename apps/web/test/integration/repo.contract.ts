@@ -2395,6 +2395,194 @@ export function repoContract(
       ).toBe("off");
     });
 
+    it("deleteBuyerData tombstones the mailbox everywhere, keeps other rows (QA-543)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const email = `wipe-${tag}@test.dev`;
+      const other = `keep-${tag}@test.dev`;
+
+      // Operator fixture for the quote/report chain.
+      const opUser = await repo.createUser(`wipeop-${tag}@t.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: opUser.id,
+        name: "Wipe Air",
+        baseAirport: "ZRH",
+        fleetSummary: "Phenom 300",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `WipeJet ${tag}`,
+        price: 9000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+
+      // Buyer-side rows: session user, live + dead RFQs (contact field
+      // inside fields carries the email), one foreign-vertical RFQ that
+      // must survive untouched, an alert, a countered quote with a note,
+      // an amendment snapshot, a quote flag, and their own listing report.
+      const buyer = await repo.createUser(email, "buyer");
+      const live = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: email,
+        fields: { name: "W Ipe", email, note: "keep-me" },
+        dedupeKey: `wipe-live-${tag}`,
+      });
+      const dead = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: email,
+        fields: { email },
+        dedupeKey: `wipe-dead-${tag}`,
+      });
+      await repo.setRfqStatus(dead.id, "closed", ["open", "matched", "quoted"]);
+      const foreign = await repo.createRfq({
+        vertical: "machinery",
+        listingId: null,
+        buyerEmail: email,
+        fields: { email },
+        dedupeKey: `wipe-foreign-${tag}`,
+      });
+      const others = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: other,
+        fields: { email: other },
+        dedupeKey: `wipe-other-${tag}`,
+      });
+      const alert = await repo.createSearchAlert({
+        vertical: "jets",
+        email,
+        params: {},
+        token: `wipe-tok-${tag}`,
+        dedupeKey: `wipe-sa-${tag}`,
+      });
+      await repo.confirmSearchAlert(`wipe-tok-${tag}`);
+      // A countered quote: buyer text lives in counterMessage + round note.
+      const quote = await repo.createQuote({
+        rfqId: live.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "operator terms",
+      });
+      expect(await repo.counterQuote(quote.id, 8000, "my own words")).toBe(true);
+      await repo.updateRfqFields(live.id, { email, extra: 1 }, `wipe-a2-${tag}`);
+      await repo.createQuoteReport({
+        quoteId: quote.id,
+        reporterEmail: email,
+        reason: "scam",
+      });
+      // The buyer's own listing report cascades with their users row.
+      await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: buyer.id,
+        reason: "scam",
+      });
+
+      const res = await repo.deleteBuyerData(email, "jets");
+      expect(res.rfqs).toBe(2);
+      expect(res.alerts).toBe(1);
+      expect(res.quoteReports).toBe(1);
+      expect(res.counterScrubbed).toBeGreaterThanOrEqual(2);
+      expect(res.amendmentsScrubbed).toBe(1);
+      expect(res.userDeleted).toBe(true);
+
+      // RFQs tombstoned: mailbox gone, bearer dead, dedupe tombstoned.
+      const wiped = await repo.getRfq(live.id);
+      expect(wiped?.buyerEmail).toBe(`del_${live.id}@deleted.invalid`);
+      expect(wiped?.accessToken).toBe(`del-${live.id}`);
+      expect(wiped?.status).toBe("closed"); // live → closed
+      // Post-amend live map was {email, extra:1} — the email tombstoned,
+      // the non-PII value kept.
+      expect(wiped?.fields["email"]).toBe(`del_${live.id}@deleted.invalid`);
+      expect(wiped?.fields["extra"]).toBe(1);
+      expect((await repo.getRfq(dead.id))?.status).toBe("closed"); // stays
+      // No surface lists the address anymore; the mailbox's own views empty.
+      expect(
+        await repo.listRfqs({ buyerEmail: email, vertical: "jets" }),
+      ).toHaveLength(0);
+      // Old dedupe keys are dead letters — a re-file mints a fresh row
+      // (the tombstone occupies the old slot; the NEW dedupeKey is free).
+      expect(await repo.getRfqByDedupeKey(`wipe-live-${tag}`)).toBeUndefined();
+      const refiled = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `fresh-${tag}@test.dev`,
+        fields: { email: `fresh-${tag}@test.dev` },
+        dedupeKey: `wipe-live-${tag}`,
+      });
+      expect(refiled.id).not.toBe(live.id);
+
+      // Untouched neighbours: foreign vertical + the other mailbox.
+      const f = await repo.getRfq(foreign.id);
+      expect(f?.buyerEmail).toBe(email);
+      expect(f?.status).toBe("open");
+      expect((await repo.getRfq(others.id))?.buyerEmail).toBe(other);
+
+      // Alerts hard-deleted; re-subscribe mints a new row (no stale hit).
+      expect(
+        (await repo.listSearchAlerts({ vertical: "jets", email })).length,
+      ).toBe(0);
+      const resub = await repo.createSearchAlert({
+        vertical: "jets",
+        email,
+        params: {},
+        token: `wipe-tok2-${tag}`,
+        dedupeKey: `wipe-sa-${tag}`,
+      });
+      expect(resub.created).toBe(true);
+      expect(resub.alert.id).not.toBe(alert.alert.id);
+
+      // Buyer-authored text scrubbed; operator terms (amount) kept.
+      const scrubbedQuote = (await repo.listQuotes({ rfqIds: [live.id] }))[0]!;
+      expect(scrubbedQuote.counterMessage).toBeUndefined();
+      const rounds = await repo.listCounterRounds([quote.id]);
+      expect(rounds[0]?.note).toBeUndefined();
+      expect(scrubbedQuote.counterAmount).toBe(8000);
+      // Amendment snapshots scrubbed too — the superseded map held the
+      // pre-amend fields (name/note), and each row's tombstone uses its
+      // own id, not the RFQ's.
+      const amend = await repo.listRfqAmendments([live.id]);
+      expect(amend).toHaveLength(1);
+      expect(amend[0]!.fields["email"]).toBe(
+        `del_${amend[0]!.id}@deleted.invalid`,
+      );
+      expect(amend[0]!.fields["name"]).toBe("W Ipe");
+      expect(amend[0]!.fields["note"]).toBe("keep-me");
+
+      // Quote report kept for audit with the tombstone reporter.
+      const qreps = await repo.listQuoteReports({ status: "open" });
+      const mine = qreps.find((r) => r.quoteId === quote.id);
+      expect(mine).toBeTruthy();
+      expect(mine!.reporterEmail).toBe(`del_${mine!.id}@deleted.invalid`);
+
+      // The users row is gone — sessions die; their filed report cascaded.
+      expect(await repo.getUser(buyer.id)).toBeUndefined();
+      expect(
+        await repo.listListingReports({ reporterId: buyer.id }),
+      ).toHaveLength(0);
+
+      // Admin audit row landed, labelled by tombstone — never the address.
+      const evs = await repo.listAdminEvents({ vertical: "jets" });
+      const ev = evs.find((e) => e.event === "buyer_data_deleted");
+      expect(ev).toBeTruthy();
+      expect(ev!.targetId.startsWith("del_")).toBe(true);
+      expect(ev!.targetId.includes(email)).toBe(false);
+      expect(ev!.meta?.["rfqs"]).toBe(2);
+
+      // Idempotent-ish: a second sweep is a no-op (address no longer exists).
+      const again = await repo.deleteBuyerData(email, "jets");
+      expect(again.rfqs).toBe(0);
+      expect(again.userDeleted).toBe(false);
+    });
+
     it("QA-493 locale: RFQ + alert stamp 'en' by default, keep a supplied locale", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

@@ -16,6 +16,7 @@ import {
 import type {
   AdminEvent,
   BlockedEmail,
+  BuyerDeleteResult,
   CounterRound,
   CounterRoundOutcome,
   Deal,
@@ -2675,6 +2676,194 @@ export class DrizzleRepo implements Repo {
       )
       .returning({ id: rfqs.id });
     return rows.length;
+  }
+
+  /** QA-543: GDPR self-delete — one transaction tombstones/scrubs/deletes
+   *  every surface that can carry the mailbox. Tombstones are
+   *  `del_<rowId>@deleted.invalid`: unique per row (no dedupe/token index
+   *  collision) and unguessable like the uuids they wrap. Contact-field
+   *  values equal to the email scrub to the same tombstone; live RFQs
+   *  close first so operators stop quoting a dead inbox. */
+  async deleteBuyerData(
+    email: string,
+    vertical: string,
+  ): Promise<BuyerDeleteResult> {
+    const key = email.toLowerCase();
+    const tomb = (id: string) => `del_${id}@deleted.invalid`;
+    const scrubFields = (
+      fields: Record<string, unknown>,
+      id: string,
+    ): Record<string, unknown> => {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        out[k] = typeof v === "string" && v.toLowerCase() === key ? tomb(id) : v;
+      }
+      return out;
+    };
+    return this.db.transaction(async (tx) => {
+      const out: BuyerDeleteResult = {
+        rfqs: 0,
+        alerts: 0,
+        quoteReports: 0,
+        counterScrubbed: 0,
+        amendmentsScrubbed: 0,
+        pendingJobs: 0,
+        userDeleted: false,
+      };
+      const mine = await tx
+        .select({ id: rfqs.id, fields: rfqs.fields, status: rfqs.status })
+        .from(rfqs)
+        .where(
+          and(
+            sql`lower(${rfqs.buyerEmail}) = ${key}`,
+            eq(rfqs.vertical, vertical),
+          ),
+        );
+      for (const r of mine) {
+        await tx
+          .update(rfqs)
+          .set({
+            buyerEmail: tomb(r.id),
+            accessToken: `del-${r.id}`,
+            dedupeKey: `del-${r.id}`,
+            // iface 'open' is db 'new' — live rows close so the request
+            // stops matching; terminal rows (closed/spam) just scrub.
+            status: ["new", "matched", "quoted"].includes(r.status)
+              ? "closed"
+              : r.status,
+            fields: scrubFields(r.fields, r.id),
+            updatedAt: new Date(),
+          })
+          .where(eq(rfqs.id, r.id));
+      }
+      out.rfqs = mine.length;
+      const myIds = mine.map((r) => r.id);
+      out.alerts = (
+        await tx
+          .delete(searchAlerts)
+          .where(
+            and(
+              sql`lower(${searchAlerts.email}) = ${key}`,
+              eq(searchAlerts.vertical, vertical),
+            ),
+          )
+          .returning({ id: searchAlerts.id })
+      ).length;
+      out.quoteReports = (
+        await tx
+          .update(quoteReports)
+          .set({
+            reporterEmail: sql`concat('del_', ${quoteReports.id}, '@deleted.invalid')`,
+          })
+          .where(
+            and(
+              sql`lower(${quoteReports.reporterEmail}) = ${key}`,
+              inArray(
+                quoteReports.quoteId,
+                tx
+                  .select({ id: quotes.id })
+                  .from(quotes)
+                  .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+                  .where(eq(rfqs.vertical, vertical)),
+              ),
+            ),
+          )
+          .returning({ id: quoteReports.id })
+      ).length;
+      if (myIds.length) {
+        out.counterScrubbed =
+          (
+            await tx
+              .update(quotes)
+              .set({ counterMessage: null })
+              .where(
+                and(
+                  inArray(quotes.rfqId, myIds),
+                  isNotNull(quotes.counterMessage),
+                ),
+              )
+              .returning({ id: quotes.id })
+          ).length +
+          (
+            await tx
+              .update(quoteCounterRounds)
+              .set({ note: null })
+              .where(
+                and(
+                  inArray(quoteCounterRounds.rfqId, myIds),
+                  isNotNull(quoteCounterRounds.note),
+                ),
+              )
+              .returning({ id: quoteCounterRounds.id })
+          ).length;
+        const amendRows = await tx
+          .select({ id: rfqAmendments.id, fields: rfqAmendments.fields })
+          .from(rfqAmendments)
+          .where(inArray(rfqAmendments.rfqId, myIds));
+        for (const a of amendRows) {
+          await tx
+            .update(rfqAmendments)
+            .set({
+              fields: scrubFields(
+                a.fields as Record<string, unknown>,
+                a.id,
+              ),
+            })
+            .where(eq(rfqAmendments.id, a.id));
+        }
+        out.amendmentsScrubbed = amendRows.length;
+        // Pending buyer-facing work on the dead mailbox cancels — fan-out
+        // for their rfqs + quote notifications on their matches. Delivered
+        // matches stay (commercial record); only queued sends stop.
+        const myMatchIds = (
+          await tx
+            .select({ id: rfqMatches.id })
+            .from(rfqMatches)
+            .where(inArray(rfqMatches.rfqId, myIds))
+        ).map((m) => m.id);
+        const payloadHit = [
+          sql`(${jobs.payload}->>'rfqId') in (${sql.join(
+            myIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        ];
+        if (myMatchIds.length) {
+          payloadHit.push(
+            sql`(${jobs.payload}->>'matchId') in (${sql.join(
+              myMatchIds.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          );
+        }
+        out.pendingJobs = (
+          await tx
+            .delete(jobs)
+            .where(
+              and(
+                eq(jobs.status, "pending"),
+                or(eq(jobs.vertical, vertical), isNull(jobs.vertical)),
+                or(...payloadHit),
+              ),
+            )
+            .returning({ id: jobs.id })
+        ).length;
+      }
+      const usersDeleted = await tx
+        .delete(users)
+        .where(and(sql`lower(${users.email}) = ${key}`, eq(users.role, "buyer")))
+        .returning({ id: users.id });
+      out.userDeleted = usersDeleted.length > 0;
+      await tx.insert(adminEvents).values({
+        event: "buyer_data_deleted",
+        targetType: "buyer",
+        // Random tombstone label — the audit feed must not carry the
+        // address that was just deleted (that would defeat the scrub).
+        targetId: `del_${crypto.randomUUID().slice(0, 8)}`,
+        meta: out as unknown as Record<string, unknown>,
+        vertical,
+      });
+      return out;
+    });
   }
 
   async ratingSummaryPerOperator(

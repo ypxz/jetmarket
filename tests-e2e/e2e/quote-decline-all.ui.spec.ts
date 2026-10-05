@@ -78,8 +78,19 @@ test('buyer declines every offer at once; the request stays open', async ({
       .filter({ hasText: LISTING_TITLE });
     await expect(item).toBeVisible();
     await item.locator(tidPrefix('quote-amount-')).fill('11000');
+    // Wait on the POST itself — under matrix cold-compile the send can
+    // outlive the default expect timeout while the button shows "Sending…"
+    // (twice-flaked in test:all, standalone-green every time).
+    const sendResp = operator.waitForResponse(
+      (r) =>
+        r.url().includes('/api/quotes') &&
+        r.request().method() === 'POST' &&
+        r.status() === 201,
+      { timeout: 60_000 },
+    );
     await item.locator(tidPrefix('quote-send-')).click();
-    await expect(item).toContainText(/quote sent|sent/i);
+    await sendResp;
+    await expect(item).toContainText(/quote sent|sent/i, { timeout: 30_000 });
 
     // The second live offer needs a different operator — the one-quote-per-
     // op-per-rfq invariant makes a same-op double impossible by design. A

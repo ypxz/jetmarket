@@ -4,6 +4,7 @@ import { PlanCapError } from "./types";
 import type {
   AdminEvent,
   BlockedEmail,
+  BuyerDeleteResult,
   CounterRound,
   CounterRoundOutcome,
   Deal,
@@ -1840,6 +1841,134 @@ class MemoryRepo implements Repo {
       }
     }
     return n;
+  }
+
+  /** QA-543: one synchronous sweep — every surface that can carry the
+   *  mailbox scrubbed/deleted before any await can interleave (QA-333).
+   *  Tombstones are `del_<rowId>@deleted.invalid`: unique per row so no
+   *  dedupe/token index can collide, unguessable like the ids they wrap. */
+  async deleteBuyerData(
+    email: string,
+    vertical: string,
+  ): Promise<BuyerDeleteResult> {
+    const key = email.toLowerCase();
+    const tomb = (id: string) => `del_${id}@deleted.invalid`;
+    const scrubFields = (
+      fields: Record<string, unknown>,
+      id: string,
+    ): Record<string, unknown> => {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        out[k] = typeof v === "string" && v.toLowerCase() === key ? tomb(id) : v;
+      }
+      return out;
+    };
+    const out: BuyerDeleteResult = {
+      rfqs: 0,
+      alerts: 0,
+      quoteReports: 0,
+      counterScrubbed: 0,
+      amendmentsScrubbed: 0,
+      pendingJobs: 0,
+      userDeleted: false,
+    };
+    const myRfqIds = new Set<string>();
+    for (const [id, r] of this.rfqs) {
+      if (r.vertical !== vertical || r.buyerEmail.toLowerCase() !== key) continue;
+      myRfqIds.add(id);
+      this.rfqs.set(id, {
+        ...r,
+        buyerEmail: tomb(id),
+        accessToken: `del-${id}`,
+        status: LIVE_RFQ_STATUSES.has(r.status) ? "closed" : r.status,
+        fields: scrubFields(r.fields, id),
+        updatedAt: now(),
+      });
+      out.rfqs += 1;
+    }
+    // dedupeKey lives only in the index map (rows don't carry it) — re-key
+    // to the tombstone so a re-file re-mints instead of hitting the dead
+    // key. Snapshot the moves first: mutating a Map mid-iteration would
+    // re-visit the just-inserted tombstone and loop forever.
+    const dedupeMoves: [string, string][] = [];
+    for (const [dk, rid] of this.rfqDedupe) {
+      if (myRfqIds.has(rid)) dedupeMoves.push([dk, rid]);
+    }
+    for (const [dk, rid] of dedupeMoves) {
+      this.rfqDedupe.delete(dk);
+      this.rfqDedupe.set(`del-${rid}`, rid);
+    }
+    for (const [id, a] of this.searchAlertRows) {
+      if (a.vertical === vertical && a.email.toLowerCase() === key) {
+        this.searchAlertRows.delete(id);
+        out.alerts += 1;
+      }
+    }
+    // The iface rows carry no dedupeKey — sweep orphan index entries for
+    // the just-deleted alerts so a re-subscribe can't hit a stale hit.
+    for (const [dk, aid] of this.searchAlertDedupe) {
+      if (!this.searchAlertRows.has(aid)) this.searchAlertDedupe.delete(dk);
+    }
+    for (const [id, rep] of this.quoteReports) {
+      if (rep.reporterEmail.toLowerCase() !== key) continue;
+      const quote = this.quotes.get(rep.quoteId);
+      if (quote && this.rfqs.get(quote.rfqId)?.vertical === vertical) {
+        this.quoteReports.set(id, { ...rep, reporterEmail: tomb(rep.id) });
+        out.quoteReports += 1;
+      }
+    }
+    for (const [id, q] of this.quotes) {
+      if (!myRfqIds.has(q.rfqId)) continue;
+      if (q.counterMessage) {
+        this.quotes.set(id, { ...q, counterMessage: undefined });
+        out.counterScrubbed += 1;
+      }
+      const rounds = this.counterRounds.get(id);
+      if (rounds?.some((r) => r.note)) {
+        this.counterRounds.set(
+          id,
+          rounds.map((r) => (r.note ? { ...r, note: undefined } : r)),
+        );
+        out.counterScrubbed += 1;
+      }
+    }
+    for (const rfqId of myRfqIds) {
+      const amend = this.rfqAmendments.get(rfqId);
+      if (amend) {
+        this.rfqAmendments.set(
+          rfqId,
+          amend.map((a) => ({ ...a, fields: scrubFields(a.fields, a.id) })),
+        );
+        out.amendmentsScrubbed += amend.length;
+      }
+    }
+    // Memory mode runs no job queue — fan-out is direct (QA-89).
+    for (const [id, u] of this.users) {
+      if (u.role === "buyer" && u.email.toLowerCase() === key) {
+        this.users.delete(id);
+        // pg cascades the buyer's own filed flags on users.id — parity:
+        for (const [rid, rep] of this.listingReports) {
+          if (rep.reporterId === id) this.listingReports.delete(rid);
+        }
+        for (const [rid, rep] of this.rfqReports) {
+          if (rep.reporterId === id) this.rfqReports.delete(rid);
+        }
+        out.userDeleted = true;
+      }
+    }
+    const ev: AdminEvent = {
+      id: uid("aev"),
+      event: "buyer_data_deleted",
+      targetType: "buyer",
+      // Random tombstone label — the audit feed must not carry the address
+      // that was just deleted (that would defeat the scrub).
+      targetId: `del_${crypto.randomUUID().slice(0, 8)}`,
+      meta: out as unknown as Record<string, unknown>,
+      vertical,
+      createdAt: now(),
+    };
+    this.adminEvents.set(ev.id, ev);
+    return out;
   }
 
   async listDeals(filter?: {
