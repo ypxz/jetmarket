@@ -264,6 +264,16 @@
       "subject": "Success-fee invoice voided — deal {id}",
       "body": "Your success-fee invoice{refParen} of {currency} {fee} for the {currency} {amount} deal was voided — you owe no fee on it. Contact support if you have questions."
     },
+    "opDealReverted": {
+      "subject": "Deal reverted — no fee owed ({id})",
+      "body": "Our team reverted the {currency} {amount} deal on “{title}” — the success fee is off and you owe nothing.{restored}",
+      "restored": " The listing is back on the market as active — edit it any time if something changed.",
+      "notConsumed": " No listing was consumed by it, so nothing needed restoring."
+    },
+    "buyerDealReverted": {
+      "subject": "The deal on “{title}” fell through",
+      "body": "The {currency} {amount} deal on “{title}” was reverted by {site} — it fell through and is no longer binding. Your request stays closed; you're welcome to repost it any time."
+    },
     "opDealRated": {
       "subject": "The buyer rated your deal ★ {rating}",
       "body": "The buyer rated your deal on “{title}” ★ {rating} out of 5 on {site}.{standing}",
@@ -1324,6 +1334,8 @@
     "blockBuyer": "Block",
     "unblockBuyer": "Unblock",
     "voiding": "Voiding…",
+    "revertDeal": "Revert deal",
+    "revertingDeal": "Reverting…",
     "jobs": {
       "title": "Job queue",
       "backToAdmin": "← Admin dashboard",

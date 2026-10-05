@@ -264,6 +264,16 @@
       "subject": "Erfolgsgebühren-Rechnung storniert — Abschluss {id}",
       "body": "Ihre Erfolgsgebühren-Rechnung{refParen} über {currency} {fee} für den Abschluss über {currency} {amount} wurde storniert — Sie schulden keine Gebühr dafür. Kontaktieren Sie den Support bei Fragen."
     },
+    "opDealReverted": {
+      "subject": "Abschluss rückgängig gemacht — keine Gebühr fällig ({id})",
+      "body": "Unser Team hat den Abschluss über {currency} {amount} zu „{title}“ rückgängig gemacht — die Erfolgsgebühr entfällt, Sie schulden nichts.{restored}",
+      "restored": " Das Inserat ist wieder aktiv auf dem Markt — passen Sie es jederzeit an, wenn sich etwas geändert hat.",
+      "notConsumed": " Es wurde kein Inserat verbraucht, daher gab es nichts wiederherzustellen."
+    },
+    "buyerDealReverted": {
+      "subject": "Der Abschluss zu „{title}“ ist geplatzt",
+      "body": "Der Abschluss über {currency} {amount} zu „{title}“ wurde von {site} rückgängig gemacht — er ist geplatzt und nicht mehr bindend. Ihre Anfrage bleibt geschlossen; Sie können sie jederzeit erneut einstellen."
+    },
     "opDealRated": {
       "subject": "Der Käufer hat Ihren Abschluss mit ★ {rating} bewertet",
       "body": "Der Käufer hat Ihren Abschluss zu „{title}“ auf {site} mit ★ {rating} von 5 bewertet.{standing}",
@@ -1324,6 +1334,8 @@
     "blockBuyer": "Blockieren",
     "unblockBuyer": "Freigeben",
     "voiding": "Wird storniert…",
+    "revertDeal": "Abschluss rückgängig",
+    "revertingDeal": "Wird rückgängig…",
     "jobs": {
       "title": "Job-Warteschlange",
       "backToAdmin": "← Admin-Dashboard",

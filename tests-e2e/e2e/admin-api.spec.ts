@@ -297,3 +297,156 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   // /me stays 200 but returns null once the server-side session is revoked.
   expect(((await me2.json()) as { user: unknown }).user).toBeNull();
 });
+
+test('admin api: deal revert voids the fee and frees the consumed one-off (QA-550)', async () => {
+  const OP2 = `e2e-adm-op2-${run}@jetmarket.local`;
+  const BUYER2 = `e2e-adm-b2-${run}@jetmarket.local`;
+  const sql = postgres(testDb, { max: 1 });
+  const rfqIds: string[] = [];
+  try {
+    const admin = await login(ADMIN_EMAIL);
+    const operator = await login(OP2, 'operator');
+    const opRes = await operator.post('/api/operators', {
+      data: { name: `Adm Air Revert ${run}`, baseAirport: 'ZRH' },
+    });
+    expect(opRes.status()).toBe(201);
+
+    // One-off supply (aircraft_sale) — a closed deal consumes it (QA-498).
+    const listing = await operator.post('/api/listings', {
+      data: {
+        type: 'aircraft_sale',
+        title: `Adm Sale ${run}`,
+        price: 900000,
+        currency: 'USD',
+        photos: [],
+        attributes: {
+          aircraftCategory: 'light',
+          model: 'Phenom 300E',
+          year: 2020,
+          seats: 6,
+          rangeNm: 2000,
+          hoursTotal: 1200,
+        },
+      },
+    });
+    expect(listing.status()).toBe(201);
+    const listingId = ((await listing.json()) as { id: string }).id;
+
+    // Buyer RFQ → quote → accept → deal + listing 'sold'.
+    const rfqRes = await (
+      await request.newContext({ extraHTTPHeaders: adminIp })
+    ).post('/api/rfqs', {
+      data: {
+        listingId,
+        buyerEmail: BUYER2,
+        fields: {
+          departure: 'ZRH',
+          arrival: 'MXP',
+          dateFrom: isoDateIn(40),
+          dateTo: isoDateIn(41),
+          passengers: 2,
+          name: 'Revert Buyer',
+          email: BUYER2,
+        },
+      },
+    });
+    expect(rfqRes.status()).toBe(201);
+    const { rfqId, accessToken } = (await rfqRes.json()) as {
+      rfqId: string;
+      accessToken: string;
+    };
+    rfqIds.push(rfqId);
+    const quote = await operator.post('/api/quotes', {
+      data: { rfqId, amount: 50000, currency: 'USD', message: 'sale' },
+    });
+    expect(quote.status()).toBe(201);
+    const quoteId = ((await quote.json()) as { id: string }).id;
+    const accept = await (
+      await request.newContext({ extraHTTPHeaders: adminIp })
+    ).post(`/api/quotes/${quoteId}/accept`, {
+      data: { buyerEmail: BUYER2, token: accessToken },
+    });
+    expect(accept.status()).toBe(200);
+    const [sold] = await sql`
+      select status from listings where id = ${listingId}`;
+    expect(sold!.status).toBe('sold');
+    const [deal] = await sql`
+      select d.id, d.invoice_status from deals d
+      join quotes q on q.id = d.quote_id where q.id = ${quoteId}`;
+
+    // Sale fell through — admin reverts: fee voided, machine back on sale.
+    const revert = await admin.post(`/api/admin/deals/${deal!.id}/revert`);
+    expect(revert.status()).toBe(200);
+    const body = (await revert.json()) as {
+      restoredListingId?: string;
+    };
+    expect(body.restoredListingId).toBe(listingId);
+    const [restored] = await sql`
+      select status from listings where id = ${listingId}`;
+    expect(restored!.status).toBe('active');
+    const [inv] = await sql`
+      select invoice_status from deals where id = ${deal!.id}`;
+    expect(inv!.invoice_status).toBe('void');
+
+    // The freed listing really is live again — a second RFQ closes on it,
+    // and that PAID deal correctly refuses revert (money moved).
+    const rfq2 = await (
+      await request.newContext({ extraHTTPHeaders: adminIp })
+    ).post('/api/rfqs', {
+      data: {
+        listingId,
+        buyerEmail: BUYER2,
+        fields: {
+          departure: 'MXP',
+          arrival: 'ZRH',
+          dateFrom: isoDateIn(50),
+          dateTo: isoDateIn(51),
+          passengers: 2,
+          name: 'Revert Buyer',
+          email: BUYER2,
+        },
+      },
+    });
+    expect(rfq2.status()).toBe(201);
+    const { rfqId: rfqId2, accessToken: token2 } = (await rfq2.json()) as {
+      rfqId: string;
+      accessToken: string;
+    };
+    rfqIds.push(rfqId2);
+    const quote2 = await operator.post('/api/quotes', {
+      data: { rfqId: rfqId2, amount: 52000, currency: 'USD', message: 'resale' },
+    });
+    expect(quote2.status()).toBe(201);
+    const quoteId2 = ((await quote2.json()) as { id: string }).id;
+    const accept2 = await (
+      await request.newContext({ extraHTTPHeaders: adminIp })
+    ).post(`/api/quotes/${quoteId2}/accept`, {
+      data: { buyerEmail: BUYER2, token: token2 },
+    });
+    expect(accept2.status()).toBe(200);
+    const [deal2] = await sql`
+      select d.id from deals d
+      join quotes q on q.id = d.quote_id where q.id = ${quoteId2}`;
+    const paid = await admin.post(`/api/admin/deals/${deal2!.id}/paid`);
+    expect(paid.status()).toBe(200);
+    const revertPaid = await admin.post(
+      `/api/admin/deals/${deal2!.id}/revert`,
+    );
+    expect(revertPaid.status()).toBe(409);
+  } finally {
+    for (const rid of rfqIds) {
+      await sql`delete from rfq_matches where rfq_id = ${rid}`;
+      await sql`delete from deals where quote_id in
+        (select id from quotes where rfq_id = ${rid})`;
+      await sql`delete from quotes where rfq_id = ${rid}`;
+      await sql`delete from rfqs where id = ${rid}`;
+    }
+    await sql`delete from listings where operator_id in
+      (select o.id from operators o
+       join users u on u.id = o.user_id where u.email = ${OP2})`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${OP2})`;
+    await sql`delete from users where email in (${OP2}, ${BUYER2})`;
+    await sql.end();
+  }
+});

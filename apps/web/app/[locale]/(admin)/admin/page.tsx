@@ -16,6 +16,7 @@ import { ListingModButton } from "./listing-mod-button";
 import {
   ClearRatingButton,
   MarkPaidButton,
+  RevertDealButton,
   VoidInvoiceButton,
 } from "./mark-paid";
 import { RfqCloseButton, RfqSpamButton } from "./rfq-mod-button";
@@ -353,6 +354,12 @@ export default async function AdminPage({
                   ) : null}
                   {d.invoiceStatus === "pending" || d.invoiceStatus === "invoiced" ? (
                     <VoidInvoiceButton dealId={d.id} />
+                  ) : null}
+                  {/* QA-550: sale fell through — void the fee + free the
+                      consumed one-off. Paid rows can't revert (money moved;
+                      refund outside the app first). */}
+                  {d.invoiceStatus !== "paid" ? (
+                    <RevertDealButton dealId={d.id} />
                   ) : null}
                 </td>
                 <td className="py-2 pr-4" data-testid={`deal-rating-${d.id}`}>

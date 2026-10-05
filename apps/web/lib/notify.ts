@@ -614,6 +614,81 @@ export async function notifyDealInvoiceVoided(
 }
 
 /**
+ * Both parties hear about an admin deal revert (QA-550) — the operator's
+ * one-off inventory went back on the market with no fee owed, the buyer's
+ * accepted deal is undone (they're told plainly it fell through — never
+ * silently). Locale per party like every other mail path. Non-fatal.
+ */
+export async function notifyDealReverted(
+  repo: Repo,
+  deal: Deal,
+  quote: Quote,
+  rfq: Rfq,
+  ctx: { restoredListingId?: string; listingTitle?: string },
+): Promise<void> {
+  try {
+    const operator = await repo.getOperator(quote.operatorId);
+    const owner = operator ? await repo.getUser(operator.userId) : undefined;
+    if (owner) {
+      const m = await mailCopy(owner.locale);
+      const title = ctx.listingTitle ?? mailT(m, "shared.aListing");
+      const subject = mailT(m, "opDealReverted.subject", {
+        id: deal.id.slice(0, 8),
+      });
+      const body = mailT(m, "opDealReverted.body", {
+        title,
+        currency: deal.currency,
+        amount: deal.amount,
+        restored: ctx.restoredListingId
+          ? mailT(m, "opDealReverted.restored")
+          : mailT(m, "opDealReverted.notConsumed"),
+      });
+      await emailProvider().send({
+        to: owner.email,
+        subject,
+        text: body,
+        html: brandedEmailHtml({
+          siteName: site.name,
+          title: subject,
+          paragraphs: [body],
+        }),
+      });
+    }
+  } catch (e) {
+    logWarn("email.deal_reverted_op_failed", {
+      dealId: deal.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+  try {
+    const m = await mailCopy(rfq.locale);
+    const title = ctx.listingTitle ?? mailT(m, "shared.aListing");
+    const subject = mailT(m, "buyerDealReverted.subject", { title });
+    const body = mailT(m, "buyerDealReverted.body", {
+      title,
+      currency: quote.currency,
+      amount: quote.amount,
+      site: site.name,
+    });
+    await emailProvider().send({
+      to: rfq.buyerEmail,
+      subject,
+      text: body,
+      html: brandedEmailHtml({
+        siteName: site.name,
+        title: subject,
+        paragraphs: [body],
+      }),
+    });
+  } catch (e) {
+    logWarn("email.deal_reverted_buyer_failed", {
+      dealId: deal.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+/**
  * Tell the operator the buyer rated their deal (QA-457) — the rate action
  *  rewrites their public ★ record, so the notify rule says they hear about
  *  it. Carries the fresh standing (avg over all rated deals) so a 4★ mail
