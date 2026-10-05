@@ -105,6 +105,26 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
     await expect(quote.locator(tidPrefix('accept-'))).toHaveCount(0);
   });
 
+  await step('operator finds the dead request under Lost (QA-537)', async () => {
+    // The RFQ died AND this operator quoted on it — the f=lost view is
+    // where the retrospective lives.
+    await operator.goto('/app/rfqs?f=lost');
+    const dead = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    await expect(dead).toBeVisible();
+    await expect(dead.locator(tidPrefix('quote-state-'))).toContainText(
+      /declined/i,
+    );
+    // The Answered view must not list it — no live quote in play. (The
+    // Needs view may: a declined quote leaves it "needs action" even on a
+    // dead RFQ — pre-existing semantics, unchanged by QA-537.)
+    await operator.goto('/app/rfqs?f=answered');
+    await expect(
+      operator.locator('li[data-testid^="rfq-"]').filter({ hasText: LISTING_TITLE }),
+    ).toHaveCount(0);
+  });
+
   await step('closed RFQ reposts prefilled onto the live listing (QA-410)', async () => {
     // Terminal request + still-browseable listing → "Request again" hands the
     // field map to the RFQ form via sessionStorage.

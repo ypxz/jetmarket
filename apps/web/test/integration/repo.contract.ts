@@ -1470,6 +1470,118 @@ export function repoContract(
       ).toEqual([]);
     });
 
+    it("lostOnly shows only dead RFQs the operator quoted on (QA-537)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const mkOp = async (n: string) => {
+        const u = await repo.createUser(`lt-${n}-${tag}@test.dev`, "operator");
+        return repo.upsertOperator({
+          userId: u.id,
+          name: n,
+          baseAirport: "ZRH",
+          fleetSummary: "",
+          verified: true,
+          plan: "pro",
+        });
+      };
+      const [owner, op, other] = await Promise.all([
+        mkOp("ltowner"),
+        mkOp("ltop"),
+        mkOp("ltother"),
+      ]);
+      const listing = await repo.createListing({
+        operatorId: owner.id,
+        vertical: "jets",
+        type: "charter",
+        title: `LT Jet ${tag}`,
+        price: 5000,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const deadRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `lt-d-${tag}@test.dev`,
+        fields: {},
+      });
+      const liveRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `lt-l-${tag}@test.dev`,
+        fields: {},
+      });
+      const deadNoQuoteRfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `lt-nq-${tag}@test.dev`,
+        fields: {},
+      });
+      await repo.createRfqMatches([
+        { rfqId: deadRfq.id, operatorId: op.id, listingId: listing.id },
+        { rfqId: liveRfq.id, operatorId: op.id, listingId: listing.id },
+        {
+          rfqId: deadNoQuoteRfq.id,
+          operatorId: op.id,
+          listingId: listing.id,
+        },
+      ]);
+      await repo.createQuote({
+        rfqId: deadRfq.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "",
+      });
+      await repo.createQuote({
+        rfqId: liveRfq.id,
+        operatorId: op.id,
+        amount: 8500,
+        currency: "USD",
+        message: "",
+      });
+      // Another operator's quote on the no-quote RFQ must not light
+      // op's lost view either — only THEIR offers count.
+      await repo.createQuote({
+        rfqId: deadNoQuoteRfq.id,
+        operatorId: other.id,
+        amount: 8000,
+        currency: "USD",
+        message: "",
+      });
+
+      // Everything still live — the view is empty.
+      expect(
+        await repo.listRfqs({ operatorId: op.id, lostOnly: true }),
+      ).toEqual([]);
+
+      // Kill two of the three RFQs: dead (op quoted) and deadNoQuote
+      // (only the foreign op quoted).
+      for (const id of [deadRfq.id, deadNoQuoteRfq.id]) {
+        expect(
+          await repo.setRfqStatus(id, "closed", [
+            "open",
+            "matched",
+            "quoted",
+          ]),
+        ).toBe(true);
+      }
+      const lost = await repo.listRfqs({ operatorId: op.id, lostOnly: true });
+      expect(lost.map((r) => r.id)).toEqual([deadRfq.id]);
+      // Pagination total mirrors the filtered page.
+      expect(
+        await repo.countRfqs({ operatorId: op.id, lostOnly: true }),
+      ).toBe(1);
+
+      // The live quoted RFQ stays out; the stranger-quoted dead RFQ
+      // stays out. Buyer-scoped calls ignore the flag entirely.
+      const buyerLost = await repo.listRfqs({
+        buyerEmail: `lt-d-${tag}@test.dev`,
+        lostOnly: true,
+      });
+      expect(buyerLost.map((r) => r.id)).toEqual([deadRfq.id]);
+    });
+
     it("countQuotes({countered}) counts only live unanswered counters (QA-517)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

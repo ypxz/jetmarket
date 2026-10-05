@@ -63,6 +63,9 @@ export default async function RfqInboxPage({
   // "Countered" view (QA-513): the hottest leads — RFQs where this
   // operator's quote carries an unanswered buyer counter.
   const counteredOnly = f === "countered";
+  // "Lost" view (QA-537): terminal RFQs where this operator quoted —
+  // the where-did-my-offers-die retrospective.
+  const lostOnly = f === "lost";
   // Per-listing triage (QA-430): only their own listings may filter — a
   // foreign/unknown id falls back to the unfiltered inbox.
   const ownListings = await repo.listListings({
@@ -89,6 +92,7 @@ export default async function RfqInboxPage({
     dismissedOnly: dismissedOnly || undefined,
     answeredOnly: answeredOnly || undefined,
     counteredOnly: counteredOnly || undefined,
+    lostOnly: lostOnly || undefined,
     vertical: verticalSlug(),
   });
   const pages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
@@ -101,6 +105,7 @@ export default async function RfqInboxPage({
     dismissedOnly: dismissedOnly || undefined,
     answeredOnly: answeredOnly || undefined,
     counteredOnly: counteredOnly || undefined,
+    lostOnly: lostOnly || undefined,
     vertical: verticalSlug(),
     sort: sortEnding ? "deadline" : undefined,
     limit: SEARCH_PAGE_SIZE,
@@ -234,6 +239,7 @@ export default async function RfqInboxPage({
             ["needs", t("filterNeeds")],
             ["answered", t("filterAnswered")],
             ["countered", t("filterCountered")],
+            ["lost", t("filterLost")],
             ["dismissed", t("filterDismissed")],
           ] as const
         ).map(([key, label]) => {
@@ -256,7 +262,8 @@ export default async function RfqInboxPage({
                   !needsOnly &&
                   !dismissedOnly &&
                   !answeredOnly &&
-                  !counteredOnly)
+                  !counteredOnly &&
+                  !lostOnly)
                   ? "bg-primary text-primary-foreground font-medium"
                   : "border border-border bg-background text-muted"
               }`}

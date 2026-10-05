@@ -1234,7 +1234,8 @@
       "reviseLineOp": "Von Ihnen überarbeitet — bis {date}: {amount}",
       "pausedBadge": "Pausiert",
       "intakePaused": "Käufer hat neue Angebote pausiert",
-      "amendLine": "Vom Käufer geändert — {date}: {changes}"
+      "amendLine": "Vom Käufer geändert — {date}: {changes}",
+      "filterLost": "Verloren"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

@@ -724,6 +724,7 @@ class MemoryRepo implements Repo {
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
     counteredOnly?: boolean;
+    lostOnly?: boolean;
     vertical?: string;
     sort?: "deadline";
     limit?: number;
@@ -793,6 +794,20 @@ class MemoryRepo implements Repo {
             .map((q) => q.rfqId),
         );
         out = out.filter((r) => countered.has(r.id));
+      }
+      // QA-537 "lost": the RFQ died AND this operator quoted on it —
+      // the where-did-my-offers-die view ('spam' is moderation, not a loss).
+      if (filter.lostOnly) {
+        const quoted = new Set(
+          [...this.quotes.values()]
+            .filter((q) => q.operatorId === opId)
+            .map((q) => q.rfqId),
+        );
+        out = out.filter(
+          (r) =>
+            quoted.has(r.id) &&
+            (r.status === "closed" || r.status === "expired"),
+        );
       }
     }
     // Operator inbox: concierge expedites sort first — the buyer paid for
@@ -954,6 +969,7 @@ class MemoryRepo implements Repo {
     needsQuote?: boolean;
     answeredOnly?: boolean;
     counteredOnly?: boolean;
+    lostOnly?: boolean;
     listingId?: string;
     vertical?: string;
     statusNot?: Rfq["status"][];

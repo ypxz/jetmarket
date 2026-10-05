@@ -709,6 +709,11 @@ export interface Repo {
      *  — RFQs where the operator's own quote holds a live buyer counter
      *  (countered_at set on a still-'sent' quote). The hottest leads. */
     counteredOnly?: boolean;
+    /** "Lost" inbox view (QA-537): only meaningful with `operatorId` —
+     * terminal RFQs (`closed`/`expired`) where the operator quoted at
+     * least once — the retrospective "where did my offers die" list.
+     * `spam` is a moderation outcome, not a loss. */
+    lostOnly?: boolean;
     /** Scope to one vertical — required on multi-vertical shared DBs (QA-293). */
     vertical?: string;
     /** Inbox ordering (QA-443): default newest-first; "deadline" orders
@@ -851,6 +856,9 @@ export interface Repo {
     /** Same "countered" inclusion as listRfqs (QA-513) — totals must match
      * the filtered page on both impls. */
     counteredOnly?: boolean;
+    /** Same "lost" inclusion as listRfqs (QA-537) — totals must match
+     * the filtered page on both impls. */
+    lostOnly?: boolean;
     /** Same per-listing scope as listRfqs (QA-430) — the filtered inbox's
      *  page total. */
     listingId?: string;

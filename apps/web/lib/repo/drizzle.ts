@@ -1216,6 +1216,7 @@ export class DrizzleRepo implements Repo {
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
     counteredOnly?: boolean;
+    lostOnly?: boolean;
     vertical?: string;
     sort?: "deadline";
     limit?: number;
@@ -1299,6 +1300,20 @@ export class DrizzleRepo implements Repo {
                       and q.operator_id = ${filter.operatorId}
                       and q.status = 'sent'
                       and q.countered_at is not null
+                  )`,
+                ]
+              : []),
+            ...(filter.lostOnly
+              ? [
+                  // "Lost" (QA-537): the RFQ died AND this operator
+                  // quoted on it — the where-did-my-offers-die view.
+                  // db 'closed' covers iface closed+expired; 'spam' is
+                  // moderation, not a loss.
+                  sql`${rfqs.status} = 'closed'`,
+                  sql`exists (
+                    select 1 from quotes q
+                    where q.rfq_id = ${rfqs.id}
+                      and q.operator_id = ${filter.operatorId}
                   )`,
                 ]
               : []),
@@ -1398,6 +1413,7 @@ export class DrizzleRepo implements Repo {
     dismissedOnly?: boolean;
     answeredOnly?: boolean;
     counteredOnly?: boolean;
+    lostOnly?: boolean;
     listingId?: string;
     vertical?: string;
     statusNot?: RfqStatus[];
@@ -1477,6 +1493,16 @@ export class DrizzleRepo implements Repo {
               and q.countered_at is not null
           )`,
         );
+      if (filter.lostOnly) {
+        conds.push(sql`${rfqs.status} = 'closed'`);
+        conds.push(
+          sql`exists (
+            select 1 from quotes q
+            where q.rfq_id = ${rfqs.id}
+              and q.operator_id = ${filter.operatorId}
+          )`,
+        );
+      }
       const [r] = await this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(rfqs)
