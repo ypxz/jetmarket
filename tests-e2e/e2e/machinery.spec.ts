@@ -133,4 +133,88 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     await quote.locator(tidPrefix('accept-')).click();
     await expect(buyer.getByTestId('accept-msg')).toContainText(/deal|closed/i);
   });
+
+  await step('auction one-off auto-sells at the machinery 2% fee (QA-557)', async () => {
+    // 'auction' is the third machinery listing type — one-off inventory like
+    // jets' aircraft_sale: a closed deal must flip it to 'sold', and the fee
+    // comes from machinery's own table (auction 2% — jets aircraft_sale 1.5%).
+    const AUCTION_TITLE = `E2E Auction Lathe ${run}`;
+    await createListing(operator, {
+      type: 'auction',
+      title: AUCTION_TITLE,
+      price: '8000',
+      fields: {
+        machineryCategory: 'lathe',
+        make: 'HAAS',
+        yearOfManufacture: '2021',
+        locationCountry: 'DE',
+      },
+    });
+
+    await buyer.goto('/search');
+    await buyer.getByTestId('facet-q').fill(AUCTION_TITLE);
+    await buyer.getByTestId('facet-apply').click();
+    await buyer
+      .getByTestId('search-result')
+      .filter({ hasText: AUCTION_TITLE })
+      .first()
+      .click();
+    await expect(buyer).toHaveURL(/\/listing\//);
+    await buyer.getByTestId('listing-rfq-cta').click();
+    await expect(async () => {
+      if (!buyer.url().includes('/rfq/thanks')) {
+        await fillRfqForm(buyer, BUYER_EMAIL);
+        await buyer.getByTestId('rfq-submit').click();
+      }
+      await buyer.waitForURL(/\/rfq\/thanks/, { timeout: 12_000 });
+      await expect(buyer.getByTestId('rfq-confirmation')).toBeVisible({
+        timeout: 10_000,
+      });
+    }).toPass({ timeout: 40_000 });
+
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: AUCTION_TITLE });
+    await expect(item).toBeVisible();
+    await item.locator(tidPrefix('quote-amount-')).fill('7500');
+    await item.locator(tidPrefix('quote-send-')).click();
+
+    // second accepted-deal for this buyer — /quotes now holds both rows, so
+    // scope the quote card by its formatted amount.
+    await buyer.getByTestId('rfq-view-quotes').click();
+    const auctionQuote = buyer
+      .locator(tidPrefix('quote-'))
+      .filter({ hasText: '7,500' })
+      .first();
+    await expect(auctionQuote).toBeVisible();
+    await auctionQuote.locator(tidPrefix('accept-')).click();
+    await expect(buyer.getByTestId('accept-msg')).toContainText(
+      /deal|closed/i,
+    );
+
+    // one-off inventory flips sold on deal close (QA-498 semantics, machinery)
+    await operator.goto('/app');
+    await expect(
+      operator
+        .locator('li')
+        .filter({ hasText: AUCTION_TITLE })
+        .filter({ hasText: 'sold' }),
+    ).toBeVisible();
+    // machinery auction fee is 2% — 7500 → fee €150 (machinery's currency is
+    // EUR; jets would charge 1.5% in USD)
+    await expect(
+      operator
+        .locator('li')
+        .filter({ hasText: AUCTION_TITLE })
+        .filter({ hasText: /fee\s*€\s*150/ }),
+    ).toBeVisible();
+    // sold inventory leaves the public catalog
+    await buyer.goto('/search');
+    await buyer.getByTestId('facet-q').fill(AUCTION_TITLE);
+    await buyer.getByTestId('facet-apply').click();
+    await expect(
+      buyer.getByTestId('search-result').filter({ hasText: AUCTION_TITLE }),
+    ).toHaveCount(0);
+  });
 });
