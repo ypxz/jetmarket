@@ -14,6 +14,7 @@ import {
 import { verticalSlug } from "@/lib/vertical";
 import { AlertOffButton } from "./alert-off-button";
 import { AlertResend } from "./alert-resend";
+import { ReopenRfq } from "./reopen-rfq";
 import { WithdrawRfq } from "./withdraw-rfq";
 
 /** QA-468: buyer account surface. Buyers hold real sessions (report filing
@@ -145,6 +146,12 @@ export default async function AccountPage() {
                           session auth makes withdraw possible from here. */}
                       <WithdrawRfq rfqId={r.id} buyerEmail={user.email} />
                     </>
+                  ) : null}
+                  {/* QA-540: a buyer-closed request isn't a dead end —
+                      same CAS family as withdraw, the deadline horizon
+                      still has to be live (route 409s otherwise). */}
+                  {r.status === "closed" && rfqDeadlineAt(r) > new Date() ? (
+                    <ReopenRfq rfqId={r.id} buyerEmail={user.email} />
                   ) : null}
                 </span>
               </span>

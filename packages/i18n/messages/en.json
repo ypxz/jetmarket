@@ -1424,6 +1424,10 @@
       "unavailable": "unavailable",
       "scam": "scam",
       "other": "other"
-    }
+    },
+    "reopen": "Reopen",
+    "reopening": "Reopening…",
+    "reopenedMsg": "Request reopened — operators can quote again",
+    "reopenFailed": "Could not reopen this request"
   }
 }

@@ -1424,6 +1424,10 @@
       "unavailable": "nicht verfügbar",
       "scam": "Betrug",
       "other": "sonstiges"
-    }
+    },
+    "reopen": "Wieder öffnen",
+    "reopening": "Öffnet wieder…",
+    "reopenedMsg": "Anfrage wieder geöffnet — Betreiber können erneut anbieten",
+    "reopenFailed": "Anfrage konnte nicht wieder geöffnet werden"
   }
 }

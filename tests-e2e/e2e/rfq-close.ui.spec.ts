@@ -27,6 +27,7 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
   test.setTimeout(240_000);
   const operator = await browser.newPage();
   const buyer = await browser.newPage();
+  let secondRfqId = '';
 
   await step('operator signs up and lists a charter', async () => {
     await signUpAndLogin(operator, OPERATOR_EMAIL, 'operator');
@@ -167,6 +168,7 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
       },
     });
     const created = await rres.json();
+    secondRfqId = created.rfqId;
     await buyer.request.post(`/api/rfqs/${created.rfqId}/close`, {
       data: { buyerEmail: BUYER_EMAIL, token: created.accessToken },
     });
@@ -179,5 +181,38 @@ test('buyer closes an RFQ: rfq -> closed, pending quote declines', async ({
     await expect(closedEmpty).toContainText('closed');
     await expect(closedEmpty).toContainText('Second Close');
     await expect(closedEmpty).not.toContainText('Waiting for operator quotes');
+  });
+
+  await step('buyer reopens a closed RFQ from /account (QA-540)', async () => {
+    // A buyer session on the same email proves the mailbox — /account's
+    // Reopen control reuses the session-auth branch of buyerAuthorized,
+    // no #t= juggling needed. `secondRfqId` (the Second Close RFQ) still has
+    // a live horizon (dateTo is weeks out), so reopen is allowed.
+    await signUpAndLogin(buyer, BUYER_EMAIL);
+    await buyer.goto('/account');
+    const row = buyer.getByTestId(`account-rfq-${secondRfqId}`);
+    await expect(row).toContainText('closed');
+    const reopenResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/reopen') &&
+        r.request().method() === 'POST' &&
+        r.status() === 200,
+    );
+    await buyer.getByTestId(`account-rfq-reopen-${secondRfqId}`).click();
+    await reopenResp;
+    await expect(
+      buyer.getByTestId(`account-rfq-reopened-${secondRfqId}`),
+    ).toBeVisible();
+    await buyer.reload();
+    await expect(row).toContainText('open');
+    // The persisted match re-enters the live inbox (closed rows are
+    // filtered out of the default view) and the op can offer again —
+    // their old declined quote stays history, the form re-renders.
+    await operator.goto('/app/rfqs');
+    const back = operator.getByTestId(`rfq-${secondRfqId}`);
+    await expect(back).toBeVisible({ timeout: 15_000 });
+    await expect(
+      back.getByTestId(`quote-amount-${secondRfqId}`),
+    ).toBeVisible();
   });
 });

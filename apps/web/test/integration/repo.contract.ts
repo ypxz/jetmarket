@@ -358,6 +358,44 @@ export function repoContract(
       expect((await repo.getRfq(rfq.id))?.status).toBe("closed");
     });
 
+    it("setRfqStatus reopens a closed RFQ under CAS (QA-540)", async () => {
+      const repo = await factory();
+      const tag = `reopen-${Date.now()}`;
+      const user = await repo.createUser(`op-${tag}@test.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: user.id,
+        name: `Reopen Ops ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "1x",
+        verified: false,
+        plan: "free",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Reopen Jet ${tag}`,
+        price: 100,
+        currency: "USD",
+        photos: [],
+        attributes: {},
+      });
+      const rfq = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: `reopen-${tag}@test.dev`,
+        fields: { ref: "reopen" },
+        dedupeKey: `reopen-${tag}`,
+      });
+      expect(await repo.setRfqStatus(rfq.id, "closed", ["open"])).toBe(true);
+      // Reopen: closed → open admits exactly the closed row — live and
+      // spam states never re-enter through this door.
+      expect(await repo.setRfqStatus(rfq.id, "open", ["closed"])).toBe(true);
+      expect((await repo.getRfq(rfq.id))?.status).toBe("open");
+      // Already open — a second reopen loses the CAS.
+      expect(await repo.setRfqStatus(rfq.id, "open", ["closed"])).toBe(false);
+    });
+
     it("reviseQuote rewrites a live sent quote; owner/status/rfq-liveness all gate (QA-439)", async () => {
       const repo = await factory();
       const tag = `rev-${Date.now()}`;
