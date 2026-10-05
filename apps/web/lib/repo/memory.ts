@@ -5,6 +5,7 @@ import type {
   AdminEvent,
   BlockedEmail,
   BuyerDeleteResult,
+  BuyerExport,
   CounterRound,
   CounterRoundOutcome,
   Deal,
@@ -1751,10 +1752,14 @@ class MemoryRepo implements Repo {
   async listQuoteReports(opts?: {
     status?: QuoteReport["status"];
     vertical?: string;
+    reporterEmail?: string;
     limit?: number;
   }): Promise<QuoteReport[]> {
+    const reporter = opts?.reporterEmail?.toLowerCase();
     const rows = [...this.quoteReports.values()].filter((r) => {
       if (opts?.status !== undefined && r.status !== opts.status) return false;
+      if (reporter !== undefined && r.reporterEmail.toLowerCase() !== reporter)
+        return false;
       if (opts?.vertical !== undefined) {
         // Reports carry no vertical — scope through quote→rfq (drizzle joins).
         const quote = this.quotes.get(r.quoteId);
@@ -1969,6 +1974,59 @@ class MemoryRepo implements Repo {
     };
     this.adminEvents.set(ev.id, ev);
     return out;
+  }
+
+  /** QA-544: the mailbox's whole record tree, read-only — same surfaces
+   *  deleteBuyerData sweeps. Composed over the public reads (which already
+   *  encode scoping/order semantics) plus the private stores only where a
+   *  keyed read exists nowhere else. */
+  async exportBuyerData(email: string, vertical: string): Promise<BuyerExport> {
+    const key = email.toLowerCase();
+    const rfqs = await this.listRfqs({
+      buyerEmail: key,
+      vertical,
+      limit: 200,
+    });
+    const rfqIds = rfqs.map((r) => r.id);
+    const [amendments, quotes] = await Promise.all([
+      this.listRfqAmendments(rfqIds),
+      this.listQuotes({ rfqIds }),
+    ]);
+    const quoteIds = quotes.map((q) => q.id);
+    const [counterRounds, revisions, deals, searchAlerts, quoteReports, user] =
+      await Promise.all([
+        this.listCounterRounds(quoteIds),
+        this.listQuoteRevisions(quoteIds),
+        this.listDeals({ quoteIds }),
+        this.listSearchAlerts({ email: key, vertical }),
+        this.listQuoteReports({ reporterEmail: key, vertical, limit: 500 }),
+        this.findUserByEmail(key),
+      ]);
+    const listingReports = user
+      ? await this.listListingReports({ reporterId: user.id })
+      : [];
+    const dealByQuote = new Map(deals.map((d) => [d.quoteId, d]));
+    return {
+      email: key,
+      vertical,
+      exportedAt: now(),
+      user,
+      rfqs: rfqs.map((rfq) => ({
+        rfq,
+        amendments: amendments.filter((a) => a.rfqId === rfq.id),
+        quotes: quotes
+          .filter((q) => q.rfqId === rfq.id)
+          .map((quote) => ({
+            quote,
+            counterRounds: counterRounds.filter((r) => r.quoteId === quote.id),
+            revisions: revisions.filter((r) => r.quoteId === quote.id),
+            deal: dealByQuote.get(quote.id),
+          })),
+      })),
+      searchAlerts,
+      quoteReports,
+      listingReports,
+    };
   }
 
   async listDeals(filter?: {

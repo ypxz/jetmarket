@@ -283,6 +283,24 @@ export default async function AccountPage() {
         </ul>
       </section>
 
+      {/* QA-544: portability — session proves the mailbox; the GET
+          download streams their whole record tree as JSON. */}
+      <section
+        className="mt-10 rounded-lg border border-border p-4"
+        data-testid="account-your-data"
+      >
+        <h2 className="text-lg font-semibold">{t("yourData")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("exportBlurb")}</p>
+        <a
+          href="/api/account/export"
+          download
+          data-testid="account-export"
+          className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface"
+        >
+          {t("exportData")}
+        </a>
+      </section>
+
       {/* QA-543: session proves the mailbox — the destructive sweep is
           gated behind a confirm dialog client-side and the same dual
           proof server-side. */}

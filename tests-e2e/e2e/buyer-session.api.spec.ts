@@ -467,3 +467,102 @@ test('account self-delete wipes the mailbox, session and bearer proofs (QA-543)'
     await sql.end();
   }
 });
+
+// QA-544: portability export — session and bearer proofs, whole-tree JSON.
+test('account export downloads the mailbox tree as JSON (QA-544)', async () => {
+  const sql = postgres(testDb, { max: 1 });
+  const publicCtx = await request.newContext({
+    extraHTTPHeaders: { 'fly-client-ip': '10.99.6.9' },
+  });
+  let listingId = '';
+  let rfqId = '';
+  const EX = `e2e-export-${run}@jetmarket.local`;
+  try {
+    const operator = await login(OP_EMAIL, 'operator');
+    expect(
+      (
+        await operator.post('/api/operators', {
+          data: { name: `E2E Export Ops ${run}`, baseAirport: 'LSZH' },
+        })
+      ).status(),
+    ).toBe(201);
+    const lres = await operator.post('/api/listings', {
+      data: {
+        type: 'charter',
+        title: `E2E Export Charter ${run}`,
+        price: 38000,
+        currency: 'USD',
+        fields: { aircraftCategory: 'light', baseAirport: 'ZRH' },
+      },
+    });
+    listingId = (await lres.json()).id;
+    rfqId = (await mkRfq(publicCtx, listingId, EX)).rfqId;
+    const buyer = await login(EX);
+    await buyer.post('/api/search-alerts', {
+      data: {
+        email: EX,
+        params: { type: 'charter', f_aircraftCategory: 'light' },
+      },
+    });
+    // The /account surface links the download.
+    const acctHtml = await (await buyer.get('/en/account')).text();
+    expect(acctHtml).toContain('account-export');
+
+    const res = await buyer.get('/api/account/export');
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-disposition']).toContain(
+      'jetmarket-export-',
+    );
+    const data = (await res.json()) as {
+      email: string;
+      vertical: string;
+      exportedAt: string;
+      user?: { id: string; email: string };
+      rfqs: { rfq: { id: string; buyerEmail: string }; quotes: unknown[] }[];
+      searchAlerts: unknown[];
+      quoteReports: unknown[];
+      listingReports: unknown[];
+    };
+    expect(data.email).toBe(EX);
+    expect(data.vertical).toBe('jets');
+    expect(data.user?.email).toBe(EX);
+    expect(data.rfqs.map((r) => r.rfq.id)).toContain(rfqId);
+    expect(data.rfqs[0]!.rfq.buyerEmail).toBe(EX);
+    expect(data.searchAlerts.length).toBeGreaterThanOrEqual(1);
+
+    // Bearer path: a second mailbox exports via ?email=+t — and its own
+    // token can't unlock the first mailbox's export.
+    const EX2 = `e2e-export2-${run}@jetmarket.local`;
+    const r2 = await mkRfq(publicCtx, listingId, EX2);
+    const bearer = await publicCtx.get(
+      `/api/account/export?email=${encodeURIComponent(EX2)}&t=${r2.accessToken}`,
+    );
+    expect(bearer.status()).toBe(200);
+    const bData = (await bearer.json()) as { email: string; user?: unknown };
+    expect(bData.email).toBe(EX2);
+    expect(bData.user).toBeUndefined();
+    const denied = await publicCtx.get(
+      `/api/account/export?email=${encodeURIComponent(EX)}&t=${r2.accessToken}`,
+    );
+    expect(denied.status()).toBe(401);
+    await sql`delete from rfq_matches where rfq_id = ${r2.rfqId}`;
+    await sql`delete from rfqs where id = ${r2.rfqId}`;
+    // Read-only — everything still live afterward.
+    const [row] = await sql`
+      select buyer_email, status from rfqs where id = ${rfqId}`;
+    expect(row!.buyer_email).toBe(EX);
+    expect(row!.status).not.toBe('closed');
+  } finally {
+    if (rfqId) {
+      await sql`delete from rfq_matches where rfq_id = ${rfqId}`;
+      await sql`delete from rfqs where id = ${rfqId}`;
+    }
+    if (listingId) await sql`delete from listings where id = ${listingId}`;
+    await sql`delete from search_alerts where email like 'e2e-export%'`;
+    await sql`delete from operators where user_id in
+      (select id from users where email = ${OP_EMAIL})`;
+    await sql`delete from users where email like 'e2e-export%@jetmarket.local'
+      or email = ${OP_EMAIL}`;
+    await sql.end();
+  }
+});

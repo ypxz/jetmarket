@@ -2583,6 +2583,154 @@ export function repoContract(
       expect(again.userDeleted).toBe(false);
     });
 
+    it("exportBuyerData returns the mailbox's whole record tree, scoped (QA-544)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const email = `exp-${tag}@test.dev`;
+      const other = `expkeep-${tag}@test.dev`;
+
+      const opUser = await repo.createUser(`expop-${tag}@t.dev`, "operator");
+      const op = await repo.upsertOperator({
+        userId: opUser.id,
+        name: "Exp Air",
+        baseAirport: "ZRH",
+        fleetSummary: "Phenom 300",
+        verified: true,
+        plan: "pro",
+      });
+      const listing = await repo.createListing({
+        operatorId: op.id,
+        vertical: "jets",
+        type: "charter",
+        title: `Exp listing ${tag}`,
+        attributes: {},
+        photos: [],
+        price: 5000,
+        currency: "USD",
+      });
+      const user = await repo.createUser(email, "buyer");
+
+      const mkRfq = (dedupeKey: string, vertical = "jets") =>
+        repo.createRfq({
+          vertical,
+          listingId: listing.id,
+          buyerEmail: email,
+          fields: { name: "E Porter", email },
+          dedupeKey,
+        });
+      const live = await mkRfq(`edk-live-${tag}`);
+      const closed = await mkRfq(`edk-dead-${tag}`);
+      await repo.setRfqStatus(closed.id, "closed", ["open", "matched", "quoted"]);
+      // Foreign vertical + foreign mailbox both stay out of the export.
+      const foreign = await mkRfq(`edk-for-${tag}`, "machinery");
+      const otherBox = await repo.createRfq({
+        vertical: "jets",
+        listingId: listing.id,
+        buyerEmail: other,
+        fields: { name: "K Eeper", email: other },
+        dedupeKey: `edk-oth-${tag}`,
+      });
+
+      // Amend once so the export carries a rung.
+      await repo.updateRfqFields(
+        live.id,
+        { name: "E Porter", email, qty: "2" },
+        `edk-amend-${tag}`,
+      );
+
+      const quote = await repo.createQuote({
+        rfqId: live.id,
+        operatorId: op.id,
+        amount: 9000,
+        currency: "USD",
+        message: "operator terms",
+      });
+      await repo.counterQuote(quote.id, 8000, "buyer words");
+      await repo.reviseQuote(quote.id, op.id, {
+        amount: 8500,
+        currency: "USD",
+        message: "sharpened",
+      });
+      const deal = await repo.createDeal({
+        quoteId: quote.id,
+        operatorId: op.id,
+        amount: 8000,
+        currency: "USD",
+        feePct: 0.03,
+        feeAmount: 240,
+        invoiceStatus: "pending",
+      });
+      await repo.createSearchAlert({
+        vertical: "jets",
+        email,
+        params: { type: "charter" },
+        token: `etok-${tag}`,
+        dedupeKey: `esdk-${tag}`,
+        freq: "instant",
+      });
+      await repo.createQuoteReport({
+        quoteId: quote.id,
+        reporterEmail: email,
+        reason: "off_platform",
+        note: "tried to move me to whatsapp",
+      });
+      await repo.createListingReport({
+        listingId: listing.id,
+        reporterId: user.id,
+        reason: "scam",
+        note: "suspicious tail number",
+      });
+
+      const out = await repo.exportBuyerData(email, "jets");
+
+      expect(out.email).toBe(email);
+      expect(out.vertical).toBe("jets");
+      expect(Date.parse(out.exportedAt)).toBeLessThanOrEqual(Date.now());
+      expect(out.user?.id).toBe(user.id);
+      // 2 jets rfqs only — machinery + other-mailbox stay out.
+      expect(out.rfqs.map((r) => r.rfq.id).sort()).toEqual(
+        [live.id, closed.id].sort(),
+      );
+      const expLive = out.rfqs.find((r) => r.rfq.id === live.id)!;
+      expect(expLive.rfq.fields["email"]).toBe(email);
+      expect(expLive.amendments).toHaveLength(1);
+      expect(expLive.amendments[0]!.fields["name"]).toBe("E Porter");
+      expect(expLive.quotes).toHaveLength(1);
+      expect(expLive.quotes[0]!.quote.id).toBe(quote.id);
+      expect(expLive.quotes[0]!.counterRounds.length).toBeGreaterThanOrEqual(1);
+      expect(expLive.quotes[0]!.counterRounds[0]!.note).toBe("buyer words");
+      expect(expLive.quotes[0]!.revisions.length).toBeGreaterThanOrEqual(1);
+      expect(expLive.quotes[0]!.revisions[0]!.amount).toBe(9000);
+      expect(expLive.quotes[0]!.deal?.id).toBe(deal.id);
+      // Closed rfq still exports (dead state, no quotes/amendments).
+      const expClosed = out.rfqs.find((r) => r.rfq.id === closed.id)!;
+      expect(expClosed.rfq.status).toBe("closed");
+      expect(expClosed.quotes).toHaveLength(0);
+      expect(expClosed.amendments).toHaveLength(0);
+      expect(out.searchAlerts).toHaveLength(1);
+      expect(out.searchAlerts[0]!.email).toBe(email);
+      expect(out.quoteReports).toHaveLength(1);
+      expect(out.quoteReports[0]!.reporterEmail).toBe(email);
+      expect(out.listingReports).toHaveLength(1);
+      expect(out.listingReports[0]!.reporterId).toBe(user.id);
+      // Nothing foreign leaked.
+      expect(JSON.stringify(out)).not.toContain(foreign.id);
+      expect(JSON.stringify(out)).not.toContain(otherBox.id);
+      expect(JSON.stringify(out)).not.toContain(other);
+
+      // Bearer-only mailbox (no users row): still exports the mailbox,
+      // user/report surfaces are empty rather than erroring.
+      const boxOnly = await repo.exportBuyerData(other, "jets");
+      expect(boxOnly.user).toBeUndefined();
+      expect(boxOnly.listingReports).toHaveLength(0);
+      expect(boxOnly.rfqs.map((r) => r.rfq.id)).toEqual([otherBox.id]);
+
+      // And the export is read-only — the mailbox is still fully live.
+      const liveAfter = await repo.getRfq(live.id);
+      expect(liveAfter?.buyerEmail).toBe(email);
+      expect(liveAfter?.status).toBe("quoted");
+    });
+
     it("QA-493 locale: RFQ + alert stamp 'en' by default, keep a supplied locale", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

@@ -367,6 +367,42 @@ export interface BuyerDeleteResult {
   userDeleted: boolean;
 }
 
+/** QA-544: one quote inside a buyer export — the offer plus every related
+ *  ledger the mailbox can see (counter trail, revise trail, deal). */
+export interface BuyerExportQuote {
+  quote: Quote;
+  counterRounds: CounterRound[];
+  revisions: QuoteRevision[];
+  deal?: Deal;
+}
+
+/** QA-544: one RFQ inside a buyer export — the request plus its edit
+ *  trail and every offer the mailbox received. */
+export interface BuyerExportRfq {
+  rfq: Rfq;
+  amendments: RfqAmendment[];
+  quotes: BuyerExportQuote[];
+}
+
+/** QA-544: GDPR-style portability export — everything the deploy holds
+ *  against one buyer mailbox, in one JSON-serializable tree. Compose-only:
+ *  the same surfaces `deleteBuyerData` sweeps, minus the mutation. */
+export interface BuyerExport {
+  email: string;
+  vertical: string;
+  exportedAt: string;
+  /** The buyer's users row, when a session account exists (undefined for
+   *  emailed-links-only mailboxes). */
+  user?: User;
+  rfqs: BuyerExportRfq[];
+  searchAlerts: SearchAlert[];
+  /** Flags this mailbox filed (admin audit rows — the reporter's own copy). */
+  quoteReports: QuoteReport[];
+  /** Listing flags the account filed — only meaningful when `user` exists
+   *  (listing_reports keys reporterId, not email). */
+  listingReports: ListingReport[];
+}
+
 /** Saved-search alert (QA-403): a buyer's whitelisted /search filter set +
  * confirm/unsubscribe bearer. `pendingIds` queues matched listings during
  * the per-alert mail cooldown and flushes with the next digest. */
@@ -1211,6 +1247,9 @@ export interface Repo {
   listQuoteReports(opts?: {
     status?: QuoteReportStatus;
     vertical?: string;
+    /** QA-544: restrict to flags filed by one address (buyer export —
+     *  matched case-insensitively, same as the resolve sweep). */
+    reporterEmail?: string;
     limit?: number;
   }): Promise<QuoteReport[]>;
   /** Admin dismisses a quote flag — CAS on status='open'; false when
@@ -1261,6 +1300,14 @@ export interface Repo {
    *  hash, never the raw address. Operator/admin users are untouched:
    *  their account is business data, not the deleted mailbox's. */
   deleteBuyerData(email: string, vertical: string): Promise<BuyerDeleteResult>;
+
+  /** QA-544: portability counterpart of `deleteBuyerData` — compose the
+   *  mailbox's whole record tree for download. Read-only; same vertical
+   *  scoping (RFQs scoped directly, quote_reports via the quote→rfq join,
+   *  deals via their quotes). Buyers' own accessToken/fields ride the
+   *  export deliberately — they are the mailbox's data and the token is
+   *  the bearer proof a sessionless buyer uses elsewhere. */
+  exportBuyerData(email: string, vertical: string): Promise<BuyerExport>;
 
   upsertSubscription(s: Omit<Subscription, "id">): Promise<Subscription>;
   getSubscription(operatorId: string): Promise<Subscription | undefined>;
