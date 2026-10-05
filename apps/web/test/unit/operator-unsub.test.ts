@@ -13,7 +13,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-import { signOpUnsub } from "@jetmarket/config";
+import { signOpUnsub } from "@jetmarket/config/tokens";
 import { getMemoryRepo } from "../../lib/repo/memory";
 import type { Repo } from "../../lib/repo/types";
 import { GET as unsubGet } from "../../app/api/operator/notify/unsubscribe/route";

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyOpUnsub } from "@jetmarket/config";
+import { verifyOpUnsub } from "@jetmarket/config/tokens";
 import { clientIp, rateLimit } from "@/lib/api";
 import { appOrigin } from "@/lib/origin";
 import { getRepo } from "@/lib/repo";

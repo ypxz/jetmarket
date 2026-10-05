@@ -11,7 +11,7 @@ import {
 } from "@jetmarket/domain";
 import type { Sql } from "postgres";
 import type { MatchingConfig } from "@jetmarket/verticals";
-import { signOpUnsub } from "@jetmarket/config";
+import { signOpUnsub } from "@jetmarket/config/tokens";
 import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
 import {
   defaultLocale,

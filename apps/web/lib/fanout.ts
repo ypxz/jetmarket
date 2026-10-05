@@ -1,6 +1,7 @@
 import { deliverAt, matchOperators } from "@jetmarket/domain";
 import { rfqFieldLabels } from "@jetmarket/verticals";
-import { signOpUnsub, site } from "@jetmarket/config";
+import { site } from "@jetmarket/config";
+import { signOpUnsub } from "@jetmarket/config/tokens";
 import { verticalConfig, verticalMessagesFor } from "@/lib/vertical";
 import { mailCopy, mailT } from "@jetmarket/i18n";
 import type { OperatorCandidate } from "@jetmarket/domain";
