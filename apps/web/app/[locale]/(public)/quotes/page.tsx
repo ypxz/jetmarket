@@ -40,8 +40,17 @@ interface Quote {
   } | null;
   /** QA-451: on accepted quotes — the deal id to rate + the rating given.
    *  QA-551: `invoiceStatus` distinguishes a voided (reverted) deal, which
-   *  renders "fell through" instead of a rate widget. */
-  deal?: { id?: string; buyerRating?: number; invoiceStatus?: string };
+   *  renders "fell through" instead of a rate widget.
+   *  QA-560: `wasReported` = an open flag this mailbox filed — the
+   *  "reported" chip survives reloads. */
+  deal?: {
+    id?: string;
+    buyerRating?: number;
+    invoiceStatus?: string;
+    wasReported?: boolean;
+  };
+  /** QA-560: server-echoed open quote flag — same reload-proof chip. */
+  wasReported?: boolean;
   /** QA-511: the buyer's live counter-offer (one per offer round — a
    *  revise clears it). */
   counterAmount?: number;
@@ -207,6 +216,22 @@ function QuotesInner() {
     }
     const rows = await readJsonOr<Rfq[]>(res, []);
     setRfqs(rows);
+    // QA-560: seed flag state from the server — an open report filed in a
+    // previous session renders its chip instead of re-arming the picker.
+    // Replacing (not unioning) keeps dismissals honest: a flag the admin
+    // dropped stops pinning the picker on the next load.
+    setReportedIds(
+      new Set(rows.flatMap((r) => r.quotes).filter((q) => q.wasReported).map((q) => q.id)),
+    );
+    setReportedDealIds(
+      new Set(
+        rows
+          .flatMap((r) => r.quotes)
+          .map((q) => q.deal)
+          .filter((d): d is NonNullable<typeof d> => !!d?.id && !!d.wasReported)
+          .map((d) => d.id!),
+      ),
+    );
     // Session path (QA-474): the server resolved the mailbox from the
     // session cookie — backfill the input so action bodies (accept etc.)
     // carry a real buyerEmail and the field shows who we're acting as.

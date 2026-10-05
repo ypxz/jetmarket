@@ -128,6 +128,28 @@ test('buyer flags a quote; admin reviews and dismisses it', async ({
     expect(replay.status()).toBe(409);
   });
 
+  await step('reported chip survives reload (QA-560)', async () => {
+    // Flag state used to live only in the page's session — a reload
+    // re-armed the picker and the dedupe 409 was the sole backstop. The
+    // mailbox API now echoes this address's open flags and the page seeds
+    // its sets from them.
+    const loadResp = buyer.waitForResponse(
+      (r) =>
+        r.url().includes('/api/buyer/quotes') &&
+        r.request().method() === 'GET' &&
+        r.status() === 200,
+    );
+    await buyer.reload();
+    await loadResp;
+    const quote = buyer.locator('li[data-testid^="quote-"]').first();
+    await expect(quote).toBeVisible({ timeout: 15_000 });
+    await expect(
+      quote.locator('[data-testid^="reported-"]'),
+    ).toBeVisible();
+    // The picker stays closed — no fresh Report button.
+    await expect(quote.locator('[data-testid^="report-"]')).toHaveCount(0);
+  });
+
   await step('operator revises the flagged offer (QA-535 trail)', async () => {
     // The flag filed against the ORIGINAL message — the op then edits it.
     // Moderation must see the flagged text plus the superseded rung.

@@ -387,6 +387,23 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   expect(flagCell).toContain(`dismiss-deal-report-${reflagRow.id}`);
   expect(flagCell).not.toContain(`revert-deal-${deal!.id}`);
 
+  // --- QA-560: the mailbox echoes the open flag -------------------------
+  // Flag state used to be page-session-local; the GET now returns
+  // deal.wasReported so the chip survives a reload.
+  const mailbox = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).get(
+    `/api/buyer/quotes?email=${encodeURIComponent(BUYER_EMAIL)}&t=${accessToken}`,
+  );
+  expect(mailbox.status()).toBe(200);
+  const rfqs = (await mailbox.json()) as {
+    quotes: { deal?: { id?: string; wasReported?: boolean } }[];
+  }[];
+  const dealQuote = rfqs
+    .flatMap((r) => r.quotes)
+    .find((q) => q.deal?.id === deal!.id);
+  expect(dealQuote?.deal?.wasReported).toBe(true);
+
   // --- logout: server-side revocation kills the cookie --------------------
   const me1 = await buyer.get('/api/auth/me');
   expect(((await me1.json()) as { user: unknown }).user).toBeTruthy();

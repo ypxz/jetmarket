@@ -90,17 +90,30 @@ export async function GET(req: Request) {
   );
   // QA-451: deal id + rating attach to ACCEPTED quotes — the buyer rates
   // the deal in place; ratingSummary feeds the operator trust line.
-  const [dealByQuote, ratingSummary, counterRounds, revisions] =
-    await Promise.all([
-      repo.listDeals({ quoteIds: quoteRows.map((q) => q.id) }),
-      repo.ratingSummaryPerOperator(opIds),
-      // QA-522: negotiation trail — what became of each counter the buyer
-      // proposed (withdrawn/declined/answered/accepted), one batch join.
-      repo.listCounterRounds(quoteRows.map((q) => q.id)),
-      // QA-530: superseded term-sets — the operator's revise history on
-      // each offer ("was X → now Y"), same batch shape as the rounds.
-      repo.listQuoteRevisions(quoteRows.map((q) => q.id)),
-    ]);
+  const [
+    dealByQuote,
+    ratingSummary,
+    counterRounds,
+    revisions,
+    openQuoteReports,
+    openDealReports,
+  ] = await Promise.all([
+    repo.listDeals({ quoteIds: quoteRows.map((q) => q.id) }),
+    repo.ratingSummaryPerOperator(opIds),
+    // QA-522: negotiation trail — what became of each counter the buyer
+    // proposed (withdrawn/declined/answered/accepted), one batch join.
+    repo.listCounterRounds(quoteRows.map((q) => q.id)),
+    // QA-530: superseded term-sets — the operator's revise history on
+    // each offer ("was X → now Y"), same batch shape as the rounds.
+    repo.listQuoteRevisions(quoteRows.map((q) => q.id)),
+    // QA-560: this mailbox's open flags — the "reported" chip must
+    // survive a reload (it was session-local state with only the dedupe
+    // 409 as backstop). Server returns it; the page seeds its sets.
+    repo.listQuoteReports({ reporterEmail: email, status: "open" }),
+    repo.listDealReports({ reporterEmail: email, status: "open" }),
+  ]);
+  const quoteReportedIds = new Set(openQuoteReports.map((r) => r.quoteId));
+  const dealReportedIds = new Set(openDealReports.map((r) => r.dealId));
   const dealByQuoteId = new Map(dealByQuote.map((d) => [d.quoteId, d]));
   const roundsByQuote = new Map<string, typeof counterRounds>();
   for (const r of counterRounds) {
@@ -227,6 +240,9 @@ export async function GET(req: Request) {
           // QA-531: this load is the first time the buyer saw the
           // CURRENT terms — chips a "New" marker on the card.
           wasUnseen: unseenIds.has(q.id),
+          // QA-560: an open flag on this offer — renders "reported"
+          // instead of re-arming the picker on the next load.
+          wasReported: quoteReportedIds.has(q.id),
           deal:
             q.status === "accepted"
               ? {
@@ -235,6 +251,10 @@ export async function GET(req: Request) {
                   // QA-551: a voided (reverted) deal renders as "fell
                   // through" — not a rateable outcome.
                   invoiceStatus: dealByQuoteId.get(q.id)?.invoiceStatus,
+                  // QA-560: open deal flag — same reload-proof chip.
+                  wasReported:
+                    dealByQuoteId.get(q.id)?.id !== undefined &&
+                    dealReportedIds.has(dealByQuoteId.get(q.id)!.id),
                 }
               : undefined,
           operator: (() => {
