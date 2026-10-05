@@ -137,6 +137,58 @@ test('operator rates the buyer; the next RFQ carries the score', async ({
     expect(replay.status()).toBe(409);
   });
 
+  await step('operator opens the fee invoice page (QA-561)', async () => {
+    // The provider's hosted pay URL settles the balance but isn't a
+    // durable record — /app/deals/<id>/invoice renders the document from
+    // ledger data so it can always be printed/saved.
+    const [deal] = await sql<
+      { id: string; fee_minor: number; currency: string }[]
+    >`
+      select d.id, d.currency, d.fee_amount_minor::float as fee_minor
+      from deals d
+      join quotes q on q.id = d.quote_id
+      join rfqs r on r.id = q.rfq_id
+      where r.buyer_email = ${BUYER_EMAIL}
+      order by d.closed_at desc limit 1`;
+
+    await operator.goto('/app');
+    const link = operator.getByTestId(`deal-invoice-${deal!.id}`);
+    await expect(link).toBeVisible({ timeout: 15_000 });
+    await link.click();
+    await operator.waitForURL(new RegExp(`/app/deals/${deal!.id}/invoice`));
+
+    const invoice = operator.getByTestId('invoice');
+    await expect(invoice).toBeVisible();
+    await expect(
+      operator.getByTestId('invoice-no'),
+    ).toContainText('Invoice');
+    await expect(operator.getByTestId('invoice-billto')).toContainText(
+      OPERATOR_EMAIL,
+    );
+    await expect(operator.getByTestId('invoice-dealref')).toContainText(
+      BUYER_EMAIL,
+    );
+    // Fee math rendered — same Intl shape formatMoney emits ($1,230).
+    const feeLabel = new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: deal!.currency,
+      maximumFractionDigits: 0,
+    }).format(deal!.fee_minor / 100);
+    await expect(operator.getByTestId('invoice-total')).toContainText(
+      feeLabel,
+    );
+    await expect(operator.getByTestId('invoice-print')).toBeVisible();
+
+    // Another operator's session can't read it — 404, no probing.
+    const stranger = await browser.newPage();
+    await signUpAndLogin(stranger, `e2e-inv-${run}@jetmarket.local`, 'operator');
+    const res = await stranger.request.get(
+      `/app/deals/${deal!.id}/invoice`,
+    );
+    expect(res.status()).toBe(404);
+    await stranger.close();
+  });
+
   await step('the buyer\'s next RFQ shows "Rated buyer" in the inbox', async () => {
     await buyer.goto('/search');
     await buyer.getByTestId('facet-q').fill(LISTING_TITLE);

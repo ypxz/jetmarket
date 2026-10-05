@@ -572,6 +572,18 @@ export default async function OperatorDashboard() {
                   {d.invoiceStatus === "invoiced" && d.invoiceUrl ? (
                     <PayFee dealId={d.id} />
                   ) : null}
+                  {/* QA-561: durable copy of the fee invoice — the
+                      provider's hosted URL settles the balance but isn't a
+                      printable record. */}
+                  {d.invoiceStatus !== "pending" ? (
+                    <Link
+                      href={`/app/deals/${d.id}/invoice`}
+                      className="text-xs text-primary underline"
+                      data-testid={`deal-invoice-${d.id}`}
+                    >
+                      {t("viewInvoice")}
+                    </Link>
+                  ) : null}
                   {/* QA-551: a voided deal fell through — the rate
                       control would 409 anyway; hide it. */}
                   {d.operatorRating === undefined &&

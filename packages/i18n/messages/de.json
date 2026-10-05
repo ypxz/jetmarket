@@ -1136,7 +1136,8 @@
       "rateBuyer": "Käufer bewerten",
       "rating": "Bewerten…",
       "rateBuyerAria": "Käufer mit 1–5 bewerten",
-      "ratedBuyer": "Ihre Bewertung ★ {rating}"
+      "ratedBuyer": "Ihre Bewertung ★ {rating}",
+      "viewInvoice": "Rechnung ansehen"
     },
     "onboarding": {
       "title": "Anbieterprofil",
@@ -1291,6 +1292,22 @@
       "photosLabel": "Fotos (abhaken zum Entfernen; Dateien zum Hinzufügen wählen)",
       "keepPhoto": "Foto behalten",
       "failed": "Speichern fehlgeschlagen — erneut versuchen"
+    },
+    "invoice": {
+      "title": "Erfolgsprovision-Rechnung",
+      "invoiceNo": "Rechnung {ref}",
+      "issuedOn": "Ausgestellt {date}",
+      "billedTo": "Rechnungsempfänger",
+      "reference": "Referenz",
+      "dealRef": "Geschäft {id}",
+      "itemCol": "Position",
+      "amountCol": "Betrag",
+      "feeLine": "Marktplatz-Erfolgsprovision — {title}",
+      "feeBase": "{amount} Geschäft × {pct} Provision",
+      "totalDue": "Fälliger Gesamtbetrag",
+      "voidNote": "Dieses Geschäft wurde storniert — es fällt keine Provision an.",
+      "print": "Drucken / als PDF speichern",
+      "backToDashboard": "← Zurück zum Dashboard"
     }
   },
   "checkout": {

@@ -1136,7 +1136,8 @@
       "rateBuyer": "Rate buyer",
       "rating": "Rating…",
       "rateBuyerAria": "Rate the buyer 1-5",
-      "ratedBuyer": "you rated ★ {rating}"
+      "ratedBuyer": "you rated ★ {rating}",
+      "viewInvoice": "View invoice"
     },
     "onboarding": {
       "title": "Operator profile",
@@ -1291,6 +1292,22 @@
       "photosLabel": "Photos (uncheck to remove; pick files to add)",
       "keepPhoto": "Keep photo",
       "failed": "Save failed — try again"
+    },
+    "invoice": {
+      "title": "Success-fee invoice",
+      "invoiceNo": "Invoice {ref}",
+      "issuedOn": "Issued {date}",
+      "billedTo": "Billed to",
+      "reference": "Reference",
+      "dealRef": "Deal {id}",
+      "itemCol": "Item",
+      "amountCol": "Amount",
+      "feeLine": "Marketplace success fee — {title}",
+      "feeBase": "{amount} deal × {pct} fee",
+      "totalDue": "Total due",
+      "voidNote": "This deal was reverted — no fee is owed.",
+      "print": "Print / save as PDF",
+      "backToDashboard": "← Back to dashboard"
     }
   },
   "checkout": {
