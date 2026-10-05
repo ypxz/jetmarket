@@ -74,7 +74,7 @@ export default defineConfig({
       // which boots the webServer with VERTICAL=machinery (the spec also
       // self-skips under any other vertical, so `test:e2e` stays jets-green).
       name: 'machinery',
-      testMatch: 'e2e/machinery.spec.ts',
+      testMatch: 'e2e/machinery*.spec.ts',
       use: { ...devices['Desktop Chrome'] },
     },
     {
