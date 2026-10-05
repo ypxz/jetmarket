@@ -52,7 +52,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, quoteReports, dealReports, modEvents] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, quoteReports, dealReports, modEvents, searchAlerts] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -87,6 +87,14 @@ export default async function AdminPage({
       }),
       // QA-467: append-only moderation feed — newest first, this vertical.
       repo.listAdminEvents({ vertical: verticalSlug(), limit: 30 }),
+      // QA-562: demand radar — ACTIVE search alerts are buyers saying
+      // "I want this and it isn't listed yet". Grouped by param
+      // signature below; watch-alerts excluded (they point at a listing
+      // that exists — not unmet demand).
+      repo.listSearchAlerts({
+        vertical: verticalSlug(),
+        status: "active",
+      }),
     ]);
   const dealPages = Math.max(1, Math.ceil(dealTotal / SEARCH_PAGE_SIZE));
   const rawPage = Number(Array.isArray(params.page) ? params.page[0] : params.page);
@@ -342,6 +350,37 @@ export default async function AdminPage({
       },
     };
   }
+
+  // QA-562: group ACTIVE param-alerts by their search signature — N
+  // buyers waiting on the same unlisted demand. Watch-alerts excluded
+  // (they point at an existing listing). Sorted by unmet backlog, then
+  // subscribers, so the hungriest gap reads first.
+  const demandGroups = (() => {
+    const groups = new Map<
+      string,
+      { signature: string; buyers: number; backlog: number; newest: string }
+    >();
+    for (const a of searchAlerts) {
+      const entries = Object.entries(a.params)
+        .filter(([k, v]) => k !== "watch" && v !== undefined && v !== null && v !== "")
+        .sort(([x], [y]) => x.localeCompare(y));
+      const signature = entries.map(([k, v]) => `${k}=${v}`).join(" · ");
+      const key = signature || "(any)";
+      const g = groups.get(key) ?? {
+        signature,
+        buyers: 0,
+        backlog: 0,
+        newest: a.createdAt,
+      };
+      g.buyers += 1;
+      g.backlog += a.pendingIds.length;
+      if (a.createdAt > g.newest) g.newest = a.createdAt;
+      groups.set(key, g);
+    }
+    return [...groups.values()].sort(
+      (a, b) => b.backlog - a.backlog || b.buyers - a.buyers,
+    );
+  })();
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -1241,6 +1280,56 @@ export default async function AdminPage({
               <tr>
                 <td colSpan={4} className="py-6 text-center text-muted">
                   {t("noActivity")}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table></div>
+      </section>
+
+      {/* QA-562: demand radar — supply-side intelligence. Buyers file
+          search alerts for things that aren't listed; the grouped
+          signature is the gap report (a digest backlog means matching
+          supply arrived but hasn't mailed yet). */}
+      <section className="mt-10" data-testid="admin-demand">
+        <h2 className="text-lg font-semibold">
+          {t("demandRadar", { count: searchAlerts.length })}
+        </h2>
+        <p className="mt-1 text-sm text-muted">{t("demandHint")}</p>
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colDemand")}</th>
+              <th className="py-2 pr-4">{t("colDemandBuyers")}</th>
+              <th className="py-2 pr-4">{t("colDemandBacklog")}</th>
+              <th className="py-2">{t("colDemandNewest")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {demandGroups.map((g) => (
+              <tr key={g.signature || "any"} data-testid="demand-row">
+                <td className="max-w-96 truncate py-2 pr-4" data-testid="demand-sig">
+                  {g.signature || t("demandAny")}
+                </td>
+                <td className="py-2 pr-4" data-testid="demand-buyers">
+                  {g.buyers}
+                </td>
+                <td className="py-2 pr-4" data-testid="demand-backlog">
+                  {g.backlog > 0 ? (
+                    <Badge variant="warning">{g.backlog}</Badge>
+                  ) : (
+                    "0"
+                  )}
+                </td>
+                <td className="py-2 text-muted">
+                  {new Date(g.newest).toLocaleDateString(locale)}
+                </td>
+              </tr>
+            ))}
+            {demandGroups.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-muted">
+                  {t("noDemand")}
                 </td>
               </tr>
             ) : null}

@@ -1420,7 +1420,15 @@
     "opAway": "away — no new RFQs",
     "opMailMuted": "RFQ mail muted",
     "dealReports": "Deal reports ({count})",
-    "noDealReports": "No open deal flags."
+    "noDealReports": "No open deal flags.",
+    "demandRadar": "Demand signals ({count})",
+    "demandHint": "Active search alerts grouped by what buyers asked for — each row is unmet or freshly-met demand you can route to operators.",
+    "colDemand": "Wanted",
+    "colDemandBuyers": "Buyers",
+    "colDemandBacklog": "Queued digest",
+    "colDemandNewest": "Newest alert",
+    "demandAny": "any matching listing",
+    "noDemand": "No active search alerts yet."
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

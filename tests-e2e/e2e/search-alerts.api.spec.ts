@@ -572,3 +572,67 @@ test('saved search pause/resume on /account keeps the row (QA-542)', async () =>
     await sql.end();
   }
 });
+
+// QA-562: the admin demand radar — ACTIVE param-alerts grouped by search
+// signature are the supply-gen report ("N buyers want X and it isn't
+// listed"). The section was invisible until QA-562; this pins the group,
+// the buyer count, and the digest-backlog cell.
+test('admin demand radar groups active search alerts (QA-562)', async () => {
+  test.setTimeout(60_000);
+  const sql = postgres(testDb);
+  const A = `e2e-dem-a-${run}@jetmarket.local`;
+  const B = `e2e-dem-b-${run}@jetmarket.local`;
+  const ADMIN = `e2e-admin-dem-${run}@jetmarket.local`;
+  const SIG = `xzz${run}`;
+
+  try {
+    const anon = await request.newContext({
+      extraHTTPHeaders: { 'fly-client-ip': '10.99.9.9' },
+    });
+    // Two buyers want the same thing — one grouped demand row.
+    for (const email of [A, B]) {
+      const sub = await anon.post('/api/search-alerts', {
+        data: { email, params: { q: SIG, type: 'charter' } },
+      });
+      expect(sub.status()).toBe(200);
+      const { devConfirmUrl } = (await sub.json()) as {
+        devConfirmUrl?: string;
+      };
+      const conf = new URL(devConfirmUrl!);
+      const res = await anon.get(conf.pathname + conf.search, {
+        maxRedirects: 0,
+      });
+      expect([301, 302, 303, 307, 308]).toContain(res.status());
+    }
+    const rows = await sql`
+      select status from search_alerts where email in (${A}, ${B})`;
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.status === 'active')).toBe(true);
+
+    const admin = await login(ADMIN);
+    const html = await (await admin.get('/admin')).text();
+    const sectionStart = html.indexOf('admin-demand');
+    expect(sectionStart).toBeGreaterThan(-1);
+    const section = html.slice(sectionStart, html.indexOf('</section>', sectionStart));
+    expect(section).toContain(`q=${SIG}`);
+    expect(section).toContain('type=charter');
+    // The row groups both subscribers — buyers cell reads 2.
+    const rowStart = section.indexOf('demand-row');
+    const rowHtml = section.slice(rowStart, section.indexOf('</tr>', rowStart));
+    expect(rowHtml).toContain(`demand-buyers">2`);
+
+    // A foreign-vertical alert can't leak into this deploy's radar.
+    await sql`
+      insert into search_alerts (vertical, email, params, token, status, dedupe_key)
+      values ('machinery', ${A}, '{"type":"for_sale"}', ${crypto.randomUUID()}, 'active', ${`x-${SIG}`})`;
+    const html2 = await (await admin.get('/admin')).text();
+    const s2 = html2.indexOf('admin-demand');
+    const section2 = html2.slice(s2, html2.indexOf('</section>', s2));
+    expect(section2).not.toContain('for_sale');
+    await sql`delete from search_alerts where dedupe_key = ${`x-${SIG}`}`;
+  } finally {
+    await sql`delete from search_alerts where email in (${A}, ${B})`;
+    await sql`delete from users where email in (${A}, ${B}, ${ADMIN})`;
+    await sql.end();
+  }
+});

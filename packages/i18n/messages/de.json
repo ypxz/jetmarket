@@ -1420,7 +1420,15 @@
     "opAway": "abwesend — keine neuen RFQs",
     "opMailMuted": "RFQ-Mail stumm",
     "dealReports": "Deal-Meldungen ({count})",
-    "noDealReports": "Keine offenen Deal-Meldungen."
+    "noDealReports": "Keine offenen Deal-Meldungen.",
+    "demandRadar": "Nachfragesignale ({count})",
+    "demandHint": "Aktive Suchabos gruppiert nach Nachfrage — jede Zeile ist ungedeckter oder frisch gedeckter Bedarf für die Vermittlung an Betreiber.",
+    "colDemand": "Gesucht",
+    "colDemandBuyers": "Käufer",
+    "colDemandBacklog": "Digest-Warteschlange",
+    "colDemandNewest": "Neuestes Abo",
+    "demandAny": "beliebiges passendes Inserat",
+    "noDemand": "Noch keine aktiven Suchabos."
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",
