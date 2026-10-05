@@ -65,6 +65,7 @@ export default async function OperatorDashboard() {
     listingCount,
     deals,
     dealCount,
+    feeTotal,
     openRfqs,
     openOffers,
     openOfferCount,
@@ -83,6 +84,14 @@ export default async function OperatorDashboard() {
       repo.listDeals({ operatorId: operator.id, limit: 20 }),
       // Header shows the true total, not the capped page (QA-179).
       repo.countDeals({ operatorId: operator.id }),
+      // QA-563: lifetime success-fee spend — the ledger exists for
+      // admin; the operator paying the fees never saw the aggregate.
+      // Vertical-scoped so the sum can't mix currencies (a cross-vertical
+      // book's EUR fees would smear into the USD total).
+      repo.sumDealFees({
+        operatorId: operator.id,
+        vertical: getVertical().slug,
+      }),
       repo.countRfqs({
         operatorId: operator.id,
         vertical: getVertical().slug,
@@ -507,6 +516,18 @@ export default async function OperatorDashboard() {
         <section className="mt-10" data-testid="operator-deals">
           <h2 className="text-lg font-semibold">
             {t("deals", { count: dealCount })}{" "}
+            <span
+              className="text-sm font-normal text-muted"
+              data-testid="deals-fees"
+            >
+              {t("feesTotal", {
+                total: formatMoney(
+                  feeTotal,
+                  getVertical().currency,
+                  locale,
+                ),
+              })}
+            </span>{" "}
             {/* QA-489: the table paginates at 20 — accounting needs the
                 full pull. Plain <a>, not Link: the CSV is a download, and
                 Link prefetch would run the whole export on hover. */}

@@ -216,5 +216,27 @@ test('machinery vertical: placeholder taxonomy boots and the core loop passes', 
     await expect(
       buyer.getByTestId('search-result').filter({ hasText: AUCTION_TITLE }),
     ).toHaveCount(0);
+
+    // QA-563: the EUR invoice page renders the same fee, and the
+    // dashboard ledger footer sums machinery fees in EUR — no USD bleed.
+    // This book holds both spec deals: 2%×12000 + 2%×7500 = €240+€150.
+    await operator.goto('/app');
+    await expect(operator.getByTestId('deals-fees')).toContainText(
+      /€\s*390/,
+    );
+    const invoiceLink = operator
+      .locator('li')
+      .filter({ hasText: AUCTION_TITLE })
+      .locator('[data-testid^="deal-invoice-"]');
+    await expect(invoiceLink).toBeVisible();
+    await invoiceLink.click();
+    await operator.waitForURL(/\/app\/deals\/[^/]+\/invoice/);
+    await expect(operator.getByTestId('invoice')).toBeVisible();
+    await expect(operator.getByTestId('invoice-total')).toContainText(
+      /€\s*150/,
+    );
+    await expect(operator.getByTestId('invoice-line')).toContainText(
+      AUCTION_TITLE,
+    );
   });
 });

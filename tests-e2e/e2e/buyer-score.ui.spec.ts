@@ -152,6 +152,14 @@ test('operator rates the buyer; the next RFQ carries the score', async ({
       order by d.closed_at desc limit 1`;
 
     await operator.goto('/app');
+    // QA-563: the ledger footer sums this operator's fees — same Intl
+    // shape the invoice uses, currency-correct.
+    const feeLabel = new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: deal!.currency,
+      maximumFractionDigits: 0,
+    }).format(deal!.fee_minor / 100);
+    await expect(operator.getByTestId('deals-fees')).toContainText(feeLabel);
     const link = operator.getByTestId(`deal-invoice-${deal!.id}`);
     await expect(link).toBeVisible({ timeout: 15_000 });
     await link.click();
@@ -169,11 +177,6 @@ test('operator rates the buyer; the next RFQ carries the score', async ({
       BUYER_EMAIL,
     );
     // Fee math rendered — same Intl shape formatMoney emits ($1,230).
-    const feeLabel = new Intl.NumberFormat('en', {
-      style: 'currency',
-      currency: deal!.currency,
-      maximumFractionDigits: 0,
-    }).format(deal!.fee_minor / 100);
     await expect(operator.getByTestId('invoice-total')).toContainText(
       feeLabel,
     );

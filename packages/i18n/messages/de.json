@@ -1137,7 +1137,8 @@
       "rating": "Bewerten…",
       "rateBuyerAria": "Käufer mit 1–5 bewerten",
       "ratedBuyer": "Ihre Bewertung ★ {rating}",
-      "viewInvoice": "Rechnung ansehen"
+      "viewInvoice": "Rechnung ansehen",
+      "feesTotal": "Gebühren {total}"
     },
     "onboarding": {
       "title": "Anbieterprofil",

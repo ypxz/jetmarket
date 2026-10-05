@@ -1137,7 +1137,8 @@
       "rating": "Rating…",
       "rateBuyerAria": "Rate the buyer 1-5",
       "ratedBuyer": "you rated ★ {rating}",
-      "viewInvoice": "View invoice"
+      "viewInvoice": "View invoice",
+      "feesTotal": "fees {total}"
     },
     "onboarding": {
       "title": "Operator profile",
