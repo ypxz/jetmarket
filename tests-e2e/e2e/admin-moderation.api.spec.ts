@@ -316,7 +316,8 @@ test('listing reports: flag → queue → dismiss → re-flag allowed (QA-461)',
   expect(opRes.status()).toBe(201);
   const listingId = await createListing(operator, `E2E Rep Charter ${run}`);
 
-  const buyer = await login(`e2e-rep-buyer-${run}@jetmarket.local`);
+  const REPORTER = `e2e-rep-buyer-${run}@jetmarket.local`;
+  const buyer = await login(REPORTER);
   const report = await buyer.post(`/api/listings/${listingId}/report`, {
     data: { reason: 'scam', note: 'asked for wire transfer' },
   });
@@ -333,7 +334,16 @@ test('listing reports: flag → queue → dismiss → re-flag allowed (QA-461)',
   const admin = await login(ADMIN_EMAIL);
   const queue = await admin.get('/en/admin');
   expect(queue.ok()).toBeTruthy();
-  expect(await queue.text()).toContain(`report-${reportId}`);
+  const queueHtml = await queue.text();
+  expect(queueHtml).toContain(`report-${reportId}`);
+  // QA-558: the flag row carries the reporter-block kill beside the
+  // suspend/dismiss pair — serial flag-abuse answers from any queue.
+  const flagRowStart = queueHtml.indexOf(`report-${reportId}"`);
+  const flagCell = queueHtml.slice(
+    flagRowStart,
+    queueHtml.indexOf('</tr>', flagRowStart),
+  );
+  expect(flagCell).toContain(`block-buyer-${REPORTER}`);
 
   // Dismiss CAS: once 200, repeat 409; the queue drops the row.
   const dismiss = await admin.post(`/api/admin/reports/${reportId}/dismiss`);

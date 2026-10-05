@@ -726,6 +726,16 @@ export default async function AdminPage({
                         }
                       />
                     ) : null}
+                    {/* QA-558: every flag queue carries the reporter-block
+                        kill — serial flag-abuse answers from any queue. */}
+                    {reportEmails.get(r.reporterId) ? (
+                      <BuyerBlockButton
+                        email={reportEmails.get(r.reporterId)!}
+                        blocked={blockedEmails.has(
+                          reportEmails.get(r.reporterId)!.toLowerCase(),
+                        )}
+                      />
+                    ) : null}
                     <DismissReportButton reportId={r.id} />
                   </span>
                 </td>
@@ -795,6 +805,12 @@ export default async function AdminPage({
                         suspended={op?.suspended ?? false}
                       />
                     ) : null}
+                    <BuyerBlockButton
+                      email={r.reporterEmail}
+                      blocked={blockedEmails.has(
+                        r.reporterEmail.toLowerCase(),
+                      )}
+                    />
                     <DismissQuoteReportButton reportId={r.id} />
                   </span>
                 </td>

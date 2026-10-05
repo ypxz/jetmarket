@@ -168,6 +168,9 @@ test('buyer flags a quote; admin reviews and dismisses it', async ({
     await expect(row).toContainText('off_platform');
     await expect(row).toContainText(BUYER_EMAIL);
     await expect(row).toContainText('phone number in message');
+    // QA-558: the flag row carries the reporter-block kill (parity with
+    // the rfq + deal queues) beside suspend + dismiss.
+    await expect(row.getByTestId(`block-buyer-${BUYER_EMAIL}`)).toBeVisible();
 
     // QA-535: the detail row under the flag carries the CURRENT message
     // and the superseded rung (the flagged text) — moderation reads both.
