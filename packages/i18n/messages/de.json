@@ -525,7 +525,15 @@
     "pausedMsg": "Anfrage pausiert — es kommen keine neuen Angebote an.",
     "resumedMsg": "Anfrage fortgesetzt — nimmt wieder Angebote an.",
     "declineAll": "Alle ablehnen",
-    "declinedAllMsg": "Alle offenen Angebote abgelehnt — die Anfrage bleibt für neue offen."
+    "declinedAllMsg": "Alle offenen Angebote abgelehnt — die Anfrage bleibt für neue offen.",
+    "reportDeal": "Problem melden",
+    "reportDealTitle": "Diesen Deal melden",
+    "reportDealReason": {
+      "no_service": "Leistung nicht erbracht",
+      "scam": "Betrug",
+      "abusive": "Missbräuchlich",
+      "other": "Sonstiges"
+    }
   },
   "design": {
     "title": "Designsystem",
@@ -1304,7 +1312,7 @@
     "archiveListing": "Archivieren",
     "noListings": "Keine Inserate.",
     "ledger": "Gebührenbuch ({count} Abschlüsse · {total} Gebühren)",
-    "colDeal": "Abschluss",
+    "colDeal": "Deal",
     "colOperator": "Anbieter",
     "colBuyer": "Käufer",
     "colAmount": "Betrag",
@@ -1387,7 +1395,9 @@
     "colJoined": "Beigetreten",
     "opReceivingRfqs": "empfängt RFQs",
     "opAway": "abwesend — keine neuen RFQs",
-    "opMailMuted": "RFQ-Mail stumm"
+    "opMailMuted": "RFQ-Mail stumm",
+    "dealReports": "Deal-Meldungen ({count})",
+    "noDealReports": "Keine offenen Deal-Meldungen."
   },
   "operator": {
     "listingsTitle": "Aktive Inserate ({count})",

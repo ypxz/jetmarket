@@ -5540,6 +5540,136 @@ export function repoContract(
       ).toBe(0);
     });
 
+    it("deal reports: dedupe by email, vertical join, dismiss CAS, reporter sweep, ids filter (QA-555)", async () => {
+      const repo = await factory();
+      const tag = Date.now().toString(36);
+      const op = await repo.upsertOperator({
+        userId: (await repo.createUser(`drep-op-${tag}@test.dev`, "operator")).id,
+        name: `DRep Ops ${tag}`,
+        baseAirport: "ZRH",
+        fleetSummary: "",
+        verified: true,
+        plan: "free",
+      });
+      const buyerEmail = `drep-b-${tag}@test.dev`;
+      const mkDeal = async (vertical: string, buyer: string) => {
+        const rfq = await repo.createRfq({
+          vertical,
+          listingId: null,
+          buyerEmail: buyer,
+          fields: {},
+        });
+        const quote = await repo.createQuote({
+          rfqId: rfq.id,
+          operatorId: op.id,
+          amount: 9000,
+          currency: "USD",
+          message: "",
+        });
+        return repo.createDeal({
+          quoteId: quote.id,
+          operatorId: op.id,
+          amount: 8000,
+          currency: "USD",
+          feePct: 0.03,
+          feeAmount: 240,
+          invoiceStatus: "invoiced",
+        });
+      };
+      const deal = await mkDeal("jets", buyerEmail);
+      // A machinery twin — the vertical join must drop it from the
+      // jets-scoped queue (shared-DB rule, QA-293).
+      const fDeal = await mkDeal("machinery", `drep-f-${tag}@test.dev`);
+
+      // File + dedupe: a second OPEN flag from the same address returns
+      // null; a different reporter on the same deal files fine; email
+      // casing folds into one reporter.
+      const r1 = await repo.createDealReport({
+        dealId: deal.id,
+        reporterEmail: buyerEmail,
+        reason: "no_service",
+        note: "the plane never showed",
+      });
+      expect(r1).not.toBeNull();
+      expect(r1!.status).toBe("open");
+      expect(r1!.resolvedAt).toBeNull();
+      expect(
+        await repo.createDealReport({
+          dealId: deal.id,
+          reporterEmail: buyerEmail.toUpperCase(),
+          reason: "scam",
+        }),
+      ).toBeNull();
+      const r2 = await repo.createDealReport({
+        dealId: deal.id,
+        reporterEmail: `drep-b2-${tag}@test.dev`,
+        reason: "scam",
+      });
+      expect(r2).not.toBeNull();
+      const rf = await repo.createDealReport({
+        dealId: fDeal.id,
+        reporterEmail: `drep-f-${tag}@test.dev`,
+        reason: "other",
+      });
+      expect(rf).not.toBeNull();
+
+      // Queue: newest-first, status + vertical scoped via deal→quote→rfq.
+      const open = await repo.listDealReports({ status: "open" });
+      expect(open.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r1!.id, r2!.id, rf!.id]),
+      );
+      const jetsOnly = await repo.listDealReports({
+        status: "open",
+        vertical: "jets",
+      });
+      expect(jetsOnly.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r1!.id, r2!.id]),
+      );
+      expect(jetsOnly.map((r) => r.id)).not.toContain(rf!.id);
+      const byReporter = await repo.listDealReports({
+        reporterEmail: buyerEmail.toUpperCase(),
+      });
+      expect(byReporter.map((r) => r.id)).toEqual([r1!.id]);
+
+      // listDeals ids filter (the admin queue join): batches the flagged
+      // deals in one read, nothing else; a non-uuid / empty set is silent.
+      const flagged = await repo.listDeals({ ids: [deal.id, fDeal.id] });
+      expect(flagged.map((d) => d.id).sort()).toEqual(
+        [deal.id, fDeal.id].sort(),
+      );
+      expect(await repo.listDeals({ ids: [] })).toEqual([]);
+      expect(await repo.listDeals({ ids: ["not-a-uuid"] })).toEqual([]);
+
+      // Dismiss CAS: once → true + stamp; again → false.
+      expect(await repo.resolveDealReport(r1!.id)).toBe(true);
+      expect(await repo.resolveDealReport(r1!.id)).toBe(false);
+      expect(
+        (await repo.listDealReports({ status: "dismissed" })).map(
+          (r) => r.id,
+        ),
+      ).toContain(r1!.id);
+      // A dismissed flag doesn't block a fresh one (re-flag allowed).
+      const r3 = await repo.createDealReport({
+        dealId: deal.id,
+        reporterEmail: buyerEmail,
+        reason: "other",
+      });
+      expect(r3).not.toBeNull();
+
+      // Reporter sweep (the buyer-block analog): clears every OPEN flag
+      // the address filed, case-folded, nothing else.
+      expect(
+        await repo.resolveDealReportsByReporter(buyerEmail.toUpperCase()),
+      ).toBe(1);
+      const stillOpen = await repo.listDealReports({ status: "open" });
+      expect(stillOpen.map((r) => r.id)).toEqual(
+        expect.arrayContaining([r2!.id, rf!.id]),
+      );
+      expect(
+        await repo.resolveDealReportsByReporter(buyerEmail),
+      ).toBe(0);
+    });
+
     it("blocked emails: idempotent block, case-fold, unblock (QA-463)", async () => {
       const repo = await factory();
       const tag = Date.now().toString(36);

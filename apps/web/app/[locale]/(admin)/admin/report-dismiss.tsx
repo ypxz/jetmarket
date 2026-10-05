@@ -82,3 +82,13 @@ export function DismissRfqReportButton({ reportId }: { reportId: string }) {
     />
   );
 }
+
+/** QA-555: same dismiss for the buyer deal-flag queue. */
+export function DismissDealReportButton({ reportId }: { reportId: string }) {
+  return (
+    <DismissButton
+      endpoint={`/api/admin/deal-reports/${reportId}/dismiss`}
+      testid={`dismiss-deal-report-${reportId}`}
+    />
+  );
+}

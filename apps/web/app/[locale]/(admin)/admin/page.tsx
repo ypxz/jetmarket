@@ -23,6 +23,7 @@ import {
 import { RfqCloseButton, RfqSpamButton } from "./rfq-mod-button";
 import { BuyerBlockButton } from "./buyer-block-button";
 import {
+  DismissDealReportButton,
   DismissQuoteReportButton,
   DismissReportButton,
   DismissRfqReportButton,
@@ -51,7 +52,7 @@ export default async function AdminPage({
   const repo = await getRepo();
   // Wave 1: everything independent fires together (was 11 serialized
   // round-trips — QA-252).
-  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, quoteReports, modEvents] =
+  const [operatorCount, dealTotal, operators, feeTotal, modListings, modRfqs, conciergeCount, reports, blockedRows, quoteReports, dealReports, modEvents] =
     await Promise.all([
       repo.countOperators(),
       // Deal ledger is per-vertical like the moderation queues (QA-313).
@@ -74,6 +75,12 @@ export default async function AdminPage({
       repo.listBlockedEmails(),
       // QA-529: buyer quote flags — same open-report queue, second surface.
       repo.listQuoteReports({
+        status: "open",
+        vertical: verticalSlug(),
+        limit: 50,
+      }),
+      // QA-555: buyer deal flags — the closed-transaction queue.
+      repo.listDealReports({
         status: "open",
         vertical: verticalSlug(),
         limit: 50,
@@ -165,6 +172,18 @@ export default async function AdminPage({
     }),
     repo.listQuoteRevisions(reportQuoteRows.map((q) => q.id)),
   ]);
+  // QA-555: deal-flag rows join their deal (amount, invoice, operator) —
+  // the deal already carries buyerEmail so no rfq hop is needed here.
+  const reportDealRows = await repo.listDeals({
+    ids: [...new Set(dealReports.map((r) => r.dealId))],
+  });
+  const reportDealOpRows = await repo.listOperators({
+    ids: [...new Set(reportDealRows.map((d) => d.operatorId))],
+  });
+  const reportDeals = new Map(reportDealRows.map((d) => [d.id, d] as const));
+  const reportDealOps = new Map(
+    reportDealOpRows.map((o) => [o.id, o] as const),
+  );
   const reportQuoteListingRows = await repo.listListings({
     ids: [
       ...new Set(
@@ -812,6 +831,86 @@ export default async function AdminPage({
                 </td>
               </tr>
               </Fragment>
+              );
+            })}
+          </tbody>
+        </table></div>
+        )}
+      </section>
+
+      {/* QA-555: buyer flags on closed deals — the entity where money
+          already moved; moderation context is the deal itself (amount,
+          invoice state, operator) resolved in one batched join. */}
+      <section className="mt-10" data-testid="admin-deal-reports">
+        <h2 className="text-lg font-semibold">
+          {t("dealReports", { count: dealReports.length })}
+        </h2>
+        {dealReports.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{t("noDealReports")}</p>
+        ) : (
+        <div className="overflow-x-auto"><table className="mt-3 w-full min-w-2xl text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="py-2 pr-4">{t("colDeal")}</th>
+              <th className="py-2 pr-4">{t("colAmount")}</th>
+              <th className="py-2 pr-4">{t("colInvoice")}</th>
+              <th className="py-2 pr-4">{t("colOperator")}</th>
+              <th className="py-2 pr-4">{t("colReason")}</th>
+              <th className="py-2 pr-4">{t("colNote")}</th>
+              <th className="py-2 pr-4">{t("colReporter")}</th>
+              <th className="py-2 pr-4">{t("colFiled")}</th>
+              <th className="py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {dealReports.map((r) => {
+              const d = reportDeals.get(r.dealId);
+              const op = d ? reportDealOps.get(d.operatorId) : undefined;
+              return (
+              <tr key={r.id} data-testid={`deal-report-${r.id}`}>
+                <td className="py-2 pr-4 font-mono text-xs" data-testid={`deal-report-deal-${r.id}`}>
+                  {d?.id ?? r.dealId}
+                </td>
+                <td className="py-2 pr-4 font-medium">
+                  {d ? formatMoney(d.amount, d.currency, locale) : "—"}
+                </td>
+                <td className="py-2 pr-4" data-testid={`deal-report-invoice-${r.id}`}>
+                  {d ? (
+                    <Badge variant={invoiceStateVariant(d.invoiceStatus)}>
+                      {tc(`invoiceState.${d.invoiceStatus}`)}
+                    </Badge>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="py-2 pr-4" data-testid={`deal-report-op-${r.id}`}>
+                  {op ? (
+                    <Link
+                      href={`/admin?op=${op.id}#op-detail`}
+                      className="underline underline-offset-2"
+                    >
+                      {op.name}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="py-2 pr-4">
+                  <Badge variant="warning" data-testid={`deal-report-reason-${r.id}`}>
+                    {r.reason}
+                  </Badge>
+                </td>
+                <td className="max-w-60 truncate py-2 pr-4">{r.note ?? ""}</td>
+                <td className="py-2 pr-4" data-testid={`deal-report-reporter-${r.id}`}>
+                  {r.reporterEmail}
+                </td>
+                <td className="py-2 pr-4">
+                  {new Date(r.createdAt).toLocaleDateString(locale)}
+                </td>
+                <td className="py-2">
+                  <DismissDealReportButton reportId={r.id} />
+                </td>
+              </tr>
               );
             })}
           </tbody>

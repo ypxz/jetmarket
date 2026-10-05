@@ -604,6 +604,35 @@ export const quoteReports = pgTable(
   ],
 );
 
+// QA-555: buyer flags a closed deal — the report surface for the entity
+// where money already moved (mig 0058; mirrors quote_reports).
+export const dealReports = pgTable(
+  "deal_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    reporterEmail: text("reporter_email").notNull(),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    status: text("status", { enum: ["open", "dismissed"] })
+      .notNull()
+      .default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // One open flag per (deal, reporter) — dismissed re-arms (QA-461 shape).
+    uniqueIndex("deal_reports_open_dedupe")
+      .on(t.dealId, sql`lower(${t.reporterEmail})`)
+      .where(sql`status = 'open'`),
+    index("deal_reports_status_idx").on(t.status, t.createdAt),
+  ],
+);
+
 // QA-524: private per-operator note on a visible RFQ. Composite PK on
 // (operator, rfq) — one note per pair; clearing the note deletes the row.
 export const operatorRfqNotes = pgTable(

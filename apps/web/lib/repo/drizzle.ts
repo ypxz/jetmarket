@@ -22,6 +22,8 @@ import type {
   CounterRound,
   CounterRoundOutcome,
   Deal,
+  DealReport,
+  DealReportStatus,
   JobInfo,
   Listing,
   ListingReport,
@@ -73,6 +75,7 @@ const {
   blockedEmails,
   rfqReports,
   quoteReports,
+  dealReports,
   adminEvents,
 } = schema;
 
@@ -246,6 +249,21 @@ function toQuoteReport(
     reason: r.reason,
     note: r.note,
     status: r.status as QuoteReportStatus,
+    createdAt: iso(r.createdAt),
+    resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
+  };
+}
+
+function toDealReport(
+  r: typeof dealReports.$inferSelect,
+): DealReport {
+  return {
+    id: r.id,
+    dealId: r.dealId,
+    reporterEmail: r.reporterEmail,
+    reason: r.reason,
+    note: r.note,
+    status: r.status as DealReportStatus,
     createdAt: iso(r.createdAt),
     resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
   };
@@ -2640,6 +2658,76 @@ export class DrizzleRepo implements Repo {
     return rows.length;
   }
 
+  async createDealReport(input: {
+    dealId: string;
+    reporterEmail: string;
+    reason: string;
+    note?: string;
+  }): Promise<DealReport | null> {
+    // QA-555: the partial unique (open rows only) is the dedupe — a
+    // repeat flag conflicts and returns null; a dismissed one re-arms.
+    const rows = await this.db
+      .insert(dealReports)
+      .values({
+        dealId: input.dealId,
+        reporterEmail: input.reporterEmail,
+        reason: input.reason,
+        note: input.note ?? null,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return rows[0] ? toDealReport(rows[0]) : null;
+  }
+
+  async listDealReports(opts?: {
+    status?: DealReportStatus;
+    vertical?: string;
+    reporterEmail?: string;
+    limit?: number;
+  }): Promise<DealReport[]> {
+    const conds = [];
+    if (opts?.status) conds.push(eq(dealReports.status, opts.status));
+    if (opts?.reporterEmail)
+      conds.push(
+        sql`lower(${dealReports.reporterEmail}) = ${opts.reporterEmail.toLowerCase()}`,
+      );
+    // Reports carry no vertical — scope through deal→quote→rfq (QA-313).
+    if (opts?.vertical) conds.push(eq(rfqs.vertical, opts.vertical));
+    const rows = await this.db
+      .select({ report: dealReports })
+      .from(dealReports)
+      .innerJoin(deals, eq(dealReports.dealId, deals.id))
+      .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+      .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(dealReports.createdAt))
+      .limit(Math.min(opts?.limit ?? 100, 200));
+    return rows.map((r) => toDealReport(r.report));
+  }
+
+  async resolveDealReport(id: string): Promise<boolean> {
+    const rows = await this.db
+      .update(dealReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(and(eq(dealReports.id, id), eq(dealReports.status, "open")))
+      .returning({ id: dealReports.id });
+    return rows.length > 0;
+  }
+
+  async resolveDealReportsByReporter(email: string): Promise<number> {
+    const rows = await this.db
+      .update(dealReports)
+      .set({ status: "dismissed", resolvedAt: new Date() })
+      .where(
+        and(
+          sql`lower(${dealReports.reporterEmail}) = ${email.toLowerCase()}`,
+          eq(dealReports.status, "open"),
+        ),
+      )
+      .returning({ id: dealReports.id });
+    return rows.length;
+  }
+
   async logAdminEvent(
     e: Omit<AdminEvent, "id" | "createdAt">,
   ): Promise<AdminEvent> {
@@ -2718,6 +2806,7 @@ export class DrizzleRepo implements Repo {
         rfqs: 0,
         alerts: 0,
         quoteReports: 0,
+        dealReports: 0,
         counterScrubbed: 0,
         amendmentsScrubbed: 0,
         pendingJobs: 0,
@@ -2782,6 +2871,29 @@ export class DrizzleRepo implements Repo {
             ),
           )
           .returning({ id: quoteReports.id })
+      ).length;
+      // QA-555: deal flags anonymize too — scoped through deal→quote→rfq.
+      out.dealReports = (
+        await tx
+          .update(dealReports)
+          .set({
+            reporterEmail: sql`concat('del_', ${dealReports.id}, '@deleted.invalid')`,
+          })
+          .where(
+            and(
+              sql`lower(${dealReports.reporterEmail}) = ${key}`,
+              inArray(
+                dealReports.dealId,
+                tx
+                  .select({ id: deals.id })
+                  .from(deals)
+                  .innerJoin(quotes, eq(deals.quoteId, quotes.id))
+                  .innerJoin(rfqs, eq(quotes.rfqId, rfqs.id))
+                  .where(eq(rfqs.vertical, vertical)),
+              ),
+            ),
+          )
+          .returning({ id: dealReports.id })
       ).length;
       if (myIds.length) {
         out.counterScrubbed =
@@ -2895,13 +3007,14 @@ export class DrizzleRepo implements Repo {
       this.listQuotes({ rfqIds }),
     ]);
     const quoteIds = quotes.map((q) => q.id);
-    const [counterRounds, revisions, deals, searchAlerts, quoteReports, user] =
+    const [counterRounds, revisions, deals, searchAlerts, quoteReports, dealReports, user] =
       await Promise.all([
         this.listCounterRounds(quoteIds),
         this.listQuoteRevisions(quoteIds),
         this.listDeals({ quoteIds }),
         this.listSearchAlerts({ email: key, vertical }),
         this.listQuoteReports({ reporterEmail: key, vertical, limit: 500 }),
+        this.listDealReports({ reporterEmail: key, vertical, limit: 500 }),
         this.findUserByEmail(key),
       ]);
     const listingReports = user
@@ -2927,6 +3040,7 @@ export class DrizzleRepo implements Repo {
       })),
       searchAlerts,
       quoteReports,
+      dealReports,
       listingReports,
     };
   }
@@ -2996,16 +3110,21 @@ export class DrizzleRepo implements Repo {
   async listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
+    ids?: string[];
     quoteIds?: string[];
     limit?: number;
     offset?: number;
   }): Promise<Deal[]> {
     // operatorId lives on the parent quote, vertical on the grandparent rfq —
     // join both so the filters are SQL (QA-313).
+    const ids = filter?.ids?.filter(isUuid) ?? [];
     const quoteIds = filter?.quoteIds?.filter(isUuid) ?? [];
     const conds = [
       ...(filter?.operatorId ? [eq(quotes.operatorId, filter.operatorId)] : []),
       ...(filter?.vertical ? [eq(rfqs.vertical, filter.vertical)] : []),
+      ...(filter?.ids !== undefined
+        ? [ids.length ? inArray(deals.id, ids) : sql`false`]
+        : []),
       ...(filter?.quoteIds !== undefined
         ? [
             quoteIds.length

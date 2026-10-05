@@ -57,10 +57,13 @@ export async function POST(req: Request) {
   // QA-529: quote flags key the reporter by email — sweep them too.
   // QA-539: RFQ flags join the sweep (operator-side surface, but a
   // blocked account's filings die the same way).
+  // QA-555: deal flags complete the sweep — every flag surface a
+  // blocked address filed is now dead weight removed from the queues.
   const reportsCleared =
     listingReportsCleared +
     (reporter ? await repo.resolveRfqReportsByReporter(reporter.id) : 0) +
-    (await repo.resolveQuoteReportsByReporter(email));
+    (await repo.resolveQuoteReportsByReporter(email)) +
+    (await repo.resolveDealReportsByReporter(email));
   logInfo("admin.buyer_blocked", {
     adminId: user.id,
     email,

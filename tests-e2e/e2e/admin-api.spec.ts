@@ -308,6 +308,70 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   expect(missing.status()).toBe(200);
   expect((await missing.text())).toContain('op-not-found');
 
+  // --- QA-555: buyer flags a deal → admin queue → dismiss → re-flag ----
+  // The last unreported entity: bearer-token proof, the flag lands in the
+  // open queue (HTML shows it), the admin dismiss CAS fires once, and a
+  // dismissed flag doesn't hold the dedupe — the buyer can file again.
+  const flag = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/deals/${deal!.id}/report`, {
+    data: {
+      buyerEmail: BUYER_EMAIL,
+      token: accessToken,
+      reason: 'no_service',
+      note: 'the charter never flew',
+    },
+  });
+  expect(flag.status()).toBe(201);
+  const flagRow = (await flag.json()) as { id: string; status: string };
+  expect(flagRow.status).toBe('open');
+  // Dedupe: the same mailbox re-flagging the open deal 409s.
+  const dupe = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/deals/${deal!.id}/report`, {
+    data: { buyerEmail: BUYER_EMAIL, token: accessToken, reason: 'scam' },
+  });
+  expect(dupe.status()).toBe(409);
+  // A stranger's mailbox can't flag the deal (403, not 404 — no probing).
+  const foreign = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/deals/${deal!.id}/report`, {
+    data: {
+      buyerEmail: `e2e-stranger-${run}@jetmarket.local`,
+      token: 'bogus',
+      reason: 'scam',
+    },
+  });
+  expect(foreign.status()).toBe(403);
+
+  const queue = await admin.get('/admin');
+  expect(queue.status()).toBe(200);
+  const queueHtml = await queue.text();
+  expect(queueHtml).toContain(`deal-report-${flagRow.id}`);
+  expect(queueHtml).toContain(`deal-report-deal-${flagRow.id}`);
+  expect(queueHtml).toContain('no_service');
+
+  const dismiss = await admin.post(
+    `/api/admin/deal-reports/${flagRow.id}/dismiss`,
+  );
+  expect(dismiss.status()).toBe(200);
+  const dismissAgain = await admin.post(
+    `/api/admin/deal-reports/${flagRow.id}/dismiss`,
+  );
+  expect(dismissAgain.status()).toBe(409);
+
+  // Dismissed re-arms: the buyer files a fresh flag on the same deal.
+  const reflag = await (
+    await request.newContext({ extraHTTPHeaders: adminIp })
+  ).post(`/api/deals/${deal!.id}/report`, {
+    data: { buyerEmail: BUYER_EMAIL, token: accessToken, reason: 'other' },
+  });
+  expect(reflag.status()).toBe(201);
+  const queue2 = await admin.get('/admin');
+  const queue2Html = await queue2.text();
+  const reflagRow = (await reflag.json()) as { id: string };
+  expect(queue2Html).toContain(`deal-report-${reflagRow.id}`);
+
   // --- logout: server-side revocation kills the cookie --------------------
   const me1 = await buyer.get('/api/auth/me');
   expect(((await me1.json()) as { user: unknown }).user).toBeTruthy();

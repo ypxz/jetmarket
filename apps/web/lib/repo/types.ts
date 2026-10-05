@@ -177,6 +177,22 @@ export interface ListingReport {
  *  vector). Reporter is the RFQ's buyerEmail — bearer-token proven; buyers
  *  rarely hold sessions so no user id exists to key on. */
 export type QuoteReportStatus = "open" | "dismissed";
+
+/** QA-555: buyer flag on a closed deal — the last unreported marketplace
+ *  entity (the service never happened / scam / abuse, after money moved).
+ *  Same lifecycle as quote_reports; reporter is the mailbox, not a user. */
+export type DealReportStatus = "open" | "dismissed";
+
+export interface DealReport {
+  id: string;
+  dealId: string;
+  reporterEmail: string;
+  reason: string;
+  note: string | null;
+  status: DealReportStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+}
 export interface QuoteReport {
   id: string;
   quoteId: string;
@@ -357,6 +373,8 @@ export interface BuyerDeleteResult {
   alerts: number;
   /** quote_reports whose reporterEmail was anonymized. */
   quoteReports: number;
+  /** QA-555: deal_reports whose reporterEmail was anonymized. */
+  dealReports: number;
   /** quotes.counterMessage + counter-round notes nulls. */
   counterScrubbed: number;
   /** rfq_amendment field-snapshots scrubbed. */
@@ -398,6 +416,8 @@ export interface BuyerExport {
   searchAlerts: SearchAlert[];
   /** Flags this mailbox filed (admin audit rows — the reporter's own copy). */
   quoteReports: QuoteReport[];
+  /** QA-555: deal flags this mailbox filed. */
+  dealReports: DealReport[];
   /** Listing flags the account filed — only meaningful when `user` exists
    *  (listing_reports keys reporterId, not email). */
   listingReports: ListingReport[];
@@ -1143,6 +1163,8 @@ export interface Repo {
   listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
+    /** QA-555: batch-lookup these deal ids (admin flag-queue joins). */
+    ids?: string[];
     /** QA-451: restrict to deals minted on these quotes (buyer inbox
      *  attaches deal id + rating to accepted quote rows). */
     quoteIds?: string[];
@@ -1292,6 +1314,30 @@ export interface Repo {
    *  route sweeps a flagged spammer's accusations with their demand
    *  (QA-465 analog, keyed by email since quote reports have no user id). */
   resolveQuoteReportsByReporter(email: string): Promise<number>;
+
+  /** QA-555: buyer flags a closed deal — one OPEN report per (deal,
+   *  reporter email); a repeat flag returns null (route 409s) instead of
+   *  stacking queue rows; a dismissed report doesn't block a fresh flag. */
+  createDealReport(input: {
+    dealId: string;
+    reporterEmail: string;
+    reason: string;
+    note?: string;
+  }): Promise<DealReport | null>;
+  /** Admin deal-flag queue — newest first, optionally scoped to one
+   *  status and one vertical (via the deal→quote→rfq join). */
+  listDealReports(opts?: {
+    status?: DealReportStatus;
+    vertical?: string;
+    reporterEmail?: string;
+    limit?: number;
+  }): Promise<DealReport[]>;
+  /** Admin dismisses a deal flag — CAS on status='open'; false when
+   *  nothing open was found. */
+  resolveDealReport(id: string): Promise<boolean>;
+  /** Bulk-dismiss every open deal flag one address filed — joins the
+   *  buyer-block sweep (QA-465 analog). */
+  resolveDealReportsByReporter(email: string): Promise<number>;
 
   /** QA-467: append-only moderation audit trail. Every enforcement route
    *  appends after its write (non-fatal — never lets auditability fail a

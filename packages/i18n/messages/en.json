@@ -525,7 +525,15 @@
     "pausedMsg": "Request paused — no new offers will arrive.",
     "resumedMsg": "Request resumed — accepting offers again.",
     "declineAll": "Decline all",
-    "declinedAllMsg": "All open offers declined — the request stays open for new ones."
+    "declinedAllMsg": "All open offers declined — the request stays open for new ones.",
+    "reportDeal": "Report a problem",
+    "reportDealTitle": "Report this deal",
+    "reportDealReason": {
+      "no_service": "Service not delivered",
+      "scam": "Scam / fraud",
+      "abusive": "Abusive",
+      "other": "Other"
+    }
   },
   "design": {
     "title": "Design system",
@@ -1387,7 +1395,9 @@
     "colJoined": "Joined",
     "opReceivingRfqs": "receiving RFQs",
     "opAway": "away — no new RFQs",
-    "opMailMuted": "RFQ mail muted"
+    "opMailMuted": "RFQ mail muted",
+    "dealReports": "Deal reports ({count})",
+    "noDealReports": "No open deal flags."
   },
   "operator": {
     "listingsTitle": "Active listings ({count})",

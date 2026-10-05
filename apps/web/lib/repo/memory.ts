@@ -10,6 +10,7 @@ import type {
   CounterRound,
   CounterRoundOutcome,
   Deal,
+  DealReport,
   JobInfo,
   Listing,
   ListingReport,
@@ -57,6 +58,7 @@ class MemoryRepo implements Repo {
   private quoteRevisions = new Map<string, QuoteRevision[]>();
   private rfqAmendments = new Map<string, RfqAmendment[]>();
   deals = new Map<string, Deal>();
+  private dealReports = new Map<string, DealReport>();
   subscriptions = new Map<string, Subscription>();
   /** rfqId -> operatorId -> match row (memory-mode fan-out, QA-89). */
   rfqMatches = new Map<
@@ -1821,6 +1823,93 @@ class MemoryRepo implements Repo {
     return n;
   }
 
+  async createDealReport(input: {
+    dealId: string;
+    reporterEmail: string;
+    reason: string;
+    note?: string;
+  }): Promise<DealReport | null> {
+    // QA-555: sync dedupe scan (QA-333) — a repeat OPEN flag from the
+    // same address returns null (route 409s); dismissed re-arms.
+    const want = input.reporterEmail.toLowerCase();
+    for (const r of this.dealReports.values()) {
+      if (
+        r.dealId === input.dealId &&
+        r.reporterEmail.toLowerCase() === want &&
+        r.status === "open"
+      ) {
+        return null;
+      }
+    }
+    const row: DealReport = {
+      id: uid("drep"),
+      dealId: input.dealId,
+      reporterEmail: input.reporterEmail,
+      reason: input.reason,
+      note: input.note ?? null,
+      status: "open",
+      createdAt: now(),
+      resolvedAt: null,
+    };
+    this.dealReports.set(row.id, row);
+    return row;
+  }
+
+  async listDealReports(opts?: {
+    status?: DealReport["status"];
+    vertical?: string;
+    reporterEmail?: string;
+    limit?: number;
+  }): Promise<DealReport[]> {
+    const reporter = opts?.reporterEmail?.toLowerCase();
+    const rows = [...this.dealReports.values()].filter((r) => {
+      if (opts?.status !== undefined && r.status !== opts.status) return false;
+      if (reporter !== undefined && r.reporterEmail.toLowerCase() !== reporter)
+        return false;
+      if (opts?.vertical !== undefined) {
+        // Reports carry no vertical — scope through deal→quote→rfq.
+        const deal = this.deals.get(r.dealId);
+        const quote = deal ? this.quotes.get(deal.quoteId) : undefined;
+        const rfq = quote ? this.rfqs.get(quote.rfqId) : undefined;
+        if (!rfq || rfq.vertical !== opts.vertical) return false;
+      }
+      return true;
+    });
+    // Newest-first; same-ms ties break later-insert-first (QA-467 parity).
+    return rows
+      .map((r, i) => ({ r, i }))
+      .sort(
+        (a, b) =>
+          b.r.createdAt.localeCompare(a.r.createdAt) || b.i - a.i,
+      )
+      .map((x) => x.r)
+      .slice(0, opts?.limit ?? 100);
+  }
+
+  async resolveDealReport(id: string): Promise<boolean> {
+    // CAS on 'open' — sync check-write (QA-333): a repeat dismiss 409s.
+    const r = this.dealReports.get(id);
+    if (!r || r.status !== "open") return false;
+    this.dealReports.set(id, { ...r, status: "dismissed", resolvedAt: now() });
+    return true;
+  }
+
+  async resolveDealReportsByReporter(email: string): Promise<number> {
+    const want = email.toLowerCase();
+    let n = 0;
+    for (const [id, r] of this.dealReports) {
+      if (r.status === "open" && r.reporterEmail.toLowerCase() === want) {
+        this.dealReports.set(id, {
+          ...r,
+          status: "dismissed",
+          resolvedAt: now(),
+        });
+        n++;
+      }
+    }
+    return n;
+  }
+
   async logAdminEvent(
     e: Omit<AdminEvent, "id" | "createdAt">,
   ): Promise<AdminEvent> {
@@ -1890,6 +1979,7 @@ class MemoryRepo implements Repo {
       rfqs: 0,
       alerts: 0,
       quoteReports: 0,
+      dealReports: 0,
       counterScrubbed: 0,
       amendmentsScrubbed: 0,
       pendingJobs: 0,
@@ -1938,6 +2028,16 @@ class MemoryRepo implements Repo {
       if (quote && this.rfqs.get(quote.rfqId)?.vertical === vertical) {
         this.quoteReports.set(id, { ...rep, reporterEmail: tomb(rep.id) });
         out.quoteReports += 1;
+      }
+    }
+    // QA-555: deal flags scrub the same way through deal→quote→rfq.
+    for (const [id, rep] of this.dealReports) {
+      if (rep.reporterEmail.toLowerCase() !== key) continue;
+      const deal = this.deals.get(rep.dealId);
+      const quote = deal ? this.quotes.get(deal.quoteId) : undefined;
+      if (quote && this.rfqs.get(quote.rfqId)?.vertical === vertical) {
+        this.dealReports.set(id, { ...rep, reporterEmail: tomb(rep.id) });
+        out.dealReports += 1;
       }
     }
     for (const [id, q] of this.quotes) {
@@ -2011,13 +2111,14 @@ class MemoryRepo implements Repo {
       this.listQuotes({ rfqIds }),
     ]);
     const quoteIds = quotes.map((q) => q.id);
-    const [counterRounds, revisions, deals, searchAlerts, quoteReports, user] =
+    const [counterRounds, revisions, deals, searchAlerts, quoteReports, dealReports, user] =
       await Promise.all([
         this.listCounterRounds(quoteIds),
         this.listQuoteRevisions(quoteIds),
         this.listDeals({ quoteIds }),
         this.listSearchAlerts({ email: key, vertical }),
         this.listQuoteReports({ reporterEmail: key, vertical, limit: 500 }),
+        this.listDealReports({ reporterEmail: key, vertical, limit: 500 }),
         this.findUserByEmail(key),
       ]);
     const listingReports = user
@@ -2043,6 +2144,7 @@ class MemoryRepo implements Repo {
       })),
       searchAlerts,
       quoteReports,
+      dealReports,
       listingReports,
     };
   }
@@ -2088,11 +2190,16 @@ class MemoryRepo implements Repo {
   async listDeals(filter?: {
     operatorId?: string;
     vertical?: string;
+    ids?: string[];
     quoteIds?: string[];
     limit?: number;
     offset?: number;
   }): Promise<Deal[]> {
     let out = [...this.deals.values()];
+    if (filter?.ids !== undefined) {
+      const want = new Set(filter.ids);
+      out = out.filter((d) => want.has(d.id));
+    }
     if (filter?.quoteIds !== undefined) {
       const want = new Set(filter.quoteIds);
       out = out.filter((d) => want.has(d.quoteId));

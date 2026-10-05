@@ -147,6 +147,14 @@ function QuotesInner() {
   const [reportedIds, setReportedIds] = useState<ReadonlySet<string>>(
     new Set(),
   );
+  // QA-555: same picker for closed deals — keyed by deal id, reasons are
+  // deal-shaped (the trip never happened ≠ an off-platform offer).
+  const [reportingDealId, setReportingDealId] = useState<string | null>(null);
+  const [reportDealReason, setReportDealReason] = useState("no_service");
+  const [reportDealNote, setReportDealNote] = useState("");
+  const [reportedDealIds, setReportedDealIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   // QA-486: one in-flight mutation at a time. Every action below raced a
   // double-click before — accept/close/extend 409'd harmlessly, but a
   // second PATCH succeeded and re-mailed every delivered operator. The ref
@@ -496,10 +504,51 @@ function QuotesInner() {
     setMsg(t("reportedMsg"));
   }
 
+  // QA-555: flag a CLOSED deal — the last unreported surface, and the one
+  // where money already moved. Same mailbox proof as every buyer action;
+  // a dedupe 409 still lands the "Reported" state (the flag exists).
+  const reportDeal = (dealId: string) =>
+    withBusy(() => reportDealImpl(dealId));
+
+  async function reportDealImpl(dealId: string) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/deals/${dealId}/report`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          buyerEmail: email,
+          token,
+          reason: reportDealReason,
+          ...(reportDealNote.trim() ? { note: reportDealNote.trim() } : {}),
+        }),
+      });
+    } catch {
+      setMsg(tc("error"));
+      return;
+    }
+    const data = await readJsonOr<{ error?: string; code?: string }>(res, {});
+    if (!res.ok && res.status !== 409) {
+      setMsg(errText(data, tc("error")));
+      return;
+    }
+    setReportedDealIds((prev) => new Set(prev).add(dealId));
+    setReportingDealId(null);
+    setReportDealNote("");
+    setMsg(t("reportedMsg"));
+  }
+
   const QUOTE_REPORT_REASONS = [
     "off_platform",
     "scam",
     "spam",
+    "abusive",
+    "other",
+  ] as const;
+
+  const DEAL_REPORT_REASONS = [
+    "no_service",
+    "scam",
     "abusive",
     "other",
   ] as const;
@@ -1252,6 +1301,81 @@ function QuotesInner() {
                                 {q.operator.contactEmail}
                               </a>
                             </p>
+                          ) : null}
+                          {/* QA-555: the deal went wrong — flag it for
+                              moderation. Same two-step picker as the quote
+                              flag, deal-shaped reasons; voided deals carry
+                              the fell-through note instead. */}
+                          {q.status === "accepted" &&
+                          q.deal?.id &&
+                          q.deal.invoiceStatus !== "void" ? (
+                            reportedDealIds.has(q.deal.id) ? (
+                              <span
+                                className="text-xs text-muted"
+                                data-testid={`deal-reported-${q.deal.id}`}
+                              >
+                                {t("reportedDone")}
+                              </span>
+                            ) : reportingDealId === q.deal.id ? (
+                              <span
+                                className="mt-1 flex flex-wrap items-center gap-1"
+                                data-testid={`deal-report-picker-${q.deal.id}`}
+                              >
+                                <span className="text-xs text-muted">
+                                  {t("reportDealTitle")}
+                                </span>
+                                {DEAL_REPORT_REASONS.map((r) => (
+                                  <button
+                                    key={r}
+                                    onClick={() => setReportDealReason(r)}
+                                    disabled={busy}
+                                    data-testid={`deal-report-reason-${r}-${q.deal!.id}`}
+                                    className={`rounded-md border px-2 py-1 text-xs ${
+                                      reportDealReason === r
+                                        ? "border-primary bg-surface font-medium"
+                                        : "border-border bg-background"
+                                    }`}
+                                  >
+                                    {t(`reportDealReason.${r}`)}
+                                  </button>
+                                ))}
+                                <input
+                                  value={reportDealNote}
+                                  onChange={(e) =>
+                                    setReportDealNote(e.target.value)
+                                  }
+                                  maxLength={500}
+                                  placeholder={t("reportNotePlaceholder")}
+                                  aria-label={t("reportNotePlaceholder")}
+                                  data-testid={`deal-report-note-${q.deal.id}`}
+                                  className="w-40 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                                />
+                                <button
+                                  onClick={() => reportDeal(q.deal!.id!)}
+                                  disabled={busy}
+                                  data-testid={`deal-report-send-${q.deal.id}`}
+                                  className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                                >
+                                  {t("reportSend")}
+                                </button>
+                                <button
+                                  onClick={() => setReportingDealId(null)}
+                                  data-testid={`deal-report-cancel-${q.deal.id}`}
+                                  className="text-xs text-muted underline"
+                                >
+                                  {t("cancelEdit")}
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => setReportingDealId(q.deal!.id!)}
+                                disabled={busy}
+                                data-testid={`deal-report-${q.deal.id}`}
+                                className="text-xs text-muted underline"
+                              >
+                                {t("reportDeal")}
+                              </button>
+                            )
                           ) : null}
                           {/* QA-522: negotiation trail — what became of
                               each counter (the live one chips above).
