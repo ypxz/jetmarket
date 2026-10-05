@@ -1850,6 +1850,29 @@ export function repoContract(
       );
       expect(await repo.getRfqByDedupeKey(`amk4-${tag}`)).toBeUndefined();
       expect(await repo.getRfqByDedupeKey(`taken-${tag}`)).toBeUndefined();
+
+      // QA-536: every ADMITTED amend logged its superseded map — two
+      // rungs newest-first (same-value rewrite counts; the refused
+      // collision + terminal writes logged nothing).
+      const trail = await repo.listRfqAmendments([rfq.id]);
+      expect(trail.map((a) => a.rfqId)).toEqual([rfq.id, rfq.id]);
+      expect(trail[0]!.fields).toEqual(fields2);
+      expect(trail[1]!.fields).toEqual({
+        from: "ZRH",
+        to: "NCE",
+        dateTo: isoIn(10),
+      });
+      // Batch + isolation: the dead twin never amended, a foreign id and
+      // a non-uuid add nothing.
+      expect(
+        await repo.listRfqAmendments([twin.id, crypto.randomUUID()]),
+      ).toEqual([]);
+      expect(
+        (await repo.listRfqAmendments([twin.id, rfq.id])).filter(
+          (a) => a.rfqId === twin.id,
+        ),
+      ).toEqual([]);
+      expect(await repo.listRfqAmendments(["not-a-uuid"])).toEqual([]);
     });
 
     it("listRfqMatchOperatorIds returns delivered holders minus dismissals (QA-481)", async () => {

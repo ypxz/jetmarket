@@ -279,6 +279,17 @@ export interface QuoteRevision {
   supersededAt: string;
 }
 
+/** QA-536: a superseded RFQ field-map — what the buyer's edit replaced.
+ *  Old-value logging (same rule as QuoteRevision): diff a rung against
+ *  the NEXT rung, or the live fields for the newest one, to show what
+ *  the edit changed. Rows come back newest-first per RFQ. */
+export interface RfqAmendment {
+  id: string;
+  rfqId: string;
+  fields: Record<string, unknown>;
+  amendedAt: string;
+}
+
 /** QA-527: saved quote preset — operators re-type the same offer shapes,
  *  so a named (amount, message) pair can be dropped into the inbox form.
  *  `amount` is DISPLAY units: the quote picks up the listing's currency at
@@ -626,6 +637,11 @@ export interface Repo {
     fields: Record<string, unknown>,
     dedupeKey: string,
   ): Promise<boolean>;
+  /** QA-536: batch amendment trail — superseded field maps for the given
+   *  RFQs, newest-first per RFQ. Operator inbox joins this to render
+   *  "Buyer edited: seats 8 → 6" rungs (QA-485's stale chip named the
+   *  WHAT-happened; this names the what-CHANGED). */
+  listRfqAmendments(rfqIds: string[]): Promise<RfqAmendment[]>;
   /**
    * Operators who can still SEE this RFQ in their inbox (QA-481): delivered
    * match holders — pg `state <> 'delayed'` (pending/sent/failed all mean

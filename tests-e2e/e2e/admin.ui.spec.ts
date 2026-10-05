@@ -15,7 +15,7 @@ test('admin dashboard + jobs render and verify toggles', async ({ page }) => {
   test.setTimeout(90_000);
 
   // Seeded admin identity — ADMIN_EMAILS promotes this address at sign-in.
-  await signUpAndLogin(page, 'admin@jetmarket.local');
+  await signUpAndLogin(page, `e2e-admin-x${run}@jetmarket.local`);
   await page.goto('/admin');
   await expect(
     page.getByRole('heading', { name: 'Admin', level: 1 }),

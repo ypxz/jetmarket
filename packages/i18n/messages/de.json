@@ -1233,7 +1233,8 @@
       "buyerRated": "Bewerteter Käufer {avg}★ · {count}",
       "reviseLineOp": "Von Ihnen überarbeitet — bis {date}: {amount}",
       "pausedBadge": "Pausiert",
-      "intakePaused": "Käufer hat neue Angebote pausiert"
+      "intakePaused": "Käufer hat neue Angebote pausiert",
+      "amendLine": "Vom Käufer geändert — {date}: {changes}"
     },
     "billing": {
       "title": "Tarif & Abrechnung",

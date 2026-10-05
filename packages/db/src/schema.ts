@@ -301,6 +301,23 @@ export const quoteCounterRounds = pgTable(
 // QA-530: superseded quote terms — each revise logs the (amount, currency,
 // message) it replaced inside the same CAS, so the buyer's card shows the
 // ladder "was X → now Y" instead of a bare 'updated' bump.
+export const rfqAmendments = pgTable(
+  "rfq_amendments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    rfqId: uuid("rfq_id")
+      .notNull()
+      .references(() => rfqs.id, { onDelete: "cascade" }),
+    // QA-536: the fields map this amend superseded (old-value logging —
+    // diff it against the NEXT amendment, or the live row for the latest).
+    fields: jsonb("fields").notNull(),
+    amendedAt: timestamp("amended_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("rfq_amendments_rfq_idx").on(t.rfqId)],
+);
+
 export const quoteRevisions = pgTable(
   "quote_revisions",
   {

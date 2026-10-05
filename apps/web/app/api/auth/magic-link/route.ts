@@ -38,7 +38,17 @@ export async function POST(req: Request) {
   const adminEmails = (process.env.ADMIN_EMAILS ?? "admin@jetmarket.local")
     .split(",")
     .map((e) => e.trim().toLowerCase());
-  const resolvedRole = adminEmails.includes(email.toLowerCase()) ? "admin" : role;
+  // QA-536: allowlist entries may carry a `*` wildcard segment
+  // (`e2e-admin-*@jetmarket.local` → prefix/suffix match) so test fleets
+  // mint per-spec admin inboxes without sharing one ml:<email> bucket.
+  // Exact entries match byte-for-byte — prod config unchanged.
+  const lower = email.toLowerCase();
+  const isAdminEmail = adminEmails.some((e) => {
+    if (!e.includes("*")) return e === lower;
+    const star = e.indexOf("*");
+    return lower.startsWith(e.slice(0, star)) && lower.endsWith(e.slice(star + 1));
+  });
+  const resolvedRole = isAdminEmail ? "admin" : role;
   // QA-494: the sign-in page's locale stamps users.locale (adopt-latest) —
   // operator/admin-facing mail renders in it from here on.
   const user = await repo.createUser(email, resolvedRole, locale);

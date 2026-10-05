@@ -18,7 +18,7 @@ const run = Date.now();
 const OPERATOR_EMAIL = `e2e-operator-${run}@jetmarket.local`;
 const OPERATOR2_EMAIL = `e2e-operator2-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-buyer-${run}@jetmarket.local`;
-const ADMIN_EMAIL = 'admin@jetmarket.local';
+const ADMIN_EMAIL = `e2e-admin-x${run}@jetmarket.local`;
 const LISTING_TITLE = `E2E Charter ${run}`;
 const QUOTE_AMOUNT = 42000;
 // 3% success fee on charters (lib/fees.ts SUCCESS_FEE_PCT)

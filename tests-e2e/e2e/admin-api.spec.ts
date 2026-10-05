@@ -11,7 +11,7 @@ import { isoDateIn } from '../helpers/flow';
 test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.1.7' } });
 
 const run = Date.now();
-const ADMIN_EMAIL = 'admin@jetmarket.local';
+const ADMIN_EMAIL = `e2e-admin-x${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-adm-buyer-${run}@jetmarket.local`;
 const OPERATOR_EMAIL = `e2e-adm-op-${run}@jetmarket.local`;
 // Fresh rate-limit bucket per run for admin routes (keyed on client IP).

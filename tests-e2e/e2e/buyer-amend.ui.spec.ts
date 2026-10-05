@@ -132,6 +132,20 @@ test('buyer edits a live RFQ on /quotes: form prefills, echo updates', async ({
     ).toBeVisible();
   });
 
+  await step('operator inbox shows the "Buyer edited" trail (QA-536)', async () => {
+    await operator.goto('/app/rfqs');
+    const item = operator
+      .locator('li[data-testid^="rfq-"]')
+      .filter({ hasText: LISTING_TITLE });
+    const trail = item.locator(tidPrefix('amendhist-'));
+    await expect(trail).toBeVisible();
+    // One amend rung: departure e2e → GVA, labelled by the field def.
+    const rung = trail.locator(tidPrefix('amend-'));
+    await expect(rung).toHaveCount(1);
+    await expect(rung).toContainText('e2e');
+    await expect(rung).toContainText('GVA');
+  });
+
   await step('operator revision clears the pre-update flag', async () => {
     const opQuote = operator.locator(tidPrefix('op-quote-')).first();
     await expect(opQuote).toBeVisible();

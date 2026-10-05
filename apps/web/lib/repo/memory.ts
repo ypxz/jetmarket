@@ -21,6 +21,7 @@ import type {
   QuoteTemplate,
   Repo,
   Rfq,
+  RfqAmendment,
   RfqNote,
   RfqReport,
   SearchAlert,
@@ -50,6 +51,7 @@ class MemoryRepo implements Repo {
   counterRounds = new Map<string, CounterRound[]>();
   // QA-530: superseded quote terms per quoteId, newest-first via unshift.
   private quoteRevisions = new Map<string, QuoteRevision[]>();
+  private rfqAmendments = new Map<string, RfqAmendment[]>();
   deals = new Map<string, Deal>();
   subscriptions = new Map<string, Subscription>();
   /** rfqId -> operatorId -> match row (memory-mode fan-out, QA-89). */
@@ -666,6 +668,16 @@ class MemoryRepo implements Repo {
     for (const [k, v] of this.rfqDedupe) {
       if (v === id) this.rfqDedupe.delete(k);
     }
+    // QA-536: superseded field-map rung inside the same synchronous
+    // mutation — the trail can never skip an edit the CAS admitted.
+    const rungs = this.rfqAmendments.get(id) ?? [];
+    rungs.unshift({
+      id: crypto.randomUUID(),
+      rfqId: id,
+      fields: rfq.fields,
+      amendedAt: now(),
+    });
+    this.rfqAmendments.set(id, rungs);
     this.rfqs.set(id, { ...rfq, fields, updatedAt: now() });
     this.rfqDedupe.set(dedupeKey, id);
     return true;
@@ -1106,6 +1118,19 @@ class MemoryRepo implements Repo {
       b.supersededAt === a.supersededAt
         ? 0
         : b.supersededAt.localeCompare(a.supersededAt),
+    );
+  }
+  async listRfqAmendments(rfqIds: string[]) {
+    const out: RfqAmendment[] = [];
+    for (const id of rfqIds) {
+      const rungs = this.rfqAmendments.get(id);
+      if (rungs) out.push(...rungs);
+    }
+    // Newest first per RFQ — same-ms ties keep unshift (insert) order.
+    return out.sort((a, b) =>
+      b.amendedAt === a.amendedAt
+        ? 0
+        : b.amendedAt.localeCompare(a.amendedAt),
     );
   }
   async countCounterRoundsByOutcome(operatorId: string) {

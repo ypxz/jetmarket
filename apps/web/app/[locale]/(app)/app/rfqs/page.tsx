@@ -113,7 +113,7 @@ export default async function RfqInboxPage({
   const rfqIds = rfqsPage.map((r) => r.id);
   // pendingRfqs powers the free-plan delayed-RFQ teaser (QA-225) — delayed
   // matches are invisible until due, so the count becomes the upsell.
-  const [listingRows, quoteRows, pendingRfqs, counteredCount, noteRows, buyerScores] =
+  const [listingRows, quoteRows, pendingRfqs, counteredCount, noteRows, buyerScores, amendRows] =
     await Promise.all([
       repo.listListings({
         ids: [
@@ -142,7 +142,16 @@ export default async function RfqInboxPage({
       // keyed by buyer email. Server-side join only: the address never
       // reaches the client (operatorRfqView strips it below).
       repo.avgBuyerScores(rfqsPage.map((r) => r.buyerEmail)),
+      // QA-536: amendment trail — superseded field-maps, diffed
+      // page-side against the next rung (or live fields) below.
+      repo.listRfqAmendments(rfqIds),
     ]);
+  const amendsByRfq = new Map<string, typeof amendRows>();
+  for (const a of amendRows) {
+    const arr = amendsByRfq.get(a.rfqId) ?? [];
+    arr.push(a);
+    amendsByRfq.set(a.rfqId, arr);
+  }
   // QA-416 "New" badge: rows created after the last inbox visit (never
   // visited → everything is new). One stamp covers owned + matched
   // deliveries — owned RFQs have no match row by design (self-match is
@@ -417,6 +426,55 @@ export default async function RfqInboxPage({
                     </div>
                   ))}
                 </dl>
+                {/* QA-536: "Buyer edited" rungs — the stale chip (QA-485)
+                    says an offer predates an amend; this names WHAT the
+                    edit changed. Rung i diffs its superseded map against
+                    the next-newer rung, or the live fields for the
+                    newest. No-op saves diff empty and don't render. */}
+                {(() => {
+                  const rungs = amendsByRfq.get(r.id);
+                  if (!rungs?.length) return null;
+                  const lines = rungs
+                    .map((a, i) => {
+                      const after = i === 0 ? r.fields : rungs[i - 1]!.fields;
+                      const changes = [
+                        ...new Set([
+                          ...Object.keys(a.fields),
+                          ...Object.keys(after),
+                        ]),
+                      ]
+                        .filter(
+                          (k) =>
+                            String(a.fields[k] ?? "") !==
+                            String(after[k] ?? ""),
+                        )
+                        .map(
+                          (k) =>
+                            `${fieldLabels.get(k) ?? k}: ${String(a.fields[k] ?? "—")} → ${String(after[k] ?? "—")}`,
+                        );
+                      return { a, changes };
+                    })
+                    .filter((l) => l.changes.length > 0);
+                  if (!lines.length) return null;
+                  return (
+                    <ul
+                      className="mt-1 space-y-0.5 text-xs text-muted"
+                      data-testid={`amendhist-${r.id}`}
+                    >
+                      {lines.map(({ a, changes }) => (
+                        <li key={a.id} data-testid={`amend-${a.id}`}>
+                          {t("amendLine", {
+                            date: new Date(a.amendedAt).toLocaleDateString(
+                              locale,
+                              { month: "short", day: "numeric" },
+                            ),
+                            changes: changes.join(" · "),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
                 {/* QA-524: private triage note — the inbox's memory
                     between visits; nobody else ever sees it. */}
                 <RfqNote

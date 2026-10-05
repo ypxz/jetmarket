@@ -1233,7 +1233,8 @@
       "buyerRated": "Rated buyer {avg}★ · {count}",
       "reviseLineOp": "You revised — was {amount} before {date}",
       "pausedBadge": "Paused",
-      "intakePaused": "Buyer paused new offers"
+      "intakePaused": "Buyer paused new offers",
+      "amendLine": "Buyer edited — {date}: {changes}"
     },
     "billing": {
       "title": "Plan & billing",

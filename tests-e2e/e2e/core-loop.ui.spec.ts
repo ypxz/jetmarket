@@ -21,7 +21,7 @@ test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.8.7' } });
 const run = Date.now();
 const OPERATOR_EMAIL = `e2e-ui-operator-${run}@jetmarket.local`;
 const BUYER_EMAIL = `e2e-ui-buyer-${run}@jetmarket.local`;
-const ADMIN_EMAIL = 'admin@jetmarket.local';
+const ADMIN_EMAIL = `e2e-admin-x${run}@jetmarket.local`;
 const LISTING_TITLE = `E2E UI Charter ${run}`;
 // Unique per run — the shared dev repo accumulates deals across runs, so a
 // fixed amount would collide with leftover ledger rows.

@@ -57,6 +57,7 @@ const {
   quotes,
   quoteCounterRounds,
   quoteRevisions,
+  rfqAmendments,
   operatorRfqNotes,
   operatorQuoteTemplates,
   deals,
@@ -1085,15 +1086,44 @@ export class DrizzleRepo implements Repo {
   ): Promise<boolean> {
     if (!isUuid(id)) return false;
     // Full-fields replace (the edit form round-trips everything) + the
-    // caller-recomputed dedupe key — one CAS under the live-status gate.
+    // caller-recomputed dedupe key + the QA-536 superseded-map rung — one
+    // tx so the trail can't skip an edit the CAS admitted. FOR UPDATE
+    // serializes racing amends (T2 re-reads post-commit fields).
+    return this.db.transaction(async (tx) => {
+      const [old] = await tx
+        .select({ fields: rfqs.fields })
+        .from(rfqs)
+        .where(
+          and(
+            eq(rfqs.id, id),
+            inArray(rfqs.status, ["new", "matched", "quoted"]),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!old) return false;
+      await tx
+        .update(rfqs)
+        .set({ fields, dedupeKey, updatedAt: new Date() })
+        .where(eq(rfqs.id, id));
+      await tx.insert(rfqAmendments).values({ rfqId: id, fields: old.fields });
+      return true;
+    });
+  }
+  async listRfqAmendments(rfqIds: string[]) {
+    const ids = rfqIds.filter(isUuid);
+    if (ids.length === 0) return [];
     const rows = await this.db
-      .update(rfqs)
-      .set({ fields, dedupeKey, updatedAt: new Date() })
-      .where(
-        and(eq(rfqs.id, id), inArray(rfqs.status, ["new", "matched", "quoted"])),
-      )
-      .returning({ id: rfqs.id });
-    return rows.length > 0;
+      .select()
+      .from(rfqAmendments)
+      .where(inArray(rfqAmendments.rfqId, ids))
+      .orderBy(desc(rfqAmendments.amendedAt), rfqAmendments.id);
+    return rows.map((r) => ({
+      id: r.id,
+      rfqId: r.rfqId,
+      fields: (r.fields ?? {}) as Record<string, unknown>,
+      amendedAt: iso(r.amendedAt),
+    }));
   }
   async listRfqMatchOperatorIds(rfqId: string): Promise<string[]> {
     if (!isUuid(rfqId)) return [];

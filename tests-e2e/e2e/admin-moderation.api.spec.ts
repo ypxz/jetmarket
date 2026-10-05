@@ -38,7 +38,7 @@ test.use({ extraHTTPHeaders: { 'fly-client-ip': '10.99.2.7' } });
 
 const run = Date.now();
 const OPERATOR_EMAIL = `e2e-mod-operator-${run}@jetmarket.local`;
-const ADMIN_EMAIL = 'admin@jetmarket.local';
+const ADMIN_EMAIL = `e2e-admin-x${run}@jetmarket.local`;
 
 async function login(email: string, role: 'buyer' | 'operator' = 'buyer') {
   const ctx = await request.newContext({

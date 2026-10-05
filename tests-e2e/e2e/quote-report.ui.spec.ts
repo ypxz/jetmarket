@@ -159,7 +159,7 @@ test('buyer flags a quote; admin reviews and dismisses it', async ({
       order by qr.created_at desc limit 1`;
     expect(report).toBeTruthy();
 
-    await signUpAndLogin(admin, 'admin@jetmarket.local');
+    await signUpAndLogin(admin, `e2e-admin-qr${run}@jetmarket.local`);
     await admin.goto('/admin');
     const section = admin.getByTestId('admin-quote-reports');
     await expect(section).toBeVisible({ timeout: 15_000 });
