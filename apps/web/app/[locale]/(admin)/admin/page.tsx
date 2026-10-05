@@ -908,7 +908,27 @@ export default async function AdminPage({
                   {new Date(r.createdAt).toLocaleDateString(locale)}
                 </td>
                 <td className="py-2">
-                  <DismissDealReportButton reportId={r.id} />
+                  {/* QA-556: the flag row IS the triage — a 'no_service'
+                      report is the revert case (QA-550), and serial abuse
+                      answers the same sanctions every queue carries. */}
+                  <span className="inline-flex gap-1">
+                    {d && d.invoiceStatus !== "paid" ? (
+                      <RevertDealButton dealId={d.id} />
+                    ) : null}
+                    {op ? (
+                      <SuspendButton
+                        operatorId={op.id}
+                        suspended={op.suspended ?? false}
+                      />
+                    ) : null}
+                    <BuyerBlockButton
+                      email={r.reporterEmail}
+                      blocked={blockedEmails.has(
+                        r.reporterEmail.toLowerCase(),
+                      )}
+                    />
+                    <DismissDealReportButton reportId={r.id} />
+                  </span>
                 </td>
               </tr>
               );

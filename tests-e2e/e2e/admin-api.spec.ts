@@ -372,6 +372,21 @@ test('admin api: jobs, operator verify, rfq spam, deals — plus logout + upload
   const reflagRow = (await reflag.json()) as { id: string };
   expect(queue2Html).toContain(`deal-report-${reflagRow.id}`);
 
+  // --- QA-556: the flag row carries the enforcement trio inline -------
+  // A 'no_service' flag is the revert case — the moderator shouldn't
+  // hunt the ledger to act. The row's trailing cell holds suspend +
+  // block + dismiss (revert is paid-deal-gated: this fixture IS paid, so
+  // it correctly stays off).
+  const flagRowStart = queue2Html.indexOf(`deal-report-${reflagRow.id}"`);
+  const flagCell = queue2Html.slice(
+    flagRowStart,
+    queue2Html.indexOf('</tr>', flagRowStart),
+  );
+  expect(flagCell).toContain(`suspend-${operatorId}`);
+  expect(flagCell).toContain(`block-buyer-${BUYER_EMAIL}`);
+  expect(flagCell).toContain(`dismiss-deal-report-${reflagRow.id}`);
+  expect(flagCell).not.toContain(`revert-deal-${deal!.id}`);
+
   // --- logout: server-side revocation kills the cookie --------------------
   const me1 = await buyer.get('/api/auth/me');
   expect(((await me1.json()) as { user: unknown }).user).toBeTruthy();
