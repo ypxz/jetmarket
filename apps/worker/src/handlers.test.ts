@@ -113,6 +113,7 @@ function fakeRepo(over: Partial<WorkerRepo> = {}): WorkerRepo & {
         rfqId: "r1",
         state: "pending",
         rfqStatus: "new",
+        operatorId: "op1",
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
@@ -551,6 +552,10 @@ describe("handleJob dispatch", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe("ops@alpinejet.example");
     expect(sent[0]!.subject).toContain("ZRH");
+    // QA-541: the match mail carries its own signed opt-out footer.
+    expect(sent[0]!.text).toContain(
+      "/api/operator/notify/unsubscribe?token=op1.",
+    );
     expect(repo.calls["markMatchState"]).toEqual([["m9", "sent"]]);
   });
 
@@ -561,6 +566,7 @@ describe("handleJob dispatch", () => {
         rfqId: "r1",
         state: "pending",
         rfqStatus: "new",
+        operatorId: "op1",
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "de",
         operatorName: "Alpine Jet",
@@ -598,6 +604,7 @@ describe("handleJob dispatch", () => {
         rfqId: "r1",
         state: "pending",
         rfqStatus: "new",
+        operatorId: "op1",
         operatorEmail: "ops@alpine.example",
         operatorLocale: "en",
         operatorName: "Alpine Werkzeug",
@@ -646,6 +653,7 @@ describe("handleJob dispatch", () => {
         rfqStatus: "new",
         operatorEmail: "ops@alpine.example",
         operatorLocale: "en",
+        operatorId: "op1",
         operatorName: "Alpine",
         notifyRfqMatch: true,
         rfqFields: {
@@ -678,6 +686,7 @@ describe("handleJob dispatch", () => {
         rfqId: "r1",
         state: "pending",
         rfqStatus: "new",
+        operatorId: "op1",
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
@@ -707,6 +716,7 @@ describe("handleJob dispatch", () => {
         rfqId: "r1",
         state: "sent",
         rfqStatus: "new",
+        operatorId: "op1",
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
@@ -732,6 +742,7 @@ describe("handleJob dispatch", () => {
         rfqId: "r1",
         state: "pending",
         rfqStatus: "closed",
+        operatorId: "op1",
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
@@ -758,6 +769,7 @@ describe("handleJob dispatch", () => {
         rfqId: "r1",
         state: "pending",
         rfqStatus: "new",
+        operatorId: "op1",
         operatorEmail: "ops@alpinejet.example",
         operatorLocale: "en",
         operatorName: "Alpine Jet",
@@ -901,7 +913,8 @@ describe("notifyExpiredListings", () => {
             title: "ZRH–NCE Phenom leg",
             operatorName: "Alpine Jet",
         notifyRfqMatch: true,
-            operatorEmail: "ops@alpinejet.example",
+            operatorId: "op1",
+        operatorEmail: "ops@alpinejet.example",
             locale: "en",
             legDate: "2026-09-14",
           },

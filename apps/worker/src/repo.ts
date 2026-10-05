@@ -265,6 +265,8 @@ export interface WorkerRepo {
     rfqId: string;
     state: string;
     rfqStatus: string;
+    /** QA-541: the unsubscribe footer token is keyed to the operator. */
+    operatorId: string;
     operatorEmail: string;
     /** QA-494: recipient's sign-in locale for the new-RFQ mail. */
     operatorLocale: string;
@@ -512,6 +514,7 @@ export function createWorkerRepo(db: Db): WorkerRepo {
           matchId: rfqMatches.id,
           rfqId: rfqMatches.rfqId,
           state: rfqMatches.state,
+          operatorId: rfqMatches.operatorId,
           operatorEmail: users.email,
           operatorLocale: users.locale,
           operatorName: operators.name,

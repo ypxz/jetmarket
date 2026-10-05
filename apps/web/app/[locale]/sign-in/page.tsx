@@ -20,13 +20,18 @@ export default function SignInPage() {
   const [devLink, setDevLink] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [failed, setFailed] = useState(false);
-  const error = useSearchParams().get("error");
+  const params = useSearchParams();
+  const error = params.get("error");
   const errorMsg =
     error === "invalid-token"
       ? t("errors.invalidToken")
       : error === "rate-limited"
         ? t("errors.rateLimited")
         : null;
+  // QA-541: the match-mail unsubscribe link lands here — a neutral
+  // confirmation line plus the sign-in path back to the toggle.
+  const notice = params.get("notice");
+  const noticeMsg = notice === "match-muted" ? t("unsubMatch") : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +67,14 @@ export default function SignInPage() {
           data-testid="signin-error"
         >
           {errorMsg}
+        </p>
+      ) : null}
+      {noticeMsg ? (
+        <p
+          className="mt-4 rounded-md border border-border bg-surface px-3 py-2 text-sm"
+          data-testid="signin-notice"
+        >
+          {noticeMsg}
         </p>
       ) : null}
       {failed ? (

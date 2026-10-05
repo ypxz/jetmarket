@@ -275,7 +275,8 @@
       "intro": "You have a new request for quotation on {site}.",
       "priority": "Priority request — the buyer paid for immediate delivery.",
       "buyer": "Buyer: {name}",
-      "cta": "Open your operator inbox to send a quote."
+      "cta": "Open your operator inbox to send a quote.",
+      "unsub": "Stop new-request emails"
     },
     "rfqAmended": {
       "subject": "Updated RFQ",
@@ -1030,7 +1031,8 @@
     "errors": {
       "invalidToken": "That sign-in link is invalid or has expired — request a new one below.",
       "rateLimited": "Too many sign-in attempts — wait a few minutes and try again."
-    }
+    },
+    "unsubMatch": "New-request emails are off — sign in to manage notifications."
   },
   "app": {
     "dashboard": {

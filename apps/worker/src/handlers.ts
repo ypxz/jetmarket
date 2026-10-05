@@ -11,6 +11,7 @@ import {
 } from "@jetmarket/domain";
 import type { Sql } from "postgres";
 import type { MatchingConfig } from "@jetmarket/verticals";
+import { signOpUnsub } from "@jetmarket/config";
 import { enqueueJob, type ExpireResultDetailed } from "@jetmarket/db";
 import {
   defaultLocale,
@@ -1047,6 +1048,12 @@ export async function quoteNotification(
   const intro = mailT(m, "rfqNew.intro", { site: site.name });
   const buyerLine = mailT(m, "rfqNew.buyer", { name: buyerName });
   const cta = mailT(m, "rfqNew.cta");
+  const origin = `https://${site.domain}`;
+  // QA-541: match mail carries its own opt-out — the signed token proves
+  // the mailbox without a session, and muting matches the QA-505 toggle
+  // the route flips server-side. Idempotent GET is prefetch-safe.
+  const unsub = `${origin}/api/operator/notify/unsubscribe?token=${encodeURIComponent(signOpUnsub(ctx.operatorId))}`;
+  const unsubLine = `${mailT(m, "rfqNew.unsub")}: ${unsub}`;
   await deps.email.send({
     to: ctx.operatorEmail,
     subject,
@@ -1055,7 +1062,8 @@ export async function quoteNotification(
       `${priorityLine ? `${priorityLine}\n\n` : ""}` +
       `${detailLines.join("\n")}\n` +
       `${buyerLine}\n\n` +
-      cta,
+      `${cta}\n\n` +
+      unsubLine,
     html: brandedEmailHtml({
       siteName: site.name,
       title: subject,
@@ -1065,6 +1073,7 @@ export async function quoteNotification(
         ...detailLines,
         buyerLine,
         cta,
+        unsubLine,
       ],
     }),
   });

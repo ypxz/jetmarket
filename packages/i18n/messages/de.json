@@ -275,7 +275,8 @@
       "intro": "Sie haben eine neue Anfrage auf {site}.",
       "priority": "Priorisierte Anfrage — der Käufer hat für sofortige Zustellung bezahlt.",
       "buyer": "Anfragender: {name}",
-      "cta": "Öffnen Sie Ihren Anbieter-Posteingang, um ein Angebot zu senden."
+      "cta": "Öffnen Sie Ihren Anbieter-Posteingang, um ein Angebot zu senden.",
+      "unsub": "Neue-Anfrage-E-Mails abbestellen"
     },
     "rfqAmended": {
       "subject": "Aktualisierte Anfrage",
@@ -1030,7 +1031,8 @@
     "errors": {
       "invalidToken": "Dieser Anmelde-Link ist ungültig oder abgelaufen — fordern Sie unten einen neuen an.",
       "rateLimited": "Zu viele Anmeldeversuche — warten Sie ein paar Minuten und versuchen Sie es erneut."
-    }
+    },
+    "unsubMatch": "E-Mails zu neuen Anfragen sind abgeschaltet — melden Sie sich an, um Benachrichtigungen zu verwalten."
   },
   "app": {
     "dashboard": {

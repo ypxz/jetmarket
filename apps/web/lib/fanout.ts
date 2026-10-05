@@ -1,6 +1,6 @@
 import { deliverAt, matchOperators } from "@jetmarket/domain";
 import { rfqFieldLabels } from "@jetmarket/verticals";
-import { site } from "@jetmarket/config";
+import { signOpUnsub, site } from "@jetmarket/config";
 import { verticalConfig, verticalMessagesFor } from "@/lib/vertical";
 import { mailCopy, mailT } from "@jetmarket/i18n";
 import type { OperatorCandidate } from "@jetmarket/domain";
@@ -225,6 +225,11 @@ export async function emailRfqMatches(
     const intro = mailT(m, "rfqNew.intro", { site: site.name });
     const buyerLine = mailT(m, "rfqNew.buyer", { name: buyerName });
     const cta = mailT(m, "rfqNew.cta");
+    // QA-541: match mail carries its own opt-out — the signed token
+    // proves the mailbox without a session (same footer the worker's
+    // email.quote_notification composes in pg mode).
+    const unsub = `${process.env.APP_URL?.replace(/\/+$/, "") ?? `https://${site.domain}`}/api/operator/notify/unsubscribe?token=${encodeURIComponent(signOpUnsub(operatorId))}`;
+    const unsubLine = `${mailT(m, "rfqNew.unsub")}: ${unsub}`;
     try {
       await emailProvider().send({
         to: user.email,
@@ -234,7 +239,8 @@ export async function emailRfqMatches(
           `${priorityLine ? `${priorityLine}\n\n` : ""}` +
           `${detailLines.join("\n")}\n` +
           `${buyerLine}\n\n` +
-          cta,
+          `${cta}\n\n` +
+          unsubLine,
         html: brandedEmailHtml({
           siteName: site.name,
           title: subject,
@@ -244,6 +250,7 @@ export async function emailRfqMatches(
             ...detailLines,
             buyerLine,
             cta,
+            unsubLine,
           ],
         }),
       });
